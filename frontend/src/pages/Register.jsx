@@ -23,51 +23,71 @@ function Register() {
   }
 
   return (
-    <div style={{ maxWidth: '400px', margin: '100px auto', padding: '20px' }}>
-      <h2>Create Account</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {success && <p style={{ color: 'green' }}>{success}</p>}
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
-          <input
-            type="text"
-            name="name"
-            placeholder="Full Name"
-            value={form.name}
-            onChange={handleChange}
-            style={{ width: '100%', padding: '10px', fontSize: '16px' }}
-          />
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-indigo-600">Spendly</h1>
+          <p className="text-gray-500 mt-2">Create your account</p>
         </div>
-        <div style={{ marginBottom: '15px' }}>
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleChange}
-            style={{ width: '100%', padding: '10px', fontSize: '16px' }}
-          />
-        </div>
-        <div style={{ marginBottom: '15px' }}>
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            style={{ width: '100%', padding: '10px', fontSize: '16px' }}
-          />
-        </div>
-        <button
-          type="submit"
-          style={{ width: '100%', padding: '10px', backgroundColor: '#4F46E5', color: 'white', fontSize: '16px', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-        >
-          Create Account
-        </button>
-      </form>
-      <p style={{ textAlign: 'center', marginTop: '15px' }}>
-        Already have an account? <a href="/login">Login</a>
-      </p>
+        {error && (
+          <div className="bg-red-50 text-red-500 p-3 rounded-lg mb-4 text-sm">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-50 text-green-500 p-3 rounded-lg mb-4 text-sm">
+            {success} — <a href="/login" className="font-semibold underline">Login now</a>
+          </div>
+        )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <input
+              type="text"
+              name="name"
+              placeholder="John Doe"
+              value={form.name}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              name="email"
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input
+              type="password"
+              name="password"
+              placeholder="••••••••"
+              value={form.password}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition"
+          >
+            Create Account
+          </button>
+        </form>
+        <p className="text-center text-gray-500 mt-6 text-sm">
+          Already have an account?{' '}
+          <a href="/login" className="text-indigo-600 font-semibold hover:underline">Login</a>
+        </p>
+      </div>
     </div>
   )
 }
