@@ -1,7 +1,7 @@
-import axios from 'axios';
+import axios from 'axios'
 
 const API = axios.create({
-  baseURL: 'http://localhost:5000/api',
-});
+  baseURL: 'https://spendly-backend-et20.onrender.com/api'
+})
 
-export default API;
+export default API
