@@ -246,9 +246,9 @@ function Dashboard() {
           {categoryData.length > 0 && (
             <div className="bg-white rounded-2xl shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Spending by Category</h3>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
-                  <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
+                  <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={75}>
                     {categoryData.map((entry, index) => (
                       <Cell key={index} fill={COLORS[index % COLORS.length]} />
                     ))}
@@ -285,34 +285,42 @@ function Dashboard() {
         {/* Budget Goals */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">🎯 Budget Goals</h3>
-          <form onSubmit={handleBudgetSubmit} className="flex gap-3 mb-6">
-            <select
-              value={budgetForm.category}
-              onChange={(e) => setBudgetForm({ ...budgetForm, category: e.target.value })}
-              className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option>Food</option>
-              <option>Transport</option>
-              <option>Shopping</option>
-              <option>Subscriptions</option>
-              <option>Entertainment</option>
-              <option>Other</option>
-            </select>
-            <input
-              type="number"
-              placeholder="Monthly limit ($)"
-              value={budgetForm.amount}
-              onChange={(e) => setBudgetForm({ ...budgetForm, amount: e.target.value })}
-              required
-              className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <button
-              type="submit"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-indigo-700 transition"
-            >
-              Set
-            </button>
-          </form>
+          <form onSubmit={handleBudgetSubmit} className="mb-6">
+  <div className="grid grid-cols-2 gap-3 mb-3">
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">Category</label>
+      <select
+        value={budgetForm.category}
+        onChange={(e) => setBudgetForm({ ...budgetForm, category: e.target.value })}
+        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      >
+        <option>Food</option>
+        <option>Transport</option>
+        <option>Shopping</option>
+        <option>Subscriptions</option>
+        <option>Entertainment</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">Monthly Limit ($)</label>
+      <input
+        type="number"
+        placeholder="e.g. 200"
+        value={budgetForm.amount}
+        onChange={(e) => setBudgetForm({ ...budgetForm, amount: e.target.value })}
+        required
+        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+  </div>
+  <button
+    type="submit"
+    className="w-full bg-indigo-600 text-white py-2 rounded-xl font-semibold hover:bg-indigo-700 transition"
+  >
+    Set Budget
+  </button>
+</form>
           {budgets.length === 0 ? (
             <p className="text-gray-400 text-sm">No budget goals set yet. Set a limit for each category above.</p>
           ) : (
@@ -438,47 +446,49 @@ function Dashboard() {
                 </button>
               </div>
             </form>
-          ) : (
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{categoryIcons[expense.category] || '📦'}</span>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">{expense.category}</span>
-                    {expense.description && <span className="text-sm text-gray-600">{expense.description}</span>}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">{expense.date?.split('T')[0]}</p>
-                </div>
+    ) : (
+      <div>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{categoryIcons[expense.category] || '📦'}</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">{expense.category}</span>
+                {expense.description && <span className="text-sm text-gray-600">{expense.description}</span>}
               </div>
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-gray-800">${parseFloat(expense.amount).toFixed(2)}</span>
-                <button
-                  onClick={() => {
-                    setEditingExpense(expense.id)
-                    setEditForm({
-                      amount: expense.amount,
-                      category: expense.category,
-                      description: expense.description || '',
-                      date: expense.date?.split('T')[0]
-                    })
-                  }}
-                  className="text-indigo-400 hover:text-indigo-600 text-sm px-3 py-1 hover:bg-indigo-50 rounded-lg transition"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(expense.id)}
-                  className="text-red-400 hover:text-red-600 text-sm px-3 py-1 hover:bg-red-50 rounded-lg transition"
-                >
-                  Delete
-                </button>
-              </div>
+              <p className="text-xs text-gray-400 mt-1">{expense.date?.split('T')[0]}</p>
             </div>
-          )}
+          </div>
+          <span className="font-bold text-gray-800">${parseFloat(expense.amount).toFixed(2)}</span>
         </div>
-          ))}
+        <div className="flex gap-2 mt-2 justify-end">
+          <button
+            onClick={() => {
+              setEditingExpense(expense.id)
+              setEditForm({
+                amount: expense.amount,
+                category: expense.category,
+                description: expense.description || '',
+                date: expense.date?.split('T')[0]
+              })
+            }}
+            className="text-indigo-400 hover:text-indigo-600 text-xs px-3 py-1 hover:bg-indigo-50 rounded-lg transition border border-indigo-200"
+          >
+            ✏️ Edit
+          </button>
+          <button
+            onClick={() => handleDelete(expense.id)}
+            className="text-red-400 hover:text-red-600 text-xs px-3 py-1 hover:bg-red-50 rounded-lg transition border border-red-200"
+          >
+            🗑️ Delete
+          </button>
         </div>
-         )}
+      </div>
+    )}
+  </div>
+  ))}
+</div>
+)}
        </div>
       </div>
       {/* Footer */}
