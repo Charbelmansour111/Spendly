@@ -300,7 +300,7 @@ function Dashboard() {
                 const spent = categoryData.find(c => c.name === budget.category)?.value || 0
                 const percentage = Math.min((spent / parseFloat(budget.amount)) * 100, 100)
                 const isOver = spent > parseFloat(budget.amount)
-                const isClose = percentage >= 80 && !isOver
+                const isClose = percentage >= 90 && !isOver
 
                 return (
                   <div key={budget.id}>
@@ -314,7 +314,13 @@ function Dashboard() {
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-3">
                       <div
-                        className={`h-3 rounded-full transition-all ${isOver ? 'bg-red-500' : isClose ? 'bg-yellow-400' : 'bg-indigo-500'}`}
+                        className={`h-3 rounded-full transition-all ${
+                        isOver ? 'bg-red-500' : 
+                        percentage >= 90 ? 'bg-orange-500' : 
+                        percentage >= 70 ? 'bg-yellow-400' : 
+                        percentage >= 40 ? 'bg-lime-500' : 
+                        'bg-green-500'
+                      }`}
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
