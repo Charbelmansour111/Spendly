@@ -373,117 +373,114 @@ function Dashboard() {
         </div>
 
         {/* Expenses List */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Expenses</h3>
-          {expenses.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
-              <p className="text-4xl mb-2">💸</p>
-              <p>No expenses yet. Add your first one!</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {expenses.map(expense => (
-                <div key={expense.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{categoryIcons[expense.category] || '📦'}</span>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">{expense.category}</span>
-                        {expense.description && <span className="text-sm text-gray-600">{expense.description}</span>}
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">{expense.date?.split('T')[0]}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-gray-800">${parseFloat(expense.amount).toFixed(2)}</span>
-                    <button
-                      onClick={() => {
-                        setEditingExpense(expense.id)
-                        setEditForm({
-                          amount: expense.amount,
-                          category: expense.category,
-                          description: expense.description || '',
-                          date: expense.date?.split('T')[0]
-                        })
-                      }}
-                      className="text-indigo-400 hover:text-indigo-600 text-sm px-3 py-1 hover:bg-indigo-50 rounded-lg transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(expense.id)}
-                      className="text-red-400 hover:text-red-600 text-sm px-3 py-1 hover:bg-red-50 rounded-lg transition"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Edit Modal */}
-      {editingExpense && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Edit Expense</h3>
-            <form onSubmit={handleEdit} className="space-y-3">
-              <input
-                type="number"
-                placeholder="Amount ($)"
-                value={editForm.amount}
-                onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
-                required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <select
-                value={editForm.category}
-                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option>Food</option>
-                <option>Transport</option>
-                <option>Shopping</option>
-                <option>Subscriptions</option>
-                <option>Entertainment</option>
-                <option>Other</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Description (optional)"
-                value={editForm.description}
-                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <input
-                type="date"
-                value={editForm.date}
-                onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingExpense(null)}
-                  className="flex-1 py-3 border border-gray-200 rounded-xl font-semibold text-gray-600 hover:bg-gray-50 transition"
+   {/* Expenses List */}
+<div className="bg-white rounded-2xl shadow-sm p-6">
+  <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Expenses</h3>
+  {expenses.length === 0 ? (
+    <div className="text-center py-10 text-gray-400">
+      <p className="text-4xl mb-2">💸</p>
+      <p>No expenses yet. Add your first one!</p>
+    </div>
+  ) : (
+    <div className="space-y-3">
+      {expenses.map(expense => (
+        <div key={expense.id} className="bg-gray-50 rounded-xl p-4">
+          {editingExpense === expense.id ? (
+            <form onSubmit={handleEdit} className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  value={editForm.amount}
+                  onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                  required
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <select
+                  value={editForm.category}
+                  onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  Cancel
-                </button>
+                  <option>Food</option>
+                  <option>Transport</option>
+                  <option>Shopping</option>
+                  <option>Subscriptions</option>
+                  <option>Entertainment</option>
+                  <option>Other</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Description"
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <input
+                  type="date"
+                  value={editForm.date}
+                  onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                  required
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition"
+                  className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition"
                 >
                   Save
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingExpense(null)}
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition"
+                >
+                  Cancel
+                </button>
               </div>
             </form>
-          </div>
+          ) : (
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{categoryIcons[expense.category] || '📦'}</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">{expense.category}</span>
+                    {expense.description && <span className="text-sm text-gray-600">{expense.description}</span>}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">{expense.date?.split('T')[0]}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-bold text-gray-800">${parseFloat(expense.amount).toFixed(2)}</span>
+                <button
+                  onClick={() => {
+                    setEditingExpense(expense.id)
+                    setEditForm({
+                      amount: expense.amount,
+                      category: expense.category,
+                      description: expense.description || '',
+                      date: expense.date?.split('T')[0]
+                    })
+                  }}
+                  className="text-indigo-400 hover:text-indigo-600 text-sm px-3 py-1 hover:bg-indigo-50 rounded-lg transition"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(expense.id)}
+                  className="text-red-400 hover:text-red-600 text-sm px-3 py-1 hover:bg-red-50 rounded-lg transition"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-
+          ))}
+        </div>
+         )}
+       </div>
+      </div>
       {/* Footer */}
       <footer className="text-center py-6 text-gray-400 text-sm mt-8">
         <p>© 2026 <span className="text-indigo-600 font-semibold">Spendly</span> — Track smarter, spend better 💸</p>
