@@ -261,7 +261,7 @@ function Profile() {
                 required
               />
               <button type="submit" className="bg-white text-indigo-600 px-4 py-2 rounded-xl text-sm font-semibold">Save</button>
-              <button type="button" onClick={() => setEditingName(false)} className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-xl text-sm">Cancel</button>
+             <button type="button" onClick={() => setEditingName(false)} className="bg-white bg-opacity-20 text-gray-800 px-4 py-2 rounded-xl text-sm">Cancel</button>
             </form>
           ) : (
             <div>
@@ -273,8 +273,8 @@ function Profile() {
           <p className="text-indigo-300 text-sm mt-1">Member since {memberSince}</p>
           {profile.user.onboarding_done && (
             <div className="mt-3 flex justify-center gap-3 flex-wrap">
-              {profile.user.country && <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-xs">{profile.user.country}</span>}
-              {profile.user.phone && <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-xs">{profile.user.phone}</span>}
+              {profile.user.country && <span className="bg-white px-3 py-1 rounded-full text-xs text-indigo-600 font-medium">{profile.user.country}</span>}
+{profile.user.phone && <span className="bg-white px-3 py-1 rounded-full text-xs text-indigo-600 font-medium">{profile.user.phone}</span>}
             </div>
           )}
         </div>
