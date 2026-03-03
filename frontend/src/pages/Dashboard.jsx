@@ -72,6 +72,19 @@ function Dashboard() {
     }
   }
 
+const handleDeleteBudget = async (id) => {
+  if (!window.confirm('Delete this budget goal?')) return
+  try {
+    const token = localStorage.getItem('token')
+    await API.delete(`/budgets/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    fetchBudgets()
+  } catch {
+    console.log('Error deleting budget')
+  }
+}
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
@@ -96,6 +109,7 @@ function Dashboard() {
   }
 
   const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this expense?')) return
     try {
       const token = localStorage.getItem('token')
       await API.delete(`/expenses/${id}`, {
@@ -402,29 +416,37 @@ const filteredExpenses = expenses
                 const isOver = spent > parseFloat(budget.amount)
                 const isClose = percentage >= 90 && !isOver
                 return (
-                  <div key={budget.id}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium text-gray-700">{categoryIcons[budget.category]} {budget.category}</span>
-                      <span className={isOver ? 'text-red-500 font-bold' : 'text-gray-500'}>
-                        ${spent.toFixed(2)} / ${parseFloat(budget.amount).toFixed(2)}
-                        {isOver && ' ⚠️ Over budget!'}
-                        {isClose && ' ⚡ Almost there!'}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-3">
-                      <div
-                        className={`h-3 rounded-full transition-all ${
-                          isOver ? 'bg-red-500' :
-                          percentage >= 90 ? 'bg-orange-500' :
-                          percentage >= 70 ? 'bg-yellow-400' :
-                          percentage >= 40 ? 'bg-lime-500' :
-                          'bg-green-500'
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                )
+               <div key={budget.id}>
+                 <div className="flex justify-between text-sm mb-1">
+                 <span className="font-medium text-gray-700">{categoryIcons[budget.category]} {budget.category}</span>
+                <div className="flex items-center gap-2">
+               <span className={isOver ? 'text-red-500 font-bold' : 'text-gray-500'}>
+                ${spent.toFixed(2)} / ${parseFloat(budget.amount).toFixed(2)}
+               {isOver && ' ⚠️ Over budget!'}
+               {isClose && ' ⚡ Almost there!'}
+              </span>
+              <button
+              onClick={() => handleDeleteBudget(budget.id)}
+             className="text-red-400 hover:text-red-600 text-xs px-2 py-1 hover:bg-red-50 rounded-lg transition border border-red-200"
+             >
+              🗑️
+              </button>
+            </div>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-3">
+            <div
+             className={`h-3 rounded-full transition-all ${
+              isOver ? 'bg-red-500' :
+              percentage >= 90 ? 'bg-orange-500' :
+              percentage >= 70 ? 'bg-yellow-400' :
+              percentage >= 40 ? 'bg-lime-500' :
+              'bg-green-500'
+              }`}
+             style={{ width: `${percentage}%` }}
+            />
+           </div>
+          </div>
+           )
               })}
             </div>
           )}
