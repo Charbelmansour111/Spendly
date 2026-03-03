@@ -9,25 +9,23 @@ function ReceiptScanner({ onScanComplete }) {
     const file = e.target.files[0]
     if (!file) return
 
-    // Show preview
     const imageUrl = URL.createObjectURL(file)
     setPreview(imageUrl)
     setScanning(true)
 
     try {
-      // Read text from image
       const result = await Tesseract.recognize(file, 'eng')
       const text = result.data.text
 
-      // Try to find amount (looks for patterns like $12.50 or 12.50)
       const amountMatch = text.match(/\$?\d+\.\d{2}/)
-      const amount = amountMatch ? amountMatch[0].replace('$', '') : ''
+      const invoiceMatch = text.match(/#?\s*(invoice|receipt|order|no|number|ref)[:\s#]*(\w+\d+|\d+)/i)
+        || text.match(/(?:^|\s)#(\d+)/im)
 
-      // Pass results back to parent
-      onScanComplete({
-        amount,
-        description: 'Scanned receipt'
-      })
+      const amount = amountMatch ? amountMatch[0].replace('$', '') : ''
+      const invoiceNumber = invoiceMatch ? invoiceMatch[2] || invoiceMatch[1] : ''
+      const description = invoiceNumber ? `Receipt #${invoiceNumber}` : 'Scanned receipt'
+
+      onScanComplete({ amount, description })
     } catch {
       console.log('Error scanning receipt')
     }
