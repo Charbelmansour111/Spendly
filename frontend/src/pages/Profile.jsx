@@ -22,7 +22,7 @@ function Profile() {
   const [loading, setLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [onboardingForm, setOnboardingForm] = useState({
-    phone: '', country: 'Lebanon', interests: '', currency: 'USD'
+    phone: '', country: '', interests: '', currency: 'USD', customInterest: ''
   })
   const [selectedInterests, setSelectedInterests] = useState([])
   const [savedCurrency, setSavedCurrency] = useState('USD')
@@ -61,6 +61,7 @@ function Profile() {
 
   const handleOnboardingSubmit = async (e) => {
     e.preventDefault()
+    if (!onboardingForm.phone || !onboardingForm.country || selectedInterests.length === 0) return
     try {
       const token = localStorage.getItem('token')
       await API.put('/profile/onboarding', {
@@ -104,7 +105,6 @@ function Profile() {
   const balance = profile.totalIncome - profile.totalExpenses
   const memberSince = new Date(profile.user.created_at).toLocaleDateString('default', { month: 'long', year: 'numeric' })
   const currencySymbol = CURRENCIES.find(c => c.code === savedCurrency)?.symbol || '$'
-
   const bestMonthName = profile.bestMonth
     ? new Date(profile.bestMonth.year, profile.bestMonth.month - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' })
     : null
@@ -142,45 +142,49 @@ function Profile() {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xl font-bold text-gray-800">Complete Your Profile 🎁</h3>
-                <p className="text-green-600 text-sm mt-1 font-medium">Fill this out and get 1 free month of Spendly Pro!</p>
+                <p className="text-green-600 text-sm mt-1 font-medium">Fill everything out to get 1 free month of Spendly Pro!</p>
               </div>
               <button onClick={() => setShowOnboarding(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
             <form onSubmit={handleOnboardingSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Phone Number</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Phone Number *</label>
                   <input
                     type="tel" placeholder="+961 XX XXX XXX"
                     value={onboardingForm.phone}
                     onChange={e => setOnboardingForm({ ...onboardingForm, phone: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                    required
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-gray-800"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Country</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Country *</label>
                   <select
                     value={onboardingForm.country}
                     onChange={e => setOnboardingForm({ ...onboardingForm, country: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                    required
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-gray-800"
                   >
+                    <option value="">Select country...</option>
                     {COUNTRIES.map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Preferred Currency</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Preferred Currency *</label>
                 <select
                   value={onboardingForm.currency}
                   onChange={e => setOnboardingForm({ ...onboardingForm, currency: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                  required
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-gray-800"
                 >
                   {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.name} ({c.code})</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-2">Your Interests (select all that apply)</label>
-                <div className="flex flex-wrap gap-2">
+                <label className="block text-xs font-medium text-gray-500 mb-2">Your Interests * <span className="text-gray-400">(select or type your own)</span></label>
+                <div className="flex flex-wrap gap-2 mb-3">
                   {INTERESTS.map(interest => (
                     <button
                       key={interest} type="button"
@@ -195,8 +199,47 @@ function Profile() {
                     </button>
                   ))}
                 </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Type a custom interest..."
+                    value={onboardingForm.customInterest || ''}
+                    onChange={e => setOnboardingForm({ ...onboardingForm, customInterest: e.target.value })}
+                    className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-gray-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = onboardingForm.customInterest?.trim()
+                      if (val && !selectedInterests.includes(val)) {
+                        setSelectedInterests(prev => [...prev, val])
+                        setOnboardingForm({ ...onboardingForm, customInterest: '' })
+                      }
+                    }}
+                    className="px-4 py-2 bg-indigo-100 text-indigo-600 rounded-xl text-sm font-semibold hover:bg-indigo-200 transition"
+                  >
+                    Add
+                  </button>
+                </div>
+                {selectedInterests.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedInterests.map(i => (
+                      <span key={i} className="flex items-center gap-1 bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full text-xs font-medium">
+                        {i}
+                        <button type="button" onClick={() => setSelectedInterests(prev => prev.filter(x => x !== i))} className="hover:text-red-500 ml-1">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {selectedInterests.length === 0 && (
+                  <p className="text-red-400 text-xs mt-1">Please select or add at least one interest</p>
+                )}
               </div>
-              <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition">
+              <button
+                type="submit"
+                disabled={!onboardingForm.phone || !onboardingForm.country || selectedInterests.length === 0}
+                className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 Save & Claim Free Month 🎁
               </button>
             </form>
@@ -210,7 +253,13 @@ function Profile() {
           </div>
           {editingName ? (
             <form onSubmit={handleUpdateName} className="flex gap-2 justify-center mt-2">
-              <input type="text" value={newName} onChange={e => setNewName(e.target.value)} className="px-4 py-2 rounded-xl text-gray-800 text-sm focus:outline-none" required />
+              <input
+                type="text"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                className="px-4 py-2 rounded-xl text-gray-800 bg-white text-sm focus:outline-none border-0"
+                required
+              />
               <button type="submit" className="bg-white text-indigo-600 px-4 py-2 rounded-xl text-sm font-semibold">Save</button>
               <button type="button" onClick={() => setEditingName(false)} className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-xl text-sm">Cancel</button>
             </form>
@@ -224,8 +273,8 @@ function Profile() {
           <p className="text-indigo-300 text-sm mt-1">Member since {memberSince}</p>
           {profile.user.onboarding_done && (
             <div className="mt-3 flex justify-center gap-3 flex-wrap">
-              {profile.user.country && <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-xs">📍 {profile.user.country}</span>}
-              {profile.user.phone && <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-xs">📞 {profile.user.phone}</span>}
+              {profile.user.country && <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-xs">{profile.user.country}</span>}
+              {profile.user.phone && <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-xs">{profile.user.phone}</span>}
             </div>
           )}
         </div>
