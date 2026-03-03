@@ -59,6 +59,12 @@ router.delete('/:id', verifyToken, async (req, res) => {
 router.put('/:id', verifyToken, async (req, res) => {
   try {
     const { amount, category, description, date } = req.body;
+    if (!amount || parseFloat(amount) <= 0) {
+  return res.status(400).json({ message: 'Amount must be greater than 0' })
+}
+    if (!amount || parseFloat(amount) <= 0) {
+  return res.status(400).json({ message: 'Amount must be greater than 0' })
+}
     const updated = await pool.query(
       'UPDATE expenses SET amount=$1, category=$2, description=$3, date=$4 WHERE id=$5 AND user_id=$6 RETURNING *',
       [amount, category, description, date, req.params.id, req.userId]

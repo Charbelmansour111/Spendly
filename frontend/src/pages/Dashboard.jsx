@@ -252,15 +252,17 @@ function Dashboard() {
               setForm({ ...form, amount: data.amount, description: data.description })
             }} />
             <form onSubmit={handleSubmit} className="space-y-3">
-              <input
-                type="number"
-                name="amount"
-                placeholder="Amount ($)"
-                value={form.amount}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+             <input
+  type="number"
+  name="amount"
+  placeholder="Amount ($)"
+  value={form.amount}
+  onChange={handleChange}
+  required
+  min="0.01"
+  step="0.01"
+  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+/>
               <select
                 name="category"
                 value={form.category}
@@ -467,12 +469,14 @@ function Dashboard() {
           {editingExpense === expense.id ? (
             <form onSubmit={handleEdit} className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="number"
-                  value={editForm.amount}
-                  onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
-                  required
-                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+               <input
+                type="number"
+                value={editForm.amount}
+                onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                required
+                min="0.01"
+                step="0.01"
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <select
                   value={editForm.category}
