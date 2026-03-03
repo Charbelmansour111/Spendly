@@ -280,7 +280,7 @@ function Dashboard() {
         <h1 className="text-2xl font-bold text-indigo-600">Spendly</h1>
         {user && (
           <div className="flex items-center gap-4">
-            <span className="text-gray-600 text-sm">Hi, {user.name} 👋</span>
+            <a href="/profile" className="text-gray-600 text-sm hover:text-indigo-600 transition">Hi, {user.name} 👋</a>
             <button onClick={handleLogout} className="bg-red-50 text-red-500 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition">Logout</button>
           </div>
         )}
