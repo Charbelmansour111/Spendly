@@ -59,9 +59,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
 router.put('/:id', verifyToken, async (req, res) => {
   try {
     const { amount, category, description, date } = req.body;
-    if (!amount || parseFloat(amount) <= 0) {
-  return res.status(400).json({ message: 'Amount must be greater than 0' })
-}
+ 
     if (!amount || parseFloat(amount) <= 0) {
   return res.status(400).json({ message: 'Amount must be greater than 0' })
 }

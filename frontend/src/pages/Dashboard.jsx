@@ -25,6 +25,9 @@ function Dashboard() {
   const [editingExpense, setEditingExpense] = useState(null)
   const [editForm, setEditForm] = useState({ amount: '', category: 'Food', description: '', date: '' })
   const [filter, setFilter] = useState({ category: 'All', sort: 'newest' })
+  const [incomeList, setIncomeList] = useState([])
+  const [incomeForm, setIncomeForm] = useState({ amount: '', source: 'Salary' })
+  const [showIncomeForm, setShowIncomeForm] = useState(false)
   const [form, setForm] = useState({
     amount: '',
     category: 'Food',
@@ -32,15 +35,36 @@ function Dashboard() {
     date: new Date().toISOString().split('T')[0]
   })
 
-  // ✅ Income state
-  const [incomeList, setIncomeList] = useState([])
-  const [incomeForm, setIncomeForm] = useState({ amount: '', source: 'Salary' })
-  const [showIncomeForm, setShowIncomeForm] = useState(false)
+  // ✅ Month selector state — starts on current month
+  const today = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth()) // 0-indexed
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear())
 
-  const now = new Date()
-  const currentMonth = now.getMonth() + 1
-  const currentYear = now.getFullYear()
-  const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' })
+  const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear()
+
+  // Navigate months
+  const prevMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11)
+      setSelectedYear(y => y - 1)
+    } else {
+      setSelectedMonth(m => m - 1)
+    }
+  }
+
+  const nextMonth = () => {
+    // Don't allow going beyond current month
+    if (isCurrentMonth) return
+    if (selectedMonth === 11) {
+      setSelectedMonth(0)
+      setSelectedYear(y => y + 1)
+    } else {
+      setSelectedMonth(m => m + 1)
+    }
+  }
+
+  const monthName = new Date(selectedYear, selectedMonth, 1)
+    .toLocaleString('default', { month: 'long', year: 'numeric' })
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user')
@@ -51,9 +75,13 @@ function Dashboard() {
       if (parsedUser) setUser(parsedUser)
       fetchExpenses()
       fetchBudgets()
-      fetchIncome()
     }
   }, [])
+
+  // ✅ Re-fetch income whenever month/year changes
+  useEffect(() => {
+    fetchIncome()
+  }, [selectedMonth, selectedYear])
 
   const fetchExpenses = async () => {
     try {
@@ -71,26 +99,24 @@ function Dashboard() {
     } catch { console.log('Error fetching budgets') }
   }
 
-  // ✅ Fetch income for current month
   const fetchIncome = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await API.get(`/income?month=${currentMonth}&year=${currentYear}`, {
+      const res = await API.get(`/income?month=${selectedMonth + 1}&year=${selectedYear}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setIncomeList(res.data)
     } catch { console.log('Error fetching income') }
   }
 
-  // ✅ Add income
   const handleIncomeSubmit = async (e) => {
     e.preventDefault()
     try {
       const token = localStorage.getItem('token')
       await API.post('/income', {
         ...incomeForm,
-        month: currentMonth,
-        year: currentYear
+        month: selectedMonth + 1,
+        year: selectedYear
       }, { headers: { Authorization: `Bearer ${token}` } })
       setIncomeForm({ amount: '', source: 'Salary' })
       setShowIncomeForm(false)
@@ -98,7 +124,6 @@ function Dashboard() {
     } catch { console.log('Error adding income') }
   }
 
-  // ✅ Delete income
   const handleDeleteIncome = async (id) => {
     if (!window.confirm('Delete this income entry?')) return
     try {
@@ -170,9 +195,7 @@ function Dashboard() {
       const token = localStorage.getItem('token')
       const res = await API.get('/insights', { headers: { Authorization: `Bearer ${token}` } })
       setInsight(res.data.insight)
-    } catch {
-      setInsight('Error getting insights. Try again.')
-    }
+    } catch { setInsight('Error getting insights. Try again.') }
     setLoadingInsight(false)
   }
 
@@ -184,19 +207,20 @@ function Dashboard() {
     doc.setFontSize(11)
     doc.setTextColor(100, 100, 100)
     doc.text(`Report for: ${user?.name}`, 14, 30)
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 37)
+    doc.text(`Period: ${monthName}`, 14, 37)
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 44)
     doc.setFontSize(14)
     doc.setTextColor(0, 0, 0)
-    doc.text(`Total Income: $${totalIncome.toFixed(2)}`, 14, 50)
-    doc.text(`Total Spent: $${total.toFixed(2)}`, 14, 58)
-    doc.text(`Balance: $${balance.toFixed(2)}`, 14, 66)
+    doc.text(`Total Income: $${totalIncome.toFixed(2)}`, 14, 57)
+    doc.text(`Total Spent: $${total.toFixed(2)}`, 14, 65)
+    doc.text(`Balance: $${balance.toFixed(2)}`, 14, 73)
     doc.setFontSize(13)
     doc.setTextColor(79, 70, 229)
-    doc.text('Spending by Category', 14, 80)
+    doc.text('Spending by Category', 14, 87)
     autoTable(doc, {
-      startY: 85,
+      startY: 92,
       head: [['Category', 'Amount', 'Percentage']],
-      body: categoryData.map(c => [c.name, `$${c.value.toFixed(2)}`, `${((c.value / total) * 100).toFixed(0)}%`]),
+      body: categoryData.map(c => [c.name, `$${c.value.toFixed(2)}`, total > 0 ? `${((c.value / total) * 100).toFixed(0)}%` : '0%']),
       headStyles: { fillColor: [79, 70, 229] },
       alternateRowStyles: { fillColor: [245, 245, 255] }
     })
@@ -206,32 +230,33 @@ function Dashboard() {
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 20,
       head: [['Date', 'Category', 'Description', 'Amount']],
-      body: expenses.map(e => [e.date?.split('T')[0], e.category, e.description || '-', `$${parseFloat(e.amount).toFixed(2)}`]),
+      body: selectedMonthExpenses.map(e => [e.date?.split('T')[0], e.category, e.description || '-', `$${parseFloat(e.amount).toFixed(2)}`]),
       headStyles: { fillColor: [79, 70, 229] },
       alternateRowStyles: { fillColor: [245, 245, 255] }
     })
-    doc.save(`spendly-report-${new Date().toISOString().split('T')[0]}.pdf`)
+    doc.save(`spendly-${monthName.replace(' ', '-')}.pdf`)
   }
 
-  // ✅ This month only
-  const thisMonthExpenses = expenses.filter(e => {
+  // ✅ Filter expenses to selected month/year
+  const selectedMonthExpenses = expenses.filter(e => {
     const d = new Date(e.date)
-    return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear
+    return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear
   })
 
-  const total = thisMonthExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
+  const total = selectedMonthExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
   const totalIncome = incomeList.reduce((sum, i) => sum + parseFloat(i.amount), 0)
   const balance = totalIncome - total
   const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100).toFixed(0) : null
 
-  const categoryData = thisMonthExpenses.reduce((acc, e) => {
+  const categoryData = selectedMonthExpenses.reduce((acc, e) => {
     const existing = acc.find(item => item.name === e.category)
     if (existing) existing.value += parseFloat(e.amount)
     else acc.push({ name: e.category, value: parseFloat(e.amount) })
     return acc
   }, [])
 
-  const filteredExpenses = expenses
+  // ✅ Expenses list filtered by selected month + category/sort filter
+  const filteredExpenses = selectedMonthExpenses
     .filter(e => filter.category === 'All' || e.category === filter.category)
     .sort((a, b) => {
       if (filter.sort === 'newest') return new Date(b.date) - new Date(a.date)
@@ -263,7 +288,31 @@ function Dashboard() {
 
       <div className="max-w-5xl mx-auto px-4 py-8">
 
-        {/* ✅ NEW: Income / Spent / Balance summary card */}
+        {/* ✅ Month Selector */}
+        <div className="flex items-center justify-center gap-4 mb-6">
+          <button
+            onClick={prevMonth}
+            className="bg-white shadow-sm border border-gray-200 text-gray-600 w-10 h-10 rounded-xl flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition text-lg font-bold"
+          >
+            ‹
+          </button>
+          <div className="bg-white shadow-sm border border-gray-200 px-6 py-2 rounded-xl">
+            <span className="font-semibold text-gray-800">{monthName}</span>
+            {isCurrentMonth && (
+              <span className="ml-2 text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">Current</span>
+            )}
+          </div>
+          <button
+            onClick={nextMonth}
+            disabled={isCurrentMonth}
+            className={`bg-white shadow-sm border border-gray-200 w-10 h-10 rounded-xl flex items-center justify-center transition text-lg font-bold
+              ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300'}`}
+          >
+            ›
+          </button>
+        </div>
+
+        {/* Summary Card */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white mb-6">
           <p className="text-indigo-200 text-sm mb-4">{monthName} Overview</p>
           <div className="grid grid-cols-3 gap-4">
@@ -274,7 +323,7 @@ function Dashboard() {
             <div>
               <p className="text-indigo-200 text-xs">Spent</p>
               <p className="text-2xl font-bold">${total.toFixed(2)}</p>
-              <p className="text-indigo-200 text-xs mt-1">{thisMonthExpenses.length} transactions</p>
+              <p className="text-indigo-200 text-xs mt-1">{selectedMonthExpenses.length} transactions</p>
             </div>
             <div>
               <p className="text-indigo-200 text-xs">Balance</p>
@@ -290,28 +339,26 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* ✅ NEW: Income section */}
+        {/* Income Section */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">💰 Monthly Income</h3>
-            <button
-              onClick={() => setShowIncomeForm(!showIncomeForm)}
-              className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition"
-            >
-              {showIncomeForm ? 'Cancel' : '+ Add Income'}
-            </button>
+            <h3 className="text-lg font-semibold text-gray-800">💰 Income — {monthName}</h3>
+            {isCurrentMonth && (
+              <button
+                onClick={() => setShowIncomeForm(!showIncomeForm)}
+                className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition"
+              >
+                {showIncomeForm ? 'Cancel' : '+ Add Income'}
+              </button>
+            )}
           </div>
 
-          {showIncomeForm && (
+          {showIncomeForm && isCurrentMonth && (
             <form onSubmit={handleIncomeSubmit} className="flex gap-3 mb-4">
               <input
-                type="number"
-                placeholder="Amount ($)"
-                value={incomeForm.amount}
+                type="number" placeholder="Amount ($)" value={incomeForm.amount}
                 onChange={e => setIncomeForm({ ...incomeForm, amount: e.target.value })}
-                required
-                min="0.01"
-                step="0.01"
+                required min="0.01" step="0.01"
                 className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
               />
               <select
@@ -325,14 +372,14 @@ function Dashboard() {
                 <option>Investment</option>
                 <option>Other</option>
               </select>
-              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-green-700 transition">
-                Save
-              </button>
+              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-green-700 transition">Save</button>
             </form>
           )}
 
           {incomeList.length === 0 ? (
-            <p className="text-gray-400 text-sm">No income added for {monthName} yet. Add your income to see your balance.</p>
+            <p className="text-gray-400 text-sm">
+              {isCurrentMonth ? 'No income added for this month yet.' : `No income recorded for ${monthName}.`}
+            </p>
           ) : (
             <div className="space-y-2">
               {incomeList.map(inc => (
@@ -346,12 +393,9 @@ function Dashboard() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-green-600">+${parseFloat(inc.amount).toFixed(2)}</span>
-                    <button
-                      onClick={() => handleDeleteIncome(inc.id)}
-                      className="text-red-400 hover:text-red-600 text-xs px-2 py-1 hover:bg-red-50 rounded-lg transition border border-red-200"
-                    >
-                      🗑️
-                    </button>
+                    {isCurrentMonth && (
+                      <button onClick={() => handleDeleteIncome(inc.id)} className="text-red-400 hover:text-red-600 text-xs px-2 py-1 hover:bg-red-50 rounded-lg transition border border-red-200">🗑️</button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -364,24 +408,33 @@ function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Add Expense Form */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Add Expense</h3>
-            <ReceiptScanner onScanComplete={(data) => setForm({ ...form, amount: data.amount, description: data.description })} />
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <input type="number" name="amount" placeholder="Amount ($)" value={form.amount} onChange={handleChange} required min="0.01" step="0.01" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              <select name="category" value={form.category} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option>Food</option><option>Transport</option><option>Shopping</option>
-                <option>Subscriptions</option><option>Entertainment</option><option>Other</option>
-              </select>
-              <input type="text" name="description" placeholder="Description (optional)" value={form.description} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              <input type="date" name="date" value={form.date} onChange={handleChange} required className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition">+ Add Expense</button>
-            </form>
-          </div>
+          {/* Add Expense Form — only show for current month */}
+          {isCurrentMonth ? (
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Add Expense</h3>
+              <ReceiptScanner onScanComplete={(data) => setForm({ ...form, amount: data.amount, description: data.description })} />
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <input type="number" name="amount" placeholder="Amount ($)" value={form.amount} onChange={handleChange} required min="0.01" step="0.01" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <select name="category" value={form.category} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option>Food</option><option>Transport</option><option>Shopping</option>
+                  <option>Subscriptions</option><option>Entertainment</option><option>Other</option>
+                </select>
+                <input type="text" name="description" placeholder="Description (optional)" value={form.description} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <input type="date" name="date" value={form.date} onChange={handleChange} required className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition">+ Add Expense</button>
+              </form>
+            </div>
+          ) : (
+            // Past month — show read-only notice instead of form
+            <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col items-center justify-center text-center">
+              <p className="text-4xl mb-3">📅</p>
+              <p className="font-semibold text-gray-700">Viewing {monthName}</p>
+              <p className="text-gray-400 text-sm mt-1">You can't add expenses to a past month.</p>
+            </div>
+          )}
 
           {/* Pie Chart */}
-          {categoryData.length > 0 && (
+          {categoryData.length > 0 ? (
             <div className="bg-white rounded-2xl shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Spending by Category</h3>
               <ResponsiveContainer width="100%" height={260}>
@@ -392,11 +445,16 @@ function Dashboard() {
                   <Tooltip formatter={(v) => `$${v.toFixed(2)}`} />
                   <Legend formatter={(value) => {
                     const item = categoryData.find(c => c.name === value)
-                    const pct = item ? ((item.value / total) * 100).toFixed(0) : 0
+                    const pct = item && total > 0 ? ((item.value / total) * 100).toFixed(0) : 0
                     return `${value} (${pct}%)`
                   }} />
                 </PieChart>
               </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col items-center justify-center text-center">
+              <p className="text-4xl mb-3">📊</p>
+              <p className="text-gray-400 text-sm">No expenses for {monthName} yet.</p>
             </div>
           )}
         </div>
@@ -470,7 +528,7 @@ function Dashboard() {
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 flex justify-between items-center">
           <div>
             <h3 className="text-lg font-semibold text-gray-800">📄 Expense Report</h3>
-            <p className="text-gray-400 text-sm">Download all your expenses as a PDF</p>
+            <p className="text-gray-400 text-sm">Download {monthName} expenses as PDF</p>
           </div>
           <button onClick={exportPDF} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">⬇️ Download PDF</button>
         </div>
@@ -497,7 +555,7 @@ function Dashboard() {
         {/* Expenses List */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex flex-wrap gap-3 justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Your Expenses</h3>
+            <h3 className="text-lg font-semibold text-gray-800">Expenses — {monthName}</h3>
             <div className="flex flex-wrap gap-2">
               <select value={filter.category} onChange={e => setFilter({ ...filter, category: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <option value="All">All Categories</option>
@@ -512,10 +570,10 @@ function Dashboard() {
               </select>
             </div>
           </div>
-          {expenses.length === 0 ? (
+          {filteredExpenses.length === 0 ? (
             <div className="text-center py-10 text-gray-400">
               <p className="text-4xl mb-2">💸</p>
-              <p>No expenses yet. Add your first one!</p>
+              <p>{isCurrentMonth ? 'No expenses yet. Add your first one!' : `No expenses found for ${monthName}.`}</p>
             </div>
           ) : (
             <div className="space-y-3">
