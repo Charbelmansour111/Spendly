@@ -10,15 +10,15 @@ function Landing() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       {/* Navbar */}
       <nav className="flex justify-between items-center px-8 py-5 bg-white shadow-sm">
-        <h1 className="text-2xl font-bold text-indigo-600">Spendly 💸</h1>
+        <h1 className="text-2xl font-bold text-indigo-600">Spendly </h1>
         <div className="flex gap-3">
-          <a href="/login" className="px-4 py-2 text-indigo-600 font-semibold hover:bg-indigo-50 rounded-xl transition">
-            Login
-          </a>
-          <a href="/register" className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition">
-            Get Started Free
-          </a>
-        </div>
+  <a href="/login" className="px-4 py-2 text-indigo-600 font-semibold hover:bg-indigo-50 rounded-xl transition">
+    Login
+  </a>
+  <a href="/register" className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition">
+    Register
+  </a>
+</div>
       </nav>
 
       {/* Hero */}
