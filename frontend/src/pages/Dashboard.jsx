@@ -5,14 +5,27 @@ import API from '../utils/api'
 import ReceiptScanner from '../components/ReceiptScanner'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts'
 
+const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
+
 function renderMarkdown(text) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g)
   return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>
-    }
+    if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>
     return <span key={i}>{part}</span>
   })
+}
+
+function Toast({ message, type, onClose }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 4000)
+    return () => clearTimeout(t)
+  }, [])
+  return (
+    <div className={`fixed top-6 right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 animate-bounce ${type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-orange-500' : 'bg-green-500'}`}>
+      <span>{message}</span>
+      <button onClick={onClose} className="ml-2 hover:opacity-70">✕</button>
+    </div>
+  )
 }
 
 function Dashboard() {
@@ -29,18 +42,18 @@ function Dashboard() {
   const [incomeList, setIncomeList] = useState([])
   const [incomeForm, setIncomeForm] = useState({ amount: '', source: 'Salary' })
   const [showIncomeForm, setShowIncomeForm] = useState(false)
+  const [toast, setToast] = useState(null)
   const [form, setForm] = useState({
-    amount: '',
-    category: 'Food',
-    description: '',
+    amount: '', category: 'Food', description: '',
     date: new Date().toISOString().split('T')[0]
   })
 
   const today = new Date()
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
   const [selectedYear, setSelectedYear] = useState(today.getFullYear())
-
   const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear()
+
+  const currencySymbol = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
 
   const prevMonth = () => {
     if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1) }
@@ -56,16 +69,15 @@ function Dashboard() {
   const monthName = new Date(selectedYear, selectedMonth, 1)
     .toLocaleString('default', { month: 'long', year: 'numeric' })
 
+  const showToast = (message, type = 'success') => setToast({ message, type })
+
   useEffect(() => {
     const storedUser = localStorage.getItem('user')
-    if (!storedUser) {
-      window.location.href = '/login'
-    } else {
-      const parsedUser = JSON.parse(storedUser)
-      if (parsedUser) setUser(parsedUser)
-      fetchExpenses()
-      fetchBudgets()
-    }
+    if (!storedUser) { window.location.href = '/login'; return }
+    const parsedUser = JSON.parse(storedUser)
+    if (parsedUser) setUser(parsedUser)
+    fetchExpenses()
+    fetchBudgets()
   }, [])
 
   useEffect(() => { fetchIncome() }, [selectedMonth, selectedYear])
@@ -105,6 +117,7 @@ function Dashboard() {
       setIncomeForm({ amount: '', source: 'Salary' })
       setShowIncomeForm(false)
       fetchIncome()
+      showToast('✅ Income added successfully!')
     } catch { console.log('Error adding income') }
   }
 
@@ -114,6 +127,7 @@ function Dashboard() {
       const token = localStorage.getItem('token')
       await API.delete(`/income/${id}`, { headers: { Authorization: `Bearer ${token}` } })
       fetchIncome()
+      showToast('🗑️ Income deleted', 'error')
     } catch { console.log('Error deleting income') }
   }
 
@@ -124,6 +138,7 @@ function Dashboard() {
       await API.post('/budgets', budgetForm, { headers: { Authorization: `Bearer ${token}` } })
       setBudgetForm({ category: 'Food', amount: '' })
       fetchBudgets()
+      showToast('🎯 Budget goal set!')
     } catch { console.log('Error saving budget') }
   }
 
@@ -133,6 +148,7 @@ function Dashboard() {
       const token = localStorage.getItem('token')
       await API.delete(`/budgets/${id}`, { headers: { Authorization: `Bearer ${token}` } })
       fetchBudgets()
+      showToast('🗑️ Budget deleted', 'error')
     } catch { console.log('Error deleting budget') }
   }
 
@@ -144,7 +160,34 @@ function Dashboard() {
       const token = localStorage.getItem('token')
       await API.post('/expenses', form, { headers: { Authorization: `Bearer ${token}` } })
       setForm({ amount: '', category: 'Food', description: '', date: new Date().toISOString().split('T')[0] })
-      fetchExpenses()
+      const updatedExpenses = await API.get('/expenses', { headers: { Authorization: `Bearer ${token}` } })
+      setExpenses(updatedExpenses.data)
+
+      // Check budget after adding expense
+      const newMonthExpenses = updatedExpenses.data.filter(ex => {
+        const d = new Date(ex.date)
+        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear
+      })
+      const newCategoryData = newMonthExpenses.reduce((acc, ex) => {
+        const existing = acc.find(item => item.name === ex.category)
+        if (existing) existing.value += parseFloat(ex.amount)
+        else acc.push({ name: ex.category, value: parseFloat(ex.amount) })
+        return acc
+      }, [])
+      const budget = budgets.find(b => b.category === form.category)
+      if (budget) {
+        const spent = newCategoryData.find(c => c.name === form.category)?.value || 0
+        const pct = (spent / parseFloat(budget.amount)) * 100
+        if (spent > parseFloat(budget.amount)) {
+          showToast(`⚠️ Over budget on ${form.category}! Spent ${currencySymbol}${spent.toFixed(2)} of ${currencySymbol}${parseFloat(budget.amount).toFixed(2)}`, 'error')
+        } else if (pct >= 90) {
+          showToast(`⚡ Almost at budget limit for ${form.category}! ${pct.toFixed(0)}% used`, 'warning')
+        } else {
+          showToast('✅ Expense added!')
+        }
+      } else {
+        showToast('✅ Expense added!')
+      }
     } catch { console.log('Error adding expense') }
   }
 
@@ -154,6 +197,7 @@ function Dashboard() {
       const token = localStorage.getItem('token')
       await API.delete(`/expenses/${id}`, { headers: { Authorization: `Bearer ${token}` } })
       fetchExpenses()
+      showToast('🗑️ Expense deleted', 'error')
     } catch { console.log('Error deleting expense') }
   }
 
@@ -164,6 +208,7 @@ function Dashboard() {
       await API.put(`/expenses/${editingExpense}`, editForm, { headers: { Authorization: `Bearer ${token}` } })
       setEditingExpense(null)
       fetchExpenses()
+      showToast('✅ Expense updated!')
     } catch { console.log('Error editing expense') }
   }
 
@@ -195,16 +240,16 @@ function Dashboard() {
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 44)
     doc.setFontSize(14)
     doc.setTextColor(0, 0, 0)
-    doc.text(`Total Income: $${totalIncome.toFixed(2)}`, 14, 57)
-    doc.text(`Total Spent: $${total.toFixed(2)}`, 14, 65)
-    doc.text(`Balance: $${balance.toFixed(2)}`, 14, 73)
+    doc.text(`Total Income: ${currencySymbol}${totalIncome.toFixed(2)}`, 14, 57)
+    doc.text(`Total Spent: ${currencySymbol}${total.toFixed(2)}`, 14, 65)
+    doc.text(`Balance: ${currencySymbol}${balance.toFixed(2)}`, 14, 73)
     doc.setFontSize(13)
     doc.setTextColor(79, 70, 229)
     doc.text('Spending by Category', 14, 87)
     autoTable(doc, {
       startY: 92,
       head: [['Category', 'Amount', 'Percentage']],
-      body: categoryData.map(c => [c.name, `$${c.value.toFixed(2)}`, total > 0 ? `${((c.value / total) * 100).toFixed(0)}%` : '0%']),
+      body: categoryData.map(c => [c.name, `${currencySymbol}${c.value.toFixed(2)}`, total > 0 ? `${((c.value / total) * 100).toFixed(0)}%` : '0%']),
       headStyles: { fillColor: [79, 70, 229] },
       alternateRowStyles: { fillColor: [245, 245, 255] }
     })
@@ -214,7 +259,7 @@ function Dashboard() {
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 20,
       head: [['Date', 'Category', 'Description', 'Amount']],
-      body: selectedMonthExpenses.map(e => [e.date?.split('T')[0], e.category, e.description || '-', `$${parseFloat(e.amount).toFixed(2)}`]),
+      body: selectedMonthExpenses.map(e => [e.date?.split('T')[0], e.category, e.description || '-', `${currencySymbol}${parseFloat(e.amount).toFixed(2)}`]),
       headStyles: { fillColor: [79, 70, 229] },
       alternateRowStyles: { fillColor: [245, 245, 255] }
     })
@@ -243,10 +288,7 @@ function Dashboard() {
     .filter(e => {
       if (!search.trim()) return true
       const s = search.toLowerCase()
-      return (
-        e.category.toLowerCase().includes(s) ||
-        (e.description && e.description.toLowerCase().includes(s))
-      )
+      return e.category.toLowerCase().includes(s) || (e.description && e.description.toLowerCase().includes(s))
     })
     .sort((a, b) => {
       if (filter.sort === 'newest') return new Date(b.date) - new Date(a.date)
@@ -257,14 +299,15 @@ function Dashboard() {
     })
 
   const COLORS = ['#4F46E5', '#7C3AED', '#EC4899', '#F59E0B', '#10B981', '#3B82F6']
-  const categoryIcons = {
-    Food: '🍔', Transport: '🚗', Shopping: '🛍️',
-    Subscriptions: '📱', Entertainment: '🎬', Other: '📦'
-  }
+  const categoryIcons = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
   const insightLines = insight ? insight.split('\n').filter(l => l.trim() !== '') : []
 
   return (
     <div className="min-h-screen bg-gray-50">
+
+      {/* Toast */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       {/* Navbar */}
       <nav className="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-indigo-600">Spendly</h1>
@@ -296,17 +339,17 @@ function Dashboard() {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <p className="text-indigo-200 text-xs">Income</p>
-              <p className="text-2xl font-bold">${totalIncome.toFixed(2)}</p>
+              <p className="text-2xl font-bold">{currencySymbol}{totalIncome.toFixed(2)}</p>
             </div>
             <div>
               <p className="text-indigo-200 text-xs">Spent</p>
-              <p className="text-2xl font-bold">${total.toFixed(2)}</p>
+              <p className="text-2xl font-bold">{currencySymbol}{total.toFixed(2)}</p>
               <p className="text-indigo-200 text-xs mt-1">{selectedMonthExpenses.length} transactions</p>
             </div>
             <div>
               <p className="text-indigo-200 text-xs">Balance</p>
               <p className={`text-2xl font-bold ${balance < 0 ? 'text-red-300' : 'text-green-300'}`}>
-                {balance < 0 ? '-' : '+'}${Math.abs(balance).toFixed(2)}
+                {balance < 0 ? '-' : '+'}{currencySymbol}{Math.abs(balance).toFixed(2)}
               </p>
               {savingsRate !== null && (
                 <p className="text-indigo-200 text-xs mt-1">{balance >= 0 ? `${savingsRate}% saved` : 'Over budget!'}</p>
@@ -327,22 +370,20 @@ function Dashboard() {
           </div>
           {showIncomeForm && isCurrentMonth && (
             <form onSubmit={handleIncomeSubmit} className="mb-4">
-  <div className="grid grid-cols-2 gap-3 mb-3">
-    <div>
-      <label className="block text-xs text-gray-500 mb-1">Amount ($)</label>
-      <input type="number" placeholder="e.g. 1500" value={incomeForm.amount} onChange={e => setIncomeForm({ ...incomeForm, amount: e.target.value })} required min="0.01" step="0.01" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500" />
-    </div>
-    <div>
-      <label className="block text-xs text-gray-500 mb-1">Source</label>
-      <select value={incomeForm.source} onChange={e => setIncomeForm({ ...incomeForm, source: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500">
-        <option>Salary</option><option>Freelance</option><option>Business</option><option>Investment</option><option>Other</option>
-      </select>
-    </div>
-  </div>
-  <button type="submit" className="w-full bg-green-600 text-white py-2 rounded-xl font-semibold hover:bg-green-700 transition">
-    + Save Income
-  </button>
-</form>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Amount ({currencySymbol})</label>
+                  <input type="number" placeholder="e.g. 1500" value={incomeForm.amount} onChange={e => setIncomeForm({ ...incomeForm, amount: e.target.value })} required min="0.01" step="0.01" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Source</label>
+                  <select value={incomeForm.source} onChange={e => setIncomeForm({ ...incomeForm, source: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option>Salary</option><option>Freelance</option><option>Business</option><option>Investment</option><option>Other</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-green-600 text-white py-2 rounded-xl font-semibold hover:bg-green-700 transition">+ Save Income</button>
+            </form>
           )}
           {incomeList.length === 0 ? (
             <p className="text-gray-400 text-sm">{isCurrentMonth ? 'No income added for this month yet.' : `No income recorded for ${monthName}.`}</p>
@@ -358,7 +399,7 @@ function Dashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-green-600">+${parseFloat(inc.amount).toFixed(2)}</span>
+                    <span className="font-bold text-green-600">+{currencySymbol}{parseFloat(inc.amount).toFixed(2)}</span>
                     {isCurrentMonth && (
                       <button onClick={() => handleDeleteIncome(inc.id)} className="text-red-400 hover:text-red-600 text-xs px-2 py-1 hover:bg-red-50 rounded-lg transition border border-red-200">🗑️</button>
                     )}
@@ -367,7 +408,7 @@ function Dashboard() {
               ))}
               <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                 <span className="text-sm font-semibold text-gray-600">Total Income</span>
-                <span className="font-bold text-green-600 text-lg">${totalIncome.toFixed(2)}</span>
+                <span className="font-bold text-green-600 text-lg">{currencySymbol}{totalIncome.toFixed(2)}</span>
               </div>
             </div>
           )}
@@ -380,7 +421,7 @@ function Dashboard() {
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Add Expense</h3>
               <ReceiptScanner onScanComplete={(data) => setForm({ ...form, amount: data.amount, description: data.description })} />
               <form onSubmit={handleSubmit} className="space-y-3">
-                <input type="number" name="amount" placeholder="Amount ($)" value={form.amount} onChange={handleChange} required min="0.01" step="0.01" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <input type="number" name="amount" placeholder={`Amount (${currencySymbol})`} value={form.amount} onChange={handleChange} required min="0.01" step="0.01" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 <select name="category" value={form.category} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   <option>Food</option><option>Transport</option><option>Shopping</option>
                   <option>Subscriptions</option><option>Entertainment</option><option>Other</option>
@@ -407,7 +448,7 @@ function Dashboard() {
                   <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85}>
                     {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v) => `$${v.toFixed(2)}`} />
+                  <Tooltip formatter={(v) => `${currencySymbol}${v.toFixed(2)}`} />
                   <Legend formatter={(value) => {
                     const item = categoryData.find(c => c.name === value)
                     const pct = item && total > 0 ? ((item.value / total) * 100).toFixed(0) : 0
@@ -431,7 +472,7 @@ function Dashboard() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={categoryData}>
                 <XAxis dataKey="name" /><YAxis />
-                <Tooltip formatter={(v) => `$${v.toFixed(2)}`} />
+                <Tooltip formatter={(v) => `${currencySymbol}${v.toFixed(2)}`} />
                 <Bar dataKey="value" fill="#4F46E5" radius={[5, 5, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -451,7 +492,7 @@ function Dashboard() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Monthly Limit ($)</label>
+                <label className="block text-xs text-gray-500 mb-1">Monthly Limit ({currencySymbol})</label>
                 <input type="number" placeholder="e.g. 200" value={budgetForm.amount} onChange={e => setBudgetForm({ ...budgetForm, amount: e.target.value })} required className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
             </div>
@@ -472,7 +513,7 @@ function Dashboard() {
                       <span className="font-medium text-gray-700">{categoryIcons[budget.category]} {budget.category}</span>
                       <div className="flex items-center gap-2">
                         <span className={isOver ? 'text-red-500 font-bold' : 'text-gray-500'}>
-                          ${spent.toFixed(2)} / ${parseFloat(budget.amount).toFixed(2)}
+                          {currencySymbol}{spent.toFixed(2)} / {currencySymbol}{parseFloat(budget.amount).toFixed(2)}
                           {isOver && ' ⚠️ Over budget!'}
                           {isClose && ' ⚡ Almost there!'}
                         </span>
@@ -584,7 +625,7 @@ function Dashboard() {
                             <p className="text-xs text-gray-400 mt-1">{expense.date?.split('T')[0]}</p>
                           </div>
                         </div>
-                        <span className="font-bold text-gray-800">${parseFloat(expense.amount).toFixed(2)}</span>
+                        <span className="font-bold text-gray-800">{currencySymbol}{parseFloat(expense.amount).toFixed(2)}</span>
                       </div>
                       <div className="flex gap-2 mt-2 justify-end">
                         <button onClick={() => { setEditingExpense(expense.id); setEditForm({ amount: expense.amount, category: expense.category, description: expense.description || '', date: expense.date?.split('T')[0] }) }} className="text-indigo-400 hover:text-indigo-600 text-xs px-3 py-1 hover:bg-indigo-50 rounded-lg transition border border-indigo-200">✏️ Edit</button>
