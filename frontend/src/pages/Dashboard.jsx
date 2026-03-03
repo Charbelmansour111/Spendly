@@ -14,6 +14,7 @@ function Dashboard() {
   const [budgetForm, setBudgetForm] = useState({ category: 'Food', amount: '' })
   const [editingExpense, setEditingExpense] = useState(null)
   const [editForm, setEditForm] = useState({ amount: '', category: 'Food', description: '', date: '' })
+  const [filter, setFilter] = useState({ category: 'All', sort: 'newest' })
   const [form, setForm] = useState({
     amount: '',
     category: 'Food',
@@ -195,6 +196,17 @@ function Dashboard() {
 
   doc.save(`spendly-report-${new Date().toISOString().split('T')[0]}.pdf`)
 }
+
+const filteredExpenses = expenses
+  .filter(e => filter.category === 'All' || e.category === filter.category)
+  .sort((a, b) => {
+    if (filter.sort === 'newest') return new Date(b.date) - new Date(a.date)
+    if (filter.sort === 'oldest') return new Date(a.date) - new Date(b.date)
+    if (filter.sort === 'highest') return parseFloat(b.amount) - parseFloat(a.amount)
+    if (filter.sort === 'lowest') return parseFloat(a.amount) - parseFloat(b.amount)
+    return 0
+  })
+
   const total = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
 
   const categoryData = expenses.reduce((acc, e) => {
@@ -456,7 +468,34 @@ function Dashboard() {
         {/* Expenses List */}
    {/* Expenses List */}
 <div className="bg-white rounded-2xl shadow-sm p-6">
-  <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Expenses</h3>
+  <div className="flex flex-wrap gap-3 justify-between items-center mb-4">
+  <h3 className="text-lg font-semibold text-gray-800">Your Expenses</h3>
+  <div className="flex flex-wrap gap-2">
+    <select
+      value={filter.category}
+      onChange={(e) => setFilter({ ...filter, category: e.target.value })}
+      className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    >
+      <option value="All">All Categories</option>
+      <option>Food</option>
+      <option>Transport</option>
+      <option>Shopping</option>
+      <option>Subscriptions</option>
+      <option>Entertainment</option>
+      <option>Other</option>
+    </select>
+    <select
+      value={filter.sort}
+      onChange={(e) => setFilter({ ...filter, sort: e.target.value })}
+      className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    >
+      <option value="newest">Newest First</option>
+      <option value="oldest">Oldest First</option>
+      <option value="highest">Highest Amount</option>
+      <option value="lowest">Lowest Amount</option>
+    </select>
+  </div>
+</div>
   {expenses.length === 0 ? (
     <div className="text-center py-10 text-gray-400">
       <p className="text-4xl mb-2">💸</p>
@@ -464,7 +503,7 @@ function Dashboard() {
     </div>
   ) : (
     <div className="space-y-3">
-      {expenses.map(expense => (
+      {filteredExpenses.map(expense => (
         <div key={expense.id} className="bg-gray-50 rounded-xl p-4">
           {editingExpense === expense.id ? (
             <form onSubmit={handleEdit} className="space-y-2">
