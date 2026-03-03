@@ -8,6 +8,8 @@ function Dashboard() {
   const [expenses, setExpenses] = useState([])
   const [insight, setInsight] = useState('')
   const [loadingInsight, setLoadingInsight] = useState(false)
+  const [budgets, setBudgets] = useState([])
+  const [budgetForm, setBudgetForm] = useState({ category: 'Food', amount: '' })
   const [form, setForm] = useState({
     amount: '',
     category: 'Food',
@@ -23,6 +25,7 @@ function Dashboard() {
       const parsedUser = JSON.parse(storedUser)
       if (parsedUser) setUser(parsedUser)
       fetchExpenses()
+      fetchBudgets()
     }
   }, [])
 
@@ -35,6 +38,32 @@ function Dashboard() {
       setExpenses(res.data)
     } catch {
       console.log('Error fetching expenses')
+    }
+  }
+
+  const fetchBudgets = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await API.get('/budgets', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setBudgets(res.data)
+    } catch {
+      console.log('Error fetching budgets')
+    }
+  }
+
+  const handleBudgetSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      const token = localStorage.getItem('token')
+      await API.post('/budgets', budgetForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setBudgetForm({ category: 'Food', amount: '' })
+      fetchBudgets()
+    } catch {
+      console.log('Error saving budget')
     }
   }
 
@@ -230,6 +259,71 @@ function Dashboard() {
             </ResponsiveContainer>
           </div>
         )}
+
+        {/* Budget Goals */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">🎯 Budget Goals</h3>
+          <form onSubmit={handleBudgetSubmit} className="flex gap-3 mb-6">
+            <select
+              value={budgetForm.category}
+              onChange={(e) => setBudgetForm({ ...budgetForm, category: e.target.value })}
+              className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option>Food</option>
+              <option>Transport</option>
+              <option>Shopping</option>
+              <option>Subscriptions</option>
+              <option>Entertainment</option>
+              <option>Other</option>
+            </select>
+            <input
+              type="number"
+              placeholder="Monthly limit ($)"
+              value={budgetForm.amount}
+              onChange={(e) => setBudgetForm({ ...budgetForm, amount: e.target.value })}
+              required
+              className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              type="submit"
+              className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-indigo-700 transition"
+            >
+              Set
+            </button>
+          </form>
+
+          {budgets.length === 0 ? (
+            <p className="text-gray-400 text-sm">No budget goals set yet. Set a limit for each category above.</p>
+          ) : (
+            <div className="space-y-4">
+              {budgets.map(budget => {
+                const spent = categoryData.find(c => c.name === budget.category)?.value || 0
+                const percentage = Math.min((spent / parseFloat(budget.amount)) * 100, 100)
+                const isOver = spent > parseFloat(budget.amount)
+                const isClose = percentage >= 80 && !isOver
+
+                return (
+                  <div key={budget.id}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="font-medium text-gray-700">{categoryIcons[budget.category]} {budget.category}</span>
+                      <span className={isOver ? 'text-red-500 font-bold' : 'text-gray-500'}>
+                        ${spent.toFixed(2)} / ${parseFloat(budget.amount).toFixed(2)}
+                        {isOver && ' ⚠️ Over budget!'}
+                        {isClose && ' ⚡ Almost there!'}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-3">
+                      <div
+                        className={`h-3 rounded-full transition-all ${isOver ? 'bg-red-500' : isClose ? 'bg-yellow-400' : 'bg-indigo-500'}`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         {/* AI Insights */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">

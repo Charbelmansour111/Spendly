@@ -5,6 +5,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
 const insightRoutes = require('./routes/insights');
+const budgetRoutes = require('./routes/budgets');
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/insights', insightRoutes);
+app.use('/api/budgets', budgetRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Spendly API is running' });
