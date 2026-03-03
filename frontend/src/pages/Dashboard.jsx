@@ -10,6 +10,8 @@ function Dashboard() {
   const [loadingInsight, setLoadingInsight] = useState(false)
   const [budgets, setBudgets] = useState([])
   const [budgetForm, setBudgetForm] = useState({ category: 'Food', amount: '' })
+  const [editingExpense, setEditingExpense] = useState(null)
+  const [editForm, setEditForm] = useState({ amount: '', category: 'Food', description: '', date: '' })
   const [form, setForm] = useState({
     amount: '',
     category: 'Food',
@@ -99,6 +101,20 @@ function Dashboard() {
       fetchExpenses()
     } catch {
       console.log('Error deleting expense')
+    }
+  }
+
+  const handleEdit = async (e) => {
+    e.preventDefault()
+    try {
+      const token = localStorage.getItem('token')
+      await API.put(`/expenses/${editingExpense}`, editForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setEditingExpense(null)
+      fetchExpenses()
+    } catch {
+      console.log('Error editing expense')
     }
   }
 
@@ -238,7 +254,13 @@ function Dashboard() {
                     ))}
                   </Pie>
                   <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-                  <Legend />
+                  <Legend
+                    formatter={(value) => {
+                      const item = categoryData.find(c => c.name === value)
+                      const percent = item ? ((item.value / total) * 100).toFixed(0) : 0
+                      return `${value} (${percent}%)`
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -291,7 +313,6 @@ function Dashboard() {
               Set
             </button>
           </form>
-
           {budgets.length === 0 ? (
             <p className="text-gray-400 text-sm">No budget goals set yet. Set a limit for each category above.</p>
           ) : (
@@ -301,7 +322,6 @@ function Dashboard() {
                 const percentage = Math.min((spent / parseFloat(budget.amount)) * 100, 100)
                 const isOver = spent > parseFloat(budget.amount)
                 const isClose = percentage >= 90 && !isOver
-
                 return (
                   <div key={budget.id}>
                     <div className="flex justify-between text-sm mb-1">
@@ -315,12 +335,12 @@ function Dashboard() {
                     <div className="w-full bg-gray-100 rounded-full h-3">
                       <div
                         className={`h-3 rounded-full transition-all ${
-                        isOver ? 'bg-red-500' : 
-                        percentage >= 90 ? 'bg-orange-500' : 
-                        percentage >= 70 ? 'bg-yellow-400' : 
-                        percentage >= 40 ? 'bg-lime-500' : 
-                        'bg-green-500'
-                      }`}
+                          isOver ? 'bg-red-500' :
+                          percentage >= 90 ? 'bg-orange-500' :
+                          percentage >= 70 ? 'bg-yellow-400' :
+                          percentage >= 40 ? 'bg-lime-500' :
+                          'bg-green-500'
+                        }`}
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
@@ -377,6 +397,20 @@ function Dashboard() {
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-gray-800">${parseFloat(expense.amount).toFixed(2)}</span>
                     <button
+                      onClick={() => {
+                        setEditingExpense(expense.id)
+                        setEditForm({
+                          amount: expense.amount,
+                          category: expense.category,
+                          description: expense.description || '',
+                          date: expense.date?.split('T')[0]
+                        })
+                      }}
+                      className="text-indigo-400 hover:text-indigo-600 text-sm px-3 py-1 hover:bg-indigo-50 rounded-lg transition"
+                    >
+                      Edit
+                    </button>
+                    <button
                       onClick={() => handleDelete(expense.id)}
                       className="text-red-400 hover:text-red-600 text-sm px-3 py-1 hover:bg-red-50 rounded-lg transition"
                     >
@@ -389,6 +423,66 @@ function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {editingExpense && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Edit Expense</h3>
+            <form onSubmit={handleEdit} className="space-y-3">
+              <input
+                type="number"
+                placeholder="Amount ($)"
+                value={editForm.amount}
+                onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                required
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <select
+                value={editForm.category}
+                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option>Food</option>
+                <option>Transport</option>
+                <option>Shopping</option>
+                <option>Subscriptions</option>
+                <option>Entertainment</option>
+                <option>Other</option>
+              </select>
+              <input
+                type="text"
+                placeholder="Description (optional)"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <input
+                type="date"
+                value={editForm.date}
+                onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                required
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingExpense(null)}
+                  className="flex-1 py-3 border border-gray-200 rounded-xl font-semibold text-gray-600 hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="text-center py-6 text-gray-400 text-sm mt-8">

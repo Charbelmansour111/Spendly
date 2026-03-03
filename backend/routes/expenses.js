@@ -55,5 +55,17 @@ router.delete('/:id', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
+// EDIT expense
+router.put('/:id', verifyToken, async (req, res) => {
+  try {
+    const { amount, category, description, date } = req.body;
+    const updated = await pool.query(
+      'UPDATE expenses SET amount=$1, category=$2, description=$3, date=$4 WHERE id=$5 AND user_id=$6 RETURNING *',
+      [amount, category, description, date, req.params.id, req.userId]
+    );
+    res.json(updated.rows[0]);
+  } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 module.exports = router;

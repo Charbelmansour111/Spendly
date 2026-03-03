@@ -13,12 +13,17 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const res = await API.post('/auth/register', form)
-      setSuccess(res.data.message)
-      setError('')
-    } catch (err) {
-      setError(err.response.data.message)
-      setSuccess('')
+      await API.post('/auth/register', form)
+      const loginRes = await API.post('/auth/login', {
+       email: form.email,
+       password: form.password
+       })
+       localStorage.setItem('token', loginRes.data.token)
+       localStorage.setItem('user', JSON.stringify(loginRes.data.user))
+       window.location.href = '/dashboard'
+      } catch (err) {
+       setError(err.response.data.message)
+       setSuccess('')
     }
   }
 
