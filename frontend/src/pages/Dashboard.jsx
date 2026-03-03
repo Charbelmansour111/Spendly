@@ -1,3 +1,5 @@
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import { useEffect, useState } from 'react'
 import API from '../utils/api'
 import ReceiptScanner from '../components/ReceiptScanner'
@@ -137,7 +139,62 @@ function Dashboard() {
     }
     setLoadingInsight(false)
   }
+  const exportPDF = () => {
+  const doc = new jsPDF()
 
+  // Header
+  doc.setFontSize(24)
+  doc.setTextColor(79, 70, 229)
+  doc.text('Spendly', 14, 20)
+
+  doc.setFontSize(11)
+  doc.setTextColor(100, 100, 100)
+  doc.text(`Report for: ${user?.name}`, 14, 30)
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 37)
+
+  // Total
+  doc.setFontSize(14)
+  doc.setTextColor(0, 0, 0)
+  doc.text(`Total Spent: $${total.toFixed(2)}`, 14, 50)
+  doc.text(`Transactions: ${expenses.length}`, 14, 58)
+
+  // Category breakdown
+  doc.setFontSize(13)
+  doc.setTextColor(79, 70, 229)
+  doc.text('Spending by Category', 14, 72)
+
+  autoTable(doc, {
+    startY: 77,
+    head: [['Category', 'Amount', 'Percentage']],
+    body: categoryData.map(c => [
+      c.name,
+      `$${c.value.toFixed(2)}`,
+      `${((c.value / total) * 100).toFixed(0)}%`
+    ]),
+    headStyles: { fillColor: [79, 70, 229] },
+    alternateRowStyles: { fillColor: [245, 245, 255] }
+  })
+
+  // Expenses list
+  doc.setFontSize(13)
+  doc.setTextColor(79, 70, 229)
+  doc.text('All Expenses', 14, doc.lastAutoTable.finalY + 15)
+
+  autoTable(doc, {
+    startY: doc.lastAutoTable.finalY + 20,
+    head: [['Date', 'Category', 'Description', 'Amount']],
+    body: expenses.map(e => [
+      e.date?.split('T')[0],
+      e.category,
+      e.description || '-',
+      `$${parseFloat(e.amount).toFixed(2)}`
+    ]),
+    headStyles: { fillColor: [79, 70, 229] },
+    alternateRowStyles: { fillColor: [245, 245, 255] }
+  })
+
+  doc.save(`spendly-report-${new Date().toISOString().split('T')[0]}.pdf`)
+}
   const total = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
 
   const categoryData = expenses.reduce((acc, e) => {
@@ -246,9 +303,9 @@ function Dashboard() {
           {categoryData.length > 0 && (
             <div className="bg-white rounded-2xl shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Spending by Category</h3>
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
-                  <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={75}>
+                  <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85}>
                     {categoryData.map((entry, index) => (
                       <Cell key={index} fill={COLORS[index % COLORS.length]} />
                     ))}
@@ -358,6 +415,20 @@ function Dashboard() {
             </div>
           )}
         </div>
+
+{/* Export PDF */}
+<div className="bg-white rounded-2xl shadow-sm p-6 mb-6 flex justify-between items-center">
+  <div>
+    <h3 className="text-lg font-semibold text-gray-800">📄 Expense Report</h3>
+    <p className="text-gray-400 text-sm">Download all your expenses as a PDF</p>
+  </div>
+  <button
+    onClick={exportPDF}
+    className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition"
+  >
+    ⬇️ Download PDF
+  </button>
+</div>
 
         {/* AI Insights */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
