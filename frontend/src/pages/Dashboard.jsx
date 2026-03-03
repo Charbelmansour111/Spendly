@@ -25,6 +25,7 @@ function Dashboard() {
   const [editingExpense, setEditingExpense] = useState(null)
   const [editForm, setEditForm] = useState({ amount: '', category: 'Food', description: '', date: '' })
   const [filter, setFilter] = useState({ category: 'All', sort: 'newest' })
+  const [search, setSearch] = useState('')
   const [incomeList, setIncomeList] = useState([])
   const [incomeForm, setIncomeForm] = useState({ amount: '', source: 'Salary' })
   const [showIncomeForm, setShowIncomeForm] = useState(false)
@@ -35,32 +36,21 @@ function Dashboard() {
     date: new Date().toISOString().split('T')[0]
   })
 
-  // ✅ Month selector state — starts on current month
   const today = new Date()
-  const [selectedMonth, setSelectedMonth] = useState(today.getMonth()) // 0-indexed
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
   const [selectedYear, setSelectedYear] = useState(today.getFullYear())
 
   const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear()
 
-  // Navigate months
   const prevMonth = () => {
-    if (selectedMonth === 0) {
-      setSelectedMonth(11)
-      setSelectedYear(y => y - 1)
-    } else {
-      setSelectedMonth(m => m - 1)
-    }
+    if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1) }
+    else setSelectedMonth(m => m - 1)
   }
 
   const nextMonth = () => {
-    // Don't allow going beyond current month
     if (isCurrentMonth) return
-    if (selectedMonth === 11) {
-      setSelectedMonth(0)
-      setSelectedYear(y => y + 1)
-    } else {
-      setSelectedMonth(m => m + 1)
-    }
+    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1) }
+    else setSelectedMonth(m => m + 1)
   }
 
   const monthName = new Date(selectedYear, selectedMonth, 1)
@@ -78,10 +68,7 @@ function Dashboard() {
     }
   }, [])
 
-  // ✅ Re-fetch income whenever month/year changes
-  useEffect(() => {
-    fetchIncome()
-  }, [selectedMonth, selectedYear])
+  useEffect(() => { fetchIncome() }, [selectedMonth, selectedYear])
 
   const fetchExpenses = async () => {
     try {
@@ -113,11 +100,8 @@ function Dashboard() {
     e.preventDefault()
     try {
       const token = localStorage.getItem('token')
-      await API.post('/income', {
-        ...incomeForm,
-        month: selectedMonth + 1,
-        year: selectedYear
-      }, { headers: { Authorization: `Bearer ${token}` } })
+      await API.post('/income', { ...incomeForm, month: selectedMonth + 1, year: selectedYear },
+        { headers: { Authorization: `Bearer ${token}` } })
       setIncomeForm({ amount: '', source: 'Salary' })
       setShowIncomeForm(false)
       fetchIncome()
@@ -237,7 +221,6 @@ function Dashboard() {
     doc.save(`spendly-${monthName.replace(' ', '-')}.pdf`)
   }
 
-  // ✅ Filter expenses to selected month/year
   const selectedMonthExpenses = expenses.filter(e => {
     const d = new Date(e.date)
     return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear
@@ -255,9 +238,16 @@ function Dashboard() {
     return acc
   }, [])
 
-  // ✅ Expenses list filtered by selected month + category/sort filter
   const filteredExpenses = selectedMonthExpenses
     .filter(e => filter.category === 'All' || e.category === filter.category)
+    .filter(e => {
+      if (!search.trim()) return true
+      const s = search.toLowerCase()
+      return (
+        e.category.toLowerCase().includes(s) ||
+        (e.description && e.description.toLowerCase().includes(s))
+      )
+    })
     .sort((a, b) => {
       if (filter.sort === 'newest') return new Date(b.date) - new Date(a.date)
       if (filter.sort === 'oldest') return new Date(a.date) - new Date(b.date)
@@ -280,7 +270,9 @@ function Dashboard() {
         <h1 className="text-2xl font-bold text-indigo-600">Spendly</h1>
         {user && (
           <div className="flex items-center gap-4">
-            <a href="/profile" className="text-gray-600 text-sm hover:text-indigo-600 transition">Hi, {user.name} 👋</a>
+            <span className="text-gray-600 text-sm hidden md:block">Hi, {user.name} 👋</span>
+            <a href="/dashboard" className="text-gray-500 text-xl hover:text-indigo-600 transition" title="Dashboard">🏠</a>
+            <a href="/profile" className="text-gray-500 text-xl hover:text-indigo-600 transition" title="Profile">👤</a>
             <button onClick={handleLogout} className="bg-red-50 text-red-500 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition">Logout</button>
           </div>
         )}
@@ -288,28 +280,14 @@ function Dashboard() {
 
       <div className="max-w-5xl mx-auto px-4 py-8">
 
-        {/* ✅ Month Selector */}
+        {/* Month Selector */}
         <div className="flex items-center justify-center gap-4 mb-6">
-          <button
-            onClick={prevMonth}
-            className="bg-white shadow-sm border border-gray-200 text-gray-600 w-10 h-10 rounded-xl flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition text-lg font-bold"
-          >
-            ‹
-          </button>
+          <button onClick={prevMonth} className="bg-white shadow-sm border border-gray-200 text-gray-600 w-10 h-10 rounded-xl flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition text-lg font-bold">‹</button>
           <div className="bg-white shadow-sm border border-gray-200 px-6 py-2 rounded-xl">
             <span className="font-semibold text-gray-800">{monthName}</span>
-            {isCurrentMonth && (
-              <span className="ml-2 text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">Current</span>
-            )}
+            {isCurrentMonth && <span className="ml-2 text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">Current</span>}
           </div>
-          <button
-            onClick={nextMonth}
-            disabled={isCurrentMonth}
-            className={`bg-white shadow-sm border border-gray-200 w-10 h-10 rounded-xl flex items-center justify-center transition text-lg font-bold
-              ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300'}`}
-          >
-            ›
-          </button>
+          <button onClick={nextMonth} disabled={isCurrentMonth} className={`bg-white shadow-sm border border-gray-200 w-10 h-10 rounded-xl flex items-center justify-center transition text-lg font-bold ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300'}`}>›</button>
         </div>
 
         {/* Summary Card */}
@@ -331,9 +309,7 @@ function Dashboard() {
                 {balance < 0 ? '-' : '+'}${Math.abs(balance).toFixed(2)}
               </p>
               {savingsRate !== null && (
-                <p className="text-indigo-200 text-xs mt-1">
-                  {balance >= 0 ? `${savingsRate}% saved` : 'Over budget!'}
-                </p>
+                <p className="text-indigo-200 text-xs mt-1">{balance >= 0 ? `${savingsRate}% saved` : 'Over budget!'}</p>
               )}
             </div>
           </div>
@@ -344,42 +320,32 @@ function Dashboard() {
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-800">💰 Income — {monthName}</h3>
             {isCurrentMonth && (
-              <button
-                onClick={() => setShowIncomeForm(!showIncomeForm)}
-                className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition"
-              >
+              <button onClick={() => setShowIncomeForm(!showIncomeForm)} className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition">
                 {showIncomeForm ? 'Cancel' : '+ Add Income'}
               </button>
             )}
           </div>
-
           {showIncomeForm && isCurrentMonth && (
-            <form onSubmit={handleIncomeSubmit} className="flex gap-3 mb-4">
-              <input
-                type="number" placeholder="Amount ($)" value={incomeForm.amount}
-                onChange={e => setIncomeForm({ ...incomeForm, amount: e.target.value })}
-                required min="0.01" step="0.01"
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-              <select
-                value={incomeForm.source}
-                onChange={e => setIncomeForm({ ...incomeForm, source: e.target.value })}
-                className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                <option>Salary</option>
-                <option>Freelance</option>
-                <option>Business</option>
-                <option>Investment</option>
-                <option>Other</option>
-              </select>
-              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-green-700 transition">Save</button>
-            </form>
+            <form onSubmit={handleIncomeSubmit} className="mb-4">
+  <div className="grid grid-cols-2 gap-3 mb-3">
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">Amount ($)</label>
+      <input type="number" placeholder="e.g. 1500" value={incomeForm.amount} onChange={e => setIncomeForm({ ...incomeForm, amount: e.target.value })} required min="0.01" step="0.01" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500" />
+    </div>
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">Source</label>
+      <select value={incomeForm.source} onChange={e => setIncomeForm({ ...incomeForm, source: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500">
+        <option>Salary</option><option>Freelance</option><option>Business</option><option>Investment</option><option>Other</option>
+      </select>
+    </div>
+  </div>
+  <button type="submit" className="w-full bg-green-600 text-white py-2 rounded-xl font-semibold hover:bg-green-700 transition">
+    + Save Income
+  </button>
+</form>
           )}
-
           {incomeList.length === 0 ? (
-            <p className="text-gray-400 text-sm">
-              {isCurrentMonth ? 'No income added for this month yet.' : `No income recorded for ${monthName}.`}
-            </p>
+            <p className="text-gray-400 text-sm">{isCurrentMonth ? 'No income added for this month yet.' : `No income recorded for ${monthName}.`}</p>
           ) : (
             <div className="space-y-2">
               {incomeList.map(inc => (
@@ -408,7 +374,7 @@ function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Add Expense Form — only show for current month */}
+          {/* Add Expense Form */}
           {isCurrentMonth ? (
             <div className="bg-white rounded-2xl shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Add Expense</h3>
@@ -425,7 +391,6 @@ function Dashboard() {
               </form>
             </div>
           ) : (
-            // Past month — show read-only notice instead of form
             <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col items-center justify-center text-center">
               <p className="text-4xl mb-3">📅</p>
               <p className="font-semibold text-gray-700">Viewing {monthName}</p>
@@ -554,26 +519,35 @@ function Dashboard() {
 
         {/* Expenses List */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
-          <div className="flex flex-wrap gap-3 justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Expenses — {monthName}</h3>
-            <div className="flex flex-wrap gap-2">
-              <select value={filter.category} onChange={e => setFilter({ ...filter, category: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="All">All Categories</option>
-                <option>Food</option><option>Transport</option><option>Shopping</option>
-                <option>Subscriptions</option><option>Entertainment</option><option>Other</option>
-              </select>
-              <select value={filter.sort} onChange={e => setFilter({ ...filter, sort: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="highest">Highest Amount</option>
-                <option value="lowest">Lowest Amount</option>
-              </select>
+          <div className="flex flex-col gap-3 mb-4">
+            <div className="flex flex-wrap gap-3 justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-800">Expenses — {monthName}</h3>
+              <div className="flex flex-wrap gap-2">
+                <select value={filter.category} onChange={e => setFilter({ ...filter, category: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="All">All Categories</option>
+                  <option>Food</option><option>Transport</option><option>Shopping</option>
+                  <option>Subscriptions</option><option>Entertainment</option><option>Other</option>
+                </select>
+                <select value={filter.sort} onChange={e => setFilter({ ...filter, sort: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="highest">Highest Amount</option>
+                  <option value="lowest">Lowest Amount</option>
+                </select>
+              </div>
             </div>
+            <input
+              type="text"
+              placeholder="🔍 Search by description or category..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
           {filteredExpenses.length === 0 ? (
             <div className="text-center py-10 text-gray-400">
               <p className="text-4xl mb-2">💸</p>
-              <p>{isCurrentMonth ? 'No expenses yet. Add your first one!' : `No expenses found for ${monthName}.`}</p>
+              <p>{search ? 'No expenses match your search.' : isCurrentMonth ? 'No expenses yet. Add your first one!' : `No expenses found for ${monthName}.`}</p>
             </div>
           ) : (
             <div className="space-y-3">

@@ -18,27 +18,50 @@ const verifyToken = (req, res, next) => {
 // GET profile stats
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const user = await pool.query('SELECT id, name, email, created_at FROM users WHERE id = $1', [req.userId])
-    const expenseStats = await pool.query(
-      'SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM expenses WHERE user_id = $1',
+    const user = await pool.query(
+      'SELECT id, name, email, created_at, phone, country, interests, currency, onboarding_done FROM users WHERE id = $1',
       [req.userId]
     )
-    const topCategory = await pool.query(
-      'SELECT category, SUM(amount) as total FROM expenses WHERE user_id = $1 GROUP BY category ORDER BY total DESC LIMIT 1',
+    const expenseStats = await pool.query(
+      'SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM expenses WHERE user_id = $1',
       [req.userId]
     )
     const incomeStats = await pool.query(
       'SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE user_id = $1',
       [req.userId]
     )
+
+    // Best month = month with highest (income - expenses)
+    const monthlyIncome = await pool.query(
+      'SELECT month, year, COALESCE(SUM(amount), 0) as total FROM income WHERE user_id = $1 GROUP BY month, year',
+      [req.userId]
+    )
+    const monthlyExpenses = await pool.query(
+      `SELECT EXTRACT(MONTH FROM date) as month, EXTRACT(YEAR FROM date) as year, COALESCE(SUM(amount), 0) as total
+       FROM expenses WHERE user_id = $1 GROUP BY month, year`,
+      [req.userId]
+    )
+
+    let bestMonth = null
+    let bestBalance = null
+    for (const inc of monthlyIncome.rows) {
+      const exp = monthlyExpenses.rows.find(e => parseInt(e.month) === inc.month && parseInt(e.year) === inc.year)
+      const balance = parseFloat(inc.total) - parseFloat(exp?.total || 0)
+      if (bestBalance === null || balance > bestBalance) {
+        bestBalance = balance
+        bestMonth = { month: inc.month, year: inc.year, balance }
+      }
+    }
+
     res.json({
       user: user.rows[0],
       totalExpenses: parseFloat(expenseStats.rows[0].total),
       totalTransactions: parseInt(expenseStats.rows[0].count),
-      topCategory: topCategory.rows[0]?.category || 'None',
-      totalIncome: parseFloat(incomeStats.rows[0].total)
+      totalIncome: parseFloat(incomeStats.rows[0].total),
+      bestMonth
     })
-  } catch {
+  } catch (e) {
+    console.log(e)
     res.status(500).json({ message: 'Server error' })
   }
 });
@@ -53,6 +76,31 @@ router.put('/name', verifyToken, async (req, res) => {
       [name.trim(), req.userId]
     )
     res.json(updated.rows[0])
+  } catch {
+    res.status(500).json({ message: 'Server error' })
+  }
+});
+
+// UPDATE onboarding info
+router.put('/onboarding', verifyToken, async (req, res) => {
+  try {
+    const { phone, country, interests, currency } = req.body
+    await pool.query(
+      'UPDATE users SET phone=$1, country=$2, interests=$3, currency=$4, onboarding_done=TRUE WHERE id=$5',
+      [phone, country, interests, currency || 'USD', req.userId]
+    )
+    res.json({ message: 'Profile updated' })
+  } catch {
+    res.status(500).json({ message: 'Server error' })
+  }
+});
+
+// UPDATE currency only
+router.put('/currency', verifyToken, async (req, res) => {
+  try {
+    const { currency } = req.body
+    await pool.query('UPDATE users SET currency=$1 WHERE id=$2', [currency, req.userId])
+    res.json({ message: 'Currency updated' })
   } catch {
     res.status(500).json({ message: 'Server error' })
   }
