@@ -48,6 +48,13 @@ function Dashboard() {
     date: new Date().toISOString().split('T')[0], is_recurring: false
   })
 
+  // Savings Goals state
+  const [savingsGoals, setSavingsGoals] = useState([])
+  const [showSavingsForm, setShowSavingsForm] = useState(false)
+  const [savingsForm, setSavingsForm] = useState({ name: '', target_amount: '', saved_amount: '', deadline: '' })
+  const [addFundsId, setAddFundsId] = useState(null)
+  const [addFundsAmount, setAddFundsAmount] = useState('')
+
   const today = new Date()
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
   const [selectedYear, setSelectedYear] = useState(today.getFullYear())
@@ -78,6 +85,7 @@ function Dashboard() {
     if (parsedUser) setUser(parsedUser)
     fetchExpenses()
     fetchBudgets()
+    fetchSavingsGoals()
   }, [])
 
   useEffect(() => {
@@ -120,6 +128,49 @@ function Dashboard() {
       })
       setIncomeList(res.data)
     } catch { console.log('Error fetching income') }
+  }
+
+  const fetchSavingsGoals = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await API.get('/savings', { headers: { Authorization: `Bearer ${token}` } })
+      setSavingsGoals(res.data)
+    } catch { console.log('Error fetching savings goals') }
+  }
+
+  const handleSavingsSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      const token = localStorage.getItem('token')
+      await API.post('/savings', savingsForm, { headers: { Authorization: `Bearer ${token}` } })
+      setSavingsForm({ name: '', target_amount: '', saved_amount: '', deadline: '' })
+      setShowSavingsForm(false)
+      fetchSavingsGoals()
+      showToast('🎯 Savings goal created!')
+    } catch { console.log('Error creating savings goal') }
+  }
+
+  const handleAddFunds = async (id) => {
+    try {
+      const goal = savingsGoals.find(g => g.id === id)
+      const newAmount = parseFloat(goal.saved_amount) + parseFloat(addFundsAmount)
+      const token = localStorage.getItem('token')
+      await API.patch(`/savings/${id}`, { saved_amount: newAmount }, { headers: { Authorization: `Bearer ${token}` } })
+      setAddFundsId(null)
+      setAddFundsAmount('')
+      fetchSavingsGoals()
+      showToast('💰 Funds added to goal!')
+    } catch { console.log('Error updating savings goal') }
+  }
+
+  const handleDeleteSavings = async (id) => {
+    if (!window.confirm('Delete this savings goal?')) return
+    try {
+      const token = localStorage.getItem('token')
+      await API.delete(`/savings/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+      fetchSavingsGoals()
+      showToast('🗑️ Goal deleted', 'error')
+    } catch { console.log('Error deleting savings goal') }
   }
 
   const handleIncomeSubmit = async (e) => {
@@ -329,6 +380,8 @@ function Dashboard() {
   const categoryIcons = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
   const insightLines = insight ? insight.split('\n').filter(l => l.trim() !== '') : []
 
+  const goalEmojis = ['🏖️', '🚗', '🏠', '💻', '✈️', '🎓', '💍', '🏋️', '🎮', '💰']
+
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -363,7 +416,6 @@ function Dashboard() {
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white mb-6">
           <p className="text-indigo-200 text-sm mb-4">{monthName} Overview</p>
           <div className="flex items-center gap-6">
-            {/* Left: Income + Spent stacked */}
             <div className="flex flex-col gap-3 flex-1">
               <div className="flex items-center justify-between bg-white/10 rounded-xl px-4 py-2">
                 <div className="flex items-center gap-2">
@@ -383,11 +435,7 @@ function Dashboard() {
                 </div>
               </div>
             </div>
-
-            {/* Divider */}
             <div className="w-px bg-white/20 self-stretch" />
-
-            {/* Right: Balance */}
             <div className="flex flex-col items-center justify-center min-w-[120px]">
               <p className="text-indigo-200 text-xs mb-1">Balance</p>
               <p className={`text-3xl font-bold ${balance < 0 ? 'text-red-300' : 'text-green-300'}`}>
@@ -459,7 +507,6 @@ function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Add Expense Form */}
           {isCurrentMonth ? (
             <div className="bg-white rounded-2xl shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Add Expense</h3>
@@ -487,7 +534,6 @@ function Dashboard() {
             </div>
           )}
 
-          {/* Pie Chart */}
           {categoryData.length > 0 ? (
             <div className="bg-white rounded-2xl shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Spending by Category</h3>
@@ -606,6 +652,114 @@ function Dashboard() {
                     <div className="w-full bg-gray-100 rounded-full h-3">
                       <div className={`h-3 rounded-full transition-all ${isOver ? 'bg-red-500' : pct >= 90 ? 'bg-orange-500' : pct >= 70 ? 'bg-yellow-400' : pct >= 40 ? 'bg-lime-500' : 'bg-green-500'}`} style={{ width: `${pct}%` }} />
                     </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Savings Goals */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">🏦 Savings Goals</h3>
+            <button onClick={() => setShowSavingsForm(!showSavingsForm)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">
+              {showSavingsForm ? 'Cancel' : '+ New Goal'}
+            </button>
+          </div>
+
+          {showSavingsForm && (
+            <form onSubmit={handleSavingsSubmit} className="mb-6 bg-indigo-50 rounded-xl p-4">
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="col-span-2">
+                  <label className="block text-xs text-gray-500 mb-1">Goal Name</label>
+                  <input type="text" placeholder="e.g. Vacation to Paris" value={savingsForm.name} onChange={e => setSavingsForm({ ...savingsForm, name: e.target.value })} required className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Target Amount ({currencySymbol})</label>
+                  <input type="number" placeholder="e.g. 2000" value={savingsForm.target_amount} onChange={e => setSavingsForm({ ...savingsForm, target_amount: e.target.value })} required min="1" step="0.01" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Already Saved ({currencySymbol})</label>
+                  <input type="number" placeholder="e.g. 500" value={savingsForm.saved_amount} onChange={e => setSavingsForm({ ...savingsForm, saved_amount: e.target.value })} min="0" step="0.01" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs text-gray-500 mb-1">Deadline</label>
+                  <input type="date" value={savingsForm.deadline} onChange={e => setSavingsForm({ ...savingsForm, deadline: e.target.value })} required className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-xl font-semibold hover:bg-indigo-700 transition">🎯 Create Goal</button>
+            </form>
+          )}
+
+          {savingsGoals.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <p className="text-4xl mb-2">🏦</p>
+              <p className="text-sm">No savings goals yet. Create your first one!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {savingsGoals.map((goal, idx) => {
+                const saved = parseFloat(goal.saved_amount)
+                const target = parseFloat(goal.target_amount)
+                const pct = Math.min((saved / target) * 100, 100)
+                const isComplete = saved >= target
+                const deadline = new Date(goal.deadline)
+                const daysLeft = Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24))
+                const emoji = goalEmojis[idx % goalEmojis.length]
+
+                return (
+                  <div key={goal.id} className={`rounded-xl p-4 border ${isComplete ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100'}`}>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{emoji}</span>
+                        <div>
+                          <p className="font-semibold text-gray-800">{goal.name}</p>
+                          <p className="text-xs text-gray-400">
+                            {isComplete ? '✅ Goal reached!' : daysLeft > 0 ? `⏰ ${daysLeft} days left` : '⚠️ Deadline passed'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isComplete && <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full font-semibold">🎉 Complete!</span>}
+                        <button onClick={() => handleDeleteSavings(goal.id)} className="text-red-400 hover:text-red-600 text-xs px-2 py-1 hover:bg-red-50 rounded-lg transition border border-red-200">🗑️</button>
+                      </div>
+                    </div>
+
+                    <div className="mb-2">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-500">{currencySymbol}{saved.toFixed(2)} saved</span>
+                        <span className="font-semibold text-gray-700">{currencySymbol}{target.toFixed(2)} goal</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className={`h-3 rounded-full transition-all duration-500 ${isComplete ? 'bg-green-500' : pct >= 75 ? 'bg-lime-500' : pct >= 40 ? 'bg-yellow-400' : 'bg-indigo-500'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <p className="text-right text-xs text-gray-400 mt-1">{pct.toFixed(0)}%</p>
+                    </div>
+
+                    {!isComplete && (
+                      addFundsId === goal.id ? (
+                        <div className="flex gap-2 mt-2">
+                          <input
+                            type="number"
+                            placeholder={`Amount (${currencySymbol})`}
+                            value={addFundsAmount}
+                            onChange={e => setAddFundsAmount(e.target.value)}
+                            min="0.01" step="0.01"
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <button onClick={() => handleAddFunds(goal.id)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">Add</button>
+                          <button onClick={() => { setAddFundsId(null); setAddFundsAmount('') }} className="bg-gray-200 text-gray-600 px-3 py-2 rounded-xl text-sm hover:bg-gray-300 transition">✕</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setAddFundsId(goal.id)} className="mt-2 w-full border border-indigo-200 text-indigo-600 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-50 transition">
+                          + Add Funds
+                        </button>
+                      )
+                    )}
                   </div>
                 )
               })}

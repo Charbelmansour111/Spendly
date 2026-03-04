@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
 const insightRoutes = require('./routes/insights');
 const budgetRoutes = require('./routes/budgets');
+const savingsRoutes = require('./routes/savings');
 const incomeRoutes = require('./routes/income'); 
 
 const app = express();
@@ -17,6 +18,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/insights', insightRoutes);
 app.use('/api/budgets', budgetRoutes);
+app.use('/api/savings', savingsRoutes);
 app.use('/api/income', incomeRoutes); 
 
 app.get('/', (req, res) => {
