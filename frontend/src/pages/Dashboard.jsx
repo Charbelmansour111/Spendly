@@ -36,7 +36,7 @@ function Dashboard() {
   const [budgets, setBudgets] = useState([])
   const [budgetForm, setBudgetForm] = useState({ category: 'Food', amount: '' })
   const [editingExpense, setEditingExpense] = useState(null)
-  const [editForm, setEditForm] = useState({ amount: '', category: 'Food', description: '', date: '' })
+  const [editForm, setEditForm] = useState({ amount: '', category: 'Food', description: '', date: '', is_recurring: false })
   const [filter, setFilter] = useState({ category: 'All', sort: 'newest' })
   const [search, setSearch] = useState('')
   const [incomeList, setIncomeList] = useState([])
@@ -44,9 +44,9 @@ function Dashboard() {
   const [showIncomeForm, setShowIncomeForm] = useState(false)
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState({
-    amount: '', category: 'Food', description: '',
-    date: new Date().toISOString().split('T')[0]
-  })
+  amount: '', category: 'Food', description: '',
+  date: new Date().toISOString().split('T')[0], is_recurring: false
+})
 
   const today = new Date()
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
@@ -80,7 +80,21 @@ function Dashboard() {
     fetchBudgets()
   }, [])
 
-  useEffect(() => { fetchIncome() }, [selectedMonth, selectedYear])
+  useEffect(() => {
+  fetchIncome()
+  if (isCurrentMonth) {
+    const token = localStorage.getItem('token')
+    API.post('/expenses/apply-recurring',
+      { month: selectedMonth + 1, year: selectedYear },
+      { headers: { Authorization: `Bearer ${token}` } }
+    ).then(res => {
+      if (res.data.added > 0) {
+        fetchExpenses()
+        showToast(`🔁 ${res.data.added} recurring expense${res.data.added > 1 ? 's' : ''} added for ${monthName}!`, 'warning')
+      }
+    }).catch(() => {})
+  }
+}, [selectedMonth, selectedYear])
 
   const fetchExpenses = async () => {
     try {
@@ -428,7 +442,16 @@ function Dashboard() {
                 </select>
                 <input type="text" name="description" placeholder="Description (optional)" value={form.description} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 <input type="date" name="date" value={form.date} onChange={handleChange} required className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition">+ Add Expense</button>
+                <label className="flex items-center gap-2 cursor-pointer">
+  <input
+    type="checkbox"
+    checked={form.is_recurring}
+    onChange={e => setForm({ ...form, is_recurring: e.target.checked })}
+    className="w-4 h-4 accent-indigo-600"
+  />
+  <span className="text-sm text-gray-600">🔁 Recurring monthly</span>
+</label>
+<button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition">+ Add Expense</button>
               </form>
             </div>
           ) : (
@@ -605,10 +628,19 @@ function Dashboard() {
                         <input type="text" placeholder="Description" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                         <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })} required className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                       </div>
-                      <div className="flex gap-2">
-                        <button type="submit" className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">Save</button>
-                        <button type="button" onClick={() => setEditingExpense(null)} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">Cancel</button>
-                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer col-span-2">
+  <input
+    type="checkbox"
+    checked={editForm.is_recurring}
+    onChange={e => setEditForm({ ...editForm, is_recurring: e.target.checked })}
+    className="w-4 h-4 accent-indigo-600"
+  />
+  <span className="text-sm text-gray-600">🔁 Recurring monthly</span>
+</label>
+<div className="flex gap-2">
+  <button type="submit" className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">Save</button>
+  <button type="button" onClick={() => setEditingExpense(null)} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">Cancel</button>
+</div>
                     </form>
                   ) : (
                     <div>
@@ -618,6 +650,7 @@ function Dashboard() {
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">{expense.category}</span>
+{expense.is_recurring && <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">🔁 Recurring</span>}
                               {expense.description && expense.description.length > 1 && (
                                 <span className="text-sm text-gray-600">{expense.description}</span>
                               )}
@@ -628,7 +661,8 @@ function Dashboard() {
                         <span className="font-bold text-gray-800">{currencySymbol}{parseFloat(expense.amount).toFixed(2)}</span>
                       </div>
                       <div className="flex gap-2 mt-2 justify-end">
-                        <button onClick={() => { setEditingExpense(expense.id); setEditForm({ amount: expense.amount, category: expense.category, description: expense.description || '', date: expense.date?.split('T')[0] }) }} className="text-indigo-400 hover:text-indigo-600 text-xs px-3 py-1 hover:bg-indigo-50 rounded-lg transition border border-indigo-200">✏️ Edit</button>
+                        <button  onClick={() => { setEditingExpense(expense.id); setEditForm({ amount: expense.amount, category: expense.category, description: expense.description || '', date: expense.date?.split('T')[0], is_recurring: expense.is_recurring || false }) }}
+                        className="text-indigo-400 hover:text-indigo-600 text-xs px-3 py-1 hover:bg-indigo-50 rounded-lg transition border border-indigo-200">✏️ Edit</button>
                         <button onClick={() => handleDelete(expense.id)} className="text-red-400 hover:text-red-600 text-xs px-3 py-1 hover:bg-red-50 rounded-lg transition border border-red-200">🗑️ Delete</button>
                       </div>
                     </div>
