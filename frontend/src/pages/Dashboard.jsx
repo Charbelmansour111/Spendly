@@ -40,15 +40,13 @@ function Dashboard() {
   const [filter, setFilter] = useState({ category: 'All', sort: 'newest' })
   const [search, setSearch] = useState('')
   const [incomeList, setIncomeList] = useState([])
-  const [incomeForm, setIncomeForm] = useState({ amount: '', source: 'Salary' })
+  const [incomeForm, setIncomeForm] = useState({ amount: '', source: 'Salary', is_recurring: false })
   const [showIncomeForm, setShowIncomeForm] = useState(false)
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState({
     amount: '', category: 'Food', description: '',
     date: new Date().toISOString().split('T')[0], is_recurring: false
   })
-
-  // Savings Goals state
   const [savingsGoals, setSavingsGoals] = useState([])
   const [showSavingsForm, setShowSavingsForm] = useState(false)
   const [savingsForm, setSavingsForm] = useState({ name: '', target_amount: '', saved_amount: '', deadline: '' })
@@ -92,6 +90,7 @@ function Dashboard() {
     fetchIncome()
     if (isCurrentMonth) {
       const token = localStorage.getItem('token')
+      // Apply recurring expenses
       API.post('/expenses/apply-recurring',
         { month: selectedMonth + 1, year: selectedYear },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -99,6 +98,16 @@ function Dashboard() {
         if (res.data.added > 0) {
           fetchExpenses()
           showToast(`🔁 ${res.data.added} recurring expense${res.data.added > 1 ? 's' : ''} added for ${monthName}!`, 'warning')
+        }
+      }).catch(() => {})
+      // Apply recurring income
+      API.post('/income/apply-recurring',
+        { month: selectedMonth + 1, year: selectedYear },
+        { headers: { Authorization: `Bearer ${token}` } }
+      ).then(res => {
+        if (res.data.added > 0) {
+          fetchIncome()
+          showToast(`🔁 ${res.data.added} recurring income${res.data.added > 1 ? 's' : ''} added for ${monthName}!`, 'warning')
         }
       }).catch(() => {})
     }
@@ -179,7 +188,7 @@ function Dashboard() {
       const token = localStorage.getItem('token')
       await API.post('/income', { ...incomeForm, month: selectedMonth + 1, year: selectedYear },
         { headers: { Authorization: `Bearer ${token}` } })
-      setIncomeForm({ amount: '', source: 'Salary' })
+      setIncomeForm({ amount: '', source: 'Salary', is_recurring: false })
       setShowIncomeForm(false)
       fetchIncome()
       showToast('✅ Income added successfully!')
@@ -379,7 +388,6 @@ function Dashboard() {
   const COLORS = ['#4F46E5', '#7C3AED', '#EC4899', '#F59E0B', '#10B981', '#3B82F6']
   const categoryIcons = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
   const insightLines = insight ? insight.split('\n').filter(l => l.trim() !== '') : []
-
   const goalEmojis = ['🏖️', '🚗', '🏠', '💻', '✈️', '🎓', '💍', '🏋️', '🎮', '💰']
 
   return (
@@ -413,37 +421,37 @@ function Dashboard() {
         </div>
 
         {/* Summary Card */}
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white mb-6">
-          <p className="text-indigo-200 text-sm mb-4">{monthName} Overview</p>
-          <div className="flex items-center gap-6">
-            <div className="flex flex-col gap-3 flex-1">
-              <div className="flex items-center justify-between bg-white/10 rounded-xl px-4 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-green-300 text-lg">↑</span>
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-5 text-white mb-6">
+          <p className="text-indigo-200 text-sm mb-3">{monthName} Overview</p>
+          <div className="flex items-stretch gap-4">
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
+              <div className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-green-300">↑</span>
                   <p className="text-indigo-200 text-xs">Income</p>
                 </div>
-                <p className="text-lg font-bold text-green-300">{currencySymbol}{totalIncome.toFixed(2)}</p>
+                <p className="text-sm font-bold text-green-300 truncate ml-2">{currencySymbol}{totalIncome.toFixed(2)}</p>
               </div>
-              <div className="flex items-center justify-between bg-white/10 rounded-xl px-4 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-red-300 text-lg">↓</span>
+              <div className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-red-300">↓</span>
                   <p className="text-indigo-200 text-xs">Spent</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-red-300">{currencySymbol}{total.toFixed(2)}</p>
-                  <p className="text-indigo-300 text-xs">{selectedMonthExpenses.length} transactions</p>
+                <div className="text-right ml-2">
+                  <p className="text-sm font-bold text-red-300">{currencySymbol}{total.toFixed(2)}</p>
+                  <p className="text-indigo-300 text-xs">{selectedMonthExpenses.length} tx</p>
                 </div>
               </div>
             </div>
-            <div className="w-px bg-white/20 self-stretch" />
-            <div className="flex flex-col items-center justify-center min-w-[120px]">
+            <div className="w-px bg-white/20 self-stretch flex-shrink-0" />
+            <div className="flex flex-col items-center justify-center flex-shrink-0 w-28">
               <p className="text-indigo-200 text-xs mb-1">Balance</p>
-              <p className={`text-3xl font-bold ${balance < 0 ? 'text-red-300' : 'text-green-300'}`}>
+              <p className={`text-xl font-bold leading-tight text-center ${balance < 0 ? 'text-red-300' : 'text-green-300'}`}>
                 {balance < 0 ? '-' : '+'}{currencySymbol}{Math.abs(balance).toFixed(2)}
               </p>
               {savingsRate !== null && (
-                <span className={`mt-2 text-xs px-3 py-1 rounded-full font-semibold ${balance >= 0 ? 'bg-green-500/30 text-green-200' : 'bg-red-500/30 text-red-200'}`}>
-                  {balance >= 0 ? `${savingsRate}% saved` : 'Over budget!'}
+                <span className={`mt-1.5 text-xs px-2 py-0.5 rounded-full font-semibold text-center ${balance >= 0 ? 'bg-green-500/30 text-green-200' : 'bg-red-500/30 text-red-200'}`}>
+                  {balance >= 0 ? `${savingsRate}% saved` : 'Over!'}
                 </span>
               )}
             </div>
@@ -474,6 +482,10 @@ function Dashboard() {
                   </select>
                 </div>
               </div>
+              <label className="flex items-center gap-2 cursor-pointer mb-3">
+                <input type="checkbox" checked={incomeForm.is_recurring} onChange={e => setIncomeForm({ ...incomeForm, is_recurring: e.target.checked })} className="w-4 h-4 accent-green-600" />
+                <span className="text-sm text-gray-600">🔁 Recurring monthly</span>
+              </label>
               <button type="submit" className="w-full bg-green-600 text-white py-2 rounded-xl font-semibold hover:bg-green-700 transition">+ Save Income</button>
             </form>
           )}
@@ -486,7 +498,10 @@ function Dashboard() {
                   <div className="flex items-center gap-3">
                     <span className="text-xl">💵</span>
                     <div>
-                      <p className="text-sm font-medium text-gray-700">{inc.source}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-700">{inc.source}</p>
+                        {inc.is_recurring && <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">🔁 Recurring</span>}
+                      </div>
                       <p className="text-xs text-gray-400">{monthName}</p>
                     </div>
                   </div>
@@ -589,14 +604,9 @@ function Dashboard() {
                       {currencySymbol}{week.total.toFixed(0)}
                     </span>
                     <div className="w-full bg-gray-100 rounded-xl flex flex-col justify-end overflow-hidden" style={{ height: '80px' }}>
-                      <div
-                        className={`w-full rounded-xl transition-all duration-500 ${isHighest ? 'bg-indigo-500' : 'bg-indigo-200'}`}
-                        style={{ height: `${heightPct}%` }}
-                      />
+                      <div className={`w-full rounded-xl transition-all duration-500 ${isHighest ? 'bg-indigo-500' : 'bg-indigo-200'}`} style={{ height: `${heightPct}%` }} />
                     </div>
-                    <span className={`text-xs font-semibold ${isHighest ? 'text-indigo-600' : 'text-gray-400'}`}>
-                      {week.label}
-                    </span>
+                    <span className={`text-xs font-semibold ${isHighest ? 'text-indigo-600' : 'text-gray-400'}`}>{week.label}</span>
                   </div>
                 )
               })}
@@ -667,31 +677,31 @@ function Dashboard() {
               {showSavingsForm ? 'Cancel' : '+ New Goal'}
             </button>
           </div>
-
           {showSavingsForm && (
             <form onSubmit={handleSavingsSubmit} className="mb-6 bg-indigo-50 rounded-xl p-4">
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="col-span-2">
+              <div className="space-y-3">
+                <div>
                   <label className="block text-xs text-gray-500 mb-1">Goal Name</label>
                   <input type="text" placeholder="e.g. Vacation to Paris" value={savingsForm.name} onChange={e => setSavingsForm({ ...savingsForm, name: e.target.value })} required className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Target Amount ({currencySymbol})</label>
-                  <input type="number" placeholder="e.g. 2000" value={savingsForm.target_amount} onChange={e => setSavingsForm({ ...savingsForm, target_amount: e.target.value })} required min="1" step="0.01" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Target ({currencySymbol})</label>
+                    <input type="number" placeholder="e.g. 2000" value={savingsForm.target_amount} onChange={e => setSavingsForm({ ...savingsForm, target_amount: e.target.value })} required min="1" step="0.01" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Saved ({currencySymbol})</label>
+                    <input type="number" placeholder="e.g. 500" value={savingsForm.saved_amount} onChange={e => setSavingsForm({ ...savingsForm, saved_amount: e.target.value })} min="0" step="0.01" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Already Saved ({currencySymbol})</label>
-                  <input type="number" placeholder="e.g. 500" value={savingsForm.saved_amount} onChange={e => setSavingsForm({ ...savingsForm, saved_amount: e.target.value })} min="0" step="0.01" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
-                </div>
-                <div className="col-span-2">
                   <label className="block text-xs text-gray-500 mb-1">Deadline</label>
-                  <input type="date" value={savingsForm.deadline} onChange={e => setSavingsForm({ ...savingsForm, deadline: e.target.value })} required className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
+                  <input type="date" value={savingsForm.deadline} onChange={e => setSavingsForm({ ...savingsForm, deadline: e.target.value })} required className="w-full max-w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white box-border" />
                 </div>
               </div>
-              <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-xl font-semibold hover:bg-indigo-700 transition">🎯 Create Goal</button>
+              <button type="submit" className="w-full mt-4 bg-indigo-600 text-white py-2 rounded-xl font-semibold hover:bg-indigo-700 transition">🎯 Create Goal</button>
             </form>
           )}
-
           {savingsGoals.length === 0 ? (
             <div className="text-center py-8 text-gray-400">
               <p className="text-4xl mb-2">🏦</p>
@@ -707,7 +717,6 @@ function Dashboard() {
                 const deadline = new Date(goal.deadline)
                 const daysLeft = Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24))
                 const emoji = goalEmojis[idx % goalEmojis.length]
-
                 return (
                   <div key={goal.id} className={`rounded-xl p-4 border ${isComplete ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100'}`}>
                     <div className="flex justify-between items-start mb-3">
@@ -725,39 +734,27 @@ function Dashboard() {
                         <button onClick={() => handleDeleteSavings(goal.id)} className="text-red-400 hover:text-red-600 text-xs px-2 py-1 hover:bg-red-50 rounded-lg transition border border-red-200">🗑️</button>
                       </div>
                     </div>
-
-                    <div className="mb-2">
+                    <div className="mb-3">
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-gray-500">{currencySymbol}{saved.toFixed(2)} saved</span>
                         <span className="font-semibold text-gray-700">{currencySymbol}{target.toFixed(2)} goal</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div
-                          className={`h-3 rounded-full transition-all duration-500 ${isComplete ? 'bg-green-500' : pct >= 75 ? 'bg-lime-500' : pct >= 40 ? 'bg-yellow-400' : 'bg-indigo-500'}`}
-                          style={{ width: `${pct}%` }}
-                        />
+                        <div className={`h-3 rounded-full transition-all duration-500 ${isComplete ? 'bg-green-500' : pct >= 75 ? 'bg-lime-500' : pct >= 40 ? 'bg-yellow-400' : 'bg-indigo-500'}`} style={{ width: `${pct}%` }} />
                       </div>
                       <p className="text-right text-xs text-gray-400 mt-1">{pct.toFixed(0)}%</p>
                     </div>
-
                     {!isComplete && (
                       addFundsId === goal.id ? (
-                        <div className="flex gap-2 mt-2">
-                          <input
-                            type="number"
-                            placeholder={`Amount (${currencySymbol})`}
-                            value={addFundsAmount}
-                            onChange={e => setAddFundsAmount(e.target.value)}
-                            min="0.01" step="0.01"
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          <button onClick={() => handleAddFunds(goal.id)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">Add</button>
-                          <button onClick={() => { setAddFundsId(null); setAddFundsAmount('') }} className="bg-gray-200 text-gray-600 px-3 py-2 rounded-xl text-sm hover:bg-gray-300 transition">✕</button>
+                        <div className="mt-2 space-y-2">
+                          <input type="number" placeholder={`Amount to add (${currencySymbol})`} value={addFundsAmount} onChange={e => setAddFundsAmount(e.target.value)} min="0.01" step="0.01" className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <div className="flex gap-2">
+                            <button onClick={() => handleAddFunds(goal.id)} className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">Add Funds</button>
+                            <button onClick={() => { setAddFundsId(null); setAddFundsAmount('') }} className="bg-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm hover:bg-gray-300 transition">✕</button>
+                          </div>
                         </div>
                       ) : (
-                        <button onClick={() => setAddFundsId(goal.id)} className="mt-2 w-full border border-indigo-200 text-indigo-600 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-50 transition">
-                          + Add Funds
-                        </button>
+                        <button onClick={() => setAddFundsId(goal.id)} className="w-full border border-indigo-200 text-indigo-600 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-50 transition">+ Add Funds</button>
                       )
                     )}
                   </div>
@@ -814,13 +811,7 @@ function Dashboard() {
                 </select>
               </div>
             </div>
-            <input
-              type="text"
-              placeholder="🔍 Search by description or category..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <input type="text" placeholder="🔍 Search by description or category..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
           {filteredExpenses.length === 0 ? (
             <div className="text-center py-10 text-gray-400">
@@ -860,9 +851,7 @@ function Dashboard() {
                             <div className="flex items-center gap-2">
                               <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">{expense.category}</span>
                               {expense.is_recurring && <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">🔁 Recurring</span>}
-                              {expense.description && expense.description.length > 1 && (
-                                <span className="text-sm text-gray-600">{expense.description}</span>
-                              )}
+                              {expense.description && expense.description.length > 1 && <span className="text-sm text-gray-600">{expense.description}</span>}
                             </div>
                             <p className="text-xs text-gray-400 mt-1">{expense.date?.split('T')[0]}</p>
                           </div>
@@ -870,8 +859,7 @@ function Dashboard() {
                         <span className="font-bold text-gray-800">{currencySymbol}{parseFloat(expense.amount).toFixed(2)}</span>
                       </div>
                       <div className="flex gap-2 mt-2 justify-end">
-                        <button onClick={() => { setEditingExpense(expense.id); setEditForm({ amount: expense.amount, category: expense.category, description: expense.description || '', date: expense.date?.split('T')[0], is_recurring: expense.is_recurring || false }) }}
-                          className="text-indigo-400 hover:text-indigo-600 text-xs px-3 py-1 hover:bg-indigo-50 rounded-lg transition border border-indigo-200">✏️ Edit</button>
+                        <button onClick={() => { setEditingExpense(expense.id); setEditForm({ amount: expense.amount, category: expense.category, description: expense.description || '', date: expense.date?.split('T')[0], is_recurring: expense.is_recurring || false }) }} className="text-indigo-400 hover:text-indigo-600 text-xs px-3 py-1 hover:bg-indigo-50 rounded-lg transition border border-indigo-200">✏️ Edit</button>
                         <button onClick={() => handleDelete(expense.id)} className="text-red-400 hover:text-red-600 text-xs px-3 py-1 hover:bg-red-50 rounded-lg transition border border-red-200">🗑️ Delete</button>
                       </div>
                     </div>
