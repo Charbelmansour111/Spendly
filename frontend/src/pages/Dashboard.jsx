@@ -44,9 +44,9 @@ function Dashboard() {
   const [showIncomeForm, setShowIncomeForm] = useState(false)
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState({
-  amount: '', category: 'Food', description: '',
-  date: new Date().toISOString().split('T')[0], is_recurring: false
-})
+    amount: '', category: 'Food', description: '',
+    date: new Date().toISOString().split('T')[0], is_recurring: false
+  })
 
   const today = new Date()
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
@@ -81,20 +81,20 @@ function Dashboard() {
   }, [])
 
   useEffect(() => {
-  fetchIncome()
-  if (isCurrentMonth) {
-    const token = localStorage.getItem('token')
-    API.post('/expenses/apply-recurring',
-      { month: selectedMonth + 1, year: selectedYear },
-      { headers: { Authorization: `Bearer ${token}` } }
-    ).then(res => {
-      if (res.data.added > 0) {
-        fetchExpenses()
-        showToast(`🔁 ${res.data.added} recurring expense${res.data.added > 1 ? 's' : ''} added for ${monthName}!`, 'warning')
-      }
-    }).catch(() => {})
-  }
-}, [selectedMonth, selectedYear])
+    fetchIncome()
+    if (isCurrentMonth) {
+      const token = localStorage.getItem('token')
+      API.post('/expenses/apply-recurring',
+        { month: selectedMonth + 1, year: selectedYear },
+        { headers: { Authorization: `Bearer ${token}` } }
+      ).then(res => {
+        if (res.data.added > 0) {
+          fetchExpenses()
+          showToast(`🔁 ${res.data.added} recurring expense${res.data.added > 1 ? 's' : ''} added for ${monthName}!`, 'warning')
+        }
+      }).catch(() => {})
+    }
+  }, [selectedMonth, selectedYear])
 
   const fetchExpenses = async () => {
     try {
@@ -176,8 +176,6 @@ function Dashboard() {
       setForm({ amount: '', category: 'Food', description: '', date: new Date().toISOString().split('T')[0] })
       const updatedExpenses = await API.get('/expenses', { headers: { Authorization: `Bearer ${token}` } })
       setExpenses(updatedExpenses.data)
-
-      // Check budget after adding expense
       const newMonthExpenses = updatedExpenses.data.filter(ex => {
         const d = new Date(ex.date)
         return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear
@@ -297,6 +295,21 @@ function Dashboard() {
     return acc
   }, [])
 
+  const weeklyData = (() => {
+    const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4']
+    return weeks.map((label, i) => {
+      const weekStart = i * 7 + 1
+      const weekEnd = i === 3 ? 31 : weekStart + 6
+      const weekTotal = selectedMonthExpenses
+        .filter(e => {
+          const day = new Date(e.date).getDate()
+          return day >= weekStart && day <= weekEnd
+        })
+        .reduce((sum, e) => sum + parseFloat(e.amount), 0)
+      return { label, total: weekTotal }
+    })
+  })()
+
   const filteredExpenses = selectedMonthExpenses
     .filter(e => filter.category === 'All' || e.category === filter.category)
     .filter(e => {
@@ -319,7 +332,6 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Navbar */}
@@ -350,23 +362,41 @@ function Dashboard() {
         {/* Summary Card */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white mb-6">
           <p className="text-indigo-200 text-sm mb-4">{monthName} Overview</p>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-indigo-200 text-xs">Income</p>
-              <p className="text-2xl font-bold">{currencySymbol}{totalIncome.toFixed(2)}</p>
+          <div className="flex items-center gap-6">
+            {/* Left: Income + Spent stacked */}
+            <div className="flex flex-col gap-3 flex-1">
+              <div className="flex items-center justify-between bg-white/10 rounded-xl px-4 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-green-300 text-lg">↑</span>
+                  <p className="text-indigo-200 text-xs">Income</p>
+                </div>
+                <p className="text-lg font-bold text-green-300">{currencySymbol}{totalIncome.toFixed(2)}</p>
+              </div>
+              <div className="flex items-center justify-between bg-white/10 rounded-xl px-4 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-300 text-lg">↓</span>
+                  <p className="text-indigo-200 text-xs">Spent</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-red-300">{currencySymbol}{total.toFixed(2)}</p>
+                  <p className="text-indigo-300 text-xs">{selectedMonthExpenses.length} transactions</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-indigo-200 text-xs">Spent</p>
-              <p className="text-2xl font-bold">{currencySymbol}{total.toFixed(2)}</p>
-              <p className="text-indigo-200 text-xs mt-1">{selectedMonthExpenses.length} transactions</p>
-            </div>
-            <div>
-              <p className="text-indigo-200 text-xs">Balance</p>
-              <p className={`text-2xl font-bold ${balance < 0 ? 'text-red-300' : 'text-green-300'}`}>
+
+            {/* Divider */}
+            <div className="w-px bg-white/20 self-stretch" />
+
+            {/* Right: Balance */}
+            <div className="flex flex-col items-center justify-center min-w-[120px]">
+              <p className="text-indigo-200 text-xs mb-1">Balance</p>
+              <p className={`text-3xl font-bold ${balance < 0 ? 'text-red-300' : 'text-green-300'}`}>
                 {balance < 0 ? '-' : '+'}{currencySymbol}{Math.abs(balance).toFixed(2)}
               </p>
               {savingsRate !== null && (
-                <p className="text-indigo-200 text-xs mt-1">{balance >= 0 ? `${savingsRate}% saved` : 'Over budget!'}</p>
+                <span className={`mt-2 text-xs px-3 py-1 rounded-full font-semibold ${balance >= 0 ? 'bg-green-500/30 text-green-200' : 'bg-red-500/30 text-red-200'}`}>
+                  {balance >= 0 ? `${savingsRate}% saved` : 'Over budget!'}
+                </span>
               )}
             </div>
           </div>
@@ -443,15 +473,10 @@ function Dashboard() {
                 <input type="text" name="description" placeholder="Description (optional)" value={form.description} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 <input type="date" name="date" value={form.date} onChange={handleChange} required className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 <label className="flex items-center gap-2 cursor-pointer">
-  <input
-    type="checkbox"
-    checked={form.is_recurring}
-    onChange={e => setForm({ ...form, is_recurring: e.target.checked })}
-    className="w-4 h-4 accent-indigo-600"
-  />
-  <span className="text-sm text-gray-600">🔁 Recurring monthly</span>
-</label>
-<button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition">+ Add Expense</button>
+                  <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="w-4 h-4 accent-indigo-600" />
+                  <span className="text-sm text-gray-600">🔁 Recurring monthly</span>
+                </label>
+                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition">+ Add Expense</button>
               </form>
             </div>
           ) : (
@@ -499,6 +524,41 @@ function Dashboard() {
                 <Bar dataKey="value" fill="#4F46E5" radius={[5, 5, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Weekly Breakdown */}
+        {selectedMonthExpenses.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-1">📅 Weekly Breakdown</h3>
+            <p className="text-gray-400 text-xs mb-5">How your spending is spread across {monthName}</p>
+            <div className="grid grid-cols-4 gap-4">
+              {weeklyData.map((week, i) => {
+                const maxWeekTotal = Math.max(...weeklyData.map(w => w.total), 1)
+                const heightPct = week.total > 0 ? (week.total / maxWeekTotal) * 100 : 0
+                const isHighest = week.total === maxWeekTotal && week.total > 0
+                return (
+                  <div key={i} className="flex flex-col items-center gap-2">
+                    <span className={`text-xs font-semibold ${isHighest ? 'text-indigo-600' : 'text-gray-500'}`}>
+                      {currencySymbol}{week.total.toFixed(0)}
+                    </span>
+                    <div className="w-full bg-gray-100 rounded-xl flex flex-col justify-end overflow-hidden" style={{ height: '80px' }}>
+                      <div
+                        className={`w-full rounded-xl transition-all duration-500 ${isHighest ? 'bg-indigo-500' : 'bg-indigo-200'}`}
+                        style={{ height: `${heightPct}%` }}
+                      />
+                    </div>
+                    <span className={`text-xs font-semibold ${isHighest ? 'text-indigo-600' : 'text-gray-400'}`}>
+                      {week.label}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between text-xs text-gray-400">
+              <span>Avg/week: <span className="font-semibold text-gray-600">{currencySymbol}{(total / 4).toFixed(2)}</span></span>
+              <span>Highest: <span className="font-semibold text-indigo-600">{weeklyData.reduce((a, b) => a.total > b.total ? a : b).label}</span></span>
+            </div>
           </div>
         )}
 
@@ -628,19 +688,14 @@ function Dashboard() {
                         <input type="text" placeholder="Description" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                         <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })} required className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                       </div>
-                      <label className="flex items-center gap-2 cursor-pointer col-span-2">
-  <input
-    type="checkbox"
-    checked={editForm.is_recurring}
-    onChange={e => setEditForm({ ...editForm, is_recurring: e.target.checked })}
-    className="w-4 h-4 accent-indigo-600"
-  />
-  <span className="text-sm text-gray-600">🔁 Recurring monthly</span>
-</label>
-<div className="flex gap-2">
-  <button type="submit" className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">Save</button>
-  <button type="button" onClick={() => setEditingExpense(null)} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">Cancel</button>
-</div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={editForm.is_recurring} onChange={e => setEditForm({ ...editForm, is_recurring: e.target.checked })} className="w-4 h-4 accent-indigo-600" />
+                        <span className="text-sm text-gray-600">🔁 Recurring monthly</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <button type="submit" className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">Save</button>
+                        <button type="button" onClick={() => setEditingExpense(null)} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 transition">Cancel</button>
+                      </div>
                     </form>
                   ) : (
                     <div>
@@ -650,7 +705,7 @@ function Dashboard() {
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">{expense.category}</span>
-{expense.is_recurring && <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">🔁 Recurring</span>}
+                              {expense.is_recurring && <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">🔁 Recurring</span>}
                               {expense.description && expense.description.length > 1 && (
                                 <span className="text-sm text-gray-600">{expense.description}</span>
                               )}
@@ -661,8 +716,8 @@ function Dashboard() {
                         <span className="font-bold text-gray-800">{currencySymbol}{parseFloat(expense.amount).toFixed(2)}</span>
                       </div>
                       <div className="flex gap-2 mt-2 justify-end">
-                        <button  onClick={() => { setEditingExpense(expense.id); setEditForm({ amount: expense.amount, category: expense.category, description: expense.description || '', date: expense.date?.split('T')[0], is_recurring: expense.is_recurring || false }) }}
-                        className="text-indigo-400 hover:text-indigo-600 text-xs px-3 py-1 hover:bg-indigo-50 rounded-lg transition border border-indigo-200">✏️ Edit</button>
+                        <button onClick={() => { setEditingExpense(expense.id); setEditForm({ amount: expense.amount, category: expense.category, description: expense.description || '', date: expense.date?.split('T')[0], is_recurring: expense.is_recurring || false }) }}
+                          className="text-indigo-400 hover:text-indigo-600 text-xs px-3 py-1 hover:bg-indigo-50 rounded-lg transition border border-indigo-200">✏️ Edit</button>
                         <button onClick={() => handleDelete(expense.id)} className="text-red-400 hover:text-red-600 text-xs px-3 py-1 hover:bg-red-50 rounded-lg transition border border-red-200">🗑️ Delete</button>
                       </div>
                     </div>
