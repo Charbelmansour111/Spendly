@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable'
 import { useEffect, useState } from 'react'
 import API from '../utils/api'
 import ReceiptScanner from '../components/ReceiptScanner'
+import { useDarkMode } from '../hooks/useDarkMode'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
@@ -28,6 +29,25 @@ function Toast({ message, type, onClose }) {
   )
 }
 
+function ConfirmModal({ message, onConfirm, onCancel, confirmText = 'Delete', confirmColor = 'bg-red-500 hover:bg-red-600' }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+        <div className="text-center mb-5">
+          <p className="text-4xl mb-3">🗑️</p>
+          <p className="font-semibold text-gray-800 text-base">{message}</p>
+          <p className="text-gray-400 text-sm mt-1">This action cannot be undone.</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition">Cancel</button>
+          <button onClick={onConfirm} className={`flex-1 text-white py-2.5 rounded-xl font-semibold transition ${confirmColor}`}>{confirmText}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Dashboard() {
   const [user, setUser] = useState(null)
   const [expenses, setExpenses] = useState([])
@@ -43,6 +63,7 @@ function Dashboard() {
   const [incomeForm, setIncomeForm] = useState({ amount: '', source: 'Salary', is_recurring: false })
   const [showIncomeForm, setShowIncomeForm] = useState(false)
   const [toast, setToast] = useState(null)
+  const [dark, toggleDark] = useDarkMode()
   const [form, setForm] = useState({
     amount: '', category: 'Food', description: '',
     date: new Date().toISOString().split('T')[0], is_recurring: false
@@ -53,12 +74,20 @@ function Dashboard() {
   const [addFundsId, setAddFundsId] = useState(null)
   const [addFundsAmount, setAddFundsAmount] = useState('')
 
+  // Confirmation modal state
+  const [confirm, setConfirm] = useState(null)
+  // confirm = { message, onConfirm, confirmText, confirmColor }
+
   const today = new Date()
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
   const [selectedYear, setSelectedYear] = useState(today.getFullYear())
   const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear()
 
   const currencySymbol = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
+
+  const askConfirm = (message, onConfirm, confirmText = 'Delete', confirmColor = 'bg-red-500 hover:bg-red-600') => {
+    setConfirm({ message, onConfirm, confirmText, confirmColor })
+  }
 
   const prevMonth = () => {
     if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1) }
@@ -90,7 +119,6 @@ function Dashboard() {
     fetchIncome()
     if (isCurrentMonth) {
       const token = localStorage.getItem('token')
-      // Apply recurring expenses
       API.post('/expenses/apply-recurring',
         { month: selectedMonth + 1, year: selectedYear },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -100,7 +128,6 @@ function Dashboard() {
           showToast(`🔁 ${res.data.added} recurring expense${res.data.added > 1 ? 's' : ''} added for ${monthName}!`, 'warning')
         }
       }).catch(() => {})
-      // Apply recurring income
       API.post('/income/apply-recurring',
         { month: selectedMonth + 1, year: selectedYear },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -172,14 +199,16 @@ function Dashboard() {
     } catch { console.log('Error updating savings goal') }
   }
 
-  const handleDeleteSavings = async (id) => {
-    if (!window.confirm('Delete this savings goal?')) return
-    try {
-      const token = localStorage.getItem('token')
-      await API.delete(`/savings/${id}`, { headers: { Authorization: `Bearer ${token}` } })
-      fetchSavingsGoals()
-      showToast('🗑️ Goal deleted', 'error')
-    } catch { console.log('Error deleting savings goal') }
+  const handleDeleteSavings = (id) => {
+    askConfirm('Delete this savings goal?', async () => {
+      setConfirm(null)
+      try {
+        const token = localStorage.getItem('token')
+        await API.delete(`/savings/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+        fetchSavingsGoals()
+        showToast('🗑️ Goal deleted', 'error')
+      } catch { console.log('Error deleting savings goal') }
+    })
   }
 
   const handleIncomeSubmit = async (e) => {
@@ -195,14 +224,16 @@ function Dashboard() {
     } catch { console.log('Error adding income') }
   }
 
-  const handleDeleteIncome = async (id) => {
-    if (!window.confirm('Delete this income entry?')) return
-    try {
-      const token = localStorage.getItem('token')
-      await API.delete(`/income/${id}`, { headers: { Authorization: `Bearer ${token}` } })
-      fetchIncome()
-      showToast('🗑️ Income deleted', 'error')
-    } catch { console.log('Error deleting income') }
+  const handleDeleteIncome = (id) => {
+    askConfirm('Delete this income entry?', async () => {
+      setConfirm(null)
+      try {
+        const token = localStorage.getItem('token')
+        await API.delete(`/income/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+        fetchIncome()
+        showToast('🗑️ Income deleted', 'error')
+      } catch { console.log('Error deleting income') }
+    })
   }
 
   const handleBudgetSubmit = async (e) => {
@@ -216,14 +247,16 @@ function Dashboard() {
     } catch { console.log('Error saving budget') }
   }
 
-  const handleDeleteBudget = async (id) => {
-    if (!window.confirm('Delete this budget goal?')) return
-    try {
-      const token = localStorage.getItem('token')
-      await API.delete(`/budgets/${id}`, { headers: { Authorization: `Bearer ${token}` } })
-      fetchBudgets()
-      showToast('🗑️ Budget deleted', 'error')
-    } catch { console.log('Error deleting budget') }
+  const handleDeleteBudget = (id) => {
+    askConfirm('Delete this budget goal?', async () => {
+      setConfirm(null)
+      try {
+        const token = localStorage.getItem('token')
+        await API.delete(`/budgets/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+        fetchBudgets()
+        showToast('🗑️ Budget deleted', 'error')
+      } catch { console.log('Error deleting budget') }
+    })
   }
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
@@ -263,14 +296,16 @@ function Dashboard() {
     } catch { console.log('Error adding expense') }
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this expense?')) return
-    try {
-      const token = localStorage.getItem('token')
-      await API.delete(`/expenses/${id}`, { headers: { Authorization: `Bearer ${token}` } })
-      fetchExpenses()
-      showToast('🗑️ Expense deleted', 'error')
-    } catch { console.log('Error deleting expense') }
+  const handleDelete = (id) => {
+    askConfirm('Delete this expense?', async () => {
+      setConfirm(null)
+      try {
+        const token = localStorage.getItem('token')
+        await API.delete(`/expenses/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+        fetchExpenses()
+        showToast('🗑️ Expense deleted', 'error')
+      } catch { console.log('Error deleting expense') }
+    })
   }
 
   const handleEdit = async (e) => {
@@ -285,9 +320,11 @@ function Dashboard() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    window.location.href = '/login'
+    askConfirm('Are you sure you want to logout?', () => {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }, 'Logout', 'bg-indigo-600 hover:bg-indigo-700')
   }
 
   const getInsights = async () => {
@@ -394,6 +431,7 @@ function Dashboard() {
     <div className="min-h-screen bg-gray-50">
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {confirm && <ConfirmModal message={confirm.message} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} confirmText={confirm.confirmText} confirmColor={confirm.confirmColor} />}
 
       {/* Navbar */}
       <nav className="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
@@ -401,6 +439,9 @@ function Dashboard() {
         {user && (
           <div className="flex items-center gap-4">
             <span className="text-gray-600 text-sm hidden md:block">Hi, {user.name} 👋</span>
+            <button onClick={toggleDark} className="text-xl hover:scale-110 transition" title="Toggle dark mode">
+  {dark ? '☀️' : '🌙'}
+</button>
             <a href="/dashboard" className="text-gray-500 text-xl hover:text-indigo-600 transition" title="Dashboard">🏠</a>
             <a href="/profile" className="text-gray-500 text-xl hover:text-indigo-600 transition" title="Profile">👤</a>
             <button onClick={handleLogout} className="bg-red-50 text-red-500 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition">Logout</button>
