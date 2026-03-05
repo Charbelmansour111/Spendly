@@ -308,6 +308,62 @@ function Dashboard() {
     autoTable(doc, { startY: doc.lastAutoTable.finalY + 20, head: [['Date', 'Category', 'Description', 'Amount']], body: selectedMonthExpenses.map(e => [e.date?.split('T')[0], e.category, e.description || '-', `${currencySymbol}${parseFloat(e.amount).toFixed(2)}`]), headStyles: { fillColor: [79, 70, 229] }, alternateRowStyles: { fillColor: [245, 245, 255] } })
     doc.save(`spendly-${monthName.replace(' ', '-')}.pdf`)
   }
+  const exportCSV = () => {
+  const rows = []
+
+  // Summary
+  rows.push(['SUMMARY'])
+  rows.push(['Period', monthName])
+  rows.push(['Total Income', `${currencySymbol}${totalIncome.toFixed(2)}`])
+  rows.push(['Total Spent', `${currencySymbol}${total.toFixed(2)}`])
+  rows.push(['Balance', `${currencySymbol}${balance.toFixed(2)}`])
+  rows.push([])
+
+  // Income
+  rows.push(['INCOME'])
+  rows.push(['Source', 'Amount', 'Recurring'])
+  incomeList.forEach(inc => {
+    rows.push([inc.source, parseFloat(inc.amount).toFixed(2), inc.is_recurring ? 'Yes' : 'No'])
+  })
+  rows.push([])
+
+  // Expenses
+  rows.push(['EXPENSES'])
+  rows.push(['Date', 'Category', 'Description', 'Amount', 'Recurring'])
+  selectedMonthExpenses.forEach(e => {
+    rows.push([
+      e.date?.split('T')[0],
+      e.category,
+      e.description || '',
+      parseFloat(e.amount).toFixed(2),
+      e.is_recurring ? 'Yes' : 'No'
+    ])
+  })
+  rows.push([])
+
+  // Budget Goals
+  rows.push(['BUDGET GOALS'])
+  rows.push(['Category', 'Limit', 'Spent', 'Status'])
+  budgets.forEach(b => {
+    const spent = categoryData.find(c => c.name === b.category)?.value || 0
+    const isOver = spent > parseFloat(b.amount)
+    rows.push([
+      b.category,
+      parseFloat(b.amount).toFixed(2),
+      spent.toFixed(2),
+      isOver ? 'Over Budget' : 'On Track'
+    ])
+  })
+
+  const csvContent = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `spendly-${monthName.replace(' ', '-')}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
 
   const selectedMonthExpenses = expenses.filter(e => { const d = new Date(e.date); return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear })
   const total = selectedMonthExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
@@ -704,12 +760,15 @@ function Dashboard() {
 
         {/* Export PDF */}
         <div className={`${cardCls} flex justify-between items-center`}>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">📄 Expense Report</h3>
-            <p className="text-gray-400 text-sm">Download {monthName} expenses as PDF</p>
-          </div>
-          <button onClick={exportPDF} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">⬇️ Download PDF</button>
-        </div>
+  <div>
+    <h3 className="text-lg font-semibold text-gray-800 dark:text-white">📄 Export Report</h3>
+    <p className="text-gray-400 text-sm">Download {monthName} data as PDF or CSV</p>
+  </div>
+  <div className="flex gap-2">
+    <button onClick={exportCSV} className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition">⬇️ CSV</button>
+    <button onClick={exportPDF} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">⬇️ PDF</button>
+  </div>
+</div>
 
         {/* AI Insights */}
         <div className={cardCls}>
