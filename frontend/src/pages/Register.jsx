@@ -6,6 +6,7 @@ function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [dark, toggleDark] = useDarkMode()
+  const [success, setSuccess] = useState(false)
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -13,12 +14,9 @@ function Register() {
     e.preventDefault()
     try {
       await API.post('/auth/register', form)
-      const loginRes = await API.post('/auth/login', { email: form.email, password: form.password })
-      localStorage.setItem('token', loginRes.data.token)
-      localStorage.setItem('user', JSON.stringify(loginRes.data.user))
-      window.location.href = '/dashboard'
+      setSuccess(true)
     } catch (err) {
-      setError(err.response.data.message)
+      setError(err.response?.data?.message || 'Something went wrong')
     }
   }
 
@@ -53,43 +51,48 @@ function Register() {
       <div className="flex-1 flex items-center justify-center p-8 bg-gray-50 dark:bg-gray-900">
         <div className="w-full max-w-md">
           <div className="flex justify-end mb-4">
-            <button onClick={toggleDark} className="text-xl hover:scale-110 transition" title="Toggle dark mode">
-              {dark ? '☀️' : '🌙'}
-            </button>
+            <button onClick={toggleDark} className="text-xl hover:scale-110 transition">{dark ? '☀️' : '🌙'}</button>
           </div>
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Create your account 🚀</h2>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">Start tracking your finances for free</p>
-          </div>
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/30 text-red-500 p-3 rounded-xl mb-4 text-sm border border-red-100 dark:border-red-800">
-              {error}
+
+          {success ? (
+            <div className="text-center py-8">
+              <p className="text-5xl mb-4">📧</p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Check your email!</h2>
+              <p className="text-gray-500 dark:text-gray-400 mt-3">We sent a verification link to <span className="font-semibold text-indigo-600">{form.email}</span>. Click it to activate your account.</p>
+              <a href="/login" className="mt-6 inline-block bg-indigo-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-indigo-700 transition">Back to Login →</a>
             </div>
+          ) : (
+            <>
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Create your account 🚀</h2>
+                <p className="text-gray-500 dark:text-gray-400 mt-2">Start tracking your finances for free</p>
+              </div>
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/30 text-red-500 p-3 rounded-xl mb-4 text-sm border border-red-100 dark:border-red-800">{error}</div>
+              )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                  <input type="text" name="name" placeholder="John Doe" value={form.name} onChange={handleChange} required className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                  <input type="email" name="email" placeholder="you@example.com" value={form.email} onChange={handleChange} required className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                  <input type="password" name="password" placeholder="••••••••" value={form.password} onChange={handleChange} required className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                </div>
+                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
+                  Create Account →
+                </button>
+              </form>
+              <p className="text-center text-gray-500 dark:text-gray-400 mt-6 text-sm">
+                Already have an account?{' '}
+                <a href="/login" className="text-indigo-600 font-semibold hover:underline">Sign in</a>
+              </p>
+            </>
           )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
-              <input type="text" name="name" placeholder="John Doe" value={form.name} onChange={handleChange} required
-                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-              <input type="email" name="email" placeholder="you@example.com" value={form.email} onChange={handleChange} required
-                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-              <input type="password" name="password" placeholder="••••••••" value={form.password} onChange={handleChange} required
-                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
-            </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
-              Create Account →
-            </button>
-          </form>
-          <p className="text-center text-gray-500 dark:text-gray-400 mt-6 text-sm">
-            Already have an account?{' '}
-            <a href="/login" className="text-indigo-600 font-semibold hover:underline">Sign in</a>
-          </p>
         </div>
       </div>
     </div>
