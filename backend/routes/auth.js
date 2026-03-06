@@ -34,17 +34,17 @@ router.post('/register', async (req, res) => {
     const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
     await transporter.sendMail({
-      from: `"Spendly 💸" <${process.env.GMAIL_USER}>`,
+      from: `"Spendly" <${process.env.GMAIL_USER}>`,
       to: email,
-      subject: '✅ Verify your Spendly account',
+      subject: 'Verify your Spendly account',
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 16px;">
-          <h1 style="color: #4F46E5; font-size: 28px; margin-bottom: 4px;">Spendly 💸</h1>
+          <h1 style="color: #4F46E5; font-size: 28px; margin-bottom: 4px;">Spendly</h1>
           <p style="color: #6B7280; font-size: 14px; margin-bottom: 32px;">Track smarter, spend better</p>
           <h2 style="color: #111827; font-size: 20px;">Verify your email</h2>
           <p style="color: #374151;">Hi ${name}, thanks for signing up! Click the button below to verify your email and get started.</p>
-          <a href="${verifyUrl}" style="display: inline-block; margin: 24px 0; background: #4F46E5; color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 15px;">✅ Verify My Email</a>
-          <p style="color: #9CA3AF; font-size: 12px;">If you didn't create an account, you can safely ignore this email.</p>
+          <a href="${verifyUrl}" style="display: inline-block; margin: 24px 0; background: #4F46E5; color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 15px;">Verify My Email</a>
+          <p style="color: #9CA3AF; font-size: 12px;">If you did not create an account, you can safely ignore this email.</p>
           <p style="color: #9CA3AF; font-size: 12px;">This link expires in 24 hours.</p>
         </div>
       `
