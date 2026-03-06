@@ -3,10 +3,16 @@ const router = express.Router();
 const pool = require('../db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { Resend } = require('resend');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS,
+  }
+});
 
 // REGISTER
 router.post('/register', async (req, res) => {
@@ -25,8 +31,8 @@ router.post('/register', async (req, res) => {
 
     const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
-    await resend.emails.send({
-      from: 'Spendly <onboarding@resend.dev>',
+    await transporter.sendMail({
+      from: `"Spendly 💸" <${process.env.GMAIL_USER}>`,
       to: email,
       subject: '✅ Verify your Spendly account',
       html: `
