@@ -4,17 +4,9 @@ const pool = require('../db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS,
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // REGISTER
 router.post('/register', async (req, res) => {
@@ -33,8 +25,8 @@ router.post('/register', async (req, res) => {
 
     const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
-    await transporter.sendMail({
-      from: `"Spendly" <${process.env.GMAIL_USER}>`,
+    const { error } = await resend.emails.send({
+      from: 'Spendly <onboarding@resend.dev>',
       to: email,
       subject: 'Verify your Spendly account',
       html: `
@@ -42,13 +34,17 @@ router.post('/register', async (req, res) => {
           <h1 style="color: #4F46E5; font-size: 28px; margin-bottom: 4px;">Spendly</h1>
           <p style="color: #6B7280; font-size: 14px; margin-bottom: 32px;">Track smarter, spend better</p>
           <h2 style="color: #111827; font-size: 20px;">Verify your email</h2>
-          <p style="color: #374151;">Hi ${name}, thanks for signing up! Click the button below to verify your email and get started.</p>
+          <p style="color: #374151;">Hi ${name}, thanks for signing up! Click the button below to activate your account.</p>
           <a href="${verifyUrl}" style="display: inline-block; margin: 24px 0; background: #4F46E5; color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 15px;">Verify My Email</a>
-          <p style="color: #9CA3AF; font-size: 12px;">If you did not create an account, you can safely ignore this email.</p>
-          <p style="color: #9CA3AF; font-size: 12px;">This link expires in 24 hours.</p>
+          <p style="color: #9CA3AF; font-size: 12px;">If you did not create an account, ignore this email.</p>
         </div>
       `
     });
+
+    if (error) {
+      console.log('Resend error:', error);
+      return res.status(500).json({ message: 'Failed to send verification email' });
+    }
 
     res.status(201).json({ message: 'Registration successful! Please check your email to verify your account.' });
   } catch (e) {
