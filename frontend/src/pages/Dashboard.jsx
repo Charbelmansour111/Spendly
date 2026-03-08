@@ -74,6 +74,8 @@ function Dashboard() {
   const [addFundsId, setAddFundsId] = useState(null)
   const [addFundsAmount, setAddFundsAmount] = useState('')
   const [confirm, setConfirm] = useState(null)
+  const [notifications, setNotifications] = useState([])
+  const [showNotifications, setShowNotifications] = useState(false)
   const [collapsed, setCollapsed] = useState(() => {
     try { return JSON.parse(localStorage.getItem('spendly_collapsed') || '{}') }
     catch { return {} }
@@ -117,6 +119,7 @@ function Dashboard() {
     const parsedUser = JSON.parse(storedUser)
     if (parsedUser) setUser(parsedUser)
     fetchExpenses(); fetchBudgets(); fetchSavingsGoals()
+    fetchExpenses(); fetchBudgets(); fetchSavingsGoals(); fetchNotifications()
   }, [])
 
   useEffect(() => {
@@ -146,6 +149,22 @@ function Dashboard() {
     try { const token = localStorage.getItem('token'); const res = await API.get('/savings', { headers: { Authorization: `Bearer ${token}` } }); setSavingsGoals(res.data) }
     catch { console.log('Error fetching savings goals') }
   }
+
+  const fetchNotifications = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const res = await API.get('/notifications', { headers: { Authorization: `Bearer ${token}` } })
+    setNotifications(res.data)
+  } catch { console.log('Error fetching notifications') }
+}
+
+const markNotificationsRead = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    await API.put('/notifications/read', {}, { headers: { Authorization: `Bearer ${token}` } })
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+  } catch { console.log('Error marking notifications read') }
+}
 
   const handleSavingsSubmit = async (e) => {
     e.preventDefault()
@@ -344,19 +363,59 @@ function Dashboard() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {confirm && <ConfirmModal message={confirm.message} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} confirmText={confirm.confirmText} confirmColor={confirm.confirmColor} />}
 
-      {/* Navbar */}
       <nav className="bg-white dark:bg-gray-900 shadow-sm px-6 py-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-indigo-600">Spendly</h1>
-        {user && (
-          <div className="flex items-center gap-4">
-            <span className="text-gray-600 dark:text-gray-300 text-sm hidden md:block">Hi, {user.name} 👋</span>
-            <button onClick={toggleDark} className="text-xl hover:scale-110 transition">{dark ? '☀️' : '🌙'}</button>
-            <a href="/dashboard" className="text-gray-500 dark:text-gray-400 text-xl hover:text-indigo-600 transition">🏠</a>
-            <a href="/profile" className="text-gray-500 dark:text-gray-400 text-xl hover:text-indigo-600 transition">👤</a>
-            <button onClick={handleLogout} className="bg-red-50 dark:bg-red-900/30 text-red-500 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition">Logout</button>
+  <h1 className="text-2xl font-bold text-indigo-600">Spendly</h1>
+  {user && (
+    <div className="flex items-center gap-4">
+      <span className="text-gray-600 dark:text-gray-300 text-sm hidden md:block">Hi, {user.name} 👋</span>
+      <button onClick={toggleDark} className="text-xl hover:scale-110 transition">{dark ? '☀️' : '🌙'}</button>
+      <a href="/dashboard" className="text-gray-500 dark:text-gray-400 text-xl hover:text-indigo-600 transition">🏠</a>
+      <a href="/profile" className="text-gray-500 dark:text-gray-400 text-xl hover:text-indigo-600 transition">👤</a>
+
+      {/* Bell Icon */}
+      <div className="relative">
+        <button
+          onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markNotificationsRead() }}
+          className="relative text-gray-500 dark:text-gray-400 hover:text-indigo-600 transition"
+        >
+          <span className="text-xl">🔔</span>
+          {notifications.filter(n => !n.is_read).length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+              {notifications.filter(n => !n.is_read).length}
+            </span>
+          )}
+        </button>
+
+        {/* Dropdown */}
+        {showNotifications && (
+          <div className="absolute right-0 top-10 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 z-50">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="font-semibold text-gray-800 dark:text-white">Notifications</h3>
+              <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+            </div>
+            <div className="max-h-80 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-3xl mb-2">🔔</p>
+                  <p className="text-sm">No notifications yet</p>
+                </div>
+              ) : (
+                notifications.map(n => (
+                  <div key={n.id} className={`px-4 py-3 border-b border-gray-50 dark:border-gray-700 ${!n.is_read ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''}`}>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">{n.message}</p>
+                    <p className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
-      </nav>
+      </div>
+
+      <button onClick={handleLogout} className="bg-red-50 dark:bg-red-900/30 text-red-500 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition">Logout</button>
+    </div>
+  )}
+</nav>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
 
