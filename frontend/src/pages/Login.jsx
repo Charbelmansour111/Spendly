@@ -79,7 +79,10 @@ function Login() {
             <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
               Sign In →
             </button>
-          </form>
+            <p className="text-center text-sm text-gray-400 mt-2">
+            <a href="/forgot-password" className="text-indigo-600 font-semibold hover:underline">Forgot password?</a>
+            </p>
+            </form>
           <p className="text-center text-gray-500 dark:text-gray-400 mt-6 text-sm">
             Don't have an account?{' '}
             <a href="/register" className="text-indigo-600 font-semibold hover:underline">Create one free</a>
@@ -89,5 +92,6 @@ function Login() {
     </div>
   )
 }
+
 
 export default Login
