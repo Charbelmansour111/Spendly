@@ -263,6 +263,9 @@ if (budget) {
     showToast('✅ Expense added!')
   }
 } else showToast('✅ Expense added!')
+    } catch { console.log('Error adding expense') }
+  }
+
   const handleDelete = (id) => {
     askConfirm('Delete this expense?', async () => {
       setConfirm(null)
