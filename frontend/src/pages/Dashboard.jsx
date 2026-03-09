@@ -229,51 +229,49 @@ const markNotificationsRead = async () => {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    try {
-      const token = localStorage.getItem('token')
-      await API.post('/expenses', form, { headers: { Authorization: `Bearer ${token}` } })
-      setForm({ amount: '', category: 'Food', description: '', date: new Date().toISOString().split('T')[0] })
-      const updatedExpenses = await API.get('/expenses', { headers: { Authorization: `Bearer ${token}` } })
-      setExpenses(updatedExpenses.data)
-      const newMonthExpenses = updatedExpenses.data.filter(ex => { const d = new Date(ex.date); return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear })
-      const newCategoryData = newMonthExpenses.reduce((acc, ex) => {
-        const existing = acc.find(item => item.name === ex.category)
-        if (existing) existing.value += parseFloat(ex.amount)
-        else acc.push({ name: ex.category, value: parseFloat(ex.amount) })
-        return acc
-      }, [])
-     const budget = budgets.find(b => b.category === form.category)
-      if (budget) {
-        const spent = newCategoryData.find(c => c.name === form.category)?.value || 0
-        const pct = (spent / parseFloat(budget.amount)) * 100
-        if (spent > parseFloat(budget.amount)) {
-          showToast(`⚠️ Over budget on ${form.category}! Spent ${currencySymbol}${spent.toFixed(2)} of ${currencySymbol}${parseFloat(budget.amount).toFixed(2)}`, 'error')
-          const token = localStorage.getItem('token')
-          await API.post('/notifications/budget-alert', { category: form.category, spent, limit: budget.amount }, { headers: { Authorization: `Bearer ${token}` } })
-          fetchNotifications()
-        } else if (pct >= 80) {
-          showToast(`⚡ ${pct.toFixed(0)}% of budget used for ${form.category}!`, 'warning')
-          const token = localStorage.getItem('token')
-          await API.post('/notifications/budget-alert', { category: form.category, spent, limit: budget.amount }, { headers: { Authorization: `Bearer ${token}` } })
-          fetchNotifications()
-        } else {
-          showToast('✅ Expense added!')
-        }
-      } else showToast('✅ Expense added!')
-} catch { console.log('Error adding expense') }
-  }
+const handleSubmit = async (e) => {
+  e.preventDefault()
+  try {
+    const token = localStorage.getItem('token')
+    await API.post('/expenses', form, { headers: { Authorization: `Bearer ${token}` } })
+    setForm({ amount: '', category: 'Food', description: '', date: new Date().toISOString().split('T')[0] })
+    const updatedExpenses = await API.get('/expenses', { headers: { Authorization: `Bearer ${token}` } })
+    setExpenses(updatedExpenses.data)
+    const newMonthExpenses = updatedExpenses.data.filter(ex => { const d = new Date(ex.date); return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear })
+    const newCategoryData = newMonthExpenses.reduce((acc, ex) => {
+      const existing = acc.find(item => item.name === ex.category)
+      if (existing) existing.value += parseFloat(ex.amount)
+      else acc.push({ name: ex.category, value: parseFloat(ex.amount) })
+      return acc
+    }, [])
+   const budget = budgets.find(b => b.category === form.category)
+    if (budget) {
+      const spent = newCategoryData.find(c => c.name === form.category)?.value || 0
+      const pct = (spent / parseFloat(budget.amount)) * 100
+      if (spent > parseFloat(budget.amount)) {
+        showToast(`⚠️ Over budget on ${form.category}! Spent ${currencySymbol}${spent.toFixed(2)} of ${currencySymbol}${parseFloat(budget.amount).toFixed(2)}`, 'error')
+        const token = localStorage.getItem('token')
+        await API.post('/notifications/budget-alert', { category: form.category, spent, limit: budget.amount }, { headers: { Authorization: `Bearer ${token}` } })
+        fetchNotifications()
+      } else if (pct >= 80) {
+        showToast(`⚡ ${pct.toFixed(0)}% of budget used for ${form.category}!`, 'warning')
+        const token = localStorage.getItem('token')
+        await API.post('/notifications/budget-alert', { category: form.category, spent, limit: budget.amount }, { headers: { Authorization: `Bearer ${token}` } })
+        fetchNotifications()
+      } else {
+        showToast('✅ Expense added!')
+      }
+    } else showToast('✅ Expense added!')
+  } catch { console.log('Error adding expense') }
+}
 
-  const handleDelete = (id) => {
-
-  const handleDelete = (id) => {
-    askConfirm('Delete this expense?', async () => {
-      setConfirm(null)
-      try { const token = localStorage.getItem('token'); await API.delete(`/expenses/${id}`, { headers: { Authorization: `Bearer ${token}` } }); fetchExpenses(); showToast('🗑️ Expense deleted', 'error') }
-      catch { console.log('Error deleting expense') }
-    })
-  }
+const handleDelete = (id) => {
+  askConfirm('Delete this expense?', async () => {
+    setConfirm(null)
+    try { const token = localStorage.getItem('token'); await API.delete(`/expenses/${id}`, { headers: { Authorization: `Bearer ${token}` } }); fetchExpenses(); showToast('🗑️ Expense deleted', 'error') }
+    catch { console.log('Error deleting expense') }
+  })
+}
 
   const handleEdit = async (e) => {
     e.preventDefault()
