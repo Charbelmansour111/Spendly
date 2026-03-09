@@ -93,4 +93,64 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Forgot password - send reset code
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body
+    const user = await pool.query('SELECT * FROM users WHERE email = $1', [email])
+    if (user.rows.length === 0) return res.status(404).json({ message: 'No account found with this email' })
+
+    const code = Math.floor(10000000 + Math.random() * 90000000).toString()
+    const expires = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
+
+    await pool.query('UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE email = $3', [code, expires, email])
+
+    const { Resend } = require('resend')
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    await resend.emails.send({
+      from: 'Spendly <onboarding@resend.dev>',
+      to: email,
+      subject: '🔐 Your Spendly Password Reset Code',
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f9fafb;border-radius:16px;">
+          <h1 style="color:#4F46E5;">Spendly</h1>
+          <h2>Password Reset Code</h2>
+          <p>Hi ${user.rows[0].name},</p>
+          <p>Your password reset code is:</p>
+          <div style="background:#4F46E5;color:white;font-size:32px;font-weight:bold;letter-spacing:8px;text-align:center;padding:24px;border-radius:12px;margin:24px 0;">
+            ${code}
+          </div>
+          <p style="color:#9CA3AF;font-size:13px;">This code expires in 15 minutes. If you didn't request this, ignore this email.</p>
+        </div>
+      `
+    })
+    res.json({ message: 'Reset code sent!' })
+  } catch (e) {
+    console.log(e)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// Reset password - verify code and update password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body
+    const user = await pool.query('SELECT * FROM users WHERE email = $1', [email])
+    if (user.rows.length === 0) return res.status(404).json({ message: 'No account found' })
+
+    const u = user.rows[0]
+    if (u.reset_token !== code) return res.status(400).json({ message: 'Invalid code' })
+    if (new Date() > new Date(u.reset_token_expires)) return res.status(400).json({ message: 'Code expired' })
+
+    const bcrypt = require('bcryptjs')
+    const hashed = await bcrypt.hash(newPassword, 10)
+    await pool.query('UPDATE users SET password = $1, reset_token = NULL, reset_token_expires = NULL WHERE email = $2', [hashed, email])
+
+    res.json({ message: 'Password reset successfully!' })
+  } catch (e) {
+    console.log(e)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
 module.exports = router;
