@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import API from '../utils/api'
 import ReceiptScanner from '../components/ReceiptScanner'
 import { useDarkMode } from '../hooks/useDarkMode'
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, LineChart, Line } from 'recharts'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 
@@ -118,7 +118,7 @@ function Dashboard() {
     if (!storedUser) { window.location.href = '/login'; return }
     const parsedUser = JSON.parse(storedUser)
     if (parsedUser) setUser(parsedUser)
-    fetchExpenses(); fetchBudgets(); fetchSavingsGoals()
+    fetchExpenses(); fetchBudgets(); fetchSavingsGoals(); fetchTrends()
     fetchExpenses(); fetchBudgets(); fetchSavingsGoals(); fetchNotifications()
   }, [])
 
@@ -158,6 +158,16 @@ function Dashboard() {
   } catch { console.log('Error fetching notifications') }
 }
 
+const [trendsData, setTrendsData] = useState([])
+
+const fetchTrends = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const res = await API.get('/expenses/trends', { headers: { Authorization: `Bearer ${token}` } })
+    setTrendsData(res.data)
+  } catch { console.log('Error fetching trends') }
+}
+
 const markNotificationsRead = async () => {
   try {
     const token = localStorage.getItem('token')
@@ -165,6 +175,8 @@ const markNotificationsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
   } catch { console.log('Error marking notifications read') }
 }
+
+
 
   const handleSavingsSubmit = async (e) => {
     e.preventDefault()
@@ -668,6 +680,56 @@ const handleDelete = (id) => {
             </div>
           )}
         </div>
+        {/* Monthly Trends */}
+<div className={cardCls}>
+  <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('trends')}>
+    <h3 className="text-lg font-semibold text-gray-800 dark:text-white">📈 6-Month Trends</h3>
+    {chevron('trends')}
+  </div>
+  {!collapsed['trends'] && (
+    <div className="mt-4">
+      {trendsData.length > 0 ? (
+        <>
+          <p className="text-gray-400 text-xs mb-4">Your income, spending and balance over the last 6 months</p>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={trendsData}>
+              <XAxis dataKey="label" stroke={dark ? '#9CA3AF' : '#6B7280'} tick={{ fontSize: 11 }} />
+              <YAxis stroke={dark ? '#9CA3AF' : '#6B7280'} tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v) => `${currencySymbol}${v.toFixed(2)}`} />
+              <Legend />
+              <Line type="monotone" dataKey="income" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} name="Income" />
+              <Line type="monotone" dataKey="spending" stroke="#EF4444" strokeWidth={2} dot={{ r: 4 }} name="Spending" />
+              <Line type="monotone" dataKey="balance" stroke="#4F46E5" strokeWidth={2} dot={{ r: 4 }} name="Balance" />
+            </LineChart>
+          </ResponsiveContainer>
+          <div className="grid grid-cols-3 gap-3 mt-4">
+            {['income', 'spending', 'balance'].map((key, i) => {
+              const colors = { income: 'text-green-600', spending: 'text-red-500', balance: 'text-indigo-600' }
+              const icons = { income: '↑', spending: '↓', balance: '=' }
+              const latest = trendsData[trendsData.length - 1]
+              const prev = trendsData[trendsData.length - 2]
+              const diff = latest && prev ? latest[key] - prev[key] : 0
+              return (
+                <div key={i} className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-gray-400 capitalize mb-1">{icons[key]} {key}</p>
+                  <p className={`font-bold text-sm ${colors[key]}`}>{currencySymbol}{latest ? latest[key].toFixed(2) : '0.00'}</p>
+                  <p className={`text-xs mt-1 ${diff >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {diff >= 0 ? '▲' : '▼'} {currencySymbol}{Math.abs(diff).toFixed(2)} vs last month
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-8 text-gray-400">
+          <p className="text-4xl mb-2">📈</p>
+          <p className="text-sm">Not enough data yet. Keep tracking!</p>
+        </div>
+      )}
+    </div>
+  )}
+</div>
 
         {/* Budget Goals */}
         <div className={cardCls}>
