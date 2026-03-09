@@ -96,6 +96,40 @@ router.post('/apply-recurring', verifyToken, async (req, res) => {
       [req.userId, month, year]
     )
 
+    router.get('/trends', auth, async (req, res) => {
+  try {
+    const months = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date()
+      d.setMonth(d.getMonth() - i)
+      months.push({ month: d.getMonth() + 1, year: d.getFullYear() })
+    }
+
+    const results = await Promise.all(months.map(async ({ month, year }) => {
+      const expenses = await pool.query(
+        `SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE user_id = $1 AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3`,
+        [req.user.id, month, year]
+      )
+      const income = await pool.query(
+        `SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE user_id = $1 AND month = $2 AND year = $3`,
+        [req.user.id, month, year]
+      )
+      const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'short' })
+      return {
+        label: `${monthName} ${year}`,
+        spending: parseFloat(expenses.rows[0].total),
+        income: parseFloat(income.rows[0].total),
+        balance: parseFloat(income.rows[0].total) - parseFloat(expenses.rows[0].total)
+      }
+    }))
+
+    res.json(results)
+  } catch (e) {
+    console.log(e)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
     const existingKeys = existing.rows.map(e => `${e.category}-${e.description}`)
     let added = 0
 
