@@ -1,3 +1,4 @@
+import Layout from '../components/Layout'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { useEffect, useState } from 'react'
@@ -381,69 +382,17 @@ const handleDelete = (id) => {
   const chevron = (key) => <span className={`text-gray-400 dark:text-gray-500 text-xs transition-transform duration-200 inline-block ${collapsed[key] ? '-rotate-90' : ''}`}>▼</span>
 
   return (
+    <Layout unreadCount={notifications.filter(n => !n.is_read).length} onBellClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markNotificationsRead() }}>
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {confirm && <ConfirmModal message={confirm.message} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} confirmText={confirm.confirmText} confirmColor={confirm.confirmColor} />}
-
-      <nav className="bg-white dark:bg-gray-900 shadow-sm px-6 py-4 flex justify-between items-center">
-  <h1 className="text-2xl font-bold text-indigo-600">Spendly</h1>
-  {user && (
-    <div className="flex items-center gap-4">
-      <span className="text-gray-600 dark:text-gray-300 text-sm hidden md:block">Hi, {user.name} 👋</span>
-      <button onClick={toggleDark} className="text-xl hover:scale-110 transition">{dark ? '☀️' : '🌙'}</button>
-      <a href="/dashboard" className="text-gray-500 dark:text-gray-400 text-xl hover:text-indigo-600 transition">🏠</a>
-      <a href="/profile" className="text-gray-500 dark:text-gray-400 text-xl hover:text-indigo-600 transition">👤</a>
-
-      {/* Bell Icon */}
-      <div className="relative">
-        <button
-          onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markNotificationsRead() }}
-          className="relative text-gray-500 dark:text-gray-400 hover:text-indigo-600 transition"
-        >
-          <span className="text-xl">🔔</span>
-          {notifications.filter(n => !n.is_read).length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
-              {notifications.filter(n => !n.is_read).length}
-            </span>
-          )}
-        </button>
-
-        {/* Dropdown */}
-        {showNotifications && (
-          <div className="absolute right-0 top-10 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 z-50">
-            <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h3 className="font-semibold text-gray-800 dark:text-white">Notifications</h3>
-              <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
-            </div>
-            <div className="max-h-80 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="text-3xl mb-2">🔔</p>
-                  <p className="text-sm">No notifications yet</p>
-                </div>
-              ) : (
-                notifications.map(n => (
-                  <div key={n.id} className={`px-4 py-3 border-b border-gray-50 dark:border-gray-700 ${!n.is_read ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''}`}>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">{n.message}</p>
-                    <p className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <button onClick={handleLogout} className="bg-red-50 dark:bg-red-900/30 text-red-500 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition">Logout</button>
-    </div>
-  )}
-</nav>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
 
         {/* Month Selector */}
         <div className="flex items-center justify-center gap-4 mb-6">
-          <button onClick={prevMonth} className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 w-10 h-10 rounded-xl flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition text-lg font-bold">‹</button>
+          <button onClick={prevMonth} className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 w-10 h-10 rounded-xl flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition text-lg font-bold">
+            </button>
           <div className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 px-6 py-2 rounded-xl">
             <span className="font-semibold text-gray-800 dark:text-white">{monthName}</span>
             {isCurrentMonth && <span className="ml-2 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-full">Current</span>}
@@ -1009,6 +958,7 @@ const handleDelete = (id) => {
         <p>© 2026 <span className="text-indigo-600 font-semibold">Spendly</span> — Track smarter, spend better 💸</p>
       </footer>
     </div>
+    </Layout>
   )
 }
 
