@@ -150,7 +150,7 @@ function Dashboard() {
     catch { console.log('Error fetching savings goals') }
   }
 
-  const fetchNotifications = async () => {
+ const fetchNotifications = async () => {
   try {
     const token = localStorage.getItem('token')
     const res = await API.get('/notifications', { headers: { Authorization: `Bearer ${token}` } })
