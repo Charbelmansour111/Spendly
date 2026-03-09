@@ -9,6 +9,7 @@ const insightRoutes = require('./routes/insights');
 const budgetRoutes = require('./routes/budgets');
 const savingsRoutes = require('./routes/savings');
 const incomeRoutes = require('./routes/income'); 
+const alertsRouter = require('./routes/alerts')
 const notificationsRouter = require('./routes/notifications');
 
 const app = express();
@@ -22,6 +23,7 @@ app.use('/api/insights', insightRoutes);
 app.use('/api/budgets', budgetRoutes);
 app.use('/api/savings', savingsRoutes);
 app.use('/api/income', incomeRoutes); 
+app.use('/api/alerts', alertsRouter);
 app.use('/api/notifications', notificationsRouter);
 
 app.get('/', (req, res) => {

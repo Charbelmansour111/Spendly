@@ -3,9 +3,8 @@ import { useDarkMode } from '../hooks/useDarkMode'
 
 const navItems = [
   { label: 'Dashboard', icon: '🏠', href: '/dashboard' },
-  { label: 'Budget Goals', icon: '🎯', href: '/budgets' },
+  { label: 'Budget & Alerts', icon: '⚡', href: '/budgets' },
   { label: 'Savings Goals', icon: '🏦', href: '/savings' },
-  { label: 'Spending Alerts', icon: '⚡', href: '/alerts' },
   { label: 'Reports', icon: '📄', href: '/reports' },
   { label: 'AI Insights', icon: '🤖', href: '/insights' },
   { label: 'Profile', icon: '👤', href: '/profile' },

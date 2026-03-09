@@ -383,7 +383,7 @@ const handleDelete = (id) => {
 
   return (
     <Layout unreadCount={notifications.filter(n => !n.is_read).length} onBellClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markNotificationsRead() }}>
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {confirm && <ConfirmModal message={confirm.message} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} confirmText={confirm.confirmText} confirmColor={confirm.confirmColor} />}
 
@@ -679,201 +679,7 @@ const handleDelete = (id) => {
     </div>
   )}
 </div>
-
-        {/* Budget Goals */}
-        <div className={cardCls}>
-          <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('budget')}>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">🎯 Budget Goals</h3>
-            {chevron('budget')}
-          </div>
-          {!collapsed['budget'] && (
-            <div className="mt-4">
-              <form onSubmit={handleBudgetSubmit} className="mb-6">
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Category</label>
-                    <select value={budgetForm.category} onChange={e => setBudgetForm({ ...budgetForm, category: e.target.value })} className={selectCls.replace('py-3', 'py-2')}>
-                      <option>Food</option><option>Transport</option><option>Shopping</option><option>Subscriptions</option><option>Entertainment</option><option>Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Monthly Limit ({currencySymbol})</label>
-                    <input type="number" placeholder="e.g. 200" value={budgetForm.amount} onChange={e => setBudgetForm({ ...budgetForm, amount: e.target.value })} required className={inputCls.replace('py-3', 'py-2')} />
-                  </div>
-                </div>
-                <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-xl font-semibold hover:bg-indigo-700 transition">Set Budget</button>
-              </form>
-              {budgets.length === 0 ? (
-                <p className="text-gray-400 text-sm">No budget goals set yet.</p>
-              ) : (
-                <div className="space-y-4">
-                  {budgets.map(budget => {
-                    const spent = categoryData.find(c => c.name === budget.category)?.value || 0
-                    const pct = Math.min((spent / parseFloat(budget.amount)) * 100, 100)
-                    const isOver = spent > parseFloat(budget.amount)
-                    const isClose = pct >= 90 && !isOver
-                    return (
-                      <div key={budget.id}>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium text-gray-700 dark:text-gray-200">{categoryIcons[budget.category]} {budget.category}</span>
-                          <div className="flex items-center gap-2">
-                            <span className={isOver ? 'text-red-500 font-bold' : 'text-gray-500 dark:text-gray-400'}>
-                              {currencySymbol}{spent.toFixed(2)} / {currencySymbol}{parseFloat(budget.amount).toFixed(2)}
-                              {isOver && ' ⚠️ Over budget!'}{isClose && ' ⚡ Almost there!'}
-                            </span>
-                            <button onClick={() => handleDeleteBudget(budget.id)} className="text-red-400 hover:text-red-600 text-xs px-2 py-1 hover:bg-red-50 rounded-lg transition border border-red-200">🗑️</button>
-                          </div>
-                        </div>
-                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3">
-                          <div className={`h-3 rounded-full transition-all ${isOver ? 'bg-red-500' : pct >= 90 ? 'bg-orange-500' : pct >= 70 ? 'bg-yellow-400' : pct >= 40 ? 'bg-lime-500' : 'bg-green-500'}`} style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Savings Goals */}
-        <div className={cardCls}>
-          <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('savings')}>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">🏦 Savings Goals</h3>
-            <div className="flex items-center gap-2">
-              <button onClick={e => { e.stopPropagation(); setShowSavingsForm(!showSavingsForm) }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">
-                {showSavingsForm ? 'Cancel' : '+ New Goal'}
-              </button>
-              {chevron('savings')}
-            </div>
-          </div>
-          {!collapsed['savings'] && (
-            <div className="mt-4">
-              {showSavingsForm && (
-                <form onSubmit={handleSavingsSubmit} className="mb-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Goal Name</label>
-                      <input type="text" placeholder="e.g. Vacation to Paris" value={savingsForm.name} onChange={e => setSavingsForm({ ...savingsForm, name: e.target.value })} required className={inputCls.replace('py-3', 'py-2')} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Target ({currencySymbol})</label>
-                        <input type="number" placeholder="e.g. 2000" value={savingsForm.target_amount} onChange={e => setSavingsForm({ ...savingsForm, target_amount: e.target.value })} required min="1" step="0.01" className={inputCls.replace('py-3', 'py-2')} />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Saved ({currencySymbol})</label>
-                        <input type="number" placeholder="e.g. 500" value={savingsForm.saved_amount} onChange={e => setSavingsForm({ ...savingsForm, saved_amount: e.target.value })} min="0" step="0.01" className={inputCls.replace('py-3', 'py-2')} />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Deadline</label>
-                      <input type="date" value={savingsForm.deadline} onChange={e => setSavingsForm({ ...savingsForm, deadline: e.target.value })} required className={`${inputCls.replace('py-3', 'py-2')} max-w-full box-border`} />
-                    </div>
-                  </div>
-                  <button type="submit" className="w-full mt-4 bg-indigo-600 text-white py-2 rounded-xl font-semibold hover:bg-indigo-700 transition">🎯 Create Goal</button>
-                </form>
-              )}
-              {savingsGoals.length === 0 ? (
-                <div className="text-center py-8 text-gray-400"><p className="text-4xl mb-2">🏦</p><p className="text-sm">No savings goals yet. Create your first one!</p></div>
-              ) : (
-                <div className="space-y-4">
-                  {savingsGoals.map((goal, idx) => {
-                    const saved = parseFloat(goal.saved_amount); const target = parseFloat(goal.target_amount)
-                    const pct = Math.min((saved / target) * 100, 100); const isComplete = saved >= target
-                    const deadline = new Date(goal.deadline); const daysLeft = Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24))
-                    const emoji = goalEmojis[idx % goalEmojis.length]
-                    return (
-                      <div key={goal.id} className={`rounded-xl p-4 border ${isComplete ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-gray-50 dark:bg-gray-700/50 border-gray-100 dark:border-gray-700'}`}>
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-2xl">{emoji}</span>
-                            <div>
-                              <p className="font-semibold text-gray-800 dark:text-white">{goal.name}</p>
-                              <p className="text-xs text-gray-400">{isComplete ? '✅ Goal reached!' : daysLeft > 0 ? `⏰ ${daysLeft} days left` : '⚠️ Deadline passed'}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isComplete && <span className="text-xs bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 px-2 py-1 rounded-full font-semibold">🎉 Complete!</span>}
-                            <button onClick={() => handleDeleteSavings(goal.id)} className="text-red-400 hover:text-red-600 text-xs px-2 py-1 hover:bg-red-50 rounded-lg transition border border-red-200">🗑️</button>
-                          </div>
-                        </div>
-                        <div className="mb-3">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-gray-500 dark:text-gray-400">{currencySymbol}{saved.toFixed(2)} saved</span>
-                            <span className="font-semibold text-gray-700 dark:text-gray-200">{currencySymbol}{target.toFixed(2)} goal</span>
-                          </div>
-                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                            <div className={`h-3 rounded-full transition-all duration-500 ${isComplete ? 'bg-green-500' : pct >= 75 ? 'bg-lime-500' : pct >= 40 ? 'bg-yellow-400' : 'bg-indigo-500'}`} style={{ width: `${pct}%` }} />
-                          </div>
-                          <p className="text-right text-xs text-gray-400 mt-1">{pct.toFixed(0)}%</p>
-                        </div>
-                        {!isComplete && (
-                          addFundsId === goal.id ? (
-                            <div className="mt-2 space-y-2">
-                              <input type="number" placeholder={`Amount to add (${currencySymbol})`} value={addFundsAmount} onChange={e => setAddFundsAmount(e.target.value)} min="0.01" step="0.01" className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-                              <div className="flex gap-2">
-                                <button onClick={() => handleAddFunds(goal.id)} className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">Add Funds</button>
-                                <button onClick={() => { setAddFundsId(null); setAddFundsAmount('') }} className="bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-200 px-4 py-2 rounded-xl text-sm hover:bg-gray-300 transition">✕</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button onClick={() => setAddFundsId(goal.id)} className="w-full border border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">+ Add Funds</button>
-                          )
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Export Report */}
-        <div className={cardCls}>
-          <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('export')}>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">📄 Export Report</h3>
-              {!collapsed['export'] && <p className="text-gray-400 text-sm mt-0.5">Download {monthName} data as PDF or CSV</p>}
-            </div>
-            <div className="flex items-center gap-2">
-              {!collapsed['export'] && (
-                <>
-                  <button onClick={e => { e.stopPropagation(); exportCSV() }} className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition">⬇️ CSV</button>
-                  <button onClick={e => { e.stopPropagation(); exportPDF() }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">⬇️ PDF</button>
-                </>
-              )}
-              {chevron('export')}
-            </div>
-          </div>
-        </div>
-
-        {/* AI Insights */}
-        <div className={cardCls}>
-          <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('insights')}>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">🤖 AI Insights</h3>
-            <div className="flex items-center gap-2">
-              {!collapsed['insights'] && (
-                <button onClick={e => { e.stopPropagation(); getInsights() }} disabled={loadingInsight} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition disabled:opacity-50">
-                  {loadingInsight ? 'Analyzing...' : 'Analyze My Spending'}
-                </button>
-              )}
-              {chevron('insights')}
-            </div>
-          </div>
-          {!collapsed['insights'] && (
-            <div className="mt-4">
-              {insightLines.length > 0 ? (
-                <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 space-y-2">
-                  {insightLines.map((line, i) => <p key={i} className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">{renderMarkdown(line)}</p>)}
-                </div>
-              ) : (
-                <p className="text-gray-400 text-sm">Click "Analyze My Spending" to get personalized AI insights.</p>
-              )}
-            </div>
-          )}
-        </div>
+ </div>
 
         {/* Expenses List */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
@@ -954,7 +760,7 @@ const handleDelete = (id) => {
         </div>
       </div>
 
-      <footer className="text-center py-6 text-gray-400 text-sm mt-8">
+         <footer className="text-center py-6 text-gray-400 text-sm mt-8">
         <p>© 2026 <span className="text-indigo-600 font-semibold">Spendly</span> — Track smarter, spend better 💸</p>
       </footer>
     </div>
