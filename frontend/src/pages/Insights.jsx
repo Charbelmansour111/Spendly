@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 
@@ -17,17 +17,21 @@ export default function Insights() {
   const [loading, setLoading] = useState(false)
   const [expenses, setExpenses] = useState([])
   const [income, setIncome] = useState([])
-  const currencySymbol = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
+  
+  // Fix: Initialize as state to avoid SSR crash and hydration mismatch
+  const [currencySymbol, setCurrencySymbol] = useState('$')
+  
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
 
+  // Fix: Load currency from localStorage on mount (Client-side only)
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) { window.location.href = '/login'; return }
-    fetchData()
+    const storedCurrency = localStorage.getItem('currency') || 'USD'
+    setCurrencySymbol(CURRENCY_SYMBOLS[storedCurrency] || '$')
   }, [])
 
-  const fetchData = async () => {
+  // Fix: Wrap fetchData in useCallback to stabilize the function reference
+  const fetchData = useCallback(async () => {
     try {
       const token = localStorage.getItem('token')
       const headers = { Authorization: `Bearer ${token}` }
@@ -37,7 +41,13 @@ export default function Insights() {
       ])
       setExpenses(e.data); setIncome(i.data)
     } catch { console.log('Error fetching data') }
-  }
+  }, [today]) // 'today' is stable enough here, but good practice to list dependencies
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) { window.location.href = '/login'; return }
+    fetchData()
+  }, [fetchData]) // Fix: Added fetchData to dependency array
 
   const getInsights = async () => {
     setLoading(true)

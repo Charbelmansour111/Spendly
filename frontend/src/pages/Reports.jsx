@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import 'jspdf-autotable' // Fix: Import as side-effect to extend jsPDF prototype
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 const COLORS = ['#4F46E5', '#7C3AED', '#EC4899', '#F59E0B', '#10B981', '#3B82F6']
 
 function Toast({ message, type, onClose }) {
-  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [])
+  // Fix: Added onClose to dependency array
+  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
   return (
     <div className={`fixed top-6 right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
       <span>{message}</span><button onClick={onClose} className="ml-2 hover:opacity-70">✕</button>
@@ -25,31 +26,46 @@ export default function Reports() {
   const today = new Date()
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
   const [selectedYear, setSelectedYear] = useState(today.getFullYear())
-  const currencySymbol = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  
+  // Fix: Initialize as state to avoid hydration mismatch and SSR errors
+  const [currencySymbol, setCurrencySymbol] = useState('$')
+  const [user, setUser] = useState({})
+
   const showToast = (msg, type = 'success') => setToast({ message: msg, type })
   const monthName = new Date(selectedYear, selectedMonth, 1).toLocaleString('default', { month: 'long', year: 'numeric' })
   const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear()
 
+  // Fix: Load localStorage data on mount (Client-side only)
+  useEffect(() => {
+    const storedCurrency = localStorage.getItem('currency') || 'USD'
+    setCurrencySymbol(CURRENCY_SYMBOLS[storedCurrency] || '$')
+    
+    try {
+      const storedUser = localStorage.getItem('user')
+      if (storedUser) setUser(JSON.parse(storedUser))
+    } catch (e) { console.error("Error parsing user", e) }
+  }, [])
+
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { window.location.href = '/login'; return }
+    
+    // Fix: Define fetch logic inside effect to avoid dependency warnings
+    const fetchAll = async () => {
+      setLoading(true)
+      try {
+        const headers = { Authorization: `Bearer ${token}` }
+        const [e, i] = await Promise.all([
+          API.get('/expenses', { headers }),
+          API.get(`/income?month=${selectedMonth + 1}&year=${selectedYear}`, { headers })
+        ])
+        setExpenses(e.data); setIncome(i.data)
+      } catch { showToast('Error loading data', 'error') }
+      setLoading(false)
+    }
+    
     fetchAll()
   }, [selectedMonth, selectedYear])
-
-  const fetchAll = async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('token')
-      const headers = { Authorization: `Bearer ${token}` }
-      const [e, i] = await Promise.all([
-        API.get('/expenses', { headers }),
-        API.get(`/income?month=${selectedMonth + 1}&year=${selectedYear}`, { headers })
-      ])
-      setExpenses(e.data); setIncome(i.data)
-    } catch { showToast('Error loading data', 'error') }
-    setLoading(false)
-  }
 
   const prevMonth = () => {
     if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1) }
@@ -81,13 +97,27 @@ export default function Reports() {
     const doc = new jsPDF()
     doc.setFontSize(24); doc.setTextColor(79, 70, 229); doc.text('Spendly', 14, 20)
     doc.setFontSize(11); doc.setTextColor(100, 100, 100)
-    doc.text(`Report for: ${user?.name}`, 14, 30); doc.text(`Period: ${monthName}`, 14, 37); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 44)
+    doc.text(`Report for: ${user?.name || 'User'}`, 14, 30); doc.text(`Period: ${monthName}`, 14, 37); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 44)
     doc.setFontSize(14); doc.setTextColor(0, 0, 0)
     doc.text(`Total Income: ${currencySymbol}${totalIncome.toFixed(2)}`, 14, 57)
     doc.text(`Total Spent: ${currencySymbol}${total.toFixed(2)}`, 14, 65)
     doc.text(`Balance: ${currencySymbol}${balance.toFixed(2)}`, 14, 73)
-    autoTable(doc, { startY: 87, head: [['Category', 'Amount', '%']], body: categoryData.map(c => [c.name, `${currencySymbol}${c.value.toFixed(2)}`, total > 0 ? `${((c.value / total) * 100).toFixed(0)}%` : '0%']), headStyles: { fillColor: [79, 70, 229] } })
-    autoTable(doc, { startY: doc.lastAutoTable.finalY + 15, head: [['Date', 'Category', 'Description', 'Amount']], body: monthExpenses.map(e => [e.date?.split('T')[0], e.category, e.description || '-', `${currencySymbol}${parseFloat(e.amount).toFixed(2)}`]), headStyles: { fillColor: [79, 70, 229] } })
+    
+    // Fix: Use doc.autoTable instead of autoTable(doc, ...)
+    doc.autoTable({ 
+      startY: 87, 
+      head: [['Category', 'Amount', '%']], 
+      body: categoryData.map(c => [c.name, `${currencySymbol}${c.value.toFixed(2)}`, total > 0 ? `${((c.value / total) * 100).toFixed(0)}%` : '0%']), 
+      headStyles: { fillColor: [79, 70, 229] } 
+    })
+    
+    doc.autoTable({ 
+      startY: doc.lastAutoTable.finalY + 15, 
+      head: [['Date', 'Category', 'Description', 'Amount']], 
+      body: monthExpenses.map(e => [e.date?.split('T')[0], e.category, e.description || '-', `${currencySymbol}${parseFloat(e.amount).toFixed(2)}`]), 
+      headStyles: { fillColor: [79, 70, 229] } 
+    })
+    
     doc.save(`spendly-${monthName.replace(' ', '-')}.pdf`)
     showToast('📄 PDF downloaded!')
   }

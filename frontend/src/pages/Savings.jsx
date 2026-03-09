@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 
@@ -6,7 +6,8 @@ const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د
 const goalEmojis = ['🏖️', '🚗', '🏠', '💻', '✈️', '🎓', '💍', '🏋️', '🎮', '💰']
 
 function Toast({ message, type, onClose }) {
-  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [])
+  // Fix: Added onClose to dependency array
+  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
   return (
     <div className={`fixed top-6 right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-orange-500' : 'bg-green-500'}`}>
       <span>{message}</span><button onClick={onClose} className="ml-2 hover:opacity-70">✕</button>
@@ -22,24 +23,35 @@ export default function Savings() {
   const [addFundsAmount, setAddFundsAmount] = useState('')
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(true)
-  const currencySymbol = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
+  
+  // Fix: Initialize as state to avoid SSR mismatch and crash
+  const [currencySymbol, setCurrencySymbol] = useState('$')
+  
   const showToast = (message, type = 'success') => setToast({ message, type })
+
+  // Fix: Load currency from localStorage on mount (Client-side only)
+  useEffect(() => {
+    const storedCurrency = localStorage.getItem('currency') || 'USD'
+    setCurrencySymbol(CURRENCY_SYMBOLS[storedCurrency] || '$')
+  }, [])
+
+  // Fix: Wrap fetchGoals in useCallback to prevent infinite loops in useEffect
+  const fetchGoals = useCallback(async () => {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return // Handle case where token is missing
+      const res = await API.get('/savings', { headers: { Authorization: `Bearer ${token}` } })
+      setGoals(res.data)
+    } catch { showToast('Error loading goals', 'error') }
+    setLoading(false)
+  }, [])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { window.location.href = '/login'; return }
     fetchGoals()
-  }, [])
-
-  const fetchGoals = async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('token')
-      const res = await API.get('/savings', { headers: { Authorization: `Bearer ${token}` } })
-      setGoals(res.data)
-    } catch { showToast('Error loading goals', 'error') }
-    setLoading(false)
-  }
+  }, [fetchGoals])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -69,6 +81,9 @@ export default function Savings() {
       fetchGoals(); showToast('🗑️ Goal deleted', 'error')
     } catch { showToast('Error deleting goal', 'error') }
   }
+  
+  // Fix: Memoize the close handler so Toast effect doesn't reset on every render
+  const handleCloseToast = useCallback(() => setToast(null), [])
 
   const totalSaved = goals.reduce((sum, g) => sum + parseFloat(g.saved_amount), 0)
   const totalTarget = goals.reduce((sum, g) => sum + parseFloat(g.target_amount), 0)
@@ -78,7 +93,7 @@ export default function Savings() {
 
   return (
     <Layout>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={handleCloseToast} />}
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex justify-between items-start mb-8">
           <div>

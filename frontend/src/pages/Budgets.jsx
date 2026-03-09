@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 
@@ -7,7 +7,8 @@ const categoryIcons = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Su
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Subscriptions', 'Entertainment', 'Other']
 
 function Toast({ message, type, onClose }) {
-  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [])
+  // Fix: Added onClose to dependency array
+  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
   return (
     <div className={`fixed top-6 right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-orange-500' : 'bg-green-500'}`}>
       <span>{message}</span>
@@ -25,18 +26,24 @@ export default function Budgets() {
   const [alertForm, setAlertForm] = useState({ name: '', category: 'All', period: 'monthly', amount: '' })
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(true)
-  const currencySymbol = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
-  const showToast = (message, type = 'success') => setToast({ message, type })
+  
+  // Fix: Initialize as state to avoid SSR mismatch and crash
+  const [currencySymbol, setCurrencySymbol] = useState('$')
+  
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
 
+  // Fix: Memoize showToast to prevent unnecessary re-renders/effects
+  const showToast = useCallback((message, type = 'success') => setToast({ message, type }), [])
+
+  // Fix: Load currency from localStorage on mount (Client-side only)
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) { window.location.href = '/login'; return }
-    fetchAll()
+    const storedCurrency = localStorage.getItem('currency') || 'USD'
+    setCurrencySymbol(CURRENCY_SYMBOLS[storedCurrency] || '$')
   }, [])
 
-  const fetchAll = async () => {
+  // Fix: Memoize fetchAll with useCallback
+  const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
       const token = localStorage.getItem('token')
@@ -49,7 +56,13 @@ export default function Budgets() {
       setBudgets(b.data); setExpenses(e.data); setAlerts(a.data)
     } catch { showToast('Error loading data', 'error') }
     setLoading(false)
-  }
+  }, [showToast])
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) { window.location.href = '/login'; return }
+    fetchAll()
+  }, [fetchAll]) // Fix: Added fetchAll to dependency array
 
   const handleBudgetSubmit = async (e) => {
     e.preventDefault()

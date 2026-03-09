@@ -1,7 +1,7 @@
 import Layout from '../components/Layout'
 import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
-import { useEffect, useState } from 'react'
+import 'jspdf-autotable' // Fix: Use side-effect import
+import { useEffect, useState, useCallback } from 'react'
 import API from '../utils/api'
 import ReceiptScanner from '../components/ReceiptScanner'
 import { useDarkMode } from '../hooks/useDarkMode'
@@ -18,7 +18,8 @@ function renderMarkdown(text) {
 }
 
 function Toast({ message, type, onClose }) {
-  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [])
+  // Fix: Added onClose to dependency array
+  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
   return (
     <div className={`fixed top-6 right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 animate-bounce ${type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-orange-500' : 'bg-green-500'}`}>
       <span>{message}</span>
@@ -77,10 +78,33 @@ function Dashboard() {
   const [confirm, setConfirm] = useState(null)
   const [notifications, setNotifications] = useState([])
   const [showNotifications, setShowNotifications] = useState(false)
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('spendly_collapsed') || '{}') }
-    catch { return {} }
-  })
+  const [trendsData, setTrendsData] = useState([])
+  
+  // Fix: Initialize state safely for SSR
+  const [collapsed, setCollapsed] = useState({})
+  const [currencySymbol, setCurrencySymbol] = useState('$')
+
+  const today = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear())
+  const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear()
+  
+  const monthName = new Date(selectedYear, selectedMonth, 1).toLocaleString('default', { month: 'long', year: 'numeric' })
+  const showToast = (message, type = 'success') => setToast({ message, type })
+
+  // Fix: Load localStorage data on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user')
+    if (!storedUser) { window.location.href = '/login'; return }
+    setUser(JSON.parse(storedUser))
+    
+    const storedCurrency = localStorage.getItem('currency') || 'USD'
+    setCurrencySymbol(CURRENCY_SYMBOLS[storedCurrency] || '$')
+    
+    try {
+      setCollapsed(JSON.parse(localStorage.getItem('spendly_collapsed') || '{}'))
+    } catch { setCollapsed({}) }
+  }, [])
 
   const toggleSection = (key) => {
     setCollapsed(prev => {
@@ -90,94 +114,76 @@ function Dashboard() {
     })
   }
 
-  const today = new Date()
-  const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
-  const [selectedYear, setSelectedYear] = useState(today.getFullYear())
-  const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear()
-  const currencySymbol = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
-
-  const askConfirm = (message, onConfirm, confirmText = 'Delete', confirmColor = 'bg-red-500 hover:bg-red-600') => {
-    setConfirm({ message, onConfirm, confirmText, confirmColor })
-  }
-
-  const prevMonth = () => {
-    if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1) }
-    else setSelectedMonth(m => m - 1)
-  }
-
-  const nextMonth = () => {
-    if (isCurrentMonth) return
-    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1) }
-    else setSelectedMonth(m => m + 1)
-  }
-
-  const monthName = new Date(selectedYear, selectedMonth, 1).toLocaleString('default', { month: 'long', year: 'numeric' })
-  const showToast = (message, type = 'success') => setToast({ message, type })
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (!storedUser) { window.location.href = '/login'; return }
-    const parsedUser = JSON.parse(storedUser)
-    if (parsedUser) setUser(parsedUser)
-    fetchExpenses(); fetchBudgets(); fetchSavingsGoals(); fetchTrends()
-    fetchExpenses(); fetchBudgets(); fetchSavingsGoals(); fetchNotifications()
+  // Fix: Wrap fetch functions in useCallback
+  const fetchExpenses = useCallback(async () => {
+    try { const token = localStorage.getItem('token'); const res = await API.get('/expenses', { headers: { Authorization: `Bearer ${token}` } }); setExpenses(res.data) }
+    catch { console.log('Error fetching expenses') }
   }, [])
 
-  useEffect(() => {
-    fetchIncome()
-    if (isCurrentMonth) {
+  const fetchBudgets = useCallback(async () => {
+    try { const token = localStorage.getItem('token'); const res = await API.get('/budgets', { headers: { Authorization: `Bearer ${token}` } }); setBudgets(res.data) }
+    catch { console.log('Error fetching budgets') }
+  }, [])
+
+  const fetchIncome = useCallback(async () => {
+    try { const token = localStorage.getItem('token'); const res = await API.get(`/income?month=${selectedMonth + 1}&year=${selectedYear}`, { headers: { Authorization: `Bearer ${token}` } }); setIncomeList(res.data) }
+    catch { console.log('Error fetching income') }
+  }, [selectedMonth, selectedYear])
+
+  const fetchSavingsGoals = useCallback(async () => {
+    try { const token = localStorage.getItem('token'); const res = await API.get('/savings', { headers: { Authorization: `Bearer ${token}` } }); setSavingsGoals(res.data) }
+    catch { console.log('Error fetching savings goals') }
+  }, [])
+
+  const fetchNotifications = useCallback(async () => {
+    try {
       const token = localStorage.getItem('token')
+      const res = await API.get('/notifications', { headers: { Authorization: `Bearer ${token}` } })
+      setNotifications(res.data)
+    } catch { console.log('Error fetching notifications') }
+  }, [])
+
+  const fetchTrends = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await API.get('/expenses/trends', { headers: { Authorization: `Bearer ${token}` } })
+      setTrendsData(res.data)
+    } catch { console.log('Error fetching trends') }
+  }, [])
+
+  // Fix: Main data fetching effect
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetchExpenses()
+    fetchBudgets()
+    fetchSavingsGoals()
+    fetchTrends()
+    fetchNotifications()
+  }, [fetchExpenses, fetchBudgets, fetchSavingsGoals, fetchTrends, fetchNotifications])
+
+  // Fix: Month change effect
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    
+    fetchIncome()
+    
+    if (isCurrentMonth) {
       API.post('/expenses/apply-recurring', { month: selectedMonth + 1, year: selectedYear }, { headers: { Authorization: `Bearer ${token}` } })
         .then(res => { if (res.data.added > 0) { fetchExpenses(); showToast(`🔁 ${res.data.added} recurring expense${res.data.added > 1 ? 's' : ''} added for ${monthName}!`, 'warning') } }).catch(() => {})
       API.post('/income/apply-recurring', { month: selectedMonth + 1, year: selectedYear }, { headers: { Authorization: `Bearer ${token}` } })
         .then(res => { if (res.data.added > 0) { fetchIncome(); showToast(`🔁 ${res.data.added} recurring income${res.data.added > 1 ? 's' : ''} added for ${monthName}!`, 'warning') } }).catch(() => {})
     }
-  }, [selectedMonth, selectedYear])
+  }, [selectedMonth, selectedYear, isCurrentMonth, fetchIncome, fetchExpenses, monthName, showToast])
 
-  const fetchExpenses = async () => {
-    try { const token = localStorage.getItem('token'); const res = await API.get('/expenses', { headers: { Authorization: `Bearer ${token}` } }); setExpenses(res.data) }
-    catch { console.log('Error fetching expenses') }
+  const markNotificationsRead = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      await API.put('/notifications/read', {}, { headers: { Authorization: `Bearer ${token}` } })
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    } catch { console.log('Error marking notifications read') }
   }
-  const fetchBudgets = async () => {
-    try { const token = localStorage.getItem('token'); const res = await API.get('/budgets', { headers: { Authorization: `Bearer ${token}` } }); setBudgets(res.data) }
-    catch { console.log('Error fetching budgets') }
-  }
-  const fetchIncome = async () => {
-    try { const token = localStorage.getItem('token'); const res = await API.get(`/income?month=${selectedMonth + 1}&year=${selectedYear}`, { headers: { Authorization: `Bearer ${token}` } }); setIncomeList(res.data) }
-    catch { console.log('Error fetching income') }
-  }
-  const fetchSavingsGoals = async () => {
-    try { const token = localStorage.getItem('token'); const res = await API.get('/savings', { headers: { Authorization: `Bearer ${token}` } }); setSavingsGoals(res.data) }
-    catch { console.log('Error fetching savings goals') }
-  }
-
- const fetchNotifications = async () => {
-  try {
-    const token = localStorage.getItem('token')
-    const res = await API.get('/notifications', { headers: { Authorization: `Bearer ${token}` } })
-    setNotifications(res.data)
-  } catch { console.log('Error fetching notifications') }
-}
-
-const [trendsData, setTrendsData] = useState([])
-
-const fetchTrends = async () => {
-  try {
-    const token = localStorage.getItem('token')
-    const res = await API.get('/expenses/trends', { headers: { Authorization: `Bearer ${token}` } })
-    setTrendsData(res.data)
-  } catch { console.log('Error fetching trends') }
-}
-
-const markNotificationsRead = async () => {
-  try {
-    const token = localStorage.getItem('token')
-    await API.put('/notifications/read', {}, { headers: { Authorization: `Bearer ${token}` } })
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-  } catch { console.log('Error marking notifications read') }
-}
-
-
 
   const handleSavingsSubmit = async (e) => {
     e.preventDefault()
@@ -242,49 +248,47 @@ const markNotificationsRead = async () => {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
-const handleSubmit = async (e) => {
-  e.preventDefault()
-  try {
-    const token = localStorage.getItem('token')
-    await API.post('/expenses', form, { headers: { Authorization: `Bearer ${token}` } })
-    setForm({ amount: '', category: 'Food', description: '', date: new Date().toISOString().split('T')[0] })
-    const updatedExpenses = await API.get('/expenses', { headers: { Authorization: `Bearer ${token}` } })
-    setExpenses(updatedExpenses.data)
-    const newMonthExpenses = updatedExpenses.data.filter(ex => { const d = new Date(ex.date); return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear })
-    const newCategoryData = newMonthExpenses.reduce((acc, ex) => {
-      const existing = acc.find(item => item.name === ex.category)
-      if (existing) existing.value += parseFloat(ex.amount)
-      else acc.push({ name: ex.category, value: parseFloat(ex.amount) })
-      return acc
-    }, [])
-   const budget = budgets.find(b => b.category === form.category)
-    if (budget) {
-      const spent = newCategoryData.find(c => c.name === form.category)?.value || 0
-      const pct = (spent / parseFloat(budget.amount)) * 100
-      if (spent > parseFloat(budget.amount)) {
-        showToast(`⚠️ Over budget on ${form.category}! Spent ${currencySymbol}${spent.toFixed(2)} of ${currencySymbol}${parseFloat(budget.amount).toFixed(2)}`, 'error')
-        const token = localStorage.getItem('token')
-        await API.post('/notifications/budget-alert', { category: form.category, spent, limit: budget.amount }, { headers: { Authorization: `Bearer ${token}` } })
-        fetchNotifications()
-      } else if (pct >= 80) {
-        showToast(`⚡ ${pct.toFixed(0)}% of budget used for ${form.category}!`, 'warning')
-        const token = localStorage.getItem('token')
-        await API.post('/notifications/budget-alert', { category: form.category, spent, limit: budget.amount }, { headers: { Authorization: `Bearer ${token}` } })
-        fetchNotifications()
-      } else {
-        showToast('✅ Expense added!')
-      }
-    } else showToast('✅ Expense added!')
-  } catch { console.log('Error adding expense') }
-}
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      const token = localStorage.getItem('token')
+      await API.post('/expenses', form, { headers: { Authorization: `Bearer ${token}` } })
+      setForm({ amount: '', category: 'Food', description: '', date: new Date().toISOString().split('T')[0] })
+      const updatedExpenses = await API.get('/expenses', { headers: { Authorization: `Bearer ${token}` } })
+      setExpenses(updatedExpenses.data)
+      const newMonthExpenses = updatedExpenses.data.filter(ex => { const d = new Date(ex.date); return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear })
+      const newCategoryData = newMonthExpenses.reduce((acc, ex) => {
+        const existing = acc.find(item => item.name === ex.category)
+        if (existing) existing.value += parseFloat(ex.amount)
+        else acc.push({ name: ex.category, value: parseFloat(ex.amount) })
+        return acc
+      }, [])
+      const budget = budgets.find(b => b.category === form.category)
+      if (budget) {
+        const spent = newCategoryData.find(c => c.name === form.category)?.value || 0
+        const pct = (spent / parseFloat(budget.amount)) * 100
+        if (spent > parseFloat(budget.amount)) {
+          showToast(`⚠️ Over budget on ${form.category}! Spent ${currencySymbol}${spent.toFixed(2)} of ${currencySymbol}${parseFloat(budget.amount).toFixed(2)}`, 'error')
+          await API.post('/notifications/budget-alert', { category: form.category, spent, limit: budget.amount }, { headers: { Authorization: `Bearer ${token}` } })
+          fetchNotifications()
+        } else if (pct >= 80) {
+          showToast(`⚡ ${pct.toFixed(0)}% of budget used for ${form.category}!`, 'warning')
+          await API.post('/notifications/budget-alert', { category: form.category, spent, limit: budget.amount }, { headers: { Authorization: `Bearer ${token}` } })
+          fetchNotifications()
+        } else {
+          showToast('✅ Expense added!')
+        }
+      } else showToast('✅ Expense added!')
+    } catch { console.log('Error adding expense') }
+  }
 
-const handleDelete = (id) => {
-  askConfirm('Delete this expense?', async () => {
-    setConfirm(null)
-    try { const token = localStorage.getItem('token'); await API.delete(`/expenses/${id}`, { headers: { Authorization: `Bearer ${token}` } }); fetchExpenses(); showToast('🗑️ Expense deleted', 'error') }
-    catch { console.log('Error deleting expense') }
-  })
-}
+  const handleDelete = (id) => {
+    askConfirm('Delete this expense?', async () => {
+      setConfirm(null)
+      try { const token = localStorage.getItem('token'); await API.delete(`/expenses/${id}`, { headers: { Authorization: `Bearer ${token}` } }); fetchExpenses(); showToast('🗑️ Expense deleted', 'error') }
+      catch { console.log('Error deleting expense') }
+    })
+  }
 
   const handleEdit = async (e) => {
     e.preventDefault()
@@ -312,15 +316,17 @@ const handleDelete = (id) => {
     const doc = new jsPDF()
     doc.setFontSize(24); doc.setTextColor(79, 70, 229); doc.text('Spendly', 14, 20)
     doc.setFontSize(11); doc.setTextColor(100, 100, 100)
-    doc.text(`Report for: ${user?.name}`, 14, 30); doc.text(`Period: ${monthName}`, 14, 37); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 44)
+    doc.text(`Report for: ${user?.name || 'User'}`, 14, 30); doc.text(`Period: ${monthName}`, 14, 37); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 44)
     doc.setFontSize(14); doc.setTextColor(0, 0, 0)
     doc.text(`Total Income: ${currencySymbol}${totalIncome.toFixed(2)}`, 14, 57)
     doc.text(`Total Spent: ${currencySymbol}${total.toFixed(2)}`, 14, 65)
     doc.text(`Balance: ${currencySymbol}${balance.toFixed(2)}`, 14, 73)
     doc.setFontSize(13); doc.setTextColor(79, 70, 229); doc.text('Spending by Category', 14, 87)
-    autoTable(doc, { startY: 92, head: [['Category', 'Amount', 'Percentage']], body: categoryData.map(c => [c.name, `${currencySymbol}${c.value.toFixed(2)}`, total > 0 ? `${((c.value / total) * 100).toFixed(0)}%` : '0%']), headStyles: { fillColor: [79, 70, 229] }, alternateRowStyles: { fillColor: [245, 245, 255] } })
+    
+    // Fix: Use doc.autoTable
+    doc.autoTable({ startY: 92, head: [['Category', 'Amount', 'Percentage']], body: categoryData.map(c => [c.name, `${currencySymbol}${c.value.toFixed(2)}`, total > 0 ? `${((c.value / total) * 100).toFixed(0)}%` : '0%']), headStyles: { fillColor: [79, 70, 229] }, alternateRowStyles: { fillColor: [245, 245, 255] } })
     doc.setFontSize(13); doc.setTextColor(79, 70, 229); doc.text('All Expenses', 14, doc.lastAutoTable.finalY + 15)
-    autoTable(doc, { startY: doc.lastAutoTable.finalY + 20, head: [['Date', 'Category', 'Description', 'Amount']], body: selectedMonthExpenses.map(e => [e.date?.split('T')[0], e.category, e.description || '-', `${currencySymbol}${parseFloat(e.amount).toFixed(2)}`]), headStyles: { fillColor: [79, 70, 229] }, alternateRowStyles: { fillColor: [245, 245, 255] } })
+    doc.autoTable({ startY: doc.lastAutoTable.finalY + 20, head: [['Date', 'Category', 'Description', 'Amount']], body: selectedMonthExpenses.map(e => [e.date?.split('T')[0], e.category, e.description || '-', `${currencySymbol}${parseFloat(e.amount).toFixed(2)}`]), headStyles: { fillColor: [79, 70, 229] }, alternateRowStyles: { fillColor: [245, 245, 255] } })
     doc.save(`spendly-${monthName.replace(' ', '-')}.pdf`)
   }
 
@@ -342,6 +348,21 @@ const handleDelete = (id) => {
     link.href = url; link.download = `spendly-${monthName.replace(' ', '-')}.csv`; link.click(); URL.revokeObjectURL(url)
   }
 
+  const askConfirm = (message, onConfirm, confirmText = 'Delete', confirmColor = 'bg-red-500 hover:bg-red-600') => {
+    setConfirm({ message, onConfirm, confirmText, confirmColor })
+  }
+
+  const prevMonth = () => {
+    if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1) }
+    else setSelectedMonth(m => m - 1)
+  }
+
+  const nextMonth = () => {
+    if (isCurrentMonth) return
+    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1) }
+    else setSelectedMonth(m => m + 1)
+  }
+
   const selectedMonthExpenses = expenses.filter(e => { const d = new Date(e.date); return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear })
   const total = selectedMonthExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
   const totalIncome = incomeList.reduce((sum, i) => sum + parseFloat(i.amount), 0)
@@ -353,6 +374,7 @@ const handleDelete = (id) => {
     else acc.push({ name: e.category, value: parseFloat(e.amount) })
     return acc
   }, [])
+  
   const weeklyData = (() => {
     const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4']
     return weeks.map((label, i) => {
@@ -361,6 +383,7 @@ const handleDelete = (id) => {
       return { label, total: weekTotal }
     })
   })()
+  
   const filteredExpenses = selectedMonthExpenses
     .filter(e => filter.category === 'All' || e.category === filter.category)
     .filter(e => { if (!search.trim()) return true; const s = search.toLowerCase(); return e.category.toLowerCase().includes(s) || (e.description && e.description.toLowerCase().includes(s)) })
@@ -629,58 +652,58 @@ const handleDelete = (id) => {
             </div>
           )}
         </div>
+        
         {/* Monthly Trends */}
-<div className={cardCls}>
-  <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('trends')}>
-    <h3 className="text-lg font-semibold text-gray-800 dark:text-white">📈 6-Month Trends</h3>
-    {chevron('trends')}
-  </div>
-  {!collapsed['trends'] && (
-    <div className="mt-4">
-      {trendsData.length > 0 ? (
-        <>
-          <p className="text-gray-400 text-xs mb-4">Your income, spending and balance over the last 6 months</p>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={trendsData}>
-              <XAxis dataKey="label" stroke={dark ? '#9CA3AF' : '#6B7280'} tick={{ fontSize: 11 }} />
-              <YAxis stroke={dark ? '#9CA3AF' : '#6B7280'} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v) => `${currencySymbol}${v.toFixed(2)}`} />
-              <Legend />
-              <Line type="monotone" dataKey="income" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} name="Income" />
-              <Line type="monotone" dataKey="spending" stroke="#EF4444" strokeWidth={2} dot={{ r: 4 }} name="Spending" />
-              <Line type="monotone" dataKey="balance" stroke="#4F46E5" strokeWidth={2} dot={{ r: 4 }} name="Balance" />
-            </LineChart>
-          </ResponsiveContainer>
-          <div className="grid grid-cols-3 gap-3 mt-4">
-            {['income', 'spending', 'balance'].map((key, i) => {
-              const colors = { income: 'text-green-600', spending: 'text-red-500', balance: 'text-indigo-600' }
-              const icons = { income: '↑', spending: '↓', balance: '=' }
-              const latest = trendsData[trendsData.length - 1]
-              const prev = trendsData[trendsData.length - 2]
-              const diff = latest && prev ? latest[key] - prev[key] : 0
-              return (
-                <div key={i} className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-gray-400 capitalize mb-1">{icons[key]} {key}</p>
-                  <p className={`font-bold text-sm ${colors[key]}`}>{currencySymbol}{latest ? latest[key].toFixed(2) : '0.00'}</p>
-                  <p className={`text-xs mt-1 ${diff >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {diff >= 0 ? '▲' : '▼'} {currencySymbol}{Math.abs(diff).toFixed(2)} vs last month
-                  </p>
-                </div>
-              )
-            })}
+        <div className={cardCls}>
+          <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('trends')}>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">📈 6-Month Trends</h3>
+            {chevron('trends')}
           </div>
-        </>
-      ) : (
-        <div className="text-center py-8 text-gray-400">
-          <p className="text-4xl mb-2">📈</p>
-          <p className="text-sm">Not enough data yet. Keep tracking!</p>
+          {!collapsed['trends'] && (
+            <div className="mt-4">
+              {trendsData.length > 0 ? (
+                <>
+                  <p className="text-gray-400 text-xs mb-4">Your income, spending and balance over the last 6 months</p>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={trendsData}>
+                      <XAxis dataKey="label" stroke={dark ? '#9CA3AF' : '#6B7280'} tick={{ fontSize: 11 }} />
+                      <YAxis stroke={dark ? '#9CA3AF' : '#6B7280'} tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v) => `${currencySymbol}${v.toFixed(2)}`} />
+                      <Legend />
+                      <Line type="monotone" dataKey="income" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} name="Income" />
+                      <Line type="monotone" dataKey="spending" stroke="#EF4444" strokeWidth={2} dot={{ r: 4 }} name="Spending" />
+                      <Line type="monotone" dataKey="balance" stroke="#4F46E5" strokeWidth={2} dot={{ r: 4 }} name="Balance" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="grid grid-cols-3 gap-3 mt-4">
+                    {['income', 'spending', 'balance'].map((key, i) => {
+                      const colors = { income: 'text-green-600', spending: 'text-red-500', balance: 'text-indigo-600' }
+                      const icons = { income: '↑', spending: '↓', balance: '=' }
+                      const latest = trendsData[trendsData.length - 1]
+                      const prev = trendsData[trendsData.length - 2]
+                      const diff = latest && prev ? latest[key] - prev[key] : 0
+                      return (
+                        <div key={i} className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 text-center">
+                          <p className="text-xs text-gray-400 capitalize mb-1">{icons[key]} {key}</p>
+                          <p className={`font-bold text-sm ${colors[key]}`}>{currencySymbol}{latest ? latest[key].toFixed(2) : '0.00'}</p>
+                          <p className={`text-xs mt-1 ${diff >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {diff >= 0 ? '▲' : '▼'} {currencySymbol}{Math.abs(diff).toFixed(2)} vs last month
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-4xl mb-2">📈</p>
+                  <p className="text-sm">Not enough data yet. Keep tracking!</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  )}
-</div>
- </div>
-
+ 
         {/* Expenses List */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
           <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('expenselist')}>
@@ -760,7 +783,7 @@ const handleDelete = (id) => {
         </div>
       </div>
 
-         <footer className="text-center py-6 text-gray-400 text-sm mt-8">
+      <footer className="text-center py-6 text-gray-400 text-sm mt-8">
         <p>© 2026 <span className="text-indigo-600 font-semibold">Spendly</span> — Track smarter, spend better 💸</p>
       </footer>
     </div>
