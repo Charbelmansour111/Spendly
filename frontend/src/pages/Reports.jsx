@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 import jsPDF from 'jspdf'
-import 'jspdf-autotable' // Fix: Import as side-effect to extend jsPDF prototype
+import autoTable from 'jspdf-autotable'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
@@ -93,34 +93,42 @@ export default function Reports() {
     return acc
   }, [])
 
-  const exportPDF = () => {
-    const doc = new jsPDF()
-    doc.setFontSize(24); doc.setTextColor(79, 70, 229); doc.text('Spendly', 14, 20)
-    doc.setFontSize(11); doc.setTextColor(100, 100, 100)
-    doc.text(`Report for: ${user?.name || 'User'}`, 14, 30); doc.text(`Period: ${monthName}`, 14, 37); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 44)
-    doc.setFontSize(14); doc.setTextColor(0, 0, 0)
-    doc.text(`Total Income: ${currencySymbol}${totalIncome.toFixed(2)}`, 14, 57)
-    doc.text(`Total Spent: ${currencySymbol}${total.toFixed(2)}`, 14, 65)
-    doc.text(`Balance: ${currencySymbol}${balance.toFixed(2)}`, 14, 73)
-    
-    // Fix: Use doc.autoTable instead of autoTable(doc, ...)
-    doc.autoTable({ 
-      startY: 87, 
-      head: [['Category', 'Amount', '%']], 
-      body: categoryData.map(c => [c.name, `${currencySymbol}${c.value.toFixed(2)}`, total > 0 ? `${((c.value / total) * 100).toFixed(0)}%` : '0%']), 
-      headStyles: { fillColor: [79, 70, 229] } 
-    })
-    
-    doc.autoTable({ 
-      startY: doc.lastAutoTable.finalY + 15, 
-      head: [['Date', 'Category', 'Description', 'Amount']], 
-      body: monthExpenses.map(e => [e.date?.split('T')[0], e.category, e.description || '-', `${currencySymbol}${parseFloat(e.amount).toFixed(2)}`]), 
-      headStyles: { fillColor: [79, 70, 229] } 
-    })
-    
-    doc.save(`spendly-${monthName.replace(' ', '-')}.pdf`)
-    showToast('📄 PDF downloaded!')
-  }
+ const exportPDF = () => {
+  const doc = new jsPDF()
+  doc.setFontSize(24); doc.setTextColor(79, 70, 229); doc.text('Spendly', 14, 20)
+  doc.setFontSize(11); doc.setTextColor(100, 100, 100)
+  doc.text(`Report for: ${user?.name || 'User'}`, 14, 30)
+  doc.text(`Period: ${monthName}`, 14, 37)
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 44)
+  doc.setFontSize(14); doc.setTextColor(0, 0, 0)
+  doc.text(`Total Income: ${currencySymbol}${totalIncome.toFixed(2)}`, 14, 57)
+  doc.text(`Total Spent: ${currencySymbol}${total.toFixed(2)}`, 14, 65)
+  doc.text(`Balance: ${currencySymbol}${balance.toFixed(2)}`, 14, 73)
+  autoTable(doc, {
+    startY: 87,
+    head: [['Category', 'Amount', '%']],
+    body: categoryData.map(c => [
+      c.name,
+      `${currencySymbol}${c.value.toFixed(2)}`,
+      total > 0 ? `${((c.value / total) * 100).toFixed(0)}%` : '0%'
+    ]),
+    headStyles: { fillColor: [79, 70, 229] }
+  })
+  const firstTableEnd = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : 120
+  autoTable(doc, {
+    startY: firstTableEnd,
+    head: [['Date', 'Category', 'Description', 'Amount']],
+    body: monthExpenses.map(e => [
+      e.date?.split('T')[0],
+      e.category,
+      e.description || '-',
+      `${currencySymbol}${parseFloat(e.amount).toFixed(2)}`
+    ]),
+    headStyles: { fillColor: [79, 70, 229] }
+  })
+  doc.save(`spendly-${monthName.replace(' ', '-')}.pdf`)
+  showToast('📄 PDF downloaded!')
+}
 
   const exportCSV = () => {
     const rows = [['SUMMARY'], ['Period', monthName], ['Total Income', `${currencySymbol}${totalIncome.toFixed(2)}`], ['Total Spent', `${currencySymbol}${total.toFixed(2)}`], ['Balance', `${currencySymbol}${balance.toFixed(2)}`], [], ['EXPENSES'], ['Date', 'Category', 'Description', 'Amount']]
