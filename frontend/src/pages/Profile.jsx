@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import API from '../utils/api'
+import Layout from '../components/Layout'
 import { useDarkMode } from '../hooks/useDarkMode'
 
 const CURRENCIES = [
@@ -104,20 +105,8 @@ function Profile() {
     ? new Date(profile.bestMonth.year, profile.bestMonth.month - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' })
     : null
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Navbar */}
-      <nav className="bg-white dark:bg-gray-900 shadow-sm px-6 py-4 flex justify-between items-center">
-        <a href="/dashboard" className="text-2xl font-bold text-indigo-600">Spendly</a>
-        <div className="flex items-center gap-4">
-          <button onClick={toggleDark} className="text-xl hover:scale-110 transition" title="Toggle dark mode">
-            {dark ? '☀️' : '🌙'}
-          </button>
-          <a href="/dashboard" className="text-gray-500 dark:text-gray-400 text-xl hover:text-indigo-600 transition">🏠</a>
-          <a href="/profile" className="text-gray-500 dark:text-gray-400 text-xl hover:text-indigo-600 transition">👤</a>
-          <button onClick={handleLogout} className="bg-red-50 dark:bg-red-900/30 text-red-500 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition">Logout</button>
-        </div>
-      </nav>
+ return (
+    <Layout>
 
       <div className="max-w-2xl mx-auto px-4 py-8">
 
@@ -314,10 +303,10 @@ function Profile() {
         </div>
       </div>
 
-      <footer className="text-center py-6 text-gray-400 text-sm mt-8">
+            <footer className="text-center py-6 text-gray-400 text-sm mt-8">
         <p>© 2026 <span className="text-indigo-600 font-semibold">Spendly</span> — Track smarter, spend better 💸</p>
       </footer>
-    </div>
+    </Layout>
   )
 }
 
