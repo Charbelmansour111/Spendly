@@ -15,10 +15,12 @@ const verifyToken = (req, res, next) => {
 };
 
 router.post('/scan', verifyToken, async (req, res) => {
+  console.log('Receipt scan called, imageBase64 length:', req.body?.imageBase64?.length, 'mimeType:', req.body?.mimeType)
   try {
     const { imageBase64, mimeType } = req.body;
     if (!imageBase64) return res.status(400).json({ message: 'No image provided' });
 
+    console.log('Calling Gemini API...')
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
@@ -49,16 +51,24 @@ If you cannot read the image, still return your best guess.`
       }
     );
 
+    console.log('Gemini response status:', response.status)
     const data = await response.json();
+    console.log('Gemini response data:', JSON.stringify(data).substring(0, 500))
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if (!text) return res.status(500).json({ message: 'Could not read receipt' });
+    if (!text) {
+      console.log('No text in response, full data:', JSON.stringify(data))
+      return res.status(500).json({ message: 'Could not read receipt' });
+    }
 
     const clean = text.replace(/```json|```/g, '').trim();
+    console.log('Cleaned text:', clean)
     const parsed = JSON.parse(clean);
     res.json(parsed);
   } catch (error) {
-    console.error('Receipt scan error:', error);
-    res.status(500).json({ message: 'Error scanning receipt' });
+    console.error('Receipt scan error message:', error.message)
+    console.error('Receipt scan error stack:', error.stack)
+    res.status(500).json({ message: error.message || 'Error scanning receipt' });
   }
 });
 
