@@ -90,7 +90,7 @@ function Dashboard() {
   const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear()
   
   const monthName = new Date(selectedYear, selectedMonth, 1).toLocaleString('default', { month: 'long', year: 'numeric' })
-  const showToast = (message, type = 'success') => setToast({ message, type })
+  const showToast = useCallback((message, type = 'success') => setToast({ message, type }), [])
 
   // Fix: Load localStorage data on mount
   useEffect(() => {
@@ -175,7 +175,7 @@ function Dashboard() {
       API.post('/income/apply-recurring', { month: selectedMonth + 1, year: selectedYear }, { headers: { Authorization: `Bearer ${token}` } })
         .then(res => { if (res.data.added > 0) { fetchIncome(); showToast(`🔁 ${res.data.added} recurring income${res.data.added > 1 ? 's' : ''} added for ${monthName}!`, 'warning') } }).catch(() => {})
     }
-  }, [selectedMonth, selectedYear, isCurrentMonth, fetchIncome, fetchExpenses, monthName, showToast])
+ }, [selectedMonth, selectedYear, isCurrentMonth, fetchIncome, fetchExpenses, monthName])
 
   const markNotificationsRead = async () => {
     try {
