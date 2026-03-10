@@ -10,6 +10,7 @@ const budgetRoutes = require('./routes/budgets');
 const savingsRoutes = require('./routes/savings');
 const incomeRoutes = require('./routes/income'); 
 const alertsRouter = require('./routes/alerts')
+const receiptsRouter = require('./routes/receipts');
 const notificationsRouter = require('./routes/notifications');
 
 const app = express();
@@ -24,6 +25,7 @@ app.use('/api/budgets', budgetRoutes);
 app.use('/api/savings', savingsRoutes);
 app.use('/api/income', incomeRoutes); 
 app.use('/api/alerts', alertsRouter);
+app.use('/api/receipts', receiptsRouter);
 app.use('/api/notifications', notificationsRouter);
 
 app.get('/', (req, res) => {
