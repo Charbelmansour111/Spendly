@@ -27,11 +27,15 @@ function ReceiptScanner({ onScanComplete }) {
         reader.readAsDataURL(file)
       })
 
+      console.log('Sending to backend, base64 size:', base64.length, 'mimeType:', file.type)
+
       const token = localStorage.getItem('token')
       const res = await API.post('/receipts/scan',
         { imageBase64: base64, mimeType: file.type },
         { headers: { Authorization: `Bearer ${token}` } }
       )
+
+      console.log('Backend response:', res.data)
 
       setExtracted({
         amount: res.data.amount || '',
@@ -39,7 +43,8 @@ function ReceiptScanner({ onScanComplete }) {
         category: CATEGORIES.includes(res.data.category) ? res.data.category : 'Other',
         date: res.data.date || new Date().toISOString().split('T')[0]
       })
-    } catch {
+    } catch (err) {
+      console.log('Scan error:', err.response?.data || err.message || err)
       setError('Could not read receipt. Please try a clearer photo.')
     }
     setScanning(false)
