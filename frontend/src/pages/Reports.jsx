@@ -82,10 +82,6 @@ const monthExpenses = expenses.filter(e => {
   return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear
 })
 
-console.log('All expenses:', expenses)
-console.log('Month expenses:', monthExpenses)
-console.log('Selected:', selectedMonth, selectedYear)
-
   const total = monthExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
   const totalIncome = income.reduce((sum, i) => sum + parseFloat(i.amount), 0)
   const balance = totalIncome - total
