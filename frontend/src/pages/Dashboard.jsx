@@ -560,10 +560,17 @@ return (
                     </form>
                   </>
                 ) : (
-                  <div className="flex flex-col items-center justify-center text-center py-6">
-                    <p className="text-4xl mb-3">📅</p>
-                    <p className="text-gray-400 text-sm mt-1">You can't add expenses to a past month.</p>
-                  </div>
+                  <div className="flex flex-col items-center justify-center text-center py-10">
+  <svg viewBox="0 0 120 120" className="w-28 h-28 mx-auto mb-4" fill="none">
+    <circle cx="60" cy="60" r="50" stroke="#E0E7FF" strokeWidth="8" />
+    <path d="M60 60 L60 15" stroke="#C7D2FE" strokeWidth="6" strokeLinecap="round"/>
+    <path d="M60 60 L98 80" stroke="#A5B4FC" strokeWidth="6" strokeLinecap="round"/>
+    <path d="M60 60 L30 95" stroke="#818CF8" strokeWidth="6" strokeLinecap="round"/>
+    <circle cx="60" cy="60" r="8" fill="#4F46E5"/>
+  </svg>
+  <p className="text-gray-500 font-semibold">No spending data yet</p>
+  <p className="text-gray-400 text-sm mt-1">Add your first expense to see the chart</p>
+</div>
                 )}
               </div>
             )}
@@ -618,7 +625,19 @@ return (
                     <Bar dataKey="value" fill="#4F46E5" radius={[5, 5, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-              ) : <p className="text-gray-400 text-sm mt-2">No expenses for {monthName} yet.</p>}
+             ) : (
+  <div className="flex flex-col items-center justify-center text-center py-8">
+    <svg viewBox="0 0 120 80" className="w-32 h-20 mx-auto mb-3" fill="none">
+      <rect x="10" y="50" width="20" height="25" rx="4" fill="#E0E7FF"/>
+      <rect x="40" y="35" width="20" height="40" rx="4" fill="#C7D2FE"/>
+      <rect x="70" y="20" width="20" height="55" rx="4" fill="#A5B4FC"/>
+      <rect x="100" y="40" width="20" height="35" rx="4" fill="#818CF8"/>
+      <line x1="5" y1="75" x2="125" y2="75" stroke="#E5E7EB" strokeWidth="2"/>
+    </svg>
+    <p className="text-gray-500 font-semibold">No data to display</p>
+    <p className="text-gray-400 text-sm mt-1">Expenses will appear here once added</p>
+  </div>
+)}
             </div>
           )}
         </div>
@@ -702,10 +721,15 @@ return (
                   </div>
                 </>
               ) : (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="text-4xl mb-2">📈</p>
-                  <p className="text-sm">Not enough data yet. Keep tracking!</p>
-                </div>
+                <div className="flex flex-col items-center justify-center text-center py-10">
+  <svg viewBox="0 0 120 80" className="w-32 h-20 mx-auto mb-3" fill="none">
+    <polyline points="10,65 30,55 50,60 70,35 90,40 110,20" stroke="#E0E7FF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="10,70 30,65 50,68 70,50 90,55 110,40" stroke="#C7D2FE" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    {[10,30,50,70,90,110].map((x,i) => <circle key={i} cx={x} cy={[65,55,60,35,40,20][i]} r="4" fill="#4F46E5" opacity="0.3"/>)}
+  </svg>
+  <p className="text-gray-500 font-semibold">Not enough data yet</p>
+  <p className="text-gray-400 text-sm mt-1">Keep tracking to unlock your 6-month trends</p>
+</div>
               )}
             </div>
           )}
@@ -732,10 +756,24 @@ return (
                 <input type="text" placeholder="🔍 Search by description or category..." value={search} onChange={e => setSearch(e.target.value)} className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
               {filteredExpenses.length === 0 ? (
-                <div className="text-center py-10 text-gray-400">
-                  <p className="text-4xl mb-2">💸</p>
-                  <p>{search ? 'No expenses match your search.' : isCurrentMonth ? 'No expenses yet. Add your first one!' : `No expenses found for ${monthName}.`}</p>
-                </div>
+               <div className="flex flex-col items-center justify-center text-center py-12">
+  <svg viewBox="0 0 120 120" className="w-28 h-28 mx-auto mb-4" fill="none">
+    <rect x="20" y="15" width="80" height="95" rx="10" fill="#F5F3FF" stroke="#E0E7FF" strokeWidth="2"/>
+    <line x1="35" y1="40" x2="85" y2="40" stroke="#C7D2FE" strokeWidth="3" strokeLinecap="round"/>
+    <line x1="35" y1="55" x2="75" y2="55" stroke="#DDD6FE" strokeWidth="3" strokeLinecap="round"/>
+    <line x1="35" y1="70" x2="80" y2="70" stroke="#DDD6FE" strokeWidth="3" strokeLinecap="round"/>
+    <line x1="35" y1="85" x2="65" y2="85" stroke="#EDE9FE" strokeWidth="3" strokeLinecap="round"/>
+    <circle cx="88" cy="88" r="18" fill="#4F46E5"/>
+    <line x1="88" y1="81" x2="88" y2="95" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+    <line x1="81" y1="88" x2="95" y2="88" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+  </svg>
+  <p className="text-gray-500 font-semibold text-base">
+    {search ? 'No matching expenses' : isCurrentMonth ? 'No expenses yet' : `Nothing in ${monthName}`}
+  </p>
+  <p className="text-gray-400 text-sm mt-1">
+    {search ? 'Try a different search term' : isCurrentMonth ? 'Add your first expense above!' : 'No expenses were recorded this month'}
+  </p>
+</div>
               ) : (
                 <div className="space-y-3">
                   {filteredExpenses.map(expense => (
