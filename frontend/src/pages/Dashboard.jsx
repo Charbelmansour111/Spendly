@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react'
 import API from '../utils/api'
 import ReceiptScanner from '../components/ReceiptScanner'
 import { useDarkMode } from '../hooks/useDarkMode'
+import { DashboardSkeleton } from '../components/Skeleton'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, LineChart, Line } from 'recharts'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
@@ -81,8 +82,9 @@ function Dashboard() {
   const [trendsData, setTrendsData] = useState([])
   
   // Fix: Initialize state safely for SSR
-  const [collapsed, setCollapsed] = useState({})
-  const [currencySymbol, setCurrencySymbol] = useState('$')
+const [collapsed, setCollapsed] = useState({})
+const [currencySymbol, setCurrencySymbol] = useState('$')
+const [loading, setLoading] = useState(true)
 
   const today = new Date()
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
@@ -152,15 +154,12 @@ function Dashboard() {
   }, [])
 
   // Fix: Main data fetching effect
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) return
-    fetchExpenses()
-    fetchBudgets()
-    fetchSavingsGoals()
-    fetchTrends()
-    fetchNotifications()
-  }, [fetchExpenses, fetchBudgets, fetchSavingsGoals, fetchTrends, fetchNotifications])
+ useEffect(() => {
+  const token = localStorage.getItem('token')
+  if (!token) return
+  Promise.all([fetchExpenses(), fetchBudgets(), fetchSavingsGoals(), fetchTrends(), fetchNotifications()])
+    .finally(() => setLoading(false))
+}, [fetchExpenses, fetchBudgets, fetchSavingsGoals, fetchTrends, fetchNotifications])
 
   // Fix: Month change effect
   useEffect(() => {
@@ -404,7 +403,15 @@ function Dashboard() {
   const cardCls = "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 mb-6"
   const chevron = (key) => <span className={`text-gray-400 dark:text-gray-500 text-xs transition-transform duration-200 inline-block ${collapsed[key] ? '-rotate-90' : ''}`}>▼</span>
 
-  return (
+if (loading) return (
+  <Layout unreadCount={0}>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <DashboardSkeleton />
+    </div>
+  </Layout>
+)
+
+return (
     <Layout unreadCount={notifications.filter(n => !n.is_read).length} onBellClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markNotificationsRead() }}>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
