@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import API from '../utils/api'
 import Layout from '../components/Layout'
 import { useDarkMode } from '../hooks/useDarkMode'
+import { ProfileSkeleton } from '../components/Skeleton'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -93,10 +94,12 @@ function Profile() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-      <p className="text-gray-400">Loading...</p>
+  <Layout>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <ProfileSkeleton />
     </div>
-  )
+  </Layout>
+)
 
   const balance = profile.totalIncome - profile.totalExpenses
   const memberSince = new Date(profile.user.created_at).toLocaleDateString('default', { month: 'long', year: 'numeric' })
