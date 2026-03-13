@@ -82,6 +82,31 @@ function Landing() {
         </div>
       )}
 
+      {/* iOS Install Instructions */}
+<div className="max-w-4xl mx-auto px-6 mb-8">
+  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <h3 className="font-bold text-gray-800 text-lg mb-3">📱 Install on iPhone / iPad</h3>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <span className="bg-indigo-100 text-indigo-600 w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">1</span>
+        <p className="text-gray-600 text-sm">Open this page in <strong>Safari</strong> browser</p>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="bg-indigo-100 text-indigo-600 w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">2</span>
+        <p className="text-gray-600 text-sm">Tap the <strong>Share button</strong> at the bottom of Safari (the box with arrow pointing up)</p>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="bg-indigo-100 text-indigo-600 w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">3</span>
+        <p className="text-gray-600 text-sm">Scroll down and tap <strong>"Add to Home Screen"</strong></p>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="bg-indigo-100 text-indigo-600 w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">4</span>
+        <p className="text-gray-600 text-sm">Tap <strong>"Add"</strong> — Spendly will appear on your home screen!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
       {/* Features */}
       <div className="max-w-5xl mx-auto px-6 pb-24">
         <h2 className="text-3xl font-bold text-center text-gray-800 dark:text-white mb-12">Everything you need to manage your money</h2>
