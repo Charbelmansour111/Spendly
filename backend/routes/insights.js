@@ -68,7 +68,7 @@ Rules:
 - Keep responses under 150 words unless they ask for detail
 `;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const chat = model.startChat({
       history: [
@@ -124,7 +124,7 @@ Total Spending: $${total.toFixed(2)}
 Categories: ${categoryBreakdown}
 Transactions: ${expenses.rows.length}`;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     const result = await model.generateContent(prompt);
     res.json({ insight: result.response.text() });
   } catch (error) {
