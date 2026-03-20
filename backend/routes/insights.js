@@ -2,9 +2,6 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const jwt = require('jsonwebtoken');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const verifyToken = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -16,6 +13,26 @@ const verifyToken = (req, res, next) => {
   } catch {
     res.status(401).json({ message: 'Invalid token' });
   }
+};
+
+const callAI = async (messages) => {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://spendly-gules.vercel.app',
+      'X-Title': 'Spendly'
+    },
+    body: JSON.stringify({
+      model: 'deepseek/deepseek-r1:free',
+      messages,
+      max_tokens: 300
+    })
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error?.message || 'AI error');
+  return data.choices[0].message.content;
 };
 
 router.post('/chat', verifyToken, async (req, res) => {
@@ -46,9 +63,10 @@ router.post('/chat', verifyToken, async (req, res) => {
       .map(([cat, amt]) => `${cat}: $${amt.toFixed(2)}`)
       .join(', ');
 
-    const systemContext = `
-You are Spendly AI, a friendly and knowledgeable personal finance assistant. 
-You have access to the user's real financial data and can answer any question about their finances.
+    const systemMessage = {
+      role: 'system',
+      content: `You are Spendly AI, a friendly personal finance assistant.
+You have access to the user's real financial data.
 
 User's Financial Data:
 - Total Income: $${totalIncome.toFixed(2)}
@@ -61,35 +79,22 @@ User's Financial Data:
 Rules:
 - Be friendly, short, and practical
 - Use emojis naturally
-- Use **bold** for important numbers or key points
+- Use **bold** for important numbers
 - Answer ONLY finance related questions
-- If asked something unrelated to finance, politely redirect to finance topics
 - Reference their actual data when relevant
-- Keep responses under 150 words unless they ask for detail
-`;
+- Keep responses under 150 words`
+    };
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const messages = [
+      systemMessage,
+      ...(history || []).map(msg => ({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: msg.content
+      })),
+      { role: 'user', content: message }
+    ];
 
-    const chat = model.startChat({
-      history: [
-        {
-          role: 'user',
-          parts: [{ text: systemContext }]
-        },
-        {
-          role: 'model',
-          parts: [{ text: 'Understood! I am Spendly AI, ready to help with personalized financial advice based on your real spending data.' }]
-        },
-        ...(history || []).map(msg => ({
-          role: msg.role === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.content }]
-        }))
-      ]
-    });
-
-    const result = await chat.sendMessage(message);
-    const reply = result.response.text();
-
+    const reply = await callAI(messages);
     res.json({ reply });
 
   } catch (error) {
@@ -98,7 +103,6 @@ Rules:
   }
 });
 
-// Keep old route for backward compatibility
 router.get('/', verifyToken, async (req, res) => {
   try {
     const expenses = await pool.query(
@@ -118,15 +122,20 @@ router.get('/', verifyToken, async (req, res) => {
       .map(([cat, amt]) => `${cat}: $${amt.toFixed(2)} (${((amt / total) * 100).toFixed(0)}%)`)
       .join(', ');
 
-    const prompt = `You are a friendly personal finance advisor. Analyze this spending data and give exactly 4 short practical insights. Start each with an emoji. Use **bold** for key numbers. Keep each to 2 sentences max. Speak directly to the user.
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are a friendly personal finance advisor. Give exactly 4 short practical insights. Start each with an emoji. Use **bold** for key numbers. Keep each to 2 sentences max.'
+      },
+      {
+        role: 'user',
+        content: `Analyze my spending: Total: $${total.toFixed(2)}, Categories: ${categoryBreakdown}, Transactions: ${expenses.rows.length}`
+      }
+    ];
 
-Total Spending: $${total.toFixed(2)}
-Categories: ${categoryBreakdown}
-Transactions: ${expenses.rows.length}`;
+    const insight = await callAI(messages);
+    res.json({ insight });
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent(prompt);
-    res.json({ insight: result.response.text() });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Error generating insights' });
