@@ -283,4 +283,74 @@ router.get('/quote', verifyToken, async (req, res) => {
   }
 });
 
+router.post('/mood-response', verifyToken, async (req, res) => {
+  try {
+    const { mood } = req.body
+
+    const expenses = await pool.query(
+      'SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 20',
+      [req.userId]
+    )
+    const income = await pool.query(
+      'SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
+      [req.userId]
+    )
+
+    const total = expenses.rows.reduce((sum, e) => sum + parseFloat(e.amount), 0)
+    const totalIncome = income.rows.reduce((sum, i) => sum + parseFloat(i.amount), 0)
+    const balance = totalIncome - total
+
+    const moodMessages = {
+      great: 'The user feels GREAT about their finances today.',
+      good: 'The user feels GOOD about their finances today.',
+      okay: 'The user feels OKAY about their finances today.',
+      worried: 'The user feels WORRIED about their finances today.',
+      stressed: 'The user feels STRESSED about their finances today.',
+    }
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 80,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a friendly and empathetic financial wellness coach. 
+Respond in 1-2 short sentences only.
+Be warm, personal, and reference their actual financial situation.
+Use one emoji at the start.
+Never use bullet points.`
+          },
+          {
+            role: 'user',
+            content: `${moodMessages[mood]}
+Their financial data: Total spent: $${total.toFixed(2)}, Total income: $${totalIncome.toFixed(2)}, Balance: $${balance.toFixed(2)}.
+Give them a short warm personalized response based on their mood and finances.`
+          }
+        ]
+      })
+    })
+
+    const data = await response.json()
+    const message = data.choices[0].message.content.trim()
+    res.json({ message })
+
+  } catch (error) {
+    console.error(error)
+    const fallbacks = {
+      great: "🌟 That's amazing! Keep up the great financial habits!",
+      good: "😊 Great to hear! You're doing well, keep tracking!",
+      okay: "💪 That's okay! Small steps lead to big improvements.",
+      worried: "🤗 Don't worry! You're already ahead by tracking your finances.",
+      stressed: "💚 Take a breath! Awareness is the first step to financial freedom.",
+    }
+    res.json({ message: fallbacks[mood] || "💚 Keep going, you're doing great!" })
+  }
+})
+
 module.exports = router;

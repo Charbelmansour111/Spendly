@@ -46,6 +46,9 @@ export default function Wellness() {
   const [jokeLoading, setJokeLoading] = useState(false)
   const [quote, setQuote] = useState({ text: '', author: '' })
   const [quoteLoading, setQuoteLoading] = useState(false)
+  const [moodResponse, setMoodResponse] = useState('')
+  const [moodResponseLoading, setMoodResponseLoading] = useState(false)
+  const [selectedMood, setSelectedMood] = useState(null)
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
 
@@ -114,12 +117,20 @@ export default function Wellness() {
   }
 
   const saveMood = async (mood) => {
-    try {
-      const token = localStorage.getItem('token')
-      await API.post('/wellness/mood', { mood }, { headers: { Authorization: `Bearer ${token}` } })
-      fetchData()
-    } catch { console.log('Error saving mood') }
+  setSelectedMood(mood)
+  setMoodResponseLoading(true)
+  setMoodResponse('')
+  try {
+    const token = localStorage.getItem('token')
+    await API.post('/wellness/mood', { mood }, { headers: { Authorization: `Bearer ${token}` } })
+    const res = await API.post('/wellness/mood-response', { mood }, { headers: { Authorization: `Bearer ${token}` } })
+    setMoodResponse(res.data.message)
+    fetchData()
+  } catch { 
+    setMoodResponse("💚 Thanks for sharing! Keep tracking your finances.")
   }
+  setMoodResponseLoading(false)
+}
 
   const handleVisionUpload = async (e) => {
     const file = e.target.files[0]
@@ -261,24 +272,27 @@ export default function Wellness() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 
           {/* Mood Tracker */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">🎨 How do you feel today?</h3>
-            <p className="text-xs text-gray-400 mb-4">About your finances</p>
-            <div className="flex justify-between">
-              {moods.map((m) => (
-                <button key={m.value} onClick={() => saveMood(m.value)}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${data?.mood?.mood === m.value ? 'bg-indigo-100 dark:bg-indigo-900/30 scale-110' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                  <span className="text-2xl">{m.emoji}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{m.label}</span>
-                </button>
-              ))}
-            </div>
-            {data?.mood && (
-              <p className="text-xs text-center text-indigo-500 mt-3">
-                Today: {moods.find(m => m.value === data.mood.mood)?.emoji} {moods.find(m => m.value === data.mood.mood)?.label}
-              </p>
-            )}
-          </div>
+<div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">🎨 How do you feel today?</h3>
+  <p className="text-xs text-gray-400 mb-4">About your finances</p>
+  <div className="flex justify-between mb-4">
+    {moods.map((m) => (
+      <button key={m.value} onClick={() => saveMood(m.value)}
+        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${selectedMood === m.value || data?.mood?.mood === m.value ? 'bg-indigo-100 dark:bg-indigo-900/30 scale-110' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+        <span className="text-2xl">{m.emoji}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{m.label}</span>
+      </button>
+    ))}
+  </div>
+  {moodResponseLoading && (
+    <div className="animate-pulse h-8 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl" />
+  )}
+  {moodResponse && !moodResponseLoading && (
+    <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl px-4 py-3">
+      <p className="text-sm text-indigo-700 dark:text-indigo-300 leading-relaxed">{moodResponse}</p>
+    </div>
+  )}
+</div>
 
           {/* AI Joke */}
           <div className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-sm p-6">
