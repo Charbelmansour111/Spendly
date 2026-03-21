@@ -16,16 +16,14 @@ const verifyToken = (req, res, next) => {
 };
 
 const callAI = async (messages) => {
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://spendly-gules.vercel.app',
-      'X-Title': 'Spendly'
     },
     body: JSON.stringify({
-      model: 'deepseek/deepseek-r1:free',
+      model: 'llama-3.3-70b-versatile',
       messages,
       max_tokens: 300
     })
