@@ -11,6 +11,7 @@ import Savings from './pages/Savings'
 import Alerts from './pages/Alerts'
 import Reports from './pages/Reports'
 import Insights from './pages/Insights'
+import Wellness from './pages/Wellness'
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
         <Route path="/alerts" element={<Alerts />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/insights" element={<Insights />} />
+        <Route path="/wellness" element={<Wellness />} />
       </Routes>
     </BrowserRouter>
   )

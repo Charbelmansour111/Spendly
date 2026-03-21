@@ -7,7 +7,8 @@ const navItems = [
   { label: 'Savings Goals', icon: '🏦', href: '/savings' },
   { label: 'Reports', icon: '📄', href: '/reports' },
   { label: 'AI Insights', icon: '🤖', href: '/insights' },
-  { label: 'Profile', icon: '👤', href: '/profile' },
+{ label: 'My Wellness', icon: '💚', href: '/wellness' },
+{ label: 'Profile', icon: '👤', href: '/profile' },
 ]
 
 export default function Layout({ children, notifications = [], onBellClick, unreadCount = 0 }) {
