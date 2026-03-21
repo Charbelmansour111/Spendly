@@ -3,7 +3,7 @@ import Layout from '../components/Layout'
 import API from '../utils/api'
 import MoneyDefender from '../components/MoneyDefender'
 
-const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
+const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: '\u062f.\u0625', SAR: '\ufdfc', CAD: 'C$', AUD: 'A$' }
 
 function ScoreRing({ score }) {
   const radius = 54
@@ -11,7 +11,6 @@ function ScoreRing({ score }) {
   const offset = circumference - (score / 100) * circumference
   const color = score >= 80 ? '#10B981' : score >= 60 ? '#F59E0B' : score >= 40 ? '#F97316' : '#EF4444'
   const grade = score >= 90 ? 'A+' : score >= 80 ? 'A' : score >= 70 ? 'B' : score >= 60 ? 'C' : score >= 40 ? 'D' : 'F'
-
   return (
     <div className="flex flex-col items-center">
       <div className="relative w-36 h-36">
@@ -50,10 +49,10 @@ export default function Wellness() {
   const [moodResponse, setMoodResponse] = useState('')
   const [moodResponseLoading, setMoodResponseLoading] = useState(false)
   const [selectedMood, setSelectedMood] = useState(null)
+  const [showGame, setShowGame] = useState(false)
+  const [highScore] = useState(() => parseInt(localStorage.getItem('moneyDefenderHS') || '0'))
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
-  const [showGame, setShowGame] = useState(false)
-  const [highScore, setHighScore] = useState(() => parseInt(localStorage.getItem('zombieHighScore') || '0'))
 
   useEffect(() => {
     const storedCurrency = localStorage.getItem('currency') || 'USD'
@@ -66,7 +65,7 @@ export default function Wellness() {
       const token = localStorage.getItem('token')
       const res = await API.get('/wellness/joke', { headers: { Authorization: `Bearer ${token}` } })
       setJoke(res.data.joke)
-    } catch { setJoke("Why did the banker switch careers? He lost interest! 😂") }
+    } catch { setJoke("Why did the banker switch careers? He lost interest!") }
     setJokeLoading(false)
   }, [])
 
@@ -120,20 +119,20 @@ export default function Wellness() {
   }
 
   const saveMood = async (mood) => {
-  setSelectedMood(mood)
-  setMoodResponseLoading(true)
-  setMoodResponse('')
-  try {
-    const token = localStorage.getItem('token')
-    await API.post('/wellness/mood', { mood }, { headers: { Authorization: `Bearer ${token}` } })
-    const res = await API.post('/wellness/mood-response', { mood }, { headers: { Authorization: `Bearer ${token}` } })
-    setMoodResponse(res.data.message)
-    fetchData()
-  } catch { 
-    setMoodResponse("💚 Thanks for sharing! Keep tracking your finances.")
+    setSelectedMood(mood)
+    setMoodResponseLoading(true)
+    setMoodResponse('')
+    try {
+      const token = localStorage.getItem('token')
+      await API.post('/wellness/mood', { mood }, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await API.post('/wellness/mood-response', { mood }, { headers: { Authorization: `Bearer ${token}` } })
+      setMoodResponse(res.data.message)
+      fetchData()
+    } catch {
+      setMoodResponse("Thanks for sharing! Keep tracking your finances.")
+    }
+    setMoodResponseLoading(false)
   }
-  setMoodResponseLoading(false)
-}
 
   const handleVisionUpload = async (e) => {
     const file = e.target.files[0]
@@ -271,48 +270,48 @@ export default function Wellness() {
           )}
         </div>
 
-{/* Mini Game */}
-<div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 mb-6 border border-gray-700">
-  <div className="flex justify-between items-center">
-    <div>
-      <h3 className="text-white font-bold text-lg">💼 Money Defender</h3>
-      <p className="text-gray-400 text-sm mt-1">Collect money, reach the vault, defeat zombies!</p>
-      {highScore > 0 && <p className="text-yellow-400 text-xs mt-1">🏆 Your best: ${highScore}</p>}
-    </div>
-    <button onClick={() => setShowGame(true)}
-      className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2">
-      🎮 Play
-    </button>
-  </div>
-</div>
+        {/* Mini Game */}
+        <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 mb-6 border border-gray-700">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-white font-bold text-lg">💼 Money Defender</h3>
+              <p className="text-gray-400 text-sm mt-1">Collect money, reach the vault, defeat zombies!</p>
+              {highScore > 0 && <p className="text-yellow-400 text-xs mt-1">🏆 Best: ${highScore}</p>}
+            </div>
+            <button onClick={() => setShowGame(true)}
+              className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition">
+              🎮 Play
+            </button>
+          </div>
+        </div>
 
-{showGame && <MoneyDefender onClose={() => setShowGame(false)} />}
+        {showGame && <MoneyDefender onClose={() => setShowGame(false)} />}
 
         {/* Mood + Joke */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 
           {/* Mood Tracker */}
-<div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">🎨 How do you feel today?</h3>
-  <p className="text-xs text-gray-400 mb-4">About your finances</p>
-  <div className="flex justify-between mb-4">
-    {moods.map((m) => (
-      <button key={m.value} onClick={() => saveMood(m.value)}
-        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${selectedMood === m.value || data?.mood?.mood === m.value ? 'bg-indigo-100 dark:bg-indigo-900/30 scale-110' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-        <span className="text-2xl">{m.emoji}</span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">{m.label}</span>
-      </button>
-    ))}
-  </div>
-  {moodResponseLoading && (
-    <div className="animate-pulse h-8 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl" />
-  )}
-  {moodResponse && !moodResponseLoading && (
-    <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl px-4 py-3">
-      <p className="text-sm text-indigo-700 dark:text-indigo-300 leading-relaxed">{moodResponse}</p>
-    </div>
-  )}
-</div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">🎨 How do you feel today?</h3>
+            <p className="text-xs text-gray-400 mb-4">About your finances</p>
+            <div className="flex justify-between mb-4">
+              {moods.map((m) => (
+                <button key={m.value} onClick={() => saveMood(m.value)}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${selectedMood === m.value || data?.mood?.mood === m.value ? 'bg-indigo-100 dark:bg-indigo-900/30 scale-110' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                  <span className="text-2xl">{m.emoji}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{m.label}</span>
+                </button>
+              ))}
+            </div>
+            {moodResponseLoading && (
+              <div className="animate-pulse h-8 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl" />
+            )}
+            {moodResponse && !moodResponseLoading && (
+              <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl px-4 py-3">
+                <p className="text-sm text-indigo-700 dark:text-indigo-300 leading-relaxed">{moodResponse}</p>
+              </div>
+            )}
+          </div>
 
           {/* AI Joke */}
           <div className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-sm p-6">
@@ -389,7 +388,7 @@ export default function Wellness() {
         {/* Vision Board */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">📸 Vision Board</h3>
-          <p className="text-xs text-gray-400 mb-4">Upload an image of what you're saving for</p>
+          <p className="text-xs text-gray-400 mb-4">Upload an image of what you are saving for</p>
           <div className="flex flex-col md:flex-row gap-4 items-start">
             <div className="flex-1">
               <input type="text" placeholder="What are you saving for? (e.g. Dream vacation)"
@@ -411,7 +410,7 @@ export default function Wellness() {
         </div>
 
         <footer className="text-center py-6 text-gray-400 text-sm">
-          <p>© 2026 <span className="text-indigo-600 font-semibold">Spendly</span> — Track smarter, spend better 💸</p>
+          <p>2026 <span className="text-indigo-600 font-semibold">Spendly</span> — Track smarter, spend better</p>
         </footer>
 
       </div>
