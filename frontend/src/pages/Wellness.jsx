@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
-import ZombieGame from '../components/ZombieGame'
+import MoneyDefender from '../components/MoneyDefender'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 
@@ -275,9 +275,9 @@ export default function Wellness() {
 <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 mb-6 border border-gray-700">
   <div className="flex justify-between items-center">
     <div>
-      <h3 className="text-white font-bold text-lg">🧟 Money Defender</h3>
-      <p className="text-gray-400 text-sm mt-1">Feeling bored? Defend your wallet from spending zombies!</p>
-      {highScore > 0 && <p className="text-yellow-400 text-xs mt-1">🏆 Your best: {highScore}</p>}
+      <h3 className="text-white font-bold text-lg">💼 Money Defender</h3>
+      <p className="text-gray-400 text-sm mt-1">Collect money, reach the vault, defeat zombies!</p>
+      {highScore > 0 && <p className="text-yellow-400 text-xs mt-1">🏆 Your best: ${highScore}</p>}
     </div>
     <button onClick={() => setShowGame(true)}
       className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2">
@@ -286,7 +286,7 @@ export default function Wellness() {
   </div>
 </div>
 
-{showGame && <ZombieGame onClose={() => setShowGame(false)} />}
+{showGame && <MoneyDefender onClose={() => setShowGame(false)} />}
 
         {/* Mood + Joke */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
