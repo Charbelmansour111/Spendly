@@ -1,18 +1,18 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-require('./notifications');
 
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
 const insightRoutes = require('./routes/insights');
 const budgetRoutes = require('./routes/budgets');
 const savingsRoutes = require('./routes/savings');
-const incomeRoutes = require('./routes/income'); 
-const alertsRouter = require('./routes/alerts')
+const incomeRoutes = require('./routes/income');
+const alertsRouter = require('./routes/alerts');
 const receiptsRouter = require('./routes/receipts');
 const wellnessRoutes = require('./routes/wellness');
 const notificationsRouter = require('./routes/notifications');
+const profileRoutes = require('./routes/profile');
 
 const app = express();
 
@@ -25,24 +25,18 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/insights', insightRoutes);
 app.use('/api/budgets', budgetRoutes);
 app.use('/api/savings', savingsRoutes);
-app.use('/api/income', incomeRoutes); 
+app.use('/api/income', incomeRoutes);
 app.use('/api/alerts', alertsRouter);
 app.use('/api/receipts', receiptsRouter);
 app.use('/api/wellness', wellnessRoutes);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/profile', profileRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Spendly API is running' });
-});
-
-app.get('/test', (req, res) => {
-  res.json({ message: 'test works' });
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-const profileRoutes = require('./routes/profile');
-app.use('/api/profile', profileRoutes);
