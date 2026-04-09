@@ -631,16 +631,6 @@ function BudgetReflex({ onClose }) {
     </Shell>
   )
 }
-  return(
-    <Shell title="Coin Jumper" emoji="🪙" onClose={onClose} score={ui.score} hs={hs}>
-      <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'#1a237e'}}>
-        <canvas ref={cvRef} width={370} height={520} style={{maxWidth:'100%',maxHeight:'100%'}}/>
-      </div>
-      {ui.over&&<Over score={ui.score} hs={hs} onRestart={()=>{cancelAnimationFrame(rafRef.current);start()}} onExit={onClose} msg="Jump on 🏦🚗✈️ — avoid 💸💳!"/>}
-      <div style={{position:'absolute',bottom:6,left:0,right:0,textAlign:'center',fontSize:11,color:'rgba(255,255,255,0.35)'}}>← → or A/D to steer</div>
-    </Shell>
-  )
-}
 
 // ═══════════════════════════════════════════════════════════
 // GAME 6 — MONEY DEFENDER (colorful bg, shield+instakill drops at wave 3+)
