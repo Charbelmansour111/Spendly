@@ -3,9 +3,8 @@ const router = express.Router();
 const pool = require('../db');
 const authenticateToken = require('../middleware/auth');
 
-
 // GET all wellness data
-router.get('/', uthenticateToken, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const today = new Date();
     const month = today.getMonth() + 1;
@@ -22,7 +21,6 @@ router.get('/', uthenticateToken, async (req, res) => {
       pool.query('SELECT * FROM monthly_goals WHERE user_id = $1 AND month = $2 AND year = $3', [req.userId, month, year])
     ]);
 
-    // Calculate health score
     let score = 0;
     const breakdown = [];
 
@@ -117,19 +115,13 @@ router.get('/', uthenticateToken, async (req, res) => {
     if (balance > 0 && totalIncome > 0 && (balance / totalIncome) >= 0.2) achievements.push({ icon: '🌟', title: 'Smart Saver', desc: 'Saving 20%+ of income!' });
 
     res.json({
-      score,
-      breakdown,
-      streak,
-      achievements,
-      totalIncome,
-      totalSpent,
-      balance,
+      score, breakdown, streak, achievements,
+      totalIncome, totalSpent, balance,
       note: notes.rows[0] || null,
       mood: mood.rows[0] || null,
       vision: vision.rows[0] || null,
       monthlyGoal: goal.rows[0] || null,
-      month,
-      year
+      month, year
     });
 
   } catch (error) {
@@ -139,7 +131,7 @@ router.get('/', uthenticateToken, async (req, res) => {
 });
 
 // Save/update note
-router.post('/note', uthenticateToken, async (req, res) => {
+router.post('/note', authenticateToken, async (req, res) => {
   try {
     const { content } = req.body;
     const existing = await pool.query('SELECT * FROM wellness_notes WHERE user_id = $1', [req.userId]);
@@ -156,7 +148,7 @@ router.post('/note', uthenticateToken, async (req, res) => {
 });
 
 // Save mood
-router.post('/mood', uthenticateToken, async (req, res) => {
+router.post('/mood', authenticateToken, async (req, res) => {
   try {
     const { mood } = req.body;
     await pool.query(
@@ -171,7 +163,7 @@ router.post('/mood', uthenticateToken, async (req, res) => {
 });
 
 // Save monthly goal
-router.post('/goal', uthenticateToken, async (req, res) => {
+router.post('/goal', authenticateToken, async (req, res) => {
   try {
     const { goal } = req.body;
     const today = new Date();
@@ -188,8 +180,8 @@ router.post('/goal', uthenticateToken, async (req, res) => {
   }
 });
 
-// Save vision board image (base64)
-router.post('/vision', uthenticateToken, async (req, res) => {
+// Save vision board
+router.post('/vision', authenticateToken, async (req, res) => {
   try {
     const { title, image_url } = req.body;
     const existing = await pool.query('SELECT * FROM wellness_vision WHERE user_id = $1', [req.userId]);
@@ -206,7 +198,7 @@ router.post('/vision', uthenticateToken, async (req, res) => {
 });
 
 // Get AI joke
-router.get('/joke', uthenticateToken, async (req, res) => {
+router.get('/joke', authenticateToken, async (req, res) => {
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -218,14 +210,8 @@ router.get('/joke', uthenticateToken, async (req, res) => {
         model: 'llama-3.3-70b-versatile',
         max_tokens: 100,
         messages: [
-          {
-            role: 'system',
-            content: 'You are a comedian who specializes in finance and money jokes. Return ONLY the joke itself, no introduction, no explanation, no quotation marks. Just the joke in one or two sentences.'
-          },
-          {
-            role: 'user',
-            content: 'Tell me a funny, clever, and original joke about money, finance, budgeting, investing, or economics. Make it different every time.'
-          }
+          { role: 'system', content: 'You are a comedian who specializes in finance and money jokes. Return ONLY the joke itself, no introduction, no explanation, no quotation marks. Just the joke in one or two sentences.' },
+          { role: 'user', content: 'Tell me a funny, clever, and original joke about money, finance, budgeting, investing, or economics. Make it different every time.' }
         ]
       })
     });
@@ -239,7 +225,7 @@ router.get('/joke', uthenticateToken, async (req, res) => {
 });
 
 // Get AI quote
-router.get('/quote', uthenticateToken, async (req, res) => {
+router.get('/quote', authenticateToken, async (req, res) => {
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -251,14 +237,8 @@ router.get('/quote', uthenticateToken, async (req, res) => {
         model: 'llama-3.3-70b-versatile',
         max_tokens: 100,
         messages: [
-          {
-            role: 'system',
-            content: 'You are a curator of famous financial wisdom quotes. Return ONLY a JSON object with two fields: "text" (the quote) and "author" (who said it). No markdown, no explanation, just the raw JSON.'
-          },
-          {
-            role: 'user',
-            content: 'Give me a real, famous, inspiring quote about money, finance, wealth, saving, or investing from a well-known person. Make it different every time.'
-          }
+          { role: 'system', content: 'You are a curator of famous financial wisdom quotes. Return ONLY a JSON object with two fields: "text" (the quote) and "author" (who said it). No markdown, no explanation, just the raw JSON.' },
+          { role: 'user', content: 'Give me a real, famous, inspiring quote about money, finance, wealth, saving, or investing from a well-known person. Make it different every time.' }
         ]
       })
     });
@@ -272,31 +252,22 @@ router.get('/quote', uthenticateToken, async (req, res) => {
   }
 });
 
-router.post('/mood-response', uthenticateToken, async (req, res) => {
+// Mood response
+router.post('/mood-response', authenticateToken, async (req, res) => {
   try {
-    const { mood } = req.body
-
-    const expenses = await pool.query(
-      'SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 20',
-      [req.userId]
-    )
-    const income = await pool.query(
-      'SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
-      [req.userId]
-    )
-
-    const total = expenses.rows.reduce((sum, e) => sum + parseFloat(e.amount), 0)
-    const totalIncome = income.rows.reduce((sum, i) => sum + parseFloat(i.amount), 0)
-    const balance = totalIncome - total
-
+    const { mood } = req.body;
+    const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 20', [req.userId]);
+    const income = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5', [req.userId]);
+    const total = expenses.rows.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    const totalIncome = income.rows.reduce((sum, i) => sum + parseFloat(i.amount), 0);
+    const balance = totalIncome - total;
     const moodMessages = {
       great: 'The user feels GREAT about their finances today.',
       good: 'The user feels GOOD about their finances today.',
       okay: 'The user feels OKAY about their finances today.',
       worried: 'The user feels WORRIED about their finances today.',
       stressed: 'The user feels STRESSED about their finances today.',
-    }
-
+    };
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -307,39 +278,25 @@ router.post('/mood-response', uthenticateToken, async (req, res) => {
         model: 'llama-3.3-70b-versatile',
         max_tokens: 80,
         messages: [
-          {
-            role: 'system',
-            content: `You are a friendly and empathetic financial wellness coach. 
-Respond in 1-2 short sentences only.
-Be warm, personal, and reference their actual financial situation.
-Use one emoji at the start.
-Never use bullet points.`
-          },
-          {
-            role: 'user',
-            content: `${moodMessages[mood]}
-Their financial data: Total spent: $${total.toFixed(2)}, Total income: $${totalIncome.toFixed(2)}, Balance: $${balance.toFixed(2)}.
-Give them a short warm personalized response based on their mood and finances.`
-          }
+          { role: 'system', content: `You are a friendly and empathetic financial wellness coach. Respond in 1-2 short sentences only. Be warm, personal, and reference their actual financial situation. Use one emoji at the start. Never use bullet points.` },
+          { role: 'user', content: `${moodMessages[mood]} Their financial data: Total spent: $${total.toFixed(2)}, Total income: $${totalIncome.toFixed(2)}, Balance: $${balance.toFixed(2)}. Give them a short warm personalized response based on their mood and finances.` }
         ]
       })
-    })
-
-    const data = await response.json()
-    const message = data.choices[0].message.content.trim()
-    res.json({ message })
-
+    });
+    const data = await response.json();
+    const message = data.choices[0].message.content.trim();
+    res.json({ message });
   } catch (error) {
-    console.error(error)
+    console.error(error);
     const fallbacks = {
       great: "🌟 That's amazing! Keep up the great financial habits!",
       good: "😊 Great to hear! You're doing well, keep tracking!",
       okay: "💪 That's okay! Small steps lead to big improvements.",
       worried: "🤗 Don't worry! You're already ahead by tracking your finances.",
       stressed: "💚 Take a breath! Awareness is the first step to financial freedom.",
-    }
-    res.json({ message: fallbacks[mood] || "💚 Keep going, you're doing great!" })
+    };
+    res.json({ message: fallbacks[mood] || "💚 Keep going, you're doing great!" });
   }
-})
+});
 
 module.exports = router;
