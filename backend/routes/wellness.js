@@ -1,19 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
+const authenticateToken = require('../middleware/auth');
 
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ message: 'No token provided' });
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch {
-    res.status(401).json({ message: 'Invalid token' });
-  }
 
 // GET all wellness data
-router.get('/', verifyToken, async (req, res) => {
+router.get('/', uthenticateToken, async (req, res) => {
   try {
     const today = new Date();
     const month = today.getMonth() + 1;
@@ -147,7 +139,7 @@ router.get('/', verifyToken, async (req, res) => {
 });
 
 // Save/update note
-router.post('/note', verifyToken, async (req, res) => {
+router.post('/note', uthenticateToken, async (req, res) => {
   try {
     const { content } = req.body;
     const existing = await pool.query('SELECT * FROM wellness_notes WHERE user_id = $1', [req.userId]);
@@ -164,7 +156,7 @@ router.post('/note', verifyToken, async (req, res) => {
 });
 
 // Save mood
-router.post('/mood', verifyToken, async (req, res) => {
+router.post('/mood', uthenticateToken, async (req, res) => {
   try {
     const { mood } = req.body;
     await pool.query(
@@ -179,7 +171,7 @@ router.post('/mood', verifyToken, async (req, res) => {
 });
 
 // Save monthly goal
-router.post('/goal', verifyToken, async (req, res) => {
+router.post('/goal', uthenticateToken, async (req, res) => {
   try {
     const { goal } = req.body;
     const today = new Date();
@@ -197,7 +189,7 @@ router.post('/goal', verifyToken, async (req, res) => {
 });
 
 // Save vision board image (base64)
-router.post('/vision', verifyToken, async (req, res) => {
+router.post('/vision', uthenticateToken, async (req, res) => {
   try {
     const { title, image_url } = req.body;
     const existing = await pool.query('SELECT * FROM wellness_vision WHERE user_id = $1', [req.userId]);
@@ -214,7 +206,7 @@ router.post('/vision', verifyToken, async (req, res) => {
 });
 
 // Get AI joke
-router.get('/joke', verifyToken, async (req, res) => {
+router.get('/joke', uthenticateToken, async (req, res) => {
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -247,7 +239,7 @@ router.get('/joke', verifyToken, async (req, res) => {
 });
 
 // Get AI quote
-router.get('/quote', verifyToken, async (req, res) => {
+router.get('/quote', uthenticateToken, async (req, res) => {
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -280,7 +272,7 @@ router.get('/quote', verifyToken, async (req, res) => {
   }
 });
 
-router.post('/mood-response', verifyToken, async (req, res) => {
+router.post('/mood-response', uthenticateToken, async (req, res) => {
   try {
     const { mood } = req.body
 
