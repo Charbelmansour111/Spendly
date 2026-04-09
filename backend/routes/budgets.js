@@ -1,61 +1,32 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const jwt = require('jsonwebtoken');
+const authenticateToken = require('../middleware/auth');
 
-const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ message: 'No token provided' });
+router.get('/', authenticateToken, async (req, res) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch {
-    res.status(401).json({ message: 'Invalid token' });
-  }
-};
-
-// GET all budgets for user
-router.get('/', verifyToken, async (req, res) => {
-  try {
-    const budgets = await pool.query(
-      'SELECT * FROM budgets WHERE user_id = $1',
-      [req.userId]
-    );
+    const budgets = await pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]);
     res.json(budgets.rows);
-  } catch {
-    res.status(500).json({ message: 'Server error' });
-  }
+  } catch { res.status(500).json({ message: 'Server error' }) }
 });
 
-// SET budget for a category
-router.post('/', verifyToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const { category, amount } = req.body;
     const budget = await pool.query(
-      `INSERT INTO budgets (user_id, category, amount) 
-       VALUES ($1, $2, $3) 
-       ON CONFLICT (user_id, category) 
-       DO UPDATE SET amount = $3 
-       RETURNING *`,
+      `INSERT INTO budgets (user_id, category, amount) VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, category) DO UPDATE SET amount = $3 RETURNING *`,
       [req.userId, category, amount]
     );
     res.json(budget.rows[0]);
-  } catch {
-    res.status(500).json({ message: 'Server error' });
-  }
+  } catch { res.status(500).json({ message: 'Server error' }) }
 });
 
-router.delete('/:id', verifyToken, async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    await pool.query(
-      'DELETE FROM budgets WHERE id = $1 AND user_id = $2',
-      [req.params.id, req.userId]
-    )
-    res.json({ message: 'Budget deleted' })
-  } catch {
-    res.status(500).json({ message: 'Server error' })
-  }
-})
+    await pool.query('DELETE FROM budgets WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
+    res.json({ message: 'Budget deleted' });
+  } catch { res.status(500).json({ message: 'Server error' }) }
+});
 
 module.exports = router;

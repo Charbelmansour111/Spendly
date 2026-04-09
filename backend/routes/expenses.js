@@ -1,28 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const jwt = require('jsonwebtoken');
+const authenticateToken = require('../middleware/auth');
 
-const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ message: 'No token provided' });
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch {
-    res.status(401).json({ message: 'Invalid token' });
-  }
-};
-
-router.get('/', verifyToken, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC', [req.userId]);
     res.json(expenses.rows);
   } catch { res.status(500).json({ message: 'Server error' }) }
 });
 
-router.post('/', verifyToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const { amount, category, description, date, is_recurring } = req.body;
     if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ message: 'Amount must be greater than 0' });
@@ -34,7 +22,7 @@ router.post('/', verifyToken, async (req, res) => {
   } catch { res.status(500).json({ message: 'Server error' }) }
 });
 
-router.put('/:id', verifyToken, async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { amount, category, description, date, is_recurring } = req.body;
     if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ message: 'Amount must be greater than 0' });
@@ -46,14 +34,14 @@ router.put('/:id', verifyToken, async (req, res) => {
   } catch { res.status(500).json({ message: 'Server error' }) }
 });
 
-router.delete('/:id', verifyToken, async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     await pool.query('DELETE FROM expenses WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
     res.json({ message: 'Expense deleted' });
   } catch { res.status(500).json({ message: 'Server error' }) }
 });
 
-router.post('/apply-recurring', verifyToken, async (req, res) => {
+router.post('/apply-recurring', authenticateToken, async (req, res) => {
   try {
     const { month, year } = req.body
     const prevMonth = month === 1 ? 12 : month - 1
@@ -86,7 +74,7 @@ router.post('/apply-recurring', verifyToken, async (req, res) => {
   }
 });
 
-router.get('/trends', verifyToken, async (req, res) => {
+router.get('/trends', authenticateToken, async (req, res) => {
   try {
     const months = []
     for (let i = 5; i >= 0; i--) {

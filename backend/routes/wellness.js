@@ -1,9 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const jwt = require('jsonwebtoken');
 
-const verifyToken = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'No token provided' });
   try {
@@ -13,7 +11,6 @@ const verifyToken = (req, res, next) => {
   } catch {
     res.status(401).json({ message: 'Invalid token' });
   }
-};
 
 // GET all wellness data
 router.get('/', verifyToken, async (req, res) => {
