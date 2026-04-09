@@ -106,22 +106,18 @@ export default function Savings() {
         </div>
 
         {/* Summary */}
-        {goals.length > 0 && (
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm text-center">
-              <p className="text-xs text-gray-400 mb-1">Total Saved</p>
-              <p className="text-2xl font-bold text-green-600">{currencySymbol}{totalSaved.toFixed(2)}</p>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm text-center">
-              <p className="text-xs text-gray-400 mb-1">Total Target</p>
-              <p className="text-2xl font-bold text-indigo-600">{currencySymbol}{totalTarget.toFixed(2)}</p>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm text-center">
-              <p className="text-xs text-gray-400 mb-1">Completed</p>
-              <p className="text-2xl font-bold text-purple-600">{completed}/{goals.length}</p>
-            </div>
-          </div>
-        )}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm min-w-0">
+  <p className="text-xs text-gray-400 mb-1 truncate">Total Saved</p>
+  <p className="text-2xl font-bold tabular-nums truncate text-green-600" title={`${currencySymbol}${totalSaved.toFixed(2)}`}>{currencySymbol}{totalSaved.toFixed(2)}</p>
+</div>
+<div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm min-w-0">
+  <p className="text-xs text-gray-400 mb-1 truncate">Total Target</p>
+  <p className="text-2xl font-bold tabular-nums truncate text-indigo-600" title={`${currencySymbol}${totalTarget.toFixed(2)}`}>{currencySymbol}{totalTarget.toFixed(2)}</p>
+</div>
+<div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm min-w-0">
+  <p className="text-xs text-gray-400 mb-1 truncate">Completed</p>
+  <p className="text-2xl font-bold tabular-nums text-purple-600">{completed}/{goals.length}</p>
+</div>
 
         {/* New Goal Form */}
         {showForm && (
