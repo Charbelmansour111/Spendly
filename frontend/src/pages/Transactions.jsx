@@ -21,6 +21,9 @@ function NumberModal({ label, value, sub, onClose }) {
 }
 
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
+function fmt(amount, symbol) {
+  return symbol + Math.abs(safeNum(amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t) }, [onClose])
