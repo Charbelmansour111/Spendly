@@ -13,12 +13,14 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const { category, amount } = req.body;
-    const budget = await pool.query(
-      `INSERT INTO budgets (user_id, category, amount) VALUES ($1, $2, $3)
-       ON CONFLICT (user_id, category) DO UPDATE SET amount = $3 RETURNING *`,
-      [req.userId, category, amount]
-    );
-    res.json(budget.rows[0]);
+    if (!category || !amount) return res.status(400).json({ message: 'Category and amount required' });
+    const existing = await pool.query('SELECT id FROM budgets WHERE user_id = $1 AND category = $2', [req.userId, category]);
+    if (existing.rows.length > 0) {
+      const updated = await pool.query('UPDATE budgets SET amount = $1 WHERE user_id = $2 AND category = $3 RETURNING *', [amount, req.userId, category]);
+      return res.json(updated.rows[0]);
+    }
+    const result = await pool.query('INSERT INTO budgets (user_id, category, amount) VALUES ($1, $2, $3) RETURNING *', [req.userId, category, amount]);
+    res.status(201).json(result.rows[0]);
   } catch { res.status(500).json({ message: 'Server error' }) }
 });
 
