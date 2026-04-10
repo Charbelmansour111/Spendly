@@ -7,6 +7,7 @@ import VerifyEmail from './pages/VerifyEmail'
 import ForgotPassword from './pages/ForgotPassword'
 import AccountType from './pages/AccountType'
 import Dashboard from './pages/Dashboard'
+import BusinessDashboard from './pages/BusinessDashboard'
 import Budgets from './pages/Budgets'
 import Savings from './pages/Savings'
 import Reports from './pages/Reports'
@@ -26,9 +27,10 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route path="/account-type" element={<AccountType />} />
-        
+
         {/* App pages */}
         <Route path="/dashboard"       element={<Dashboard />} />
+        <Route path="/business" element={<BusinessDashboard />} />
         <Route path="/profile"         element={<Profile />} />
         <Route path="/budgets"         element={<Budgets />} />
         <Route path="/savings"         element={<Savings />} />
