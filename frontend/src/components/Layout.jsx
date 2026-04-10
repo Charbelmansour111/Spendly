@@ -94,16 +94,17 @@ const Icons = {
   ),
 }
 
-const TAB_ITEMS = [
-  { href: '/dashboard', icon: 'home',    label: 'Home' },
-  { href: '/reports',   icon: 'reports', label: 'Reports' },
-  { href: '/insights',  icon: 'ai',      label: 'AI' },
-  { href: '/savings',   icon: 'savings', label: 'Savings' },
-  { href: '/profile',   icon: 'profile', label: 'Profile' },
+ const TAB_ITEMS = [
+  { href: '/dashboard',     icon: 'home',    label: 'Home' },
+  { href: '/transactions',  icon: 'reports', label: 'Transactions' },
+  { href: '/insights',      icon: 'ai',      label: 'AI' },
+  { href: '/savings',       icon: 'savings', label: 'Savings' },
+  { href: '/profile',       icon: 'profile', label: 'Profile' },
 ]
 
 const NAV_ITEMS = [
   { label: 'Dashboard',      icon: 'home',     href: '/dashboard' },
+  { label: 'Transactions', icon: 'reports', href: '/transactions' },
   { label: 'Budget & Alerts',icon: 'budget',   href: '/budgets' },
   { label: 'Savings Goals',  icon: 'savings',  href: '/savings' },
   { label: 'Reports',        icon: 'reports',  href: '/reports' },
