@@ -8,7 +8,6 @@ import ForgotPassword from './pages/ForgotPassword'
 import Dashboard from './pages/Dashboard'
 import Budgets from './pages/Budgets'
 import Savings from './pages/Savings'
-import Alerts from './pages/Alerts'
 import Reports from './pages/Reports'
 import Insights from './pages/Insights'
 import Wellness from './pages/Wellness'
@@ -29,7 +28,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/budgets" element={<Budgets />} />
         <Route path="/savings" element={<Savings />} />
-        <Route path="/alerts" element={<Alerts />} />
+        
         <Route path="/reports" element={<Reports />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/wellness" element={<Wellness />} />
