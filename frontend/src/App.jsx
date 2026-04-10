@@ -8,6 +8,9 @@ import ForgotPassword from './pages/ForgotPassword'
 import AccountType from './pages/AccountType'
 import Dashboard from './pages/Dashboard'
 import BusinessDashboard from './pages/BusinessDashboard'
+import BusinessMenu from './pages/BusinessMenu'
+import BusinessStock from './pages/BusinessStock'
+import BusinessTransactions from './pages/BusinessTransactions'
 import Budgets from './pages/Budgets'
 import Savings from './pages/Savings'
 import Reports from './pages/Reports'
@@ -19,28 +22,30 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public pages */}
-        <Route path="/"                element={<Landing />} />
-        <Route path="/login"           element={<Login />} />
-        <Route path="/register"        element={<Register />} />
-        <Route path="/verify-email"    element={<VerifyEmail />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/"                      element={<Landing />} />
+        <Route path="/login"                 element={<Login />} />
+        <Route path="/register"              element={<Register />} />
+        <Route path="/verify-email"          element={<VerifyEmail />} />
+        <Route path="/forgot-password"       element={<ForgotPassword />} />
+        <Route path="/account-type"          element={<AccountType />} />
 
-        <Route path="/account-type" element={<AccountType />} />
+        {/* Personal */}
+        <Route path="/dashboard"             element={<Dashboard />} />
+        <Route path="/profile"               element={<Profile />} />
+        <Route path="/budgets"               element={<Budgets />} />
+        <Route path="/savings"               element={<Savings />} />
+        <Route path="/reports"               element={<Reports />} />
+        <Route path="/insights"              element={<Insights />} />
+        <Route path="/wellness"              element={<Wellness />} />
+        <Route path="/transactions"          element={<Transactions />} />
 
-        {/* App pages */}
-        <Route path="/dashboard"       element={<Dashboard />} />
-        <Route path="/business" element={<BusinessDashboard />} />
-        <Route path="/profile"         element={<Profile />} />
-        <Route path="/budgets"         element={<Budgets />} />
-        <Route path="/savings"         element={<Savings />} />
-        <Route path="/reports"         element={<Reports />} />
-        <Route path="/insights"        element={<Insights />} />
-        <Route path="/wellness"        element={<Wellness />} />
-        <Route path="/transactions"    element={<Transactions />} />
+        {/* Business */}
+        <Route path="/business"              element={<BusinessDashboard />} />
+        <Route path="/business/menu"         element={<BusinessMenu />} />
+        <Route path="/business/stock"        element={<BusinessStock />} />
+        <Route path="/business/transactions" element={<BusinessTransactions />} />
 
-        {/* Redirects */}
-        <Route path="/alerts"          element={<Navigate to="/budgets" replace />} />
+        <Route path="/alerts"                element={<Navigate to="/budgets" replace />} />
       </Routes>
     </BrowserRouter>
   )
