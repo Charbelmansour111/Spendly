@@ -5,6 +5,7 @@ import Register from './pages/Register'
 import Profile from './pages/Profile'
 import VerifyEmail from './pages/VerifyEmail'
 import ForgotPassword from './pages/ForgotPassword'
+import AccountType from './pages/AccountType'
 import Dashboard from './pages/Dashboard'
 import Budgets from './pages/Budgets'
 import Savings from './pages/Savings'
@@ -24,6 +25,8 @@ function App() {
         <Route path="/verify-email"    element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
+        <Route path="/account-type" element={<AccountType />} />
+        
         {/* App pages */}
         <Route path="/dashboard"       element={<Dashboard />} />
         <Route path="/profile"         element={<Profile />} />

@@ -1,108 +1,136 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const authenticateToken = require('../middleware/auth');
 
-router.get('/', authenticateToken, async (req, res) => {
+router.post('/register', async (req, res) => {
   try {
-    const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC', [req.userId]);
-    res.json(expenses.rows);
-  } catch { res.status(500).json({ message: 'Server error' }) }
-});
+    const { name, email, password } = req.body;
+    if (!name || !email || !password)
+      return res.status(400).json({ message: 'Name, email and password are required' });
+    if (password.length < 6)
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
 
-router.post('/', authenticateToken, async (req, res) => {
-  try {
-    const { amount, category, description, date, is_recurring } = req.body;
-    if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ message: 'Amount must be greater than 0' });
-    const newExpense = await pool.query(
-      'INSERT INTO expenses (user_id, amount, category, description, date, is_recurring) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [req.userId, amount, category, description, date, is_recurring || false]
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
+    if (existing.rows.length > 0)
+      return res.status(400).json({ message: 'An account with this email already exists' });
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const result = await pool.query(
+      `INSERT INTO users (name, email, password, account_type, business_type, onboarding_done, currency)
+       VALUES ($1, $2, $3, 'personal', NULL, FALSE, 'USD') RETURNING id, name, email, account_type, business_type`,
+      [name.trim(), email.toLowerCase().trim(), hashedPassword]
     );
-    res.status(201).json(newExpense.rows[0]);
-  } catch { res.status(500).json({ message: 'Server error' }) }
-});
 
-router.put('/:id', authenticateToken, async (req, res) => {
-  try {
-    const { amount, category, description, date, is_recurring } = req.body;
-    if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ message: 'Amount must be greater than 0' });
-    const updated = await pool.query(
-      'UPDATE expenses SET amount=$1, category=$2, description=$3, date=$4, is_recurring=$5 WHERE id=$6 AND user_id=$7 RETURNING *',
-      [amount, category, description, date, is_recurring || false, req.params.id, req.userId]
-    );
-    res.json(updated.rows[0]);
-  } catch { res.status(500).json({ message: 'Server error' }) }
-});
+    const user = result.rows[0];
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
-router.delete('/:id', authenticateToken, async (req, res) => {
-  try {
-    await pool.query('DELETE FROM expenses WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
-    res.json({ message: 'Expense deleted' });
-  } catch { res.status(500).json({ message: 'Server error' }) }
-});
-
-router.post('/apply-recurring', authenticateToken, async (req, res) => {
-  try {
-    const { month, year } = req.body
-    const prevMonth = month === 1 ? 12 : month - 1
-    const prevYear = month === 1 ? year - 1 : year
-    const recurring = await pool.query(
-      `SELECT * FROM expenses WHERE user_id = $1 AND is_recurring = TRUE AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3`,
-      [req.userId, prevMonth, prevYear]
-    )
-    const existing = await pool.query(
-      `SELECT category, description FROM expenses WHERE user_id = $1 AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3 AND is_recurring = TRUE`,
-      [req.userId, month, year]
-    )
-    const existingKeys = existing.rows.map(e => `${e.category}-${e.description}`)
-    let added = 0
-    for (const exp of recurring.rows) {
-      const key = `${exp.category}-${exp.description}`
-      if (!existingKeys.includes(key)) {
-        const newDate = `${year}-${String(month).padStart(2, '0')}-01`
-        await pool.query(
-          'INSERT INTO expenses (user_id, amount, category, description, date, is_recurring) VALUES ($1, $2, $3, $4, $5, TRUE)',
-          [req.userId, exp.amount, exp.category, exp.description, newDate]
-        )
-        added++
-      }
-    }
-    res.json({ added })
+    res.status(201).json({
+      token,
+      user: { id: user.id, name: user.name, email: user.email, account_type: user.account_type, business_type: user.business_type }
+    });
   } catch (e) {
-    console.log(e)
-    res.status(500).json({ message: 'Server error' })
+    console.log('Register error:', e);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-router.get('/trends', authenticateToken, async (req, res) => {
+router.post('/login', async (req, res) => {
   try {
-    const months = []
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date()
-      d.setMonth(d.getMonth() - i)
-      months.push({ month: d.getMonth() + 1, year: d.getFullYear() })
-    }
-    const results = await Promise.all(months.map(async ({ month, year }) => {
-      const expenses = await pool.query(
-        `SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE user_id = $1 AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3`,
-        [req.userId, month, year]
-      )
-      const income = await pool.query(
-        `SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE user_id = $1 AND month = $2 AND year = $3`,
-        [req.userId, month, year]
-      )
-      const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'short' })
-      return {
-        label: `${monthName} ${year}`,
-        spending: parseFloat(expenses.rows[0].total),
-        income: parseFloat(income.rows[0].total),
-        balance: parseFloat(income.rows[0].total) - parseFloat(expenses.rows[0].total)
+    const { email, password } = req.body;
+    if (!email || !password)
+      return res.status(400).json({ message: 'Email and password are required' });
+
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase().trim()]);
+    if (result.rows.length === 0)
+      return res.status(401).json({ message: 'Invalid email or password' });
+
+    const user = result.rows[0];
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(401).json({ message: 'Invalid email or password' });
+
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        currency: user.currency || 'USD',
+        account_type: user.account_type || 'personal',
+        business_type: user.business_type || null,
+        onboarding_done: user.onboarding_done || false,
+        account_type_selected: user.account_type_selected || false,
       }
-    }))
-    res.json(results)
+    });
   } catch (e) {
-    console.log(e)
-    res.status(500).json({ message: 'Server error' })
+    console.log('Login error:', e);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/account-type', authenticateToken, async (req, res) => {
+  try {
+    const { account_type, business_type } = req.body;
+    if (!account_type || !['personal', 'business'].includes(account_type))
+      return res.status(400).json({ message: 'Invalid account type' });
+    if (account_type === 'business' && !['restaurant', 'firm'].includes(business_type))
+      return res.status(400).json({ message: 'Invalid business type' });
+
+    await pool.query(
+      'UPDATE users SET account_type=$1, business_type=$2, account_type_selected=TRUE WHERE id=$3',
+      [account_type, account_type === 'business' ? business_type : null, req.userId]
+    );
+    res.json({ message: 'Account type updated', account_type, business_type });
+  } catch (e) {
+    console.log('Account type error:', e);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/switch-account-type', authenticateToken, async (req, res) => {
+  try {
+    const { account_type, business_type, confirm_text } = req.body;
+    const current = await pool.query('SELECT account_type FROM users WHERE id=$1', [req.userId]);
+    const currentType = current.rows[0]?.account_type;
+
+    if (currentType === 'business' && account_type === 'personal') {
+      if (confirm_text !== 'CONFIRM')
+        return res.status(400).json({ message: 'Please type CONFIRM to switch to personal' });
+    }
+
+    await pool.query(
+      'UPDATE users SET account_type=$1, business_type=$2 WHERE id=$3',
+      [account_type, account_type === 'business' ? business_type : null, req.userId]
+    );
+    res.json({ message: 'Account type switched', account_type, business_type });
+  } catch (e) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/forgot-password', async (req, res) => {
+  try {
+    res.json({ message: 'If this email exists, a reset link has been sent.' });
+  } catch (e) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/me', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, name, email, currency, account_type, business_type, onboarding_done, account_type_selected FROM users WHERE id=$1',
+      [req.userId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (e) {
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

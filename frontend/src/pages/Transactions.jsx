@@ -6,6 +6,20 @@ const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3
 const CATEGORY_ICONS   = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦', Salary: '💼', Freelance: '💻', Business: '🏪', Investment: '📈' }
 const CATEGORY_COLORS  = { Food: '#F97316', Transport: '#3B82F6', Shopping: '#EC4899', Subscriptions: '#8B5CF6', Entertainment: '#10B981', Other: '#6B7280' }
 
+function NumberModal({ label, value, sub, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-3xl p-8 text-center w-full max-w-xs shadow-2xl" onClick={e => e.stopPropagation()}>
+        <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">{label}</p>
+        <p className="text-4xl font-bold text-indigo-600 tabular-nums break-all">{value}</p>
+        {sub && <p className="text-sm text-gray-400 mt-2">{sub}</p>}
+        <button onClick={onClose} className="mt-6 w-full bg-indigo-600 text-white py-3 rounded-2xl font-semibold">Done</button>
+      </div>
+    </div>
+  )
+}
+
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 
 function Toast({ message, type, onClose }) {
@@ -97,6 +111,7 @@ function EditSheet({ expense, currencySymbol, onSave, onClose }) {
 export default function Transactions() {
   const [expenses, setExpenses]   = useState([])
   const [income, setIncome]       = useState([])
+  const [modalData, setModalData] = useState(null)
   const [loading, setLoading]     = useState(true)
   const [currencySymbol, setSymbol] = useState('$')
   const [toast, setToast]         = useState(null)
@@ -219,6 +234,7 @@ export default function Transactions() {
       {toast    && <Toast {...toast} onClose={() => setToast(null)} />}
       {confirm  && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
       {editing  && <EditSheet expense={editing} currencySymbol={currencySymbol} onSave={handleEditSave} onClose={() => setEditing(null)} />}
+        {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
 
       <div className="max-w-2xl mx-auto px-4 py-6">
 
@@ -236,18 +252,20 @@ export default function Transactions() {
         </div>
 
         {/* Summary Pills */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          {[
-            { label: 'Income',  value: currencySymbol + totalIncome.toFixed(2),   color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20' },
-            { label: 'Spent',   value: currencySymbol + totalExpenses.toFixed(2), color: 'text-red-500',   bg: 'bg-red-50 dark:bg-red-900/20' },
-            { label: 'Total',   value: String(allTransactions.length) + ' tx',    color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
-          ].map((s, i) => (
-            <div key={i} className={`${s.bg} rounded-2xl p-3 text-center`}>
-              <p className="text-xs text-gray-400 mb-0.5">{s.label}</p>
-              <p className={`text-sm font-bold tabular-nums truncate ${s.color}`}>{s.value}</p>
-            </div>
-          ))}
-        </div>
+   <div className="grid grid-cols-3 gap-3 mb-5">
+  {[
+    { label: 'Income', value: fmt(totalIncome, currencySymbol),   color: 'text-green-600',  bg: 'bg-green-50 dark:bg-green-900/20',   sub: income.length + ' sources' },
+    { label: 'Spent',  value: fmt(totalExpenses, currencySymbol), color: 'text-red-500',    bg: 'bg-red-50 dark:bg-red-900/20',       sub: expenses.length + ' expenses' },
+    { label: 'Total',  value: String(allTransactions.length),     color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-900/20', sub: 'all time transactions' },
+  ].map((s, i) => (
+    <button key={i} onClick={() => setModalData({ label: s.label, value: s.value, sub: s.sub })}
+      className={`${s.bg} rounded-2xl p-3 text-center active:scale-95 transition-transform`}>
+      <p className="text-xs text-gray-400 mb-0.5">{s.label}</p>
+      <p className={`text-sm font-bold tabular-nums truncate ${s.color}`}>{s.value}</p>
+      <p className="text-gray-300 text-xs mt-0.5">Tap</p>
+    </button>
+  ))}
+</div>
 
         {/* Search bar */}
         <div className="relative mb-3">
