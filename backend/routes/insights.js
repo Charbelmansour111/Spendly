@@ -25,8 +25,14 @@ router.post('/chat', authenticateToken, async (req, res) => {
     const budgets = await pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]);
     const total = expenses.rows.reduce((sum, e) => sum + parseFloat(e.amount), 0);
     const totalIncome = income.rows.reduce((sum, i) => sum + parseFloat(i.amount), 0);
-    const categoryTotals = expenses.rows.reduce((acc, e) => { acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount); return acc; }, {});
-    const categoryBreakdown = Object.entries(categoryTotals).sort((a,b) => b[1]-a[1]).map(([cat,amt]) => `${cat}: $${amt.toFixed(2)}`).join(', ');
+    const categoryTotals = expenses.rows.reduce((acc, e) => {
+      acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount);
+      return acc;
+    }, {});
+    const categoryBreakdown = Object.entries(categoryTotals)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, amt]) => `${cat}: $${amt.toFixed(2)}`)
+      .join(', ');
     const systemMessage = {
       role: 'system',
       content: `You are Spendly AI, a friendly personal finance assistant.
@@ -39,7 +45,14 @@ User's Financial Data:
 - Budget goals: ${budgets.rows.map(b => `${b.category}: $${b.amount}`).join(', ') || 'None set'}
 Rules: Be friendly, short, and practical. Use emojis naturally. Use **bold** for important numbers. Answer ONLY finance related questions. Keep responses under 150 words`
     };
-    const messages = [systemMessage, ...(history || []).map(msg => ({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: msg.content })), { role: 'user', content: message }];
+    const messages = [
+      systemMessage,
+      ...(history || []).map(msg => ({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: msg.content
+      })),
+      { role: 'user', content: message }
+    ];
     const reply = await callAI(messages);
     res.json({ reply });
   } catch (error) {
@@ -53,11 +66,23 @@ router.get('/', authenticateToken, async (req, res) => {
     const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 50', [req.userId]);
     if (expenses.rows.length === 0) return res.json({ insight: 'Add some expenses first to get AI insights!' });
     const total = expenses.rows.reduce((sum, e) => sum + parseFloat(e.amount), 0);
-    const categoryTotals = expenses.rows.reduce((acc, e) => { acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount); return acc; }, {});
-    const categoryBreakdown = Object.entries(categoryTotals).sort((a,b) => b[1]-a[1]).map(([cat,amt]) => `${cat}: $${amt.toFixed(2)} (${((amt/total)*100).toFixed(0)}%)`).join(', ');
+    const categoryTotals = expenses.rows.reduce((acc, e) => {
+      acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount);
+      return acc;
+    }, {});
+    const categoryBreakdown = Object.entries(categoryTotals)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, amt]) => `${cat}: $${amt.toFixed(2)} (${((amt / total) * 100).toFixed(0)}%)`)
+      .join(', ');
     const messages = [
-      { role: 'system', content: 'You are a friendly personal finance advisor. Give exactly 4 short practical insights. Start each with an emoji. Use **bold** for key numbers. Keep each to 2 sentences max.' },
-      { role: 'user', content: `Analyze my spending: Total: $${total.toFixed(2)}, Categories: ${categoryBreakdown}, Transactions: ${expenses.rows.length}` }
+      {
+        role: 'system',
+        content: 'You are a friendly personal finance advisor. Give exactly 4 short practical insights. Start each with an emoji. Use **bold** for key numbers. Keep each to 2 sentences max.'
+      },
+      {
+        role: 'user',
+        content: `Analyze my spending: Total: $${total.toFixed(2)}, Categories: ${categoryBreakdown}, Transactions: ${expenses.rows.length}`
+      }
     ];
     const insight = await callAI(messages);
     res.json({ insight });

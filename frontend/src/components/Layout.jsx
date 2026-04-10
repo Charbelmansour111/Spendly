@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useDarkMode } from '../hooks/useDarkMode'
 
-// SVG icons — clean monochrome, Instagram-style
 const Icons = {
   home: (active) => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -11,14 +10,12 @@ const Icons = {
       <path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
-  chart: (active) => (
+  reports: (active) => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="12" width="4" height="9" rx="1" stroke="currentColor" strokeWidth="1.8"
-        fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
-      <rect x="10" y="7" width="4" height="14" rx="1" stroke="currentColor" strokeWidth="1.8"
-        fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
-      <rect x="17" y="3" width="4" height="18" rx="1" stroke="currentColor" strokeWidth="1.8"
-        fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
+        stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"
+        fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.1 : 0} />
+      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   ),
   ai: (active) => (
@@ -61,15 +58,7 @@ const Icons = {
         fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
     </svg>
   ),
-  reports: (active) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
-        stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"
-        fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.1 : 0} />
-      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  ),
-  bell: (hasDot) => (
+  bell: () => (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
       <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
         stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -105,27 +94,25 @@ const Icons = {
   ),
 }
 
-// Bottom tab bar — 5 most important pages
 const TAB_ITEMS = [
-  { href: '/dashboard', icon: 'home', label: 'Home' },
-  { href: '/budgets', icon: 'budget', label: 'Budget' },
-  { href: '/insights', icon: 'ai', label: 'AI' },
-  { href: '/savings', icon: 'savings', label: 'Savings' },
-  { href: '/profile', icon: 'profile', label: 'Profile' },
+  { href: '/dashboard', icon: 'home',    label: 'Home' },
+  { href: '/reports',   icon: 'reports', label: 'Reports' },
+  { href: '/insights',  icon: 'ai',      label: 'AI' },
+  { href: '/savings',   icon: 'savings', label: 'Savings' },
+  { href: '/profile',   icon: 'profile', label: 'Profile' },
 ]
 
-// Full sidebar nav
 const NAV_ITEMS = [
-  { label: 'Dashboard', icon: 'home', href: '/dashboard' },
-  { label: 'Budget & Alerts', icon: 'budget', href: '/budgets' },
-  { label: 'Savings Goals', icon: 'savings', href: '/savings' },
-  { label: 'Reports', icon: 'reports', href: '/reports' },
-  { label: 'AI Insights', icon: 'ai', href: '/insights' },
-  { label: 'My Wellness', icon: 'wellness', href: '/wellness' },
-  { label: 'Profile', icon: 'profile', href: '/profile' },
+  { label: 'Dashboard',      icon: 'home',     href: '/dashboard' },
+  { label: 'Budget & Alerts',icon: 'budget',   href: '/budgets' },
+  { label: 'Savings Goals',  icon: 'savings',  href: '/savings' },
+  { label: 'Reports',        icon: 'reports',  href: '/reports' },
+  { label: 'AI Insights',    icon: 'ai',       href: '/insights' },
+  { label: 'My Wellness',    icon: 'wellness', href: '/wellness' },
+  { label: 'Profile',        icon: 'profile',  href: '/profile' },
 ]
 
-export default function Layout({ children, notifications = [], onBellClick, unreadCount = 0 }) {
+export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const [dark, toggleDark] = useDarkMode()
   const [mobileOpen, setMobileOpen] = useState(false)
   const current = window.location.pathname
@@ -141,13 +128,10 @@ export default function Layout({ children, notifications = [], onBellClick, unre
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo */}
       <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700/60">
         <h1 className="text-2xl font-bold text-indigo-600 tracking-tight">Spendly</h1>
         <p className="text-xs text-gray-400 mt-0.5">Track smarter, spend better</p>
       </div>
-
-      {/* User */}
       <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700/60">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 font-bold text-sm flex-shrink-0">
@@ -159,17 +143,13 @@ export default function Layout({ children, notifications = [], onBellClick, unre
           </div>
         </div>
       </div>
-
-      {/* Nav Links */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map(item => {
           const isActive = current === item.href
           return (
             <a key={item.href} href={item.href}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                isActive
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                isActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
               }`}>
               <span className={isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'}>
                 {Icons[item.icon]?.(isActive)}
@@ -180,8 +160,6 @@ export default function Layout({ children, notifications = [], onBellClick, unre
           )
         })}
       </nav>
-
-      {/* Bottom Controls */}
       <div className="px-3 py-3 border-t border-gray-100 dark:border-gray-700/60 space-y-0.5">
         <button onClick={onBellClick}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition">
@@ -194,17 +172,13 @@ export default function Layout({ children, notifications = [], onBellClick, unre
             )}
           </span>
           <span>Notifications</span>
-          {unreadCount > 0 && (
-            <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0">{unreadCount}</span>
-          )}
+          {unreadCount > 0 && <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0">{unreadCount}</span>}
         </button>
-
         <button onClick={toggleDark}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition">
           <span className="text-gray-500 dark:text-gray-400">{dark ? Icons.sun() : Icons.moon()}</span>
           <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>
         </button>
-
         <button onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
           <span>{Icons.logout()}</span>
@@ -216,17 +190,13 @@ export default function Layout({ children, notifications = [], onBellClick, unre
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
-
-      {/* ── Desktop Sidebar ── */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/60 flex-shrink-0 h-screen sticky top-0">
         <SidebarContent />
       </aside>
-
-      {/* ── Mobile Top Bar ── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-700/60 px-4 py-3 flex justify-between items-center">
         <h1 className="text-xl font-bold text-indigo-600 tracking-tight">Spendly</h1>
         <div className="flex items-center gap-2">
-          <button onClick={onBellClick} className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition">
+          <button onClick={onBellClick} className="relative p-2 text-gray-500 dark:text-gray-400">
             {Icons.bell()}
             {unreadCount > 0 && (
               <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
@@ -234,7 +204,7 @@ export default function Layout({ children, notifications = [], onBellClick, unre
               </span>
             )}
           </button>
-          <button onClick={toggleDark} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition">
+          <button onClick={toggleDark} className="p-2 text-gray-500 dark:text-gray-400">
             {dark ? Icons.sun() : Icons.moon()}
           </button>
           <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 text-gray-600 dark:text-gray-300">
@@ -242,8 +212,6 @@ export default function Layout({ children, notifications = [], onBellClick, unre
           </button>
         </div>
       </div>
-
-      {/* ── Mobile Drawer (secondary pages) ── */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
@@ -252,26 +220,19 @@ export default function Layout({ children, notifications = [], onBellClick, unre
           </div>
         </div>
       )}
-
-      {/* ── Main Content ── */}
       <main className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-20 md:pb-0">
         {children}
       </main>
-
-      {/* ── Mobile Bottom Tab Bar ── */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700/60">
         <div className="flex items-stretch h-16">
           {TAB_ITEMS.map(item => {
             const isActive = current === item.href
             return (
               <a key={item.href} href={item.href}
-                className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 ${
-                  isActive
-                    ? 'text-indigo-600 dark:text-indigo-400'
-                    : 'text-gray-400 dark:text-gray-500'
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative ${
+                  isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500'
                 }`}>
-                {/* Active dot indicator */}
-                <span className={`absolute top-0 w-6 h-0.5 rounded-full transition-all ${isActive ? 'bg-indigo-600 dark:bg-indigo-400' : 'bg-transparent'}`} />
+                {isActive && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />}
                 <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
                   {Icons[item.icon]?.(isActive)}
                 </span>
@@ -279,8 +240,6 @@ export default function Layout({ children, notifications = [], onBellClick, unre
             )
           })}
         </div>
-        {/* Safe area spacer for iOS */}
-        <div className="h-safe-area-inset-bottom" />
       </nav>
     </div>
   )

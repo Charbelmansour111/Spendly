@@ -12,20 +12,48 @@ function renderMarkdown(text) {
   })
 }
 
+// Tappable number stat card — tap to see full value in modal
+function StatCard({ label, value, sub, color, onClick }) {
+  return (
+    <button onClick={onClick}
+      className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-sm text-center flex-1 min-w-0 active:scale-95 transition-transform">
+      <p className="text-xs text-gray-400 mb-1 truncate">{label}</p>
+      <p className={`text-base font-bold tabular-nums truncate ${color}`} title={value}>{value}</p>
+      {sub && <p className="text-xs text-gray-400 mt-0.5 truncate">{sub}</p>}
+    </button>
+  )
+}
+
+// Full number modal
+function NumberModal({ label, value, sub, onClose }) {
+  if (!value) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 text-center w-full max-w-xs" onClick={e => e.stopPropagation()}>
+        <p className="text-sm text-gray-400 mb-3">{label}</p>
+        <p className="text-4xl font-bold text-indigo-600 tabular-nums break-all">{value}</p>
+        {sub && <p className="text-sm text-gray-400 mt-2">{sub}</p>}
+        <button onClick={onClose} className="mt-6 w-full bg-indigo-600 text-white py-3 rounded-2xl font-semibold">Done</button>
+      </div>
+    </div>
+  )
+}
+
 const QUICK_QUESTIONS = [
   "Where am I overspending?",
-  "How can I save more this month?",
-  "Am I on track with my budget?",
-  "What is my biggest expense?",
-  "Give me a savings tip",
-  "How is my spending this month?",
+  "How can I save more?",
+  "Am I on track?",
+  "Biggest expense?",
+  "Give me a tip",
+  "How is my spending?",
 ]
 
 export default function Insights() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "Hi! 👋 I'm Spendly AI, your personal finance assistant. I can see your real spending data and I'm here to help. Ask me anything about your finances!"
+      content: "Hi there! I'm Spendly AI, your personal finance assistant. How can I help you with your finances today? I can see your real spending data. What's on your mind?"
     }
   ])
   const [input, setInput] = useState('')
@@ -33,6 +61,7 @@ export default function Insights() {
   const [expenses, setExpenses] = useState([])
   const [income, setIncome] = useState([])
   const [currencySymbol, setCurrencySymbol] = useState('$')
+  const [modalData, setModalData] = useState(null)
   const messagesEndRef = useRef(null)
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
@@ -44,11 +73,9 @@ export default function Insights() {
 
   const fetchData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token')
-      const headers = { Authorization: `Bearer ${token}` }
       const [e, i] = await Promise.all([
-        API.get('/expenses', { headers }),
-        API.get(`/income?month=${today.getMonth() + 1}&year=${today.getFullYear()}`, { headers })
+        API.get('/expenses'),
+        API.get('/income?month=' + (today.getMonth() + 1) + '&year=' + today.getFullYear())
       ])
       setExpenses(e.data)
       setIncome(i.data)
@@ -68,31 +95,21 @@ export default function Insights() {
   const sendMessage = async (text) => {
     const userMessage = text || input.trim()
     if (!userMessage || loading) return
-
     setInput('')
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setLoading(true)
-
     try {
-      const token = localStorage.getItem('token')
-      const history = messages.filter(m => m.role !== 'assistant' || messages.indexOf(m) > 0)
-
-      const res = await API.post('/insights/chat',
-        { message: userMessage, history },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      const history = messages.filter((m, idx) => idx > 0)
+      const res = await API.post('/insights/chat', { message: userMessage, history })
       setMessages(prev => [...prev, { role: 'assistant', content: res.data.reply }])
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I had trouble connecting. Please try again! 🔄' }])
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I had trouble connecting. Please try again.' }])
     }
     setLoading(false)
   }
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
   const monthExpenses = expenses.filter(e => {
@@ -108,47 +125,65 @@ export default function Insights() {
     }, {})
   ).sort((a, b) => b[1] - a[1])[0]
 
+  const spentStr = currencySymbol + total.toFixed(2)
+  const incomeStr = currencySymbol + totalIncome.toFixed(2)
+  const savedPct = totalIncome > 0 ? (((totalIncome - total) / totalIncome) * 100).toFixed(0) + '% saved' : 'No income'
+  const topCatStr = topCategory ? topCategory[0] : '--'
+  const topCatAmt = topCategory ? currencySymbol + topCategory[1].toFixed(2) : ''
+
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-4 py-8 flex flex-col h-screen">
+      {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
+
+      <div className="max-w-3xl mx-auto px-4 py-6 flex flex-col" style={{ minHeight: 'calc(100vh - 80px)' }}>
 
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">🤖 AI Finance Assistant</h1>
-          <p className="text-gray-400 mt-1">Ask me anything about your finances — I know your real spending data</p>
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Finance Assistant</h1>
+          <p className="text-gray-400 text-sm mt-0.5">Ask me anything — I know your real spending data</p>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center">
-            <p className="text-xs text-gray-400 mb-1">Spent</p>
-            <p className="text-lg font-bold text-red-500">{currencySymbol}{total.toFixed(2)}</p>
-            <p className="text-xs text-gray-400 mt-1">{monthName}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center">
-            <p className="text-xs text-gray-400 mb-1">Income</p>
-            <p className="text-lg font-bold text-green-600">{currencySymbol}{totalIncome.toFixed(2)}</p>
-            <p className="text-xs text-gray-400 mt-1">{totalIncome > 0 ? `${(((totalIncome - total) / totalIncome) * 100).toFixed(0)}% saved` : 'No income'}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center">
-            <p className="text-xs text-gray-400 mb-1">Top Category</p>
-            <p className="text-lg font-bold text-indigo-600">{topCategory ? topCategory[0] : '—'}</p>
-            <p className="text-xs text-gray-400 mt-1">{topCategory ? `${currencySymbol}${topCategory[1].toFixed(2)}` : 'No expenses'}</p>
-          </div>
+        {/* Quick Stats — tappable */}
+        <div className="flex gap-3 mb-4">
+          <StatCard
+            label="Spent"
+            value={spentStr}
+            sub={monthName}
+            color="text-red-500"
+            onClick={() => setModalData({ label: 'Spent — ' + monthName, value: spentStr, sub: monthExpenses.length + ' transactions' })}
+          />
+          <StatCard
+            label="Income"
+            value={incomeStr}
+            sub={savedPct}
+            color="text-green-600"
+            onClick={() => setModalData({ label: 'Income — ' + monthName, value: incomeStr, sub: savedPct })}
+          />
+          <StatCard
+            label="Top Category"
+            value={topCatStr}
+            sub={topCatAmt}
+            color="text-indigo-600"
+            onClick={() => topCategory && setModalData({ label: 'Top Spending Category', value: topCatStr, sub: topCatAmt + ' this month' })}
+          />
         </div>
 
         {/* Chat Box */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm flex flex-col flex-1 overflow-hidden mb-4" style={{ minHeight: '400px', maxHeight: '500px' }}>
-
-          {/* Messages */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm flex flex-col flex-1 overflow-hidden mb-3" style={{ minHeight: 320 }}>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`flex items-start gap-2 max-w-[80%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'}`}>
-                    {msg.role === 'user' ? '👤' : '🤖'}
+                <div className={`flex items-start gap-2 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${
+                    msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
+                  }`}>
+                    {msg.role === 'user' ? 'U' : 'AI'}
                   </div>
-                  <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm'}`}>
+                  <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                    msg.role === 'user'
+                      ? 'bg-indigo-600 text-white rounded-tr-sm'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm'
+                  }`}>
                     {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
                   </div>
                 </div>
@@ -157,7 +192,7 @@ export default function Insights() {
             {loading && (
               <div className="flex justify-start">
                 <div className="flex items-start gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-sm">🤖</div>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-xs font-bold">AI</div>
                   <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 rounded-2xl rounded-tl-sm">
                     <div className="flex gap-1 items-center">
                       <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -172,7 +207,7 @@ export default function Insights() {
           </div>
 
           {/* Input */}
-          <div className="border-t border-gray-100 dark:border-gray-700 p-4">
+          <div className="border-t border-gray-100 dark:border-gray-700 p-3">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -180,30 +215,28 @@ export default function Insights() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask anything about your finances..."
-                className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
               />
               <button
                 onClick={() => sendMessage()}
                 disabled={loading || !input.trim()}
-                className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? '⏳' : '➤'}
+                className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                {loading ? '...' : 'Send'}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Quick Questions */}
+        {/* Quick Questions — horizontal scroll, clean pills */}
         <div>
-          <p className="text-xs text-gray-400 mb-2 font-medium">Quick questions:</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="text-xs text-gray-400 mb-2 font-medium">Quick questions</p>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {QUICK_QUESTIONS.map((q, i) => (
               <button
                 key={i}
                 onClick={() => sendMessage(q)}
                 disabled={loading}
-                className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs hover:border-indigo-400 hover:text-indigo-600 transition disabled:opacity-50"
-              >
+                className="flex-shrink-0 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs font-medium hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition disabled:opacity-50 whitespace-nowrap">
                 {q}
               </button>
             ))}
