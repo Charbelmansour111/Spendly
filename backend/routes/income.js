@@ -13,16 +13,20 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { amount, source, month, year, is_recurring } = req.body;
-    if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ message: 'Amount must be greater than 0' });
+    const { amount, source, month, year } = req.body;
     const result = await pool.query(
-      `INSERT INTO income (user_id, amount, source, month, year, is_recurring)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (user_id, month, year, source) DO UPDATE SET amount = $2, is_recurring = $6 RETURNING *`,
-      [req.userId, amount, source || 'Salary', month, year, is_recurring || false]
+      `INSERT INTO income (user_id, amount, source, month, year)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (user_id, month, year, source)
+       DO UPDATE SET amount = EXCLUDED.amount
+       RETURNING *`,
+      [req.userId, amount, source, month, year]
     );
     res.status(201).json(result.rows[0]);
-  } catch { res.status(500).json({ message: 'Server error' }) }
+  } catch (e) {
+    console.log('Income error:', e);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 router.post('/apply-recurring', authenticateToken, async (req, res) => {
