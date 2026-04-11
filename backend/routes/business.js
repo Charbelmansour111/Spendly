@@ -328,6 +328,7 @@ Make each ingredient a unique distinct color.` }],
 });
 
 // ── POS SCAN SECTION (Smart full analysis) ────────────────
+// ── POS SCAN SECTION (Smart full analysis) ────────────────
 
 router.post('/pos-scan-section', authenticateToken, async (req, res) => {
   try {
@@ -336,17 +337,40 @@ router.post('/pos-scan-section', authenticateToken, async (req, res) => {
 
     const rate = exchange_rate ? parseFloat(exchange_rate) : null;
 
-    // Try vision model — fallback gracefully
     let analysis = null;
     let visionError = null;
 
-    const visionPrompt = `Look at this restaurant POS receipt image.
-Find the section called "Summary By Items" and list every item with its quantity.
-Return ONLY this JSON, nothing else:
+    const visionPrompt = `This is an end-of-day POS receipt from a Lebanese restaurant called Epic Sandwich.
+
+The receipt has TWO sides:
+
+LEFT SIDE contains management data:
+- First Invoice / Last Invoice numbers
+- Number of Customers, Number of Invoices
+- Grand Total, Net Total (in Lebanese Pounds LL)
+- Discount, Service
+- Average Customer, Average Check
+- Cash $ amount, Cash LL amount
+- Net Sales figure
+
+RIGHT SIDE contains:
+- "Summary of Sales by Groups" (SANDWICHES, DRINKS, FRIES, BURGERS, DELIVERY totals)
+- "Summary By Items" (THIS IS THE MOST IMPORTANT SECTION)
+  Format: ITEM NAME followed by a number (e.g. "FRIES KBIR    15.00" means 15 fries sold)
+- "Summary Of Voids" (items that were cancelled)
+
+From the "Summary By Items" section, I can see items like:
+7UP, AB3A, All fries, Chicken Sub, DELIVERY A+, DELIVERY ZONE B, DELIVERY ZONE C,
+FRIES KBIR, FRIES MEDIUM, FRIES SANDWICH, Fajitas, HAMBURGER, ICE TEA PEACH DIET,
+MIRANDA, NO TOMATO, PEPSI, PEPSI 1.25, PEPSI ZERO, SOUJOUK BURGER, SOUJOUK SANDWICH,
+TAWOUK SANDWICH, WATER SMALL
+
+Return ONLY this exact JSON format, no other text:
 {
   "items": [
     {"name": "FRIES KBIR", "quantity": 15, "unit_price": 0, "type": "food"},
-    {"name": "PEPSI", "quantity": 4, "unit_price": 0, "type": "drink"},
+    {"name": "TAWOUK SANDWICH", "quantity": 5, "unit_price": 0, "type": "food"},
+    {"name": "PEPSI", "quantity": 1, "unit_price": 0, "type": "drink"},
     {"name": "DELIVERY ZONE B", "quantity": 7, "unit_price": 0, "type": "delivery"}
   ],
   "management": {
@@ -356,25 +380,40 @@ Return ONLY this JSON, nothing else:
     "net_total": 27100000,
     "discount": 200000,
     "avg_check": 1042308,
+    "avg_customer": 967857,
     "first_invoice": "113548",
     "last_invoice": "113572",
+    "cash_usd": 26499960,
+    "cash_ll": 600000,
     "currency": "LL"
   },
   "sales_by_category": [
-    {"category": "SANDWICHES", "total": 5700000}
+    {"category": "SANDWICHES", "total": 5700000},
+    {"category": "DRINKS", "total": 1500000},
+    {"category": "FRIES", "total": 10000000},
+    {"category": "BURGERS", "total": 2300000},
+    {"category": "DELIVERY", "total": 1500000}
   ],
-  "notes": "any observations"
+  "voids": [
+    {"name": "FRIES KBIR", "quantity": 6, "amount": 3600000}
+  ],
+  "notes": "Receipt in Lebanese Pounds LL"
 }
-Rules:
-- In Summary By Items: numbers like 15.00 next to item = quantity 15
-- type must be: food, drink, or delivery
-- Delivery zones = delivery, Pepsi/7UP/water = drink, everything else = food`;
 
-    // Try llama-3.2-11b-vision-preview first, then scout-17b
+CRITICAL RULES:
+- In Summary By Items: the number after the item name is QUANTITY SOLD (not price)
+- Numbers like 15.00 = 15 units sold
+- Drinks (PEPSI, 7UP, WATER SMALL, MIRANDA, ICE TEA, AB3A, PEPSI 1.25, PEPSI ZERO) = type "drink"
+- Delivery zones (DELIVERY ZONE A/B/C, DELIVERY A+) = type "delivery"
+- Everything else = type "food"
+- NO TOMATO is a food modifier, skip it
+- Extract ALL items visible in the Summary By Items section
+- Currency is Lebanese Pounds (LL)`;
+
     const modelsToTry = [
-      'llama-3.2-11b-vision-preview',
-      'llama-3.2-90b-vision-preview',
       'meta-llama/llama-4-scout-17b-16e-instruct',
+      'meta-llama/llama-4-maverick-17b-128e-instruct',
+      'llama-3.2-11b-vision-preview',
     ];
 
     for (const model of modelsToTry) {
@@ -403,13 +442,12 @@ Rules:
         if (!response.ok) {
           console.log(`Model ${model} error:`, JSON.stringify(data.error));
           visionError = data.error?.message || `Model ${model} failed`;
-          continue; // try next model
+          continue;
         }
 
         const rawText = data.choices[0].message.content.trim();
         console.log('Raw AI response (first 500 chars):', rawText.substring(0, 500));
 
-        // Try to extract JSON even if there's extra text
         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
           console.log('No JSON found in response');
@@ -419,7 +457,7 @@ Rules:
 
         analysis = JSON.parse(jsonMatch[0]);
         console.log('Successfully parsed with model:', model);
-        break; // success!
+        break;
 
       } catch (modelErr) {
         console.log(`Model ${model} threw error:`, modelErr.message);
@@ -438,7 +476,6 @@ Rules:
 
     const isLL = analysis.management?.currency === 'LL' || analysis.management?.currency === 'LBP';
 
-    // Process items
     const items = (analysis.items || [])
       .filter(i => i.name && i.quantity > 0)
       .filter(i => !already_found?.some(f => f.toLowerCase() === i.name.toLowerCase()))
@@ -464,7 +501,6 @@ Rules:
         };
       });
 
-    // Convert management totals
     let mgmt = { ...(analysis.management || {}) };
     if (isLL && rate) {
       ['grand_total','net_total','discount','service','avg_customer','avg_check'].forEach(f => {
