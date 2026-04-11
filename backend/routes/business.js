@@ -336,108 +336,158 @@ router.post('/pos-scan-section', authenticateToken, async (req, res) => {
 
     const rate = exchange_rate ? parseFloat(exchange_rate) : null;
 
-    const analysisPrompt = `You are analyzing a Lebanese restaurant POS end-of-day receipt.
-Read the ENTIRE receipt carefully and return a comprehensive JSON analysis.
-Return ONLY valid JSON, no other text:
+    // Try vision model — fallback gracefully
+    let analysis = null;
+    let visionError = null;
+
+    const visionPrompt = `Look at this restaurant POS receipt image.
+Find the section called "Summary By Items" and list every item with its quantity.
+Return ONLY this JSON, nothing else:
 {
+  "items": [
+    {"name": "FRIES KBIR", "quantity": 15, "unit_price": 0, "type": "food"},
+    {"name": "PEPSI", "quantity": 4, "unit_price": 0, "type": "drink"},
+    {"name": "DELIVERY ZONE B", "quantity": 7, "unit_price": 0, "type": "delivery"}
+  ],
   "management": {
-    "date": "date if visible",
-    "first_invoice": "number",
-    "last_invoice": "number",
     "num_customers": 28,
     "num_invoices": 26,
     "grand_total": 27300000,
     "net_total": 27100000,
     "discount": 200000,
-    "service": 0,
-    "avg_customer": 967857,
     "avg_check": 1042308,
-    "cash_usd": 26499960,
-    "cash_ll": 600000,
+    "first_invoice": "113548",
+    "last_invoice": "113572",
     "currency": "LL"
   },
   "sales_by_category": [
-    { "category": "SANDWICHES", "total": 5700000 },
-    { "category": "FRIES", "total": 10000000 }
+    {"category": "SANDWICHES", "total": 5700000}
   ],
-  "items": [
-    { "name": "FRIES KBIR", "quantity": 15, "unit_price": 0, "type": "food" },
-    { "name": "PEPSI", "quantity": 4, "unit_price": 0, "type": "drink" },
-    { "name": "DELIVERY ZONE B", "quantity": 7, "unit_price": 0, "type": "delivery" }
-  ],
-  "voids": [{ "name": "FRIES KBIR", "quantity": 6, "amount": 3600000 }],
-  "notes": "Receipt in Lebanese Pounds. Exchange rate needed for USD conversion."
+  "notes": "any observations"
 }
+Rules:
+- In Summary By Items: numbers like 15.00 next to item = quantity 15
+- type must be: food, drink, or delivery
+- Delivery zones = delivery, Pepsi/7UP/water = drink, everything else = food`;
 
-CRITICAL RULES:
-- Look at "Summary By Items" section for individual items
-- Numbers like "15.00" next to item = quantity 15
-- Categorize: food / drink / delivery
-- Delivery zones = type "delivery"
-- Drinks (PEPSI, 7UP, WATER, JUICE, MIRANDA, ICE TEA) = type "drink"
-- Everything else = type "food"
-- Extract ALL management figures from left side
-- Note currency (LL or USD)`;
+    // Try llama-3.2-11b-vision-preview first, then scout-17b
+    const modelsToTry = [
+      'llama-3.2-11b-vision-preview',
+      'llama-3.2-90b-vision-preview',
+      'meta-llama/llama-4-scout-17b-16e-instruct',
+    ];
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'llama-3.2-11b-vision-preview',
-        messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } }, { type: 'text', text: analysisPrompt }] }],
-        max_tokens: 2000,
-        temperature: 0.1
-      })
-    });
+    for (const model of modelsToTry) {
+      try {
+        console.log(`Trying vision model: ${model}`);
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model,
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } },
+                { type: 'text', text: visionPrompt }
+              ]
+            }],
+            max_tokens: 2000,
+            temperature: 0.1
+          })
+        });
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || 'Vision error');
+        const data = await response.json();
+        console.log(`Model ${model} response status:`, response.status);
 
-    const text = data.choices[0].message.content.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const analysis = JSON.parse(text);
+        if (!response.ok) {
+          console.log(`Model ${model} error:`, JSON.stringify(data.error));
+          visionError = data.error?.message || `Model ${model} failed`;
+          continue; // try next model
+        }
 
-    const isLL = analysis.management?.currency === 'LL';
+        const rawText = data.choices[0].message.content.trim();
+        console.log('Raw AI response (first 500 chars):', rawText.substring(0, 500));
+
+        // Try to extract JSON even if there's extra text
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          console.log('No JSON found in response');
+          visionError = 'AI did not return JSON';
+          continue;
+        }
+
+        analysis = JSON.parse(jsonMatch[0]);
+        console.log('Successfully parsed with model:', model);
+        break; // success!
+
+      } catch (modelErr) {
+        console.log(`Model ${model} threw error:`, modelErr.message);
+        visionError = modelErr.message;
+        continue;
+      }
+    }
+
+    if (!analysis) {
+      console.log('All vision models failed. Last error:', visionError);
+      return res.status(500).json({
+        message: `Scan failed: ${visionError}. Try a clearer photo with good lighting.`,
+        items: []
+      });
+    }
+
+    const isLL = analysis.management?.currency === 'LL' || analysis.management?.currency === 'LBP';
 
     // Process items
     const items = (analysis.items || [])
-      .filter(i => !already_found?.includes(i.name))
+      .filter(i => i.name && i.quantity > 0)
+      .filter(i => !already_found?.some(f => f.toLowerCase() === i.name.toLowerCase()))
       .map(item => {
         let price = parseFloat(item.unit_price || 0);
-        if (isLL && rate && price > 100) price = price / rate;
+        if (isLL && rate && price > 1000) price = price / rate;
+
         const nameLower = item.name.toLowerCase();
-        const match = menu_items?.find(m => m.name.toLowerCase() === nameLower || m.name.toLowerCase().includes(nameLower) || nameLower.includes(m.name.toLowerCase()));
+        const match = menu_items?.find(m =>
+          m.name.toLowerCase() === nameLower ||
+          m.name.toLowerCase().includes(nameLower) ||
+          nameLower.includes(m.name.toLowerCase())
+        );
+
         return {
-          ...item,
+          name: item.name,
+          quantity: parseInt(item.quantity) || 1,
           unit_price: price > 0 ? price : (match ? parseFloat(match.price) : 0),
+          type: item.type || 'food',
           matched: !!match,
           matched_id: match?.id || null,
           matched_name: match?.name || null,
         };
       });
 
-    // Convert management totals from LL to USD
+    // Convert management totals
     let mgmt = { ...(analysis.management || {}) };
     if (isLL && rate) {
       ['grand_total','net_total','discount','service','avg_customer','avg_check'].forEach(f => {
-        if (mgmt[f]) {
+        if (mgmt[f] && parseFloat(mgmt[f]) > 1000) {
           mgmt[f + '_ll'] = mgmt[f];
           mgmt[f] = (parseFloat(mgmt[f]) / rate).toFixed(2);
         }
       });
     }
 
+    console.log(`Scan complete: ${items.length} items found`);
+
     res.json({
       items,
       management: mgmt,
       sales_by_category: analysis.sales_by_category || [],
-      voids: analysis.voids || [],
       currency: analysis.management?.currency || 'unknown',
       notes: analysis.notes || null,
       count: items.length
     });
 
   } catch (e) {
-    console.log('Scan section error:', e.message);
+    console.log('POS scan fatal error:', e.message, e.stack);
     res.status(500).json({ message: 'Scan failed: ' + e.message, items: [] });
   }
 });
