@@ -1,20 +1,17 @@
 import { useEffect, useState, useCallback } from 'react'
+import Layout from '../components/Layout'
 import API from '../utils/api'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
-
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
-function fmt(amount, symbol) {
-  return symbol + Math.abs(safeNum(amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+function fmt(a, s) { return s + Math.abs(safeNum(a)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
-  const bg = type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-orange-500' : 'bg-green-500'
   return (
-    <div className={`fixed top-6 right-4 left-4 md:left-auto md:right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${bg}`}>
+    <div className={`fixed top-6 right-4 left-4 md:left-auto md:right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-orange-500' : 'bg-green-500'}`}>
       <span className="flex-1 min-w-0 truncate">{message}</span>
-      <button onClick={onClose} className="flex-shrink-0 font-bold opacity-70 hover:opacity-100">x</button>
+      <button onClick={onClose} className="flex-shrink-0 font-bold opacity-70">x</button>
     </div>
   )
 }
@@ -25,9 +22,184 @@ function NumberModal({ label, value, sub, onClose }) {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-gray-800 rounded-3xl p-8 text-center w-full max-w-xs shadow-2xl" onClick={e => e.stopPropagation()}>
         <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">{label}</p>
-        <p className="text-4xl font-bold text-indigo-600 tabular-nums break-all">{value}</p>
+        <p className="text-4xl font-bold text-orange-500 tabular-nums break-all">{value}</p>
         {sub && <p className="text-sm text-gray-400 mt-2">{sub}</p>}
-        <button onClick={onClose} className="mt-6 w-full bg-indigo-600 text-white py-3 rounded-2xl font-semibold">Done</button>
+        <button onClick={onClose} className="mt-6 w-full bg-orange-500 text-white py-3 rounded-2xl font-semibold">Done</button>
+      </div>
+    </div>
+  )
+}
+
+// AI-Powered Expense Sheet — parses natural language + auto-updates stock
+function AIExpenseSheet({ onClose, onSave, currencySymbol, ingredients }) {
+  const [step, setStep]           = useState('input') // input | ai_review | saving
+  const [form, setForm]           = useState({ amount: '', category: 'Ingredients', description: '', date: new Date().toISOString().split('T')[0], is_recurring: false })
+  const [aiResult, setAiResult]   = useState(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError]     = useState('')
+  const BIZ_CATS = ['Ingredients', 'Staff', 'Rent', 'Utilities', 'Marketing', 'Equipment', 'Packaging', 'Other']
+  const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+
+  const runAI = async () => {
+    if (!form.description || !form.amount) { setAiError('Please fill description and amount first'); return }
+    setAiLoading(true)
+    setAiError('')
+    try {
+      const res = await API.post('/business/ai-verify-expense', {
+        description: form.description,
+        amount: form.amount,
+        category: form.category,
+        ingredients: ingredients.map(i => ({ id: i.id, name: i.name, unit: i.unit, stock: i.stock_quantity }))
+      })
+      setAiResult(res.data)
+      setStep('ai_review')
+    } catch {
+      setAiError('AI check failed. You can still save manually.')
+    }
+    setAiLoading(false)
+  }
+
+  const handleConfirm = () => {
+    onSave({ ...form, ai_verified: true, stock_updates: aiResult?.stock_updates || [] })
+  }
+
+  const handleSkipAI = () => {
+    onSave({ ...form, ai_verified: false, stock_updates: [] })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 pb-4 sticky top-0 bg-white dark:bg-gray-800 z-10">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Business Expense</h3>
+            <p className="text-xs text-orange-500 font-medium mt-0.5">AI-powered verification</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div className="px-6 pb-6 space-y-4">
+          {step === 'input' && (
+            <>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({currencySymbol})</label>
+                <input type="number" placeholder="0.00" value={form.amount}
+                  onChange={e => setForm({ ...form, amount: e.target.value })} min="0.01" step="0.01"
+                  className={cls + ' text-2xl font-bold'} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Category</label>
+                  <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className={cls}>
+                    {BIZ_CATS.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Date</label>
+                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className={cls} />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">
+                  What did you buy?
+                  {form.category === 'Ingredients' && <span className="text-orange-500 ml-1">(be specific — AI will parse it)</span>}
+                </label>
+                <input type="text"
+                  placeholder={form.category === 'Ingredients' ? 'e.g. 2 bags of burger buns, 5kg beef patties' : 'e.g. monthly rent payment'}
+                  value={form.description}
+                  onChange={e => setForm({ ...form, description: e.target.value })}
+                  className={cls} />
+                {form.category === 'Ingredients' && (
+                  <p className="text-xs text-gray-400 mt-1">AI will automatically update your stock based on what you describe</p>
+                )}
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="accent-orange-500 w-4 h-4" />
+                <span className="text-sm text-gray-600 dark:text-gray-300">Recurring monthly</span>
+              </label>
+              {aiError && <p className="text-red-500 text-xs">{aiError}</p>}
+              <div className="grid grid-cols-2 gap-3">
+                {form.category === 'Ingredients' ? (
+                  <>
+                    <button onClick={runAI} disabled={!form.amount || !form.description || aiLoading}
+                      className="bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                      {aiLoading ? (
+                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Analyzing...</>
+                      ) : (
+                        <><span>🤖</span> AI Check</>
+                      )}
+                    </button>
+                    <button onClick={handleSkipAI} disabled={!form.amount || !form.date}
+                      className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white py-4 rounded-2xl font-bold transition disabled:opacity-50">
+                      Save Manually
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={handleSkipAI} disabled={!form.amount || !form.date}
+                    className="col-span-2 bg-red-500 text-white py-4 rounded-2xl font-bold hover:bg-red-600 transition disabled:opacity-50">
+                    Add Expense
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          {step === 'ai_review' && aiResult && (
+            <>
+              {/* AI Summary Card */}
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">🤖</span>
+                  <p className="font-bold text-orange-600 text-sm">AI Verification Complete</p>
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-200 mb-3">{aiResult.summary}</p>
+
+                {/* Stock updates */}
+                {aiResult.stock_updates && aiResult.stock_updates.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 mb-2">Stock will be updated:</p>
+                    {aiResult.stock_updates.map((update, i) => (
+                      <div key={i} className={`flex items-center justify-between text-xs py-2 px-3 rounded-xl ${update.matched ? 'bg-green-100 dark:bg-green-900/30' : 'bg-yellow-100 dark:bg-yellow-900/30'}`}>
+                        <div>
+                          <p className="font-semibold text-gray-800 dark:text-white">{update.ingredient_name}</p>
+                          {!update.matched && <p className="text-yellow-600 text-xs">New ingredient will be created</p>}
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-bold ${update.matched ? 'text-green-600' : 'text-yellow-600'}`}>+{update.quantity} {update.unit}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Warnings */}
+                {aiResult.warnings && aiResult.warnings.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {aiResult.warnings.map((w, i) => (
+                      <p key={i} className="text-xs text-orange-600 flex items-start gap-1"><span>⚠️</span>{w}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={handleConfirm}
+                  className="bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition">
+                  ✓ Confirm & Save
+                </button>
+                <button onClick={() => setStep('input')}
+                  className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white py-4 rounded-2xl font-bold transition">
+                  Edit
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -65,58 +237,6 @@ function AddRevenueSheet({ onClose, onSave, currencySymbol }) {
           <button onClick={() => onSave(form)} disabled={!form.total_revenue || !form.date}
             className="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition disabled:opacity-50">
             Save Revenue
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
-  const [form, setForm] = useState({ amount: '', category: 'Ingredients', description: '', date: new Date().toISOString().split('T')[0], is_recurring: false })
-  const BIZ_CATS = ['Ingredients', 'Staff', 'Rent', 'Utilities', 'Marketing', 'Equipment', 'Packaging', 'Other']
-  const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-  return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-5">
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Business Expense</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({currencySymbol})</label>
-            <input type="number" placeholder="0.00" value={form.amount}
-              onChange={e => setForm({ ...form, amount: e.target.value })} min="0.01" step="0.01"
-              className={cls + ' text-2xl font-bold'} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">Category</label>
-              <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className={cls}>
-                {BIZ_CATS.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">Date</label>
-              <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className={cls} />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Description</label>
-            <input type="text" placeholder="e.g. beef supply from Ali" value={form.description}
-              onChange={e => setForm({ ...form, description: e.target.value })} className={cls} />
-          </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="accent-red-500 w-4 h-4" />
-            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring monthly</span>
-          </label>
-          <button onClick={() => onSave(form)} disabled={!form.amount || !form.date}
-            className="w-full bg-red-500 text-white py-4 rounded-2xl font-bold hover:bg-red-600 transition disabled:opacity-50">
-            Add Expense
           </button>
         </div>
       </div>
@@ -185,6 +305,7 @@ export default function BusinessDashboard() {
   const [revenue, setRevenue]       = useState([])
   const [expenses, setExpenses]     = useState([])
   const [employees, setEmployees]   = useState([])
+  const [ingredients, setIngredients] = useState([])
   const [loading, setLoading]       = useState(true)
   const [currencySymbol, setSymbol] = useState('$')
   const [toast, setToast]           = useState(null)
@@ -211,47 +332,82 @@ export default function BusinessDashboard() {
   const fetchAll = async () => {
     setLoading(true)
     try {
-      const [rev, exp, emp] = await Promise.all([
+      const [rev, exp, emp, ing] = await Promise.all([
         API.get('/business/revenue'),
         API.get('/business/expenses'),
         API.get('/business/employees'),
+        API.get('/business/stock'),
       ])
       setRevenue(rev.data || [])
       setExpenses(exp.data || [])
       setEmployees(emp.data || [])
+      setIngredients(ing.data || [])
     } catch { console.log('Error fetching business data') }
     setLoading(false)
   }
 
   const handleAddRevenue = async (form) => {
-    try { await API.post('/business/revenue', form); setShowAddRev(false); fetchAll(); showToast('Revenue added!') }
-    catch { showToast('Error adding revenue', 'error') }
+    try {
+      await API.post('/business/revenue', form)
+      setShowAddRev(false)
+      // Optimistic update — only refetch revenue
+      const rev = await API.get('/business/revenue')
+      setRevenue(rev.data || [])
+      showToast('Revenue added!')
+    } catch { showToast('Error adding revenue', 'error') }
   }
 
   const handleAddExpense = async (form) => {
-    try { await API.post('/expenses', form); setShowAddExp(false); fetchAll(); showToast('Expense added!') }
-    catch { showToast('Error adding expense', 'error') }
+    try {
+      const { stock_updates, ai_verified, ...expenseData } = form
+      // Save expense
+      await API.post('/expenses', expenseData)
+      // If AI provided stock updates, apply them
+      if (stock_updates && stock_updates.length > 0) {
+        await API.post('/business/apply-stock-updates', { stock_updates })
+      }
+      setShowAddExp(false)
+      // Refetch only what changed
+      const [exp, ing] = await Promise.all([API.get('/business/expenses'), API.get('/business/stock')])
+      setExpenses(exp.data || [])
+      setIngredients(ing.data || [])
+      showToast(ai_verified ? 'Expense saved + stock updated by AI!' : 'Expense added!')
+    } catch { showToast('Error adding expense', 'error') }
   }
 
   const handleAddEmployee = async (form) => {
-    try { await API.post('/business/employees', form); setShowAddEmp(false); fetchAll(); showToast('Employee added!') }
-    catch { showToast('Error adding employee', 'error') }
+    try {
+      await API.post('/business/employees', form)
+      setShowAddEmp(false)
+      const emp = await API.get('/business/employees')
+      setEmployees(emp.data || [])
+      showToast('Employee added!')
+    } catch { showToast('Error adding employee', 'error') }
   }
 
   const handleDeleteEmployee = async (id) => {
     if (!window.confirm('Remove this employee?')) return
-    try { await API.delete('/business/employees/' + id); fetchAll(); showToast('Employee removed', 'error') } catch {}
+    try {
+      await API.delete('/business/employees/' + id)
+      setEmployees(prev => prev.filter(e => e.id !== id))
+      showToast('Employee removed', 'error')
+    } catch {}
   }
 
-  const monthRevenue = revenue.filter(r => { const d = new Date(r.date); return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear() }).reduce((s, r) => s + safeNum(r.total_revenue), 0)
+  // Derived values — computed from state, no extra API calls
+  const monthRevenue  = revenue.filter(r => { const d = new Date(r.date); return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear() }).reduce((s, r) => s + safeNum(r.total_revenue), 0)
   const monthExpenses = expenses.filter(e => { const d = new Date(e.date); return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear() }).reduce((s, e) => s + safeNum(e.amount), 0)
-  const monthPayroll = employees.filter(e => e.is_active && e.salary_type === 'monthly').reduce((s, e) => s + safeNum(e.salary), 0)
-  const netProfit = monthRevenue - monthExpenses - monthPayroll
-  const profitMargin = monthRevenue > 0 ? ((netProfit / monthRevenue) * 100).toFixed(1) : 0
-  const todayStr = today.toISOString().split('T')[0]
-  const todayRevenue = revenue.filter(r => r.date?.split('T')[0] === todayStr).reduce((s, r) => s + safeNum(r.total_revenue), 0)
+  const monthPayroll  = employees.filter(e => e.is_active && e.salary_type === 'monthly').reduce((s, e) => s + safeNum(e.salary), 0)
+  const netProfit     = monthRevenue - monthExpenses - monthPayroll
+  const profitMargin  = monthRevenue > 0 ? ((netProfit / monthRevenue) * 100).toFixed(1) : 0
+  const todayStr      = today.toISOString().split('T')[0]
+  const todayRevenue  = revenue.filter(r => r.date?.split('T')[0] === todayStr).reduce((s, r) => s + safeNum(r.total_revenue), 0)
+  const lowStockCount = ingredients.filter(i => safeNum(i.stock_quantity) <= safeNum(i.low_stock_alert) && safeNum(i.low_stock_alert) > 0).length
 
-  const expCategoryData = expenses.filter(e => { const d = new Date(e.date); return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear() }).reduce((acc, e) => { const f = acc.find(i => i.name === e.category); if (f) f.value += safeNum(e.amount); else acc.push({ name: e.category, value: safeNum(e.amount) }); return acc }, []).sort((a, b) => b.value - a.value)
+  const expCategoryData = expenses
+    .filter(e => { const d = new Date(e.date); return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear() })
+    .reduce((acc, e) => { const f = acc.find(i => i.name === e.category); if (f) f.value += safeNum(e.amount); else acc.push({ name: e.category, value: safeNum(e.amount) }); return acc }, [])
+    .sort((a, b) => b.value - a.value)
 
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (6 - i))
@@ -264,37 +420,50 @@ export default function BusinessDashboard() {
   const businessName = user?.business_name || (isRestaurant ? 'My Restaurant' : 'My Business')
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-gray-400 text-sm">Loading your dashboard...</p>
+    <Layout>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Loading your dashboard...</p>
+        </div>
       </div>
-    </div>
+    </Layout>
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    <Layout>
+      {toast    && <Toast {...toast} onClose={() => setToast(null)} />}
       {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
       {showAddRev && <AddRevenueSheet onClose={() => setShowAddRev(false)} onSave={handleAddRevenue} currencySymbol={currencySymbol} />}
-      {showAddExp && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} />}
+      {showAddExp && <AIExpenseSheet  onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} ingredients={ingredients} />}
       {showAddEmp && <AddEmployeeSheet onClose={() => setShowAddEmp(false)} onSave={handleAddEmployee} currencySymbol={currencySymbol} />}
 
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 py-4 flex justify-between items-center sticky top-0 z-20">
-        <div>
-          <p className="text-xs text-gray-400">Business Dashboard</p>
-          <h1 className="text-lg font-bold text-gray-800 dark:text-white">{businessName}</h1>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="max-w-2xl mx-auto px-4 py-5 pb-8">
+
+        {/* Business header strip */}
+        <div className="flex justify-between items-center mb-5">
+          <div>
+            <p className="text-xs text-gray-400">Business Dashboard</p>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-white">{businessName}</h1>
+          </div>
           <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${isRestaurant ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
             {isRestaurant ? '🍽️ Restaurant' : '🏪 Firm'}
           </span>
-          <a href="/dashboard" className="text-xs text-gray-400 hover:text-indigo-600 px-2 py-1 rounded-lg hover:bg-indigo-50 transition">Personal →</a>
         </div>
-      </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-5 pb-24">
+        {/* Low stock warning */}
+        {lowStockCount > 0 && (
+          <a href="/business/stock" className="block bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
+            <span className="text-xl">⚠️</span>
+            <div className="flex-1">
+              <p className="text-red-600 font-semibold text-sm">{lowStockCount} ingredient{lowStockCount > 1 ? 's' : ''} running low!</p>
+              <p className="text-red-400 text-xs">Tap to view stock</p>
+            </div>
+            <span className="text-red-400 text-xs font-semibold">View →</span>
+          </a>
+        )}
 
+        {/* Hero P&L Card */}
         <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-6 mb-4 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10">
             <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-orange-400" />
@@ -323,6 +492,7 @@ export default function BusinessDashboard() {
           </div>
         </div>
 
+        {/* Today chip */}
         <div className="flex items-center gap-3 mb-4">
           <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-2xl px-4 py-3 flex items-center gap-3 flex-1">
             <span className="text-2xl">☀️</span>
@@ -336,6 +506,7 @@ export default function BusinessDashboard() {
           </button>
         </div>
 
+        {/* Quick Actions */}
         <div className="grid grid-cols-4 gap-3 mb-5">
           {[
             { label: 'Revenue', icon: '💵', color: 'bg-green-600',  action: () => setShowAddRev(true) },
@@ -350,6 +521,7 @@ export default function BusinessDashboard() {
           ))}
         </div>
 
+        {/* Tab bar */}
         <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5">
           {[{ key: 'overview', label: 'Overview' }, { key: 'staff', label: 'Staff' }, { key: 'expenses', label: 'Expenses' }].map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
@@ -359,17 +531,18 @@ export default function BusinessDashboard() {
           ))}
         </div>
 
+        {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-4">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
               <h3 className="font-semibold text-gray-800 dark:text-white text-sm mb-4">Last 7 Days Revenue</h3>
-              <div className="flex items-end gap-2 h-24">
+              <div className="flex items-end gap-2" style={{ height: 96 }}>
                 {last7Days.map((day, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
                     <p className="text-xs text-gray-400 tabular-nums">{day.value > 0 ? currencySymbol + (day.value >= 1000 ? (day.value / 1000).toFixed(1) + 'k' : day.value.toFixed(0)) : ''}</p>
-                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden" style={{ height: 60 }}>
-                      <div style={{ height: (day.value / maxDay) * 60, marginTop: 'auto' }}
-                        className={`w-full rounded-lg transition-all duration-500 ${day.isToday ? 'bg-orange-500' : 'bg-orange-200 dark:bg-orange-800'}`} />
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col justify-end" style={{ height: 60 }}>
+                      <div className={`w-full rounded-lg transition-all duration-500 ${day.isToday ? 'bg-orange-500' : 'bg-orange-200 dark:bg-orange-800'}`}
+                        style={{ height: (day.value / maxDay) * 60 }} />
                     </div>
                     <p className={`text-xs font-semibold ${day.isToday ? 'text-orange-500' : 'text-gray-400'}`}>{day.label}</p>
                   </div>
@@ -427,6 +600,7 @@ export default function BusinessDashboard() {
           </div>
         )}
 
+        {/* Staff Tab */}
         {activeTab === 'staff' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
             <div className="flex justify-between items-center mb-4">
@@ -469,6 +643,7 @@ export default function BusinessDashboard() {
           </div>
         )}
 
+        {/* Expenses Tab */}
         {activeTab === 'expenses' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
             <div className="flex justify-between items-center mb-4">
@@ -489,7 +664,10 @@ export default function BusinessDashboard() {
                       {exp.category === 'Ingredients' ? '🥩' : exp.category === 'Staff' ? '👥' : exp.category === 'Rent' ? '🏠' : exp.category === 'Utilities' ? '💡' : '🧾'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{exp.description || exp.category}</p>
+                      <div className="flex items-center gap-1">
+                        <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{exp.description || exp.category}</p>
+                        {exp.ai_verified && <span className="text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full flex-shrink-0">🤖</span>}
+                      </div>
                       <p className="text-xs text-gray-400">{exp.date?.split('T')[0]} · {exp.category}</p>
                     </div>
                     <p className="font-bold text-red-500 tabular-nums text-sm flex-shrink-0">-{fmt(exp.amount, currencySymbol)}</p>
@@ -500,28 +678,6 @@ export default function BusinessDashboard() {
           </div>
         )}
       </div>
-
-      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700">
-        <div className="flex items-stretch h-16 max-w-2xl mx-auto">
-          {[
-            { href: '/business',       icon: '📊', label: 'Dashboard' },
-            { href: '/business/menu',  icon: '🍽️', label: 'Menu' },
-            { href: '/business/stock', icon: '📦', label: 'Stock' },
-            { href: '/insights',       icon: '🤖', label: 'AI' },
-            { href: '/profile',        icon: '👤', label: 'Profile' },
-          ].map((item, i) => {
-            const isActive = window.location.pathname === item.href
-            return (
-              <a key={i} href={item.href}
-                className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative ${isActive ? 'text-orange-500' : 'text-gray-400 dark:text-gray-500'}`}>
-                {isActive && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-orange-500" />}
-                <span className="text-xl">{item.icon}</span>
-                <span className="text-xs font-medium">{item.label}</span>
-              </a>
-            )
-          })}
-        </div>
-      </nav>
-    </div>
+    </Layout>
   )
 }

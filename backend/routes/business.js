@@ -325,4 +325,112 @@ router.post('/deduct-stock', authenticateToken, async (req, res) => {
   }
 });
 
+// ── AI VERIFY EXPENSE ────────────────────────────────────
+// Parses natural language description and maps to ingredients
+
+router.post('/ai-verify-expense', authenticateToken, async (req, res) => {
+  try {
+    const { description, amount, category, ingredients } = req.body
+
+    const systemPrompt = `You are an AI accountant for a restaurant/business. 
+The user is recording a purchase. Parse their description and return a JSON object.
+
+Current ingredients in stock: ${JSON.stringify(ingredients.map(i => ({ id: i.id, name: i.name, unit: i.unit, current_stock: i.stock })))}
+
+Return ONLY valid JSON in this exact format, no other text:
+{
+  "summary": "plain english summary of what you understood",
+  "stock_updates": [
+    {
+      "ingredient_id": <id of matching ingredient or null if new>,
+      "ingredient_name": "<name>",
+      "quantity": <number>,
+      "unit": "<unit>",
+      "matched": <true if matched existing ingredient, false if new>
+    }
+  ],
+  "warnings": ["any warnings about unusual quantities or mismatches"]
+}
+
+Rules:
+- If user says "2 bags of burger buns" and a bag typically has 6 buns, stock_updates should show 12 buns
+- If user says "5kg beef" try to match to existing beef ingredient
+- If no ingredient match found, set matched: false and ingredient_id: null
+- Always try to convert to the base unit the ingredient uses (e.g. bags→pieces, boxes→pieces)
+- If category is not Ingredients, return empty stock_updates array`
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Purchase description: "${description}". Amount paid: ${amount}. Category: ${category}` }
+        ],
+        max_tokens: 500,
+        temperature: 0.1
+      })
+    })
+
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error?.message || 'AI error')
+
+    const text = data.choices[0].message.content.trim()
+    // Strip markdown code blocks if AI wrapped in them
+    const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    const parsed = JSON.parse(clean)
+
+    res.json(parsed)
+  } catch (e) {
+    console.log('AI verify error:', e)
+    res.status(500).json({ message: 'AI verification failed', summary: 'Could not parse', stock_updates: [], warnings: [] })
+  }
+})
+
+// ── APPLY STOCK UPDATES (from AI verified expense) ───────
+
+router.post('/apply-stock-updates', authenticateToken, async (req, res) => {
+  try {
+    const { stock_updates } = req.body
+    if (!stock_updates || !Array.isArray(stock_updates)) return res.json({ updated: 0 })
+
+    let updated = 0
+    for (const update of stock_updates) {
+      if (update.ingredient_id) {
+        // Update existing ingredient
+        const ing = await pool.query('SELECT * FROM ingredients WHERE id=$1 AND user_id=$2', [update.ingredient_id, req.userId])
+        if (ing.rows.length > 0) {
+          const newQty = parseFloat(ing.rows[0].stock_quantity) + parseFloat(update.quantity)
+          await pool.query(
+            'UPDATE ingredients SET stock_quantity=$1 WHERE id=$2 AND user_id=$3',
+            [newQty, update.ingredient_id, req.userId]
+          )
+          // Log stock movement
+          await pool.query(
+            'INSERT INTO stock_movements (user_id, ingredient_id, movement_type, quantity, note) VALUES ($1,$2,$3,$4,$5)',
+            [req.userId, update.ingredient_id, 'in', update.quantity, 'AI-verified purchase']
+          ).catch(() => {})
+          updated++
+        }
+      } else if (!update.ingredient_id && update.matched === false) {
+        // Create new ingredient from AI suggestion
+        await pool.query(
+          'INSERT INTO ingredients (user_id, name, unit, cost_per_unit, stock_quantity) VALUES ($1,$2,$3,$4,$5)',
+          [req.userId, update.ingredient_name, update.unit, 0, update.quantity]
+        )
+        updated++
+      }
+    }
+
+    res.json({ updated, message: `${updated} stock item(s) updated` })
+  } catch (e) {
+    console.log('Stock update error:', e)
+    res.status(500).json({ message: 'Stock update failed' })
+  }
+})
+
 module.exports = router;

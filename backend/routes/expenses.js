@@ -12,14 +12,19 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { amount, category, description, date, is_recurring } = req.body;
-    if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ message: 'Amount must be greater than 0' });
+    const { amount, category, description, date, is_recurring, ai_verified } = req.body;
+    if (!amount || parseFloat(amount) <= 0)
+      return res.status(400).json({ message: 'Amount must be greater than 0' });
     const newExpense = await pool.query(
-      'INSERT INTO expenses (user_id, amount, category, description, date, is_recurring) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [req.userId, amount, category, description, date, is_recurring || false]
+      `INSERT INTO expenses (user_id, amount, category, description, date, is_recurring, ai_verified)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [req.userId, amount, category, description, date, is_recurring || false, ai_verified || false]
     );
     res.status(201).json(newExpense.rows[0]);
-  } catch { res.status(500).json({ message: 'Server error' }) }
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 router.put('/:id', authenticateToken, async (req, res) => {
