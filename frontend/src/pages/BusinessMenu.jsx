@@ -29,12 +29,12 @@ export default function BusinessMenu() {
   const [symbol, setSymbol]             = useState('$')
   const [showAddItem, setShowAddItem]   = useState(false)
   const [expandedItem, setExpandedItem] = useState(null)
-  const [editingItem, setEditingItem]   = useState(null) // item being edited
-  const [showAddRecipe, setShowAddRecipe] = useState(null)
-  const [itemForm, setItemForm] = useState({ name: '', category: 'Burger', price: '', num_ingredients: 1 })
-  const [recipeRows, setRecipeRows] = useState([{ ...EMPTY_ROW }])
+  const [editingItem, setEditingItem]   = useState(null)
+  const [itemForm, setItemForm]         = useState({ name: '', category: 'Burger', price: '', num_ingredients: 1 })
+  const [recipeRows, setRecipeRows]     = useState([{ ...EMPTY_ROW }])
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
+
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
 
   useEffect(() => {
@@ -88,7 +88,9 @@ export default function BusinessMenu() {
       setShowAddItem(false)
       fetchAll()
       showToast('Menu item added!')
-    } catch { showToast('Error adding item', 'error') }
+    } catch (e) {
+      showToast(e.response?.data?.message || 'Error adding item', 'error')
+    }
   }
 
   const handleDeleteItem = async (id) => {
@@ -104,10 +106,8 @@ export default function BusinessMenu() {
     if (!editingItem?.name || !editingItem?.price) { showToast('Name and price required', 'error'); return }
     try {
       await API.put('/business/menu/' + editingItem.id, { name: editingItem.name, category: editingItem.category, price: editingItem.price })
-      setEditingItem(null)
-      fetchAll()
-      showToast('Item updated!')
-    } catch { showToast('Error updating item', 'error') }
+      setEditingItem(null); fetchAll(); showToast('Item updated!')
+    } catch { showToast('Error updating', 'error') }
   }
 
   const getItemCost = (item) => {
@@ -118,161 +118,11 @@ export default function BusinessMenu() {
     }, 0)
   }
 
-  const ItemForm = () => (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-6 border-2 border-orange-200 dark:border-orange-800">
-      <h3 className="font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
-        <span className="text-orange-500">🍽️</span> New Menu Item
-      </h3>
-      <div className="space-y-4">
-        <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1 block">Item Name *</label>
-          <input type="text" placeholder="e.g. Classic Burger" value={itemForm.name}
-            onChange={e => setItemForm({ ...itemForm, name: e.target.value })} className={cls} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Category *</label>
-            <select value={itemForm.category} onChange={e => setItemForm({ ...itemForm, category: e.target.value })} className={cls}>
-              {FOOD_CATS.map(c => <option key={c} value={c}>{CAT_ICONS[c]} {c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Selling Price ({symbol}) *</label>
-            <input type="number" placeholder="0.00" value={itemForm.price}
-              onChange={e => setItemForm({ ...itemForm, price: e.target.value })} min="0" step="0.01" className={cls} />
-          </div>
-        </div>
-
-        {/* Ingredient count slider */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-xs font-semibold text-gray-500">Number of Ingredients</label>
-            <span className="text-xl font-bold text-orange-500">{itemForm.num_ingredients}</span>
-          </div>
-          <input type="range" min="1" max="20" value={itemForm.num_ingredients}
-            onChange={e => handleNumIngredients(e.target.value)} className="w-full accent-orange-500 h-2" />
-          <div className="flex justify-between text-xs text-gray-400 mt-1">
-            <span>1</span><span>5</span><span>10</span><span>15</span><span>20</span>
-          </div>
-        </div>
-
-        {/* Recipe rows */}
-        <div>
-          <label className="text-xs font-semibold text-gray-500 mb-3 block">Recipe — {itemForm.num_ingredients} ingredient{itemForm.num_ingredients > 1 ? 's' : ''}</label>
-          {ingredients.length === 0 ? (
-            <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 text-center">
-              <p className="text-orange-600 text-sm">No ingredients yet.</p>
-              <a href="/business/stock" className="text-orange-600 font-bold text-xs underline">Add ingredients first →</a>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recipeRows.map((row, idx) => {
-                const selectedIng = ingredients.find(i => String(i.id) === String(row.ingredient_id))
-                const ingCost = selectedIng && row.quantity ? safeNum(selectedIng.cost_per_unit) * safeNum(row.quantity) : 0
-                return (
-                  <div key={idx} className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-3">
-                    <p className="text-xs font-semibold text-orange-500 mb-2">Ingredient {idx + 1}</p>
-                    <div className="space-y-2">
-                      <select value={row.ingredient_id} onChange={e => handleIngredientSelect(idx, e.target.value)}
-                        className="w-full px-3 py-2.5 border border-orange-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
-                        <option value="">Select ingredient...</option>
-                        {ingredients.map(ing => (
-                          <option key={ing.id} value={ing.id}>{ing.emoji || '📦'} {ing.name} (stock: {safeNum(ing.stock_quantity).toFixed(1)} {ing.unit})</option>
-                        ))}
-                      </select>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-xs text-gray-400 mb-1 block">Quantity per item</label>
-                          <input type="number" placeholder="e.g. 150"
-                            value={row.quantity} onChange={e => handleRecipeRowChange(idx, 'quantity', e.target.value)}
-                            min="0" step="0.001"
-                            className="w-full px-3 py-2 border border-orange-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-bold" />
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-400 mb-1 block">Use in recipe as</label>
-                          <select value={row.unit || selectedIng?.unit || ''}
-                            onChange={e => handleRecipeRowChange(idx, 'unit', e.target.value)}
-                            className="w-full px-3 py-2 border border-orange-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-semibold">
-                            {selectedIng ? (
-                              <>
-                                <option value={selectedIng.unit}>{selectedIng.unit} (same as stock)</option>
-                                {selectedIng.unit === 'kg' && <option value="g">g (grams)</option>}
-                                {selectedIng.unit === 'g'  && <option value="kg">kg</option>}
-                                {selectedIng.unit === 'L'  && <option value="ml">ml</option>}
-                                {selectedIng.unit === 'ml' && <option value="L">L</option>}
-                              </>
-                            ) : (
-                              <option value="">Select ingredient first</option>
-                            )}
-                          </select>
-                        </div>
-                      </div>
-                      {/* Conversion hint */}
-                      {selectedIng && row.unit && row.unit !== selectedIng.unit && row.quantity && (
-                        <p className="text-xs text-orange-500 font-medium">
-                          {row.quantity} {row.unit} = {
-                            row.unit === 'g'  && selectedIng.unit === 'kg' ? (safeNum(row.quantity)/1000).toFixed(4)+' kg' :
-                            row.unit === 'kg' && selectedIng.unit === 'g'  ? (safeNum(row.quantity)*1000).toFixed(1)+' g' :
-                            row.unit === 'ml' && selectedIng.unit === 'L'  ? (safeNum(row.quantity)/1000).toFixed(4)+' L' :
-                            row.unit === 'L'  && selectedIng.unit === 'ml' ? (safeNum(row.quantity)*1000).toFixed(1)+' ml' : ''
-                          } deducted from stock
-                        </p>
-                      )}
-                      {selectedIng && row.quantity && (
-                        <p className="text-xs text-orange-600 font-medium">Cost: {symbol}{ingCost.toFixed(4)} per item</p>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Live cost summary */}
-        {recipeRows.some(r => r.ingredient_id && r.quantity) && (() => {
-          const totalCost = recipeRows.reduce((sum, r) => {
-            const ing = ingredients.find(i => String(i.id) === String(r.ingredient_id))
-            return sum + (ing && r.quantity ? safeNum(ing.cost_per_unit) * safeNum(r.quantity) : 0)
-          }, 0)
-          const price = safeNum(itemForm.price)
-          const profit = price - totalCost
-          const margin = price > 0 ? ((profit / price) * 100).toFixed(0) : 0
-          return (
-            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4">
-              <div className="flex justify-between items-center flex-wrap gap-2">
-                <div>
-                  <p className="text-xs text-gray-500">Ingredient cost</p>
-                  <p className="font-bold text-red-500 tabular-nums">-{symbol}{totalCost.toFixed(3)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Selling price</p>
-                  <p className="font-bold text-gray-800 dark:text-white tabular-nums">{price > 0 ? fmt(price, symbol) : '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Profit / margin</p>
-                  <p className={`font-bold tabular-nums ${profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {profit >= 0 ? '+' : '-'}{fmt(Math.abs(profit), symbol)} ({profit < 0 ? '-' : ''}{Math.abs(margin)}%)
-                  </p>
-                </div>
-              </div>
-            </div>
-          )
-        })()}
-
-        <button onClick={handleAddItem} disabled={!itemForm.name || !itemForm.price}
-          className="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold text-base hover:bg-orange-600 transition disabled:opacity-50">
-          Add to Menu
-        </button>
-      </div>
-    </div>
-  )
-
   return (
     <Layout>
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
-      {/* Edit item modal */}
+      {/* Edit modal */}
       {editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setEditingItem(null)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -282,24 +132,24 @@ export default function BusinessMenu() {
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">Name</label>
                 <input type="text" value={editingItem.name}
-                  onChange={e => setEditingItem({ ...editingItem, name: e.target.value })} className={cls} />
+                  onChange={e => setEditingItem(prev => ({ ...prev, name: e.target.value }))} className={cls} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-gray-500 mb-1 block">Category</label>
-                  <select value={editingItem.category} onChange={e => setEditingItem({ ...editingItem, category: e.target.value })} className={cls}>
+                  <select value={editingItem.category} onChange={e => setEditingItem(prev => ({ ...prev, category: e.target.value }))} className={cls}>
                     {FOOD_CATS.map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 mb-1 block">Price ({symbol})</label>
                   <input type="number" value={editingItem.price}
-                    onChange={e => setEditingItem({ ...editingItem, price: e.target.value })} min="0" step="0.01" className={cls} />
+                    onChange={e => setEditingItem(prev => ({ ...prev, price: e.target.value }))} min="0" step="0.01" className={cls} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setEditingItem(null)} className="py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold">Cancel</button>
-                <button onClick={handleSaveEdit} className="py-3 rounded-xl bg-orange-500 text-white font-bold hover:bg-orange-600 transition">Save</button>
+                <button onClick={() => setEditingItem(null)} className="py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold text-sm">Cancel</button>
+                <button onClick={handleSaveEdit} className="py-3 rounded-xl bg-orange-500 text-white font-bold text-sm hover:bg-orange-600 transition">Save</button>
               </div>
             </div>
           </div>
@@ -307,6 +157,7 @@ export default function BusinessMenu() {
       )}
 
       <div className="max-w-2xl mx-auto px-4 py-6">
+        {/* Header */}
         <div className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Menu Builder</h1>
@@ -326,8 +177,146 @@ export default function BusinessMenu() {
           </div>
         )}
 
-        {showAddItem && <ItemForm />}
+        {/* ── ADD ITEM FORM — inlined to fix focus bug ── */}
+        {showAddItem && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-6 border-2 border-orange-200 dark:border-orange-800">
+            <h3 className="font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
+              <span className="text-orange-500">🍽️</span> New Menu Item
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Item Name *</label>
+                <input type="text" placeholder="e.g. Classic Burger" value={itemForm.name}
+                  onChange={e => setItemForm(f => ({ ...f, name: e.target.value }))} className={cls} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Category *</label>
+                  <select value={itemForm.category} onChange={e => setItemForm(f => ({ ...f, category: e.target.value }))} className={cls}>
+                    {FOOD_CATS.map(c => <option key={c} value={c}>{CAT_ICONS[c]} {c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Selling Price ({symbol}) *</label>
+                  <input type="number" placeholder="0.00" value={itemForm.price}
+                    onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))} min="0" step="0.01" className={cls} />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs font-semibold text-gray-500">Number of Ingredients</label>
+                  <span className="text-xl font-bold text-orange-500">{itemForm.num_ingredients}</span>
+                </div>
+                <input type="range" min="1" max="20" value={itemForm.num_ingredients}
+                  onChange={e => handleNumIngredients(e.target.value)} className="w-full accent-orange-500 h-2" />
+                <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <span>1</span><span>5</span><span>10</span><span>15</span><span>20</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-3 block">
+                  Recipe — {itemForm.num_ingredients} ingredient{itemForm.num_ingredients > 1 ? 's' : ''}
+                </label>
+                {ingredients.length === 0 ? (
+                  <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 text-center">
+                    <p className="text-orange-600 text-sm">No ingredients yet.</p>
+                    <a href="/business/stock" className="text-orange-600 font-bold text-xs underline">Add ingredients first →</a>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recipeRows.map((row, idx) => {
+                      const selectedIng = ingredients.find(i => String(i.id) === String(row.ingredient_id))
+                      const ingCost = selectedIng && row.quantity ? safeNum(selectedIng.cost_per_unit) * safeNum(row.quantity) : 0
+                      return (
+                        <div key={idx} className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-3">
+                          <p className="text-xs font-semibold text-orange-500 mb-2">Ingredient {idx + 1}</p>
+                          <div className="space-y-2">
+                            <select value={row.ingredient_id} onChange={e => handleIngredientSelect(idx, e.target.value)}
+                              className="w-full px-3 py-2.5 border border-orange-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                              <option value="">Select ingredient...</option>
+                              {ingredients.map(ing => (
+                                <option key={ing.id} value={ing.id}>{ing.emoji || '📦'} {ing.name} (stock: {safeNum(ing.stock_quantity).toFixed(1)} {ing.unit})</option>
+                              ))}
+                            </select>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs text-gray-400 mb-1 block">Quantity per item</label>
+                                <input type="number" placeholder="e.g. 150"
+                                  value={row.quantity} onChange={e => handleRecipeRowChange(idx, 'quantity', e.target.value)}
+                                  min="0" step="0.001"
+                                  className="w-full px-3 py-2 border border-orange-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-bold" />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-400 mb-1 block">Use in recipe as</label>
+                                <select value={row.unit || selectedIng?.unit || ''}
+                                  onChange={e => handleRecipeRowChange(idx, 'unit', e.target.value)}
+                                  className="w-full px-3 py-2 border border-orange-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-semibold">
+                                  {selectedIng ? (
+                                    <>
+                                      <option value={selectedIng.unit}>{selectedIng.unit} (same as stock)</option>
+                                      {selectedIng.unit === 'kg' && <option value="g">g (grams)</option>}
+                                      {selectedIng.unit === 'g'  && <option value="kg">kg</option>}
+                                      {selectedIng.unit === 'L'  && <option value="ml">ml</option>}
+                                      {selectedIng.unit === 'ml' && <option value="L">L</option>}
+                                      {selectedIng.unit === 'cans' && <option value="pieces">pieces</option>}
+                                      {selectedIng.unit === 'bags' && <option value="pieces">pieces</option>}
+                                      {selectedIng.unit === 'boxes' && <option value="pieces">pieces</option>}
+                                    </>
+                                  ) : <option value="">Select ingredient first</option>}
+                                </select>
+                              </div>
+                            </div>
+                            {selectedIng && row.unit && row.unit !== selectedIng.unit && row.quantity && (
+                              <p className="text-xs text-orange-500 font-medium">
+                                {row.quantity} {row.unit} = {
+                                  row.unit === 'g'  && selectedIng.unit === 'kg' ? (safeNum(row.quantity)/1000).toFixed(4)+' kg' :
+                                  row.unit === 'kg' && selectedIng.unit === 'g'  ? (safeNum(row.quantity)*1000).toFixed(1)+' g' :
+                                  row.unit === 'ml' && selectedIng.unit === 'L'  ? (safeNum(row.quantity)/1000).toFixed(4)+' L' :
+                                  row.unit === 'L'  && selectedIng.unit === 'ml' ? (safeNum(row.quantity)*1000).toFixed(1)+' ml' :
+                                  row.unit === 'pieces' && safeNum(selectedIng.pieces_per_container) > 0 ? (safeNum(row.quantity) / safeNum(selectedIng.pieces_per_container)).toFixed(4)+' '+selectedIng.unit : ''
+                                } deducted from stock
+                              </p>
+                            )}
+                            {selectedIng && row.quantity && (
+                              <p className="text-xs text-orange-600 font-medium">Cost: {symbol}{ingCost.toFixed(4)} per item</p>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
 
+              {/* Live cost summary */}
+              {recipeRows.some(r => r.ingredient_id && r.quantity) && (() => {
+                const totalCost = recipeRows.reduce((sum, r) => {
+                  const ing = ingredients.find(i => String(i.id) === String(r.ingredient_id))
+                  return sum + (ing && r.quantity ? safeNum(ing.cost_per_unit) * safeNum(r.quantity) : 0)
+                }, 0)
+                const price  = safeNum(itemForm.price)
+                const profit = price - totalCost
+                const margin = price > 0 ? ((profit / price) * 100).toFixed(0) : 0
+                return (
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4">
+                    <div className="flex justify-between items-center flex-wrap gap-2">
+                      <div><p className="text-xs text-gray-500">Ingredient cost</p><p className="font-bold text-red-500 tabular-nums">-{symbol}{totalCost.toFixed(3)}</p></div>
+                      <div><p className="text-xs text-gray-500">Selling price</p><p className="font-bold text-gray-800 dark:text-white tabular-nums">{price > 0 ? fmt(price, symbol) : '—'}</p></div>
+                      <div><p className="text-xs text-gray-500">Profit</p><p className={`font-bold tabular-nums ${profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>{profit >= 0 ? '+' : '-'}{fmt(Math.abs(profit), symbol)} ({profit < 0 ? '-' : ''}{Math.abs(margin)}%)</p></div>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              <button onClick={handleAddItem} disabled={!itemForm.name || !itemForm.price}
+                className="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold text-base hover:bg-orange-600 transition disabled:opacity-50">
+                Add to Menu
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Menu list */}
         {loading ? (
           <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
         ) : menuItems.length === 0 ? (
@@ -361,7 +350,6 @@ export default function BusinessMenu() {
                         </p>
                       )}
                     </div>
-                    {/* Edit + Delete + Expand */}
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button onClick={e => { e.stopPropagation(); setEditingItem({ ...item }) }}
                         className="text-indigo-400 hover:text-indigo-600 p-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
@@ -382,9 +370,9 @@ export default function BusinessMenu() {
                           <p className="text-xs font-semibold text-gray-500 mb-3">Recipe</p>
                           <div className="space-y-2 mb-3">
                             {item.recipes.map(r => {
-                              const ing = ingredients.find(i => i.id === r.ingredient_id)
+                              const ing     = ingredients.find(i => i.id === r.ingredient_id)
                               const ingCost = ing ? safeNum(ing.cost_per_unit) * safeNum(r.quantity) : 0
-                              const isLow = ing && safeNum(ing.low_stock_alert) > 0 && safeNum(ing.stock_quantity) <= safeNum(ing.low_stock_alert)
+                              const isLow   = ing && safeNum(ing.low_stock_alert) > 0 && safeNum(ing.stock_quantity) <= safeNum(ing.low_stock_alert)
                               return (
                                 <div key={r.id} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl px-3 py-2.5">
                                   <span className="text-lg flex-shrink-0">{ing?.emoji || '📦'}</span>
@@ -406,7 +394,6 @@ export default function BusinessMenu() {
                               )
                             })}
                           </div>
-                          {/* Cost breakdown — FIXED MATH */}
                           <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3 grid grid-cols-3 gap-2 text-center">
                             <div>
                               <p className="text-xs text-gray-400">Cost to make</p>
