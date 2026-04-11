@@ -279,6 +279,7 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
   const [date, setDate]                   = useState(new Date().toISOString().split('T')[0])
   const [editableItems, setEditableItems] = useState([])
   const [newItemSuggestions, setNewItemSuggestions] = useState([])
+  const [unmatchedDetails, setUnmatchedDetails] = useState({}) // {name: {selling_price, cost, ingredient_notes}}
   const [error, setError]                 = useState('')
   const [summary, setSummary]             = useState(null)
   const [exchangeRate, setExchangeRate]   = useState('')
@@ -290,28 +291,42 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
     setStep('matching')
     try {
       const matched = rawItems.map(item => {
-        const nameLower = item.name.toLowerCase()
-        let match = menuItems.find(m => m.name.toLowerCase() === nameLower)
-        if (!match) match = menuItems.find(m => m.name.toLowerCase().includes(nameLower) || nameLower.includes(m.name.toLowerCase()))
+        const nameLower = item.name.toLowerCase().trim()
+        let match = menuItems.find(m => m.name.toLowerCase().trim() === nameLower)
+        if (!match) match = menuItems.find(m =>
+          m.name.toLowerCase().includes(nameLower) ||
+          nameLower.includes(m.name.toLowerCase()) ||
+          m.name.toLowerCase().replace(/\s/g,'') === nameLower.replace(/\s/g,'')
+        )
         const finalPrice = item.unit_price > 0 ? item.unit_price : (match ? parseFloat(match.price) : 0)
         return { ...item, unit_price: finalPrice, matched: !!match, matched_id: match?.id || null, matched_name: match?.name || null }
       })
 
+      // Get AI suggestions for unmatched items
       const unmatched = matched.filter(i => !i.matched)
       let suggestions = []
       if (unmatched.length > 0) {
         try {
-          const res = await API.post('/business/pos-suggest-items', { items: unmatched.map(i => ({ name: i.name, unit_price: i.unit_price, type: i.type })) })
+          const res = await API.post('/business/pos-suggest-items', {
+            items: unmatched.map(i => ({ name: i.name, unit_price: i.unit_price, type: i.type }))
+          })
           suggestions = res.data || []
         } catch {}
       }
 
+      // Init unmatched details form
+      const initDetails = {}
+      unmatched.forEach(i => {
+        initDetails[i.name] = { selling_price: i.unit_price || '', cost: '', ingredient_notes: '' }
+      })
+      setUnmatchedDetails(initDetails)
+
       setScanResult({ items: matched, total_found: matched.length, total_matched: matched.filter(i => i.matched).length, management: managementData || null, sales_by_category: categorySummary || [] })
-      setEditableItems(matched.map(item => ({ ...item, confirmed: item.matched })))
+      setEditableItems(matched.map(item => ({ ...item, confirmed: true })))
       setNewItemSuggestions(suggestions.map(s => ({ ...s, adding: false, added: false })))
       setStep('review')
     } catch {
-      setError('Error matching items. Try again.')
+      setError('Error matching items.')
       setStep('upload')
     }
   }
@@ -334,36 +349,101 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
   const handleConfirm = async () => {
     setStep('saving')
     const confirmedItems  = editableItems.filter(i => i.confirmed && i.matched_id)
-    const totalRevenueUSD = editableItems.filter(i => i.confirmed).reduce((s, i) => s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0)), 0)
+    const confirmedAll    = editableItems.filter(i => i.confirmed)
+
+    // Revenue = matched items (menu price × qty) + unmatched (user-entered price × qty)
+    const matchedRevenue = confirmedItems.reduce((s, i) => s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0)), 0)
+    const unmatchedRevenue = editableItems.filter(i => i.confirmed && !i.matched).reduce((s, i) => {
+      const detail = unmatchedDetails[i.name]
+      const price  = detail?.selling_price ? parseFloat(detail.selling_price) : parseFloat(i.unit_price || 0)
+      return s + (price * parseInt(i.quantity || 0))
+    }, 0)
+    const totalRevenueUSD = matchedRevenue + unmatchedRevenue
+
+    // Cost = unmatched items user-entered cost
+    const unmatchedCost = editableItems.filter(i => i.confirmed && !i.matched).reduce((s, i) => {
+      const detail = unmatchedDetails[i.name]
+      return s + (detail?.cost ? parseFloat(detail.cost) * parseInt(i.quantity || 0) : 0)
+    }, 0)
+
+    // Group drinks for summary
+    const drinkItems  = confirmedAll.filter(i => i.type === 'drink')
+    const waterItems  = confirmedAll.filter(i => i.type === 'water')
+    const foodItems   = confirmedAll.filter(i => i.type === 'food' || !i.type)
+    const delivItems  = confirmedAll.filter(i => i.type === 'delivery')
+
     try {
       await API.post('/business/revenue', {
         date, total_revenue: totalRevenueUSD,
-        notes: `POS Scan: ${editableItems.filter(i => i.confirmed).length} items${rate ? ` · Rate: 1$=${rate}LL` : ''}`,
+        notes: `POS Scan: ${confirmedAll.length} items${rate ? ` · Rate: 1$=${rate}LL` : ''}`,
         scan_raw: JSON.stringify(editableItems)
       })
+
+      // Deduct stock + get alerts
       let deductions = []
+      let restockAlerts = []
       if (confirmedItems.length > 0) {
-        const dr = await API.post('/business/deduct-stock', { items_sold: confirmedItems.map(i => ({ menu_item_id: i.matched_id, quantity_sold: i.quantity })) })
-        deductions = dr.data?.deductions || []
+        const dr = await API.post('/business/deduct-stock', {
+          items_sold: confirmedItems.map(i => ({ menu_item_id: i.matched_id, quantity_sold: i.quantity }))
+        })
+        deductions     = dr.data?.deductions || []
+        restockAlerts  = deductions.filter(d => parseFloat(d.remaining) <= 0 || d.low_stock)
       }
-      const topSeller = [...editableItems].filter(i => i.confirmed).sort((a, b) => b.quantity - a.quantity)[0]
-      const totalQty  = editableItems.filter(i => i.confirmed).reduce((s, i) => s + parseInt(i.quantity || 0), 0)
+
+      // Check current stock for low alerts
+      const stockRes = await API.get('/business/stock')
+      const currentStock = stockRes.data || []
+      const lowStockAlerts = currentStock.filter(s =>
+        parseFloat(s.stock_quantity) <= parseFloat(s.low_stock_alert) && parseFloat(s.low_stock_alert) > 0
+      )
+
+      const topSeller = [...confirmedAll].sort((a, b) => b.quantity - a.quantity)[0]
+      const totalQty  = confirmedAll.reduce((s, i) => s + parseInt(i.quantity || 0), 0)
+      const totalDrinkQty = drinkItems.reduce((s, i) => s + parseInt(i.quantity || 0), 0)
+      const totalWaterQty = waterItems.reduce((s, i) => s + parseInt(i.quantity || 0), 0)
+
       setSummary({
-        date, revenueUSD: totalRevenueUSD,
+        date,
+        revenueUSD: totalRevenueUSD,
         revenueLL: rate ? Math.round(totalRevenueUSD * rate) : null,
-        itemCount: editableItems.filter(i => i.confirmed).length,
-        totalQty, deductions,
+        matchedRevenue,
+        unmatchedRevenue,
+        unmatchedCost,
+        itemCount: confirmedAll.length,
+        totalQty,
         topSeller: topSeller ? `${topSeller.matched_name || topSeller.name} × ${topSeller.quantity}` : null,
         matched: confirmedItems.length,
         unmatched: editableItems.filter(i => !i.matched).length,
+        foodItems, drinkItems, waterItems, delivItems,
+        totalDrinkQty, totalWaterQty,
+        deductions,
+        lowStockAlerts,
         management: scanResult?.management || null,
         sales_by_category: scanResult?.sales_by_category || [],
+        unmatchedItems: editableItems.filter(i => i.confirmed && !i.matched).map(i => ({
+          ...i,
+          ...unmatchedDetails[i.name]
+        }))
       })
       setStep('summary')
     } catch { showToast('Error saving', 'error'); setStep('review') }
   }
 
-  const totalRevenueUSD = editableItems.filter(i => i.confirmed).reduce((s, i) => s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0)), 0)
+  const totalRevenueUSD = editableItems.filter(i => i.confirmed).reduce((s, i) => {
+    if (!i.matched) {
+      const detail = unmatchedDetails[i.name]
+      const price  = detail?.selling_price ? parseFloat(detail.selling_price) : parseFloat(i.unit_price || 0)
+      return s + (price * parseInt(i.quantity || 0))
+    }
+    return s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0))
+  }, 0)
+
+  // Group drinks for display
+  const drinkItems   = editableItems.filter(i => i.type === 'drink')
+  const waterItems   = editableItems.filter(i => i.type === 'water')
+  const foodItems    = editableItems.filter(i => i.type === 'food' || (!i.type && i.type !== 'delivery'))
+  const delivItems   = editableItems.filter(i => i.type === 'delivery')
+  const unmatchedList = editableItems.filter(i => !i.matched)
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
@@ -416,7 +496,7 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                 {[0,150,300].map(d => <div key={d} className="w-3 h-3 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: d+'ms' }} />)}
               </div>
               <p className="font-bold text-gray-800 dark:text-white text-lg mb-1">Matching to your menu...</p>
-              <p className="text-gray-400 text-sm">Linking items to recipes and stock</p>
+              <p className="text-gray-400 text-sm">Grouping drinks, detecting items, linking to stock</p>
             </div>
           )}
 
@@ -424,7 +504,7 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
             <>
               {/* Revenue banner */}
               <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-4 text-white">
-                <p className="text-xs text-purple-200 mb-1">{scanResult.total_found} items · {scanResult.total_matched} matched to menu</p>
+                <p className="text-xs text-purple-200 mb-1">{scanResult.total_found} items · {scanResult.total_matched} matched</p>
                 <p className="text-3xl font-bold tabular-nums">{currencySymbol}{totalRevenueUSD.toFixed(2)}</p>
                 {rate && <p className="text-sm text-purple-200 mt-1">{Math.round(totalRevenueUSD * rate).toLocaleString()} LL</p>}
                 <p className="text-xs text-purple-300 mt-1">{date}</p>
@@ -433,15 +513,13 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
               {/* Management summary */}
               {scanResult.management && (
                 <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">📋 Receipt Summary</p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">📋 Receipt Data</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     {[
                       scanResult.management.num_customers && { label: 'Customers', value: scanResult.management.num_customers },
                       scanResult.management.num_invoices && { label: 'Invoices', value: scanResult.management.num_invoices },
                       scanResult.management.avg_check && { label: 'Avg Check', value: currencySymbol + parseFloat(scanResult.management.avg_check).toFixed(2) },
                       scanResult.management.discount && parseFloat(scanResult.management.discount) > 0 && { label: 'Discount', value: currencySymbol + parseFloat(scanResult.management.discount).toFixed(2) },
-                      scanResult.management.first_invoice && { label: 'First Invoice', value: '#' + scanResult.management.first_invoice },
-                      scanResult.management.last_invoice && { label: 'Last Invoice', value: '#' + scanResult.management.last_invoice },
                     ].filter(Boolean).map((row, i) => (
                       <div key={i} className="flex justify-between text-xs py-1 border-b border-gray-200 dark:border-gray-600">
                         <span className="text-gray-400">{row.label}</span>
@@ -449,69 +527,173 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                       </div>
                     ))}
                   </div>
-                  {scanResult.sales_by_category?.length > 0 && (
-                    <div className="mt-3">
-                      <p className="text-xs text-gray-400 mb-2">Sales by category:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {scanResult.sales_by_category.map((cat, i) => (
-                          <span key={i} className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 px-2 py-1 rounded-lg">{cat.category}</span>
-                        ))}
+                </div>
+              )}
+
+              {/* FOOD ITEMS */}
+              {foodItems.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-2">🍔 Food Items ({foodItems.length})</p>
+                  <div className="space-y-1.5">
+                    {foodItems.map((item, idx) => {
+                      const lineUSD = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
+                      const globalIdx = editableItems.findIndex(i => i.name === item.name)
+                      return (
+                        <div key={idx} className={`rounded-xl border p-2.5 flex items-center gap-2 ${item.confirmed ? 'border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/10' : 'border-gray-200 opacity-50'}`}>
+                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, confirmed: !it.confirmed } : it))}
+                            className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${item.confirmed ? 'bg-purple-600' : 'bg-gray-300'}`}>
+                            {item.confirmed && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{item.name}</p>
+                            {item.matched
+                              ? <p className="text-xs text-green-500">✓ {item.matched_name}</p>
+                              : <p className="text-xs text-yellow-500">⚠ Not in menu</p>}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))}
+                              className="w-5 h-5 bg-gray-200 dark:bg-gray-600 rounded text-xs font-bold flex items-center justify-center">−</button>
+                            <span className="text-xs font-bold w-6 text-center">{item.quantity}</span>
+                            <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))}
+                              className="w-5 h-5 bg-gray-200 dark:bg-gray-600 rounded text-xs font-bold flex items-center justify-center">+</button>
+                          </div>
+                          <p className="text-xs font-bold text-purple-600 tabular-nums flex-shrink-0 ml-1">{currencySymbol}{lineUSD.toFixed(2)}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* DRINKS GROUP */}
+              {(drinkItems.length > 0 || waterItems.length > 0) && (
+                <div>
+                  {drinkItems.length > 0 && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-3 mb-2">
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-xs font-semibold text-blue-600">🥤 Soft Drinks</p>
+                        <p className="text-xs font-bold text-blue-600">{drinkItems.reduce((s,i)=>s+parseInt(i.quantity||0),0)} total units</p>
                       </div>
+                      <div className="space-y-1">
+                        {drinkItems.map((item, idx) => {
+                          const globalIdx = editableItems.findIndex(i => i.name === item.name)
+                          const lineUSD = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
+                          return (
+                            <div key={idx} className="flex items-center justify-between text-xs">
+                              <span className="text-blue-700 dark:text-blue-300 font-medium">{item.name}</span>
+                              <div className="flex items-center gap-1.5">
+                                <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))} className="w-4 h-4 bg-blue-200 rounded text-xs font-bold flex items-center justify-center">−</button>
+                                <span className="font-bold w-5 text-center">{item.quantity}</span>
+                                <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))} className="w-4 h-4 bg-blue-200 rounded text-xs font-bold flex items-center justify-center">+</button>
+                                <span className="text-blue-600 font-bold tabular-nums ml-1">{currencySymbol}{lineUSD.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {waterItems.length > 0 && (
+                    <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded-2xl p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-xs font-semibold text-cyan-600">💧 Water</p>
+                        <p className="text-xs font-bold text-cyan-600">{waterItems.reduce((s,i)=>s+parseInt(i.quantity||0),0)} total units</p>
+                      </div>
+                      {waterItems.map((item, idx) => {
+                        const globalIdx = editableItems.findIndex(i => i.name === item.name)
+                        const lineUSD = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
+                        return (
+                          <div key={idx} className="flex items-center justify-between text-xs">
+                            <span className="text-cyan-700 dark:text-cyan-300 font-medium">{item.name}</span>
+                            <div className="flex items-center gap-1.5">
+                              <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))} className="w-4 h-4 bg-cyan-200 rounded text-xs font-bold flex items-center justify-center">−</button>
+                              <span className="font-bold w-5 text-center">{item.quantity}</span>
+                              <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))} className="w-4 h-4 bg-cyan-200 rounded text-xs font-bold flex items-center justify-center">+</button>
+                              <span className="text-cyan-600 font-bold tabular-nums ml-1">{currencySymbol}{lineUSD.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Items */}
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">Items ({editableItems.length})</p>
-                  <p className="text-xs text-gray-400">Tap to include / exclude</p>
-                </div>
-                <div className="space-y-2">
-                  {editableItems.map((item, idx) => {
+              {/* DELIVERY */}
+              {delivItems.length > 0 && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl p-3">
+                  <p className="text-xs font-semibold text-yellow-600 mb-2">🛵 Delivery ({delivItems.reduce((s,i)=>s+parseInt(i.quantity||0),0)} orders)</p>
+                  {delivItems.map((item, idx) => {
+                    const globalIdx = editableItems.findIndex(i => i.name === item.name)
                     const lineUSD = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
                     return (
-                      <div key={idx} className={`rounded-2xl border-2 p-3 transition ${item.confirmed ? 'border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 opacity-60'}`}>
-                        <div className="flex items-start gap-3">
-                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, confirmed: !it.confirmed } : it))}
-                            className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${item.confirmed ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                            {item.confirmed && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-sm font-semibold text-gray-800 dark:text-white">{item.name}</p>
-                              {item.type && <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${item.type === 'drink' ? 'bg-blue-100 text-blue-600' : item.type === 'delivery' ? 'bg-yellow-100 text-yellow-600' : 'bg-orange-100 text-orange-600'}`}>{item.type}</span>}
-                              {item.matched
-                                ? <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-semibold">✓ Matched</span>
-                                : <span className="text-xs bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full font-semibold">⚠ Not in menu</span>}
-                            </div>
-                            {item.matched_name && item.matched_name !== item.name && <p className="text-xs text-purple-500 mt-0.5">→ {item.matched_name}</p>}
-                            {!item.matched && <p className="text-xs text-gray-400">Stock won't be deducted</p>}
-                          </div>
-                          <div className="flex-shrink-0 text-right">
-                            <div className="flex items-center gap-1 justify-end mb-1">
-                              <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))}
-                                className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-lg text-xs font-bold flex items-center justify-center">−</button>
-                              <span className="text-sm font-bold w-8 text-center tabular-nums">{item.quantity}</span>
-                              <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: (it.quantity||1)+1 } : it))}
-                                className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-lg text-xs font-bold flex items-center justify-center">+</button>
-                            </div>
-                            <p className="text-xs text-gray-400">× {currencySymbol}{parseFloat(item.unit_price||0).toFixed(2)}</p>
-                            <p className="text-xs font-bold text-purple-600 tabular-nums">{currencySymbol}{lineUSD.toFixed(2)}</p>
-                            {rate && <p className="text-xs text-gray-400 tabular-nums">{Math.round(lineUSD * rate).toLocaleString()} LL</p>}
-                          </div>
+                      <div key={idx} className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-yellow-700 dark:text-yellow-300 font-medium">{item.name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))} className="w-4 h-4 bg-yellow-200 rounded text-xs font-bold flex items-center justify-center">−</button>
+                          <span className="font-bold w-5 text-center">{item.quantity}</span>
+                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))} className="w-4 h-4 bg-yellow-200 rounded text-xs font-bold flex items-center justify-center">+</button>
+                          <span className="text-yellow-600 font-bold tabular-nums ml-1">{currencySymbol}{lineUSD.toFixed(2)}</span>
                         </div>
                       </div>
                     )
                   })}
                 </div>
-              </div>
+              )}
+
+              {/* UNMATCHED ITEMS — user fills price + cost */}
+              {unmatchedList.length > 0 && (
+                <div className="bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-2xl p-4">
+                  <p className="text-sm font-bold text-orange-600 mb-1">⚠️ {unmatchedList.length} items not in your menu</p>
+                  <p className="text-xs text-orange-400 mb-3">Fill the selling price and cost so we can calculate profit correctly. These will be suggested to add to your menu.</p>
+                  <div className="space-y-3">
+                    {unmatchedList.map((item, idx) => (
+                      <div key={idx} className="bg-white dark:bg-gray-800 rounded-xl p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-bold text-gray-800 dark:text-white">{item.name}</p>
+                          <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-semibold">× {item.quantity} sold</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-gray-400 mb-1 block">Selling Price ({currencySymbol})</label>
+                            <input type="number" placeholder="0.00" step="0.01" min="0"
+                              value={unmatchedDetails[item.name]?.selling_price || ''}
+                              onChange={e => setUnmatchedDetails(prev => ({ ...prev, [item.name]: { ...prev[item.name], selling_price: e.target.value } }))}
+                              className="w-full px-2 py-1.5 border border-orange-200 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-500" />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-400 mb-1 block">Cost to make ({currencySymbol})</label>
+                            <input type="number" placeholder="0.00" step="0.01" min="0"
+                              value={unmatchedDetails[item.name]?.cost || ''}
+                              onChange={e => setUnmatchedDetails(prev => ({ ...prev, [item.name]: { ...prev[item.name], cost: e.target.value } }))}
+                              className="w-full px-2 py-1.5 border border-orange-200 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-500" />
+                          </div>
+                        </div>
+                        {/* Live profit preview */}
+                        {unmatchedDetails[item.name]?.selling_price && unmatchedDetails[item.name]?.cost && (
+                          <div className="mt-2 flex gap-3 text-xs">
+                            <span className="text-green-600 font-semibold">
+                              Revenue: {currencySymbol}{(parseFloat(unmatchedDetails[item.name].selling_price) * item.quantity).toFixed(2)}
+                            </span>
+                            <span className="text-red-500 font-semibold">
+                              Cost: {currencySymbol}{(parseFloat(unmatchedDetails[item.name].cost) * item.quantity).toFixed(2)}
+                            </span>
+                            <span className={`font-bold ${(parseFloat(unmatchedDetails[item.name].selling_price) - parseFloat(unmatchedDetails[item.name].cost)) >= 0 ? 'text-purple-600' : 'text-red-500'}`}>
+                              Profit: {currencySymbol}{((parseFloat(unmatchedDetails[item.name].selling_price) - parseFloat(unmatchedDetails[item.name].cost)) * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        <p className="text-xs text-orange-400 mt-1.5">💡 After saving, AI will suggest adding this to your menu</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* New item suggestions */}
               {newItemSuggestions.length > 0 && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-2xl p-4">
-                  <p className="text-sm font-bold text-blue-600 mb-1">🤖 New items found — add to menu?</p>
+                  <p className="text-sm font-bold text-blue-600 mb-1">🤖 Add unmatched items to menu?</p>
                   <p className="text-xs text-blue-400 mb-3">They'll be matched automatically next time</p>
                   <div className="space-y-2">
                     {newItemSuggestions.map((s, idx) => (
@@ -540,11 +722,9 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
 
               {/* Stock deduction preview */}
               {editableItems.some(i => i.confirmed && i.matched) && (
-                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 rounded-2xl p-4">
-                  <p className="text-xs font-semibold text-orange-600 mb-2">📦 Stock will be deducted for:</p>
-                  {editableItems.filter(i => i.confirmed && i.matched).map((item, i) => (
-                    <p key={i} className="text-xs text-orange-700 dark:text-orange-300">• {item.quantity}× {item.matched_name || item.name}</p>
-                  ))}
+                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 rounded-2xl p-3">
+                  <p className="text-xs font-semibold text-orange-600 mb-1">📦 Stock will be auto-deducted for {editableItems.filter(i => i.confirmed && i.matched).length} items</p>
+                  <p className="text-xs text-orange-400">Low stock alerts will fire automatically if needed</p>
                 </div>
               )}
 
@@ -553,9 +733,9 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                   className="py-3.5 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold text-sm">
                   ← Rescan
                 </button>
-                <button onClick={handleConfirm} disabled={editableItems.filter(i => i.confirmed).length === 0}
-                  className="py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-sm disabled:opacity-40">
-                  Confirm & Save
+                <button onClick={handleConfirm}
+                  className="py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-sm">
+                  Confirm & Close Day
                 </button>
               </div>
             </>
@@ -564,104 +744,154 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
           {step === 'saving' && (
             <div className="py-16 text-center">
               <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 animate-pulse">💾</div>
-              <p className="font-bold text-gray-800 dark:text-white text-lg mb-1">Saving everything...</p>
-              <p className="text-gray-400 text-sm">Revenue recorded · Stock deducted · Alerts checked</p>
+              <p className="font-bold text-gray-800 dark:text-white text-lg mb-1">Closing the day...</p>
+              <p className="text-gray-400 text-sm">Revenue saved · Stock deducted · Alerts checked</p>
             </div>
           )}
 
+          {/* EMAIL-STYLE SUMMARY */}
           {step === 'summary' && summary && (
-            <>
-              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white text-center">
-                <p className="text-4xl mb-2">✅</p>
-                <p className="font-bold text-xl">Day Closed Successfully!</p>
-                <p className="text-green-100 text-sm mt-1">{summary.date}</p>
-              </div>
-
-              {/* Revenue */}
-              <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 border border-gray-100 dark:border-gray-600">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">💰 Revenue</p>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Total (USD)</span>
-                  <span className="font-bold text-green-600 text-lg tabular-nums">{currencySymbol}{summary.revenueUSD.toFixed(2)}</span>
-                </div>
-                {summary.revenueLL && (
-                  <div className="flex justify-between text-sm mt-1">
-                    <span className="text-gray-400">Total (LBP)</span>
-                    <span className="font-semibold text-gray-500">{summary.revenueLL.toLocaleString()} LL</span>
+            <div className="space-y-4">
+              {/* Email header */}
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-5 text-white">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-xl">📧</div>
+                  <div>
+                    <p className="font-bold text-lg">End of Day Report</p>
+                    <p className="text-gray-400 text-xs">{summary.date} · Generated by Spendly AI</p>
                   </div>
-                )}
+                </div>
+                <div className="border-t border-white/10 pt-3">
+                  <p className="text-gray-400 text-xs mb-1">NET REVENUE</p>
+                  <p className="text-4xl font-bold text-green-400 tabular-nums">{currencySymbol}{summary.revenueUSD.toFixed(2)}</p>
+                  {summary.revenueLL && <p className="text-gray-400 text-sm mt-1">{summary.revenueLL.toLocaleString()} LL</p>}
+                </div>
               </div>
 
-              {/* Sales */}
+              {/* Financial breakdown */}
               <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 border border-gray-100 dark:border-gray-600">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📊 Sales</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">💰 Financial Summary</p>
                 <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Revenue from menu items</span>
+                    <span className="font-semibold text-green-600">+{currencySymbol}{summary.matchedRevenue.toFixed(2)}</span>
+                  </div>
+                  {summary.unmatchedRevenue > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Revenue from other items</span>
+                      <span className="font-semibold text-green-600">+{currencySymbol}{summary.unmatchedRevenue.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {summary.unmatchedCost > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Cost of other items</span>
+                      <span className="font-semibold text-red-500">-{currencySymbol}{summary.unmatchedCost.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-gray-200 dark:border-gray-600 pt-2 flex justify-between text-sm font-bold">
+                    <span className="text-gray-700 dark:text-white">Total Revenue</span>
+                    <span className="text-green-600">{currencySymbol}{summary.revenueUSD.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sales breakdown */}
+              <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 border border-gray-100 dark:border-gray-600">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">📊 Sales Breakdown</p>
+                <div className="space-y-1.5">
                   {[
-                    { label: 'Items sold', value: summary.itemCount + ' types' },
-                    { label: 'Total quantity', value: summary.totalQty + ' units' },
-                    summary.topSeller && { label: 'Top seller', value: '🏆 ' + summary.topSeller },
-                    { label: 'Menu matched', value: summary.matched + ' items' },
-                    summary.unmatched > 0 && { label: 'Not in menu', value: summary.unmatched + ' items' },
+                    { label: '🍔 Food items sold', value: summary.foodItems?.length + ' types · ' + summary.foodItems?.reduce((s,i)=>s+parseInt(i.quantity||0),0) + ' units' },
+                    summary.totalDrinkQty > 0 && { label: '🥤 Soft drinks sold', value: summary.totalDrinkQty + ' units' },
+                    summary.totalWaterQty > 0 && { label: '💧 Water sold', value: summary.totalWaterQty + ' units' },
+                    summary.delivItems?.length > 0 && { label: '🛵 Delivery orders', value: summary.delivItems.reduce((s,i)=>s+parseInt(i.quantity||0),0) + ' orders' },
+                    summary.topSeller && { label: '🏆 Top seller', value: summary.topSeller },
+                    { label: '📦 Total units sold', value: summary.totalQty + ' units' },
+                    { label: '✅ Matched to menu', value: summary.matched + ' items' },
+                    summary.unmatched > 0 && { label: '⚠️ Not in menu', value: summary.unmatched + ' items' },
                   ].filter(Boolean).map((row, i) => (
-                    <div key={i} className="flex justify-between text-sm">
+                    <div key={i} className="flex justify-between text-sm py-1 border-b border-gray-100 dark:border-gray-600 last:border-0">
                       <span className="text-gray-500">{row.label}</span>
-                      <span className="font-semibold text-gray-800 dark:text-white">{row.value}</span>
+                      <span className="font-semibold text-gray-800 dark:text-white text-right">{row.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Management data from receipt */}
+              {/* Management data */}
               {summary.management && (
                 <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 border border-gray-100 dark:border-gray-600">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📋 Receipt Data</p>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">📋 POS Report Data</p>
                   <div className="space-y-1.5">
                     {[
                       summary.management.num_customers && { label: 'Total customers', value: summary.management.num_customers },
                       summary.management.num_invoices && { label: 'Total invoices', value: summary.management.num_invoices },
-                      summary.management.avg_check && { label: 'Avg check', value: currencySymbol + parseFloat(summary.management.avg_check).toFixed(2) },
-                      summary.management.avg_customer && { label: 'Avg per customer', value: currencySymbol + parseFloat(summary.management.avg_customer).toFixed(2) },
-                      summary.management.discount && parseFloat(summary.management.discount) > 0 && { label: 'Total discount', value: currencySymbol + parseFloat(summary.management.discount).toFixed(2) },
+                      summary.management.avg_check && { label: 'Average check', value: currencySymbol + parseFloat(summary.management.avg_check).toFixed(2) },
+                      summary.management.discount && parseFloat(summary.management.discount) > 0 && { label: 'Discounts given', value: '-' + currencySymbol + parseFloat(summary.management.discount).toFixed(2) },
                       summary.management.first_invoice && { label: 'Invoice range', value: `#${summary.management.first_invoice} → #${summary.management.last_invoice}` },
                     ].filter(Boolean).map((row, i) => (
-                      <div key={i} className="flex justify-between text-sm">
+                      <div key={i} className="flex justify-between text-sm py-1 border-b border-gray-100 dark:border-gray-600 last:border-0">
                         <span className="text-gray-500">{row.label}</span>
                         <span className="font-semibold text-gray-800 dark:text-white">{row.value}</span>
                       </div>
                     ))}
                   </div>
-                  {summary.sales_by_category?.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-600">
-                      <p className="text-xs text-gray-400 mb-2">Sales by category:</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {summary.sales_by_category.map((cat, i) => (
-                          <span key={i} className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 px-2 py-1 rounded-lg font-medium">{cat.category}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* Stock deductions */}
+              {/* Stock deducted */}
               {summary.deductions?.length > 0 && (
                 <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 border border-gray-100 dark:border-gray-600">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📦 Stock Deducted</p>
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">📦 Stock Deducted Today</p>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
                     {summary.deductions.map((d, i) => (
-                      <div key={i} className="flex justify-between text-xs">
+                      <div key={i} className="flex justify-between text-xs py-1">
                         <span className="text-gray-600 dark:text-gray-300">{d.ingredient}</span>
-                        <span className="text-red-500 font-semibold tabular-nums">-{parseFloat(d.used).toFixed(3)} → {parseFloat(d.remaining).toFixed(2)} left</span>
+                        <span className={`font-semibold tabular-nums ${parseFloat(d.remaining) <= 0 ? 'text-red-500' : 'text-orange-500'}`}>
+                          -{parseFloat(d.used).toFixed(3)} → {parseFloat(d.remaining).toFixed(2)} left
+                        </span>
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* 🚨 RESTOCK ALERTS */}
+              {summary.lowStockAlerts?.length > 0 && (
+                <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-2xl p-4">
+                  <p className="text-sm font-bold text-red-600 mb-2">🚨 Restock Needed!</p>
+                  <p className="text-xs text-red-400 mb-3">These ingredients dropped below minimum after today's sales:</p>
+                  <div className="space-y-2">
+                    {summary.lowStockAlerts.map((ing, i) => (
+                      <div key={i} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-xl px-3 py-2">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800 dark:text-white">{ing.emoji || '📦'} {ing.name}</p>
+                          <p className="text-xs text-red-500">{parseFloat(ing.stock_quantity).toFixed(1)} {ing.unit} left · min: {parseFloat(ing.low_stock_alert).toFixed(1)}</p>
+                        </div>
+                        <a href="/business/stock" className="text-xs bg-red-500 text-white px-2 py-1 rounded-lg font-semibold">Restock →</a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Unmatched items recommendation */}
+              {summary.unmatchedItems?.length > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-2xl p-4">
+                  <p className="text-sm font-bold text-blue-600 mb-2">💡 Recommendation</p>
+                  <p className="text-xs text-blue-400 mb-3">These items were sold today but aren't in your menu yet. Add them so next scan matches automatically:</p>
+                  {summary.unmatchedItems.map((item, i) => (
+                    <div key={i} className="text-xs text-blue-700 dark:text-blue-300 py-1 flex justify-between">
+                      <span>• {item.name} × {item.quantity}</span>
+                      <a href="/business/menu" className="text-blue-600 font-semibold underline">Add to menu →</a>
+                    </div>
+                  ))}
                 </div>
               )}
 
               <button onClick={onComplete} className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-2xl font-bold hover:opacity-90 transition">
                 Done ✓
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>

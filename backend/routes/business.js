@@ -475,31 +475,45 @@ CRITICAL RULES:
     }
 
     const isLL = analysis.management?.currency === 'LL' || analysis.management?.currency === 'LBP';
+// Drink keywords — case insensitive grouping
+const DRINK_KEYWORDS = ['pepsi','7up','sprite','cola','fanta','miranda','water','juice','lemonade','ice tea','iced tea','perrier','schweppes','redbull','red bull','energy','soda','diet','zero','light','nestle','evian','aquafina'];
+const WATER_KEYWORDS = ['water small','water large','water','nestle water','evian','aquafina','perrier'];
 
-    const items = (analysis.items || [])
-      .filter(i => i.name && i.quantity > 0)
-      .filter(i => !already_found?.some(f => f.toLowerCase() === i.name.toLowerCase()))
-      .map(item => {
-        let price = parseFloat(item.unit_price || 0);
-        if (isLL && rate && price > 1000) price = price / rate;
+const items = (analysis.items || [])
+  .filter(i => i.name && parseInt(i.quantity) > 0)
+  .filter(i => !already_found?.some(f => f.toLowerCase() === i.name.toLowerCase()))
+  .map(item => {
+    let price = parseFloat(item.unit_price || 0);
+    if (isLL && rate && price > 1000) price = price / rate;
 
-        const nameLower = item.name.toLowerCase();
-        const match = menu_items?.find(m =>
-          m.name.toLowerCase() === nameLower ||
-          m.name.toLowerCase().includes(nameLower) ||
-          nameLower.includes(m.name.toLowerCase())
-        );
+    const nameLower = item.name.toLowerCase().trim();
 
-        return {
-          name: item.name,
-          quantity: parseInt(item.quantity) || 1,
-          unit_price: price > 0 ? price : (match ? parseFloat(match.price) : 0),
-          type: item.type || 'food',
-          matched: !!match,
-          matched_id: match?.id || null,
-          matched_name: match?.name || null,
-        };
-      });
+    // Auto-detect drink type
+    let detectedType = item.type || 'food';
+    if (WATER_KEYWORDS.some(w => nameLower.includes(w))) detectedType = 'water';
+    else if (DRINK_KEYWORDS.some(d => nameLower.includes(d))) detectedType = 'drink';
+    else if (nameLower.includes('delivery')) detectedType = 'delivery';
+
+    // Case-insensitive menu matching
+    const match = menu_items?.find(m => {
+      const mName = m.name.toLowerCase().trim();
+      return mName === nameLower ||
+        mName.includes(nameLower) ||
+        nameLower.includes(mName) ||
+        // fuzzy: remove spaces and compare
+        mName.replace(/\s/g,'') === nameLower.replace(/\s/g,'')
+    });
+
+    return {
+      name: item.name,
+      quantity: parseInt(item.quantity) || 1,
+      unit_price: price > 0 ? price : (match ? parseFloat(match.price) : 0),
+      type: detectedType,
+      matched: !!match,
+      matched_id: match?.id || null,
+      matched_name: match?.name || null,
+    };
+  });
 
     let mgmt = { ...(analysis.management || {}) };
     if (isLL && rate) {
