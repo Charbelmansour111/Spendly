@@ -108,12 +108,13 @@ export default function BusinessMenu() {
 
       // 2. Add each recipe ingredient
       await Promise.all(validRows.map(row =>
-        API.post('/business/recipe', {
-          menu_item_id: newItemId,
-          ingredient_id: row.ingredient_id,
-          quantity: row.quantity,
-        })
-      ))
+  API.post('/business/recipe', {
+    menu_item_id: newItemId,
+    ingredient_id: row.ingredient_id,
+    quantity: row.quantity,
+    recipe_unit: row.unit,
+  })
+))
 
       // Reset form
       setItemForm({ name: '', category: 'Burger', price: '', num_ingredients: 1 })
@@ -261,13 +262,35 @@ export default function BusinessMenu() {
                                 min="0" step="0.1"
                                 className="w-full px-3 py-2 border border-orange-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-bold" />
                             </div>
-                            {/* Unit — auto filled, read-only */}
-                            <div>
-                              <label className="text-xs text-gray-400 mb-1 block">Unit</label>
-                              <div className="w-full px-3 py-2 border border-orange-100 dark:border-gray-700 rounded-xl bg-orange-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 text-sm font-semibold">
-                                {row.unit || (selectedIng ? selectedIng.unit : '—')}
-                              </div>
-                            </div>
+                            {/* Unit selection — can differ from stock unit */}
+<div>
+  <label className="text-xs text-gray-400 mb-1 block">Use in recipe as</label>
+  <select
+    value={row.unit || selectedIng?.unit || ''}
+    onChange={e => handleRecipeRowChange(idx, 'unit', e.target.value)}
+    className="w-full px-3 py-2 border border-orange-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-semibold">
+    {selectedIng && (
+      <>
+        <option value={selectedIng.unit}>{selectedIng.unit} (same as stock)</option>
+        {selectedIng.unit === 'kg' && <option value="g">g (grams)</option>}
+        {selectedIng.unit === 'g'  && <option value="kg">kg</option>}
+        {selectedIng.unit === 'L'  && <option value="ml">ml</option>}
+        {selectedIng.unit === 'ml' && <option value="L">L</option>}
+      </>
+    )}
+    {!selectedIng && <option value="">Select ingredient first</option>}
+  </select>
+  {selectedIng && row.unit && row.unit !== selectedIng.unit && row.quantity && (
+    <p className="text-xs text-orange-500 mt-1">
+      {row.quantity} {row.unit} = {
+        row.unit === 'g'  && selectedIng.unit === 'kg' ? (safeNum(row.quantity) / 1000).toFixed(4) + ' kg deducted from stock' :
+        row.unit === 'kg' && selectedIng.unit === 'g'  ? (safeNum(row.quantity) * 1000).toFixed(1) + ' g deducted from stock' :
+        row.unit === 'ml' && selectedIng.unit === 'L'  ? (safeNum(row.quantity) / 1000).toFixed(4) + ' L deducted from stock' :
+        row.unit === 'L'  && selectedIng.unit === 'ml' ? (safeNum(row.quantity) * 1000).toFixed(1) + ' ml deducted from stock' : ''
+      }
+    </p>
+  )}
+</div>
                           </div>
                           {/* Cost preview */}
                           {selectedIng && row.quantity && (

@@ -15,36 +15,48 @@ router.get('/revenue', authenticateToken, async (req, res) => {
   } catch (e) { res.status(500).json({ message: 'Server error' }) }
 });
 
-router.post('/revenue', authenticateToken, async (req, res) => {
+router.post('/recipe', authenticateToken, async (req, res) => {
   try {
-    const { date, total_revenue, notes, scan_raw } = req.body;
-    if (!date || total_revenue === undefined)
-      return res.status(400).json({ message: 'Date and revenue required' });
+    const { menu_item_id, ingredient_id, quantity, recipe_unit } = req.body
+    if (!menu_item_id || !ingredient_id || !quantity)
+      return res.status(400).json({ message: 'All fields required' })
 
-    // Prevent duplicates — check if entry for this date already exists
+    const item = await pool.query('SELECT id FROM menu_items WHERE id=$1 AND user_id=$2', [menu_item_id, req.userId])
+    if (item.rows.length === 0) return res.status(403).json({ message: 'Not authorized' })
+
+    // Get ingredient's stock unit to calculate conversion
+    const ing = await pool.query('SELECT unit FROM ingredients WHERE id=$1', [ingredient_id])
+    const stockUnit = ing.rows[0]?.unit || recipe_unit
+
+    // Calculate how much to deduct from stock (convert recipe unit to stock unit)
+    let deductQty = parseFloat(quantity)
+    const rUnit = recipe_unit || stockUnit
+    if (rUnit === 'g'  && stockUnit === 'kg') deductQty = deductQty / 1000
+    if (rUnit === 'kg' && stockUnit === 'g')  deductQty = deductQty * 1000
+    if (rUnit === 'ml' && stockUnit === 'L')  deductQty = deductQty / 1000
+    if (rUnit === 'L'  && stockUnit === 'ml') deductQty = deductQty * 1000
+
     const existing = await pool.query(
-      'SELECT id FROM daily_revenue WHERE user_id = $1 AND date = $2',
-      [req.userId, date]
-    );
+      'SELECT id FROM recipes WHERE menu_item_id=$1 AND ingredient_id=$2',
+      [menu_item_id, ingredient_id]
+    )
     if (existing.rows.length > 0) {
-      // Update instead of insert
       const updated = await pool.query(
-        'UPDATE daily_revenue SET total_revenue=$1, notes=$2, scan_raw=$3 WHERE user_id=$4 AND date=$5 RETURNING *',
-        [total_revenue, notes || null, scan_raw || null, req.userId, date]
-      );
-      return res.json(updated.rows[0]);
+        'UPDATE recipes SET quantity=$1 WHERE menu_item_id=$2 AND ingredient_id=$3 RETURNING *',
+        [deductQty, menu_item_id, ingredient_id]
+      )
+      return res.json(updated.rows[0])
     }
-
     const result = await pool.query(
-      'INSERT INTO daily_revenue (user_id, date, total_revenue, notes, scan_raw) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [req.userId, date, total_revenue, notes || null, scan_raw || null]
-    );
-    res.status(201).json(result.rows[0]);
+      'INSERT INTO recipes (menu_item_id, ingredient_id, quantity) VALUES ($1,$2,$3) RETURNING *',
+      [menu_item_id, ingredient_id, deductQty]
+    )
+    res.status(201).json(result.rows[0])
   } catch (e) {
-    console.log(e);
-    res.status(500).json({ message: 'Server error' });
+    console.log(e)
+    res.status(500).json({ message: 'Server error' })
   }
-});
+})
 
 router.delete('/revenue/:id', authenticateToken, async (req, res) => {
   try {
@@ -430,6 +442,37 @@ router.post('/apply-stock-updates', authenticateToken, async (req, res) => {
   } catch (e) {
     console.log('Stock update error:', e)
     res.status(500).json({ message: 'Stock update failed' })
+  }
+})
+
+// ── AI INGREDIENT INFO (color + emoji) ──────────────────
+router.post('/ai-ingredient-info', authenticateToken, async (req, res) => {
+  try {
+    const { name } = req.body
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{
+          role: 'user',
+          content: `For the ingredient "${name}", return ONLY a JSON object like this (no other text):
+{"color": "#hex_color", "emoji": "single_emoji"}
+Rules:
+- color must be a hex color that represents this ingredient visually (e.g. tomato=#DC2626, lettuce=#16A34A, potato=#D97706, cheese=#FBBF24, beef=#92400E, chicken=#B45309, onion=#7C3AED, sauce=#F97316)
+- emoji must be a single relevant food emoji
+- make every ingredient have a unique distinct color`
+        }],
+        max_tokens: 60,
+        temperature: 0.1
+      })
+    })
+    const data = await response.json()
+    const text = data.choices[0].message.content.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    const parsed = JSON.parse(text)
+    res.json(parsed)
+  } catch (e) {
+    res.json({ color: '#6B7280', emoji: '📦' })
   }
 })
 

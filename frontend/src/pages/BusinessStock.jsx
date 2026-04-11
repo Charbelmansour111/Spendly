@@ -4,8 +4,30 @@ import API from '../utils/api'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const UNITS = ['g', 'kg', 'ml', 'L', 'pieces', 'boxes', 'bags', 'bottles', 'cans', 'slices']
+
+// Unit conversion map — for display in recipe builder
+const UNIT_CONVERSIONS = {
+  'kg':  { smaller: 'g',  factor: 1000,  label: '1 kg = 1000 g' },
+  'L':   { smaller: 'ml', factor: 1000,  label: '1 L = 1000 ml' },
+  'g':   { larger: 'kg',  factor: 0.001, label: '1000 g = 1 kg' },
+  'ml':  { larger: 'L',   factor: 0.001, label: '1000 ml = 1 L' },
+}
+
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 function fmt(a, s) { return s + Math.abs(safeNum(a)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
+
+// Convert quantity from one unit to another
+export function convertUnits(quantity, fromUnit, toUnit) {
+  if (fromUnit === toUnit) return safeNum(quantity)
+  // kg <-> g
+  if (fromUnit === 'kg' && toUnit === 'g')  return safeNum(quantity) * 1000
+  if (fromUnit === 'g'  && toUnit === 'kg') return safeNum(quantity) / 1000
+  // L <-> ml
+  if (fromUnit === 'L'  && toUnit === 'ml') return safeNum(quantity) * 1000
+  if (fromUnit === 'ml' && toUnit === 'L')  return safeNum(quantity) / 1000
+  // Same family but unknown — return as-is
+  return safeNum(quantity)
+}
 
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t) }, [onClose])
@@ -13,6 +35,105 @@ function Toast({ message, type, onClose }) {
     <div className={`fixed top-6 right-4 left-4 md:left-auto md:right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
       <span className="flex-1 truncate">{message}</span>
       <button onClick={onClose} className="font-bold opacity-70">x</button>
+    </div>
+  )
+}
+
+// Single ingredient card with AI color
+function IngredientCard({ ing, symbol, onRestock, onDelete, restockId, restockAmount, setRestockAmount, setRestockId, handleRestock }) {
+  const isLow  = safeNum(ing.stock_quantity) <= safeNum(ing.low_stock_alert) && safeNum(ing.low_stock_alert) > 0
+  const stockVal = safeNum(ing.stock_quantity) * safeNum(ing.cost_per_unit)
+  const pct = safeNum(ing.low_stock_alert) > 0
+    ? Math.min((safeNum(ing.stock_quantity) / (safeNum(ing.low_stock_alert) * 3)) * 100, 100)
+    : 100
+  const color = ing.color || '#6B7280'
+  const emoji = ing.emoji || '📦'
+  const altUnit = UNIT_CONVERSIONS[ing.unit]
+
+  return (
+    <div className="rounded-2xl overflow-hidden shadow-sm border"
+      style={{ borderColor: color + '44', backgroundColor: color + '11' }}>
+      <div className="px-4 py-4">
+        <div className="flex items-center gap-3 mb-3">
+          {/* Colored emoji badge */}
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 shadow-sm"
+            style={{ backgroundColor: color + '33', border: `2px solid ${color}66` }}>
+            {isLow ? '⚠️' : emoji}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{ing.name}</p>
+              {isLow && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0 text-white"
+                  style={{ backgroundColor: color }}>
+                  Low!
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {symbol}{safeNum(ing.cost_per_unit).toFixed(3)} per {ing.unit}
+              {altUnit && <span className="text-gray-400"> · {altUnit.label}</span>}
+            </p>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className="text-base font-bold tabular-nums" style={{ color }}>
+              {safeNum(ing.stock_quantity).toFixed(1)} {ing.unit}
+            </p>
+            {/* Show equivalent unit */}
+            {altUnit && safeNum(ing.stock_quantity) > 0 && (
+              <p className="text-xs text-gray-400">
+                = {(safeNum(ing.stock_quantity) * altUnit.factor).toFixed(1)} {altUnit.smaller || altUnit.larger}
+              </p>
+            )}
+            {safeNum(ing.low_stock_alert) > 0 && (
+              <p className="text-xs text-gray-400">min: {safeNum(ing.low_stock_alert).toFixed(1)}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Stock value + progress bar */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="flex-1 bg-white/50 dark:bg-gray-700/50 rounded-full h-2 overflow-hidden">
+            <div className="h-2 rounded-full transition-all duration-500"
+              style={{ width: pct + '%', backgroundColor: isLow ? '#EF4444' : color }} />
+          </div>
+          <p className="text-xs text-gray-400 flex-shrink-0 tabular-nums">{fmt(stockVal, symbol)}</p>
+        </div>
+
+        {/* Restock / Delete */}
+        {restockId === ing.id ? (
+          <div className="flex gap-2 mt-2">
+            <input type="number"
+              placeholder={'Add ' + ing.unit + '...'}
+              value={restockAmount}
+              onChange={e => setRestockAmount(e.target.value)}
+              min="0.001" step="0.001"
+              className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              style={{ '--tw-ring-color': color }} />
+            <button onClick={() => handleRestock(ing.id)}
+              className="text-white px-4 py-2 rounded-xl text-xs font-bold transition"
+              style={{ backgroundColor: color }}>
+              Add
+            </button>
+            <button onClick={() => { setRestockId(null); setRestockAmount('') }}
+              className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white px-3 py-2 rounded-xl text-xs">
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-3 mt-1">
+            <button onClick={() => setRestockId(ing.id)}
+              className="text-xs font-bold hover:underline"
+              style={{ color }}>
+              + Restock
+            </button>
+            <button onClick={() => onDelete(ing.id)}
+              className="text-xs text-red-400 font-semibold hover:underline ml-1">
+              Remove
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -25,6 +146,7 @@ export default function BusinessStock() {
   const [showAdd, setShowAdd]         = useState(false)
   const [restockId, setRestockId]     = useState(null)
   const [restockAmount, setRestockAmount] = useState('')
+  const [aiLoading, setAiLoading]     = useState(false)
   const [form, setForm] = useState({ name: '', unit: 'kg', cost_per_unit: '', stock_quantity: '', low_stock_alert: '' })
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
@@ -44,14 +166,26 @@ export default function BusinessStock() {
   }
 
   const handleAdd = async () => {
-    if (!form.name || !form.unit || !form.cost_per_unit) { showToast('Name, unit and cost are required', 'error'); return }
+    if (!form.name || !form.unit || !form.cost_per_unit) {
+      showToast('Name, unit and cost are required', 'error'); return
+    }
+    setAiLoading(true)
+    showToast('AI is choosing color and emoji...', 'warning')
+    let color = '#6B7280', emoji = '📦'
     try {
-      await API.post('/business/stock', form)
+      const aiRes = await API.post('/business/ai-ingredient-info', { name: form.name })
+      color = aiRes.data.color || '#6B7280'
+      emoji = aiRes.data.emoji || '📦'
+    } catch { /* use defaults */ }
+
+    try {
+      await API.post('/business/stock', { ...form, color, emoji })
       setForm({ name: '', unit: 'kg', cost_per_unit: '', stock_quantity: '', low_stock_alert: '' })
       setShowAdd(false)
       fetchStock()
-      showToast('Ingredient added!')
+      showToast(`${emoji} ${form.name} added to stock!`)
     } catch { showToast('Error adding ingredient', 'error') }
+    setAiLoading(false)
   }
 
   const handleRestock = async (id) => {
@@ -63,17 +197,22 @@ export default function BusinessStock() {
       await API.put('/business/stock/' + id, { ...ing, stock_quantity: newQty })
       setRestockId(null)
       setRestockAmount('')
-      fetchStock()
+      // Optimistic update
+      setIngredients(prev => prev.map(i => i.id === id ? { ...i, stock_quantity: newQty } : i))
       showToast('Stock updated!')
     } catch { showToast('Error updating stock', 'error') }
   }
 
   const handleDelete = async (id) => {
     if (!window.confirm('Remove this ingredient?')) return
-    try { await API.delete('/business/stock/' + id); fetchStock(); showToast('Ingredient removed', 'error') } catch {}
+    try {
+      await API.delete('/business/stock/' + id)
+      setIngredients(prev => prev.filter(i => i.id !== id))
+      showToast('Ingredient removed', 'error')
+    } catch {}
   }
 
-  const lowStockItems  = ingredients.filter(i => safeNum(i.stock_quantity) <= safeNum(i.low_stock_alert) && safeNum(i.low_stock_alert) > 0)
+  const lowStockItems   = ingredients.filter(i => safeNum(i.stock_quantity) <= safeNum(i.low_stock_alert) && safeNum(i.low_stock_alert) > 0)
   const totalStockValue = ingredients.reduce((s, i) => s + safeNum(i.stock_quantity) * safeNum(i.cost_per_unit), 0)
 
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
@@ -90,7 +229,7 @@ export default function BusinessStock() {
             <p className="text-gray-400 text-sm mt-0.5">{ingredients.length} ingredients tracked</p>
           </div>
           <button onClick={() => setShowAdd(!showAdd)}
-            className="bg-orange-500 text-white px-4 py-2 rounded-xl font-semibold text-sm hover:bg-orange-600 transition">
+            className={`px-4 py-2 rounded-xl font-semibold text-sm transition ${showAdd ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white' : 'bg-orange-500 text-white hover:bg-orange-600'}`}>
             {showAdd ? 'Cancel' : '+ Add Ingredient'}
           </button>
         </div>
@@ -103,9 +242,7 @@ export default function BusinessStock() {
           </div>
           <div className={`rounded-2xl p-4 shadow-sm text-center ${lowStockItems.length > 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-white dark:bg-gray-800'}`}>
             <p className="text-xs text-gray-400 mb-1">Low Stock</p>
-            <p className={`text-xl font-bold ${lowStockItems.length > 0 ? 'text-red-500' : 'text-gray-600 dark:text-gray-300'}`}>
-              {lowStockItems.length}
-            </p>
+            <p className={`text-xl font-bold ${lowStockItems.length > 0 ? 'text-red-500' : 'text-gray-400'}`}>{lowStockItems.length}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center">
             <p className="text-xs text-gray-400 mb-1">Stock Value</p>
@@ -113,14 +250,14 @@ export default function BusinessStock() {
           </div>
         </div>
 
-        {/* Low stock alerts */}
+        {/* Low stock banner */}
         {lowStockItems.length > 0 && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-4 mb-5">
             <p className="text-red-600 font-semibold text-sm mb-2">⚠️ Low Stock Alerts</p>
             {lowStockItems.map(i => (
               <div key={i.id} className="flex justify-between items-center text-sm py-1">
-                <span className="text-red-700 dark:text-red-300 font-medium">{i.name}</span>
-                <span className="text-red-500 tabular-nums">{safeNum(i.stock_quantity).toFixed(1)} {i.unit} left (min: {safeNum(i.low_stock_alert).toFixed(1)})</span>
+                <span className="font-medium" style={{ color: i.color || '#EF4444' }}>{i.emoji} {i.name}</span>
+                <span className="text-red-500 tabular-nums text-xs">{safeNum(i.stock_quantity).toFixed(1)} {i.unit} left</span>
               </div>
             ))}
           </div>
@@ -129,109 +266,88 @@ export default function BusinessStock() {
         {/* Add form */}
         {showAdd && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-5 border-2 border-orange-200 dark:border-orange-800">
-            <h3 className="font-semibold text-gray-800 dark:text-white text-sm mb-4">Add Ingredient</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-xl">🤖</span>
+              <div>
+                <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Add Ingredient</h3>
+                <p className="text-xs text-orange-500">AI will choose a unique color and emoji for it</p>
+              </div>
+            </div>
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">Ingredient Name</label>
-                <input type="text" placeholder="e.g. Beef Patty" value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })} className={cls} />
+                <input type="text" placeholder="e.g. Beef Patty, Tomato, Burger Bun..."
+                  value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={cls} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Unit</label>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Unit you buy in</label>
                   <select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} className={cls}>
                     {UNITS.map(u => <option key={u}>{u}</option>)}
                   </select>
+                  {UNIT_CONVERSIONS[form.unit] && (
+                    <p className="text-xs text-orange-500 mt-1">
+                      Can also use in recipe as {UNIT_CONVERSIONS[form.unit].smaller || UNIT_CONVERSIONS[form.unit].larger}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Cost per unit ({symbol})</label>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Cost per {form.unit} ({symbol})</label>
                   <input type="number" placeholder="0.00" value={form.cost_per_unit}
                     onChange={e => setForm({ ...form, cost_per_unit: e.target.value })} min="0" step="0.001" className={cls} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Current Stock</label>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Current Stock ({form.unit})</label>
                   <input type="number" placeholder="0" value={form.stock_quantity}
-                    onChange={e => setForm({ ...form, stock_quantity: e.target.value })} min="0" step="0.1" className={cls} />
+                    onChange={e => setForm({ ...form, stock_quantity: e.target.value })} min="0" step="0.001" className={cls} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Low Stock Alert at</label>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Alert when below ({form.unit})</label>
                   <input type="number" placeholder="0" value={form.low_stock_alert}
-                    onChange={e => setForm({ ...form, low_stock_alert: e.target.value })} min="0" step="0.1" className={cls} />
+                    onChange={e => setForm({ ...form, low_stock_alert: e.target.value })} min="0" step="0.001" className={cls} />
                 </div>
               </div>
-              <button onClick={handleAdd} className="w-full bg-orange-500 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition">
-                Add to Stock
+              <button onClick={handleAdd} disabled={!form.name || !form.cost_per_unit || aiLoading}
+                className="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                {aiLoading ? (
+                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> AI is setting up...</>
+                ) : (
+                  <><span>🤖</span> Add to Stock</>
+                )}
               </button>
             </div>
           </div>
         )}
 
-        {/* Stock list */}
+        {/* Stock grid */}
         {loading ? (
-          <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
+          <div className="grid grid-cols-1 gap-3">
+            {[1,2,3].map(i => <div key={i} className="h-24 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}
+          </div>
         ) : ingredients.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm">
-            <p className="text-4xl mb-3">📦</p>
+            <p className="text-5xl mb-3">📦</p>
             <p className="font-semibold text-gray-700 dark:text-white mb-1">No ingredients yet</p>
-            <p className="text-gray-400 text-sm">Add ingredients to track stock and calculate recipe costs</p>
+            <p className="text-gray-400 text-sm mb-4">Add ingredients to track stock, calculate costs and build recipes</p>
+            <button onClick={() => setShowAdd(true)} className="bg-orange-500 text-white px-6 py-2.5 rounded-xl font-semibold text-sm">+ Add First Ingredient</button>
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-            {ingredients.map((ing, idx) => {
-              const isLow   = safeNum(ing.stock_quantity) <= safeNum(ing.low_stock_alert) && safeNum(ing.low_stock_alert) > 0
-              const stockVal = safeNum(ing.stock_quantity) * safeNum(ing.cost_per_unit)
-              const pct = safeNum(ing.low_stock_alert) > 0
-                ? Math.min((safeNum(ing.stock_quantity) / (safeNum(ing.low_stock_alert) * 3)) * 100, 100)
-                : 100
-              return (
-                <div key={ing.id} className={`px-4 py-4 ${idx < ingredients.length - 1 ? 'border-b border-gray-50 dark:border-gray-700' : ''} ${isLow ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${isLow ? 'bg-red-100 dark:bg-red-900/30' : 'bg-orange-100 dark:bg-orange-900/30'}`}>
-                      {isLow ? '⚠️' : '📦'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{ing.name}</p>
-                        {isLow && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold flex-shrink-0">Low!</span>}
-                      </div>
-                      <p className="text-xs text-gray-400">{symbol}{safeNum(ing.cost_per_unit).toFixed(3)} per {ing.unit} · Value: {fmt(stockVal, symbol)}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className={`text-sm font-bold tabular-nums ${isLow ? 'text-red-500' : 'text-gray-800 dark:text-white'}`}>
-                        {safeNum(ing.stock_quantity).toFixed(1)} {ing.unit}
-                      </p>
-                      {safeNum(ing.low_stock_alert) > 0 && (
-                        <p className="text-xs text-gray-400">min: {safeNum(ing.low_stock_alert).toFixed(1)}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Stock level bar */}
-                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 mb-2">
-                    <div className={`h-1.5 rounded-full transition-all ${isLow ? 'bg-red-500' : 'bg-orange-400'}`}
-                      style={{ width: pct + '%' }} />
-                  </div>
-
-                  {/* Restock section */}
-                  {restockId === ing.id ? (
-                    <div className="flex gap-2 mt-2">
-                      <input type="number" placeholder={'Add ' + ing.unit + '...'} value={restockAmount}
-                        onChange={e => setRestockAmount(e.target.value)} min="0.1" step="0.1"
-                        className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-                      <button onClick={() => handleRestock(ing.id)} className="bg-orange-500 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-orange-600 transition">Add</button>
-                      <button onClick={() => { setRestockId(null); setRestockAmount('') }} className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white px-3 py-2 rounded-xl text-xs hover:bg-gray-200 transition">Cancel</button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 mt-1">
-                      <button onClick={() => setRestockId(ing.id)} className="text-xs text-orange-500 font-semibold hover:underline">+ Restock</button>
-                      <button onClick={() => handleDelete(ing.id)} className="text-xs text-red-400 font-semibold hover:underline ml-2">Remove</button>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+          <div className="grid grid-cols-1 gap-3">
+            {ingredients.map(ing => (
+              <IngredientCard
+                key={ing.id}
+                ing={ing}
+                symbol={symbol}
+                onDelete={handleDelete}
+                restockId={restockId}
+                restockAmount={restockAmount}
+                setRestockAmount={setRestockAmount}
+                setRestockId={setRestockId}
+                handleRestock={handleRestock}
+              />
+            ))}
           </div>
         )}
       </div>
