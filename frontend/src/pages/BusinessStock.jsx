@@ -248,8 +248,8 @@ export default function BusinessStock() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 mb-1 block">Cost per {form.unit} ({symbol})</label>
-                  <input type="number" placeholder="0.000" value={form.cost_per_unit}
-                    onChange={e => setForm({ ...form, cost_per_unit: e.target.value })} min="0" step="0.001" className={cls} />
+                  <input type="number" placeholder="0.00" value={form.cost_per_unit}
+                    onChange={e => setForm({ ...form, cost_per_unit: e.target.value })}min="0" step="0.01" className={cls} />
                 </div>
               </div>
 
@@ -358,7 +358,7 @@ export default function BusinessStock() {
                               {isLow && <span className="text-xs px-2 py-0.5 rounded-full font-bold text-white" style={{ backgroundColor: '#EF4444' }}>Low!</span>}
                             </div>
                             <p className="text-xs text-gray-500">
-                              {symbol}{safeNum(ing.cost_per_unit).toFixed(3)}/{ing.unit}
+                              {symbol}{safeNum(ing.cost_per_unit).toFixed(2)}/{ing.unit}
                               {altUnit && <span className="text-gray-400 ml-1">· {altUnit.label}</span>}
                               {safeNum(ing.pieces_per_container) > 0 && <span className="text-gray-400 ml-1">· {ing.pieces_per_container} pcs/{ing.unit}</span>}
                             </p>
@@ -375,13 +375,24 @@ export default function BusinessStock() {
                           </div>
                         </div>
 
-                        {/* Progress bar */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex-1 bg-white/60 dark:bg-gray-700/60 rounded-full h-1.5 overflow-hidden">
-                            <div className="h-1.5 rounded-full transition-all" style={{ width: Math.min(pct, 100) + '%', backgroundColor: isLow ? '#EF4444' : color }} />
-                          </div>
-                          <p className="text-xs text-gray-400 tabular-nums flex-shrink-0">{fmt(stockVal, symbol)}</p>
-                        </div>
+                       {/* Progress bar — shows quantity remaining vs alert threshold */}
+<div className="mb-2">
+  <div className="flex items-center justify-between mb-1">
+    <p className="text-xs text-gray-400">
+      {safeNum(ing.stock_quantity).toFixed(1)} {ing.unit} remaining
+      {safeNum(ing.low_stock_alert) > 0 && (
+        <span className="text-gray-300 dark:text-gray-600"> / min {safeNum(ing.low_stock_alert).toFixed(1)}</span>
+      )}
+    </p>
+    {isLow
+      ? <p className="text-xs text-red-500 font-semibold">Need {(safeNum(ing.low_stock_alert) - safeNum(ing.stock_quantity)).toFixed(1)} {ing.unit} more</p>
+      : <p className="text-xs text-gray-400">{fmt(safeNum(ing.stock_quantity) * safeNum(ing.cost_per_unit), symbol)} value</p>
+    }
+  </div>
+  <div className="flex-1 bg-white/60 dark:bg-gray-700/60 rounded-full h-2 overflow-hidden">
+    <div className="h-2 rounded-full transition-all" style={{ width: Math.min(pct, 100) + '%', backgroundColor: isLow ? '#EF4444' : color }} />
+  </div>
+</div>
 
                         {/* Restock inline */}
                         {restockId === ing.id ? (
