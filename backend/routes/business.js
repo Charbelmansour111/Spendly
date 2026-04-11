@@ -138,7 +138,7 @@ router.get('/menu', authenticateToken, async (req, res) => {
   } catch (e) { console.log(e); res.status(500).json({ message: 'Server error' }) }
 });
 
-rrouter.post('/menu', authenticateToken, async (req, res) => {
+router.post('/menu', authenticateToken, async (req, res) => {
   try {
     const { name, category, price } = req.body;
     if (!name || !price) return res.status(400).json({ message: 'Name and price required' });
