@@ -397,4 +397,97 @@ Make each ingredient a unique distinct color.`
   }
 });
 
+// ── POS RECEIPT SCAN ─────────────────────────────────────
+
+router.post('/pos-scan', authenticateToken, async (req, res) => {
+  try {
+    const { image, menu_items } = req.body;
+    if (!image) return res.status(400).json({ message: 'Image required' });
+
+    const systemPrompt = `You are a POS receipt scanner for a restaurant.
+Analyze the receipt image and extract all sold items.
+Return ONLY valid JSON, no other text:
+{
+  "items": [
+    {
+      "name": "item name as written on receipt",
+      "quantity": <integer>,
+      "unit_price": <number>,
+      "total_price": <number>
+    }
+  ],
+  "notes": "any issues or observations about the receipt"
+}
+Rules:
+- Extract EVERY line item on the receipt
+- If quantity is not shown, assume 1
+- If price is not shown, set unit_price to 0
+- Be precise with item names as they appear on receipt`;
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'llama-3.2-11b-vision-preview',
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: `data:image/jpeg;base64,${image}` }
+            },
+            {
+              type: 'text',
+              text: systemPrompt
+            }
+          ]
+        }],
+        max_tokens: 1000,
+        temperature: 0.1
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || 'Groq vision error');
+
+    const text = data.choices[0].message.content.trim()
+      .replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const parsed = JSON.parse(text);
+
+    // Match each scanned item to the user's menu
+    const matchedItems = parsed.items.map(item => {
+      const itemNameLower = item.name.toLowerCase();
+      // Try exact match first, then partial match
+      let match = menu_items.find(m => m.name.toLowerCase() === itemNameLower);
+      if (!match) {
+        match = menu_items.find(m =>
+          m.name.toLowerCase().includes(itemNameLower) ||
+          itemNameLower.includes(m.name.toLowerCase())
+        );
+      }
+      return {
+        ...item,
+        matched: !!match,
+        matched_id: match?.id || null,
+        matched_name: match?.name || null,
+        // Use menu price if receipt price is 0 or missing
+        unit_price: item.unit_price || (match ? parseFloat(match.price) : 0)
+      };
+    });
+
+    res.json({
+      items: matchedItems,
+      notes: parsed.notes || null,
+      total_found: matchedItems.length,
+      total_matched: matchedItems.filter(i => i.matched).length
+    });
+  } catch (e) {
+    console.log('POS scan error:', e);
+    res.status(500).json({ message: 'Scan failed: ' + e.message });
+  }
+});
+
 module.exports = router;

@@ -6,6 +6,7 @@ const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AE
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 function fmt(a, s) { return s + Math.abs(safeNum(a)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
+// ── TOAST ────────────────────────────────────────────────
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
   return (
@@ -16,6 +17,7 @@ function Toast({ message, type, onClose }) {
   )
 }
 
+// ── NUMBER MODAL ─────────────────────────────────────────
 function NumberModal({ label, value, sub, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={onClose}>
@@ -30,67 +32,309 @@ function NumberModal({ label, value, sub, onClose }) {
   )
 }
 
-// AI-Powered Expense Sheet — parses natural language + auto-updates stock
+// ── POS SCANNER ───────────────────────────────────────────
+function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol }) {
+  const [step, setStep]                 = useState('upload')
+  const [imageData, setImageData]       = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [scanResult, setScanResult]     = useState(null)
+  const [date, setDate]                 = useState(new Date().toISOString().split('T')[0])
+  const [editableItems, setEditableItems] = useState([])
+  const [error, setError]               = useState('')
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const base64 = ev.target.result
+      setImagePreview(base64)
+      setImageData(base64.split(',')[1])
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleScan = async () => {
+    if (!imageData) return
+    setStep('scanning')
+    setError('')
+    try {
+      const res = await API.post('/business/pos-scan', {
+        image: imageData,
+        menu_items: menuItems.map(m => ({ id: m.id, name: m.name, price: m.price }))
+      })
+      setScanResult(res.data)
+      setEditableItems(res.data.items.map(item => ({ ...item, confirmed: item.matched })))
+      setStep('review')
+    } catch {
+      setError('Scan failed. Try a clearer photo or enter revenue manually.')
+      setStep('upload')
+    }
+  }
+
+  const handleConfirm = async () => {
+    setStep('saving')
+    const confirmedItems = editableItems.filter(i => i.confirmed && i.matched_id)
+    const totalRevenue   = editableItems.reduce((s, i) => s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0)), 0)
+    try {
+      await API.post('/business/revenue', {
+        date,
+        total_revenue: totalRevenue,
+        notes: `POS Scan: ${editableItems.length} items`,
+        scan_raw: JSON.stringify(editableItems)
+      })
+      if (confirmedItems.length > 0) {
+        await API.post('/business/deduct-stock', {
+          items_sold: confirmedItems.map(i => ({ menu_item_id: i.matched_id, quantity_sold: i.quantity }))
+        })
+      }
+      showToast(`✅ ${currencySymbol}${totalRevenue.toFixed(2)} revenue saved + stock deducted!`)
+      onComplete()
+    } catch {
+      showToast('Error saving scan results', 'error')
+      setStep('review')
+    }
+  }
+
+  const totalRevenue = editableItems.reduce((s, i) => s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0)), 0)
+  const inputCls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-700">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center text-xl">📷</div>
+              <div>
+                <h3 className="font-bold text-gray-800 dark:text-white">POS End-of-Day Scan</h3>
+                <p className="text-xs text-purple-500">AI-powered receipt scanner</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          {/* Steps */}
+          <div className="flex items-center gap-1 mt-4">
+            {['Upload', 'Scan', 'Review', 'Done'].map((s, i) => {
+              const stepIdx = { upload: 0, scanning: 1, review: 2, saving: 3 }[step]
+              const done    = i < stepIdx
+              const active  = i === stepIdx
+              return (
+                <div key={s} className="flex items-center flex-1">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${done ? 'bg-green-500 text-white' : active ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
+                    {done ? '✓' : i + 1}
+                  </div>
+                  <p className={`text-xs font-medium ml-1 ${active ? 'text-purple-600' : 'text-gray-400'}`}>{s}</p>
+                  {i < 3 && <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700 mx-2" />}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+
+          {/* UPLOAD */}
+          {step === 'upload' && (
+            <>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-2 block">Sale Date</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-2 block">Receipt Photo</label>
+                <label className={`block w-full border-2 border-dashed rounded-2xl cursor-pointer transition ${imagePreview ? 'border-purple-300 bg-purple-50 dark:bg-purple-900/10' : 'border-gray-300 dark:border-gray-600 hover:border-purple-400 bg-gray-50 dark:bg-gray-700/50'}`}>
+                  <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" capture="environment" />
+                  {imagePreview ? (
+                    <div className="p-3">
+                      <img src={imagePreview} alt="Receipt" className="w-full max-h-52 object-contain rounded-xl" />
+                      <p className="text-center text-xs text-purple-500 font-semibold mt-2">Tap to change photo</p>
+                    </div>
+                  ) : (
+                    <div className="p-10 text-center">
+                      <p className="text-4xl mb-3">📷</p>
+                      <p className="font-semibold text-gray-600 dark:text-gray-300 text-sm">Take a photo or upload receipt</p>
+                      <p className="text-xs text-gray-400 mt-1">AI will read all items and quantities automatically</p>
+                    </div>
+                  )}
+                </label>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                <p className="text-xs text-gray-500 font-medium mb-1">No receipt?</p>
+                <p className="text-xs text-gray-400">Use the + Revenue button on the dashboard to add revenue manually.</p>
+              </div>
+              {error && <p className="text-red-500 text-sm bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-xl">{error}</p>}
+              <button onClick={handleScan} disabled={!imageData}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-2xl font-bold hover:opacity-90 transition disabled:opacity-40 flex items-center justify-center gap-2">
+                <span>🤖</span> Scan with AI
+              </button>
+            </>
+          )}
+
+          {/* SCANNING */}
+          {step === 'scanning' && (
+            <div className="py-16 text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">📷</div>
+              <div className="flex items-center justify-center gap-2 mb-4">
+                {[0, 150, 300].map(d => (
+                  <div key={d} className="w-3 h-3 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: d + 'ms' }} />
+                ))}
+              </div>
+              <p className="font-bold text-gray-800 dark:text-white text-lg mb-1">AI is reading your receipt...</p>
+              <p className="text-gray-400 text-sm">Identifying items, quantities and prices</p>
+              {imagePreview && <img src={imagePreview} alt="Receipt" className="w-24 h-24 object-cover rounded-xl mx-auto mt-6 opacity-40" />}
+            </div>
+          )}
+
+          {/* REVIEW */}
+          {step === 'review' && scanResult && (
+            <>
+              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-4 text-white">
+                <p className="text-xs text-purple-200 mb-1">AI found {scanResult.items?.length || 0} items · {scanResult.total_matched} matched to menu</p>
+                <p className="text-3xl font-bold tabular-nums">{currencySymbol}{totalRevenue.toFixed(2)}</p>
+                <p className="text-xs text-purple-200 mt-1">{date}</p>
+              </div>
+
+              {scanResult.notes && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 rounded-xl px-4 py-3">
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">🤖 {scanResult.notes}</p>
+                </div>
+              )}
+
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">Items Found</p>
+                  <p className="text-xs text-gray-400">Tap to include / exclude</p>
+                </div>
+                <div className="space-y-2">
+                  {editableItems.map((item, idx) => (
+                    <div key={idx}
+                      className={`rounded-2xl border-2 p-3 transition ${item.confirmed ? 'border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 opacity-60'}`}>
+                      <div className="flex items-start gap-3">
+                        <button
+                          onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, confirmed: !it.confirmed } : it))}
+                          className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition ${item.confirmed ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                          {item.confirmed && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-gray-800 dark:text-white">{item.name}</p>
+                            {item.matched
+                              ? <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-semibold">✓ Matched</span>
+                              : <span className="text-xs bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full font-semibold">⚠ Not in menu</span>
+                            }
+                          </div>
+                          {item.matched_name && item.matched_name !== item.name && (
+                            <p className="text-xs text-purple-500 mt-0.5">→ {item.matched_name}</p>
+                          )}
+                          {!item.matched && <p className="text-xs text-gray-400">Stock won't be deducted</p>}
+                        </div>
+                        <div className="flex-shrink-0 text-right">
+                          <div className="flex items-center gap-1 justify-end mb-1">
+                            <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, (it.quantity || 1) - 1) } : it))}
+                              className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-lg text-xs font-bold flex items-center justify-center">−</button>
+                            <span className="text-sm font-bold w-8 text-center tabular-nums">{item.quantity}</span>
+                            <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: (it.quantity || 1) + 1 } : it))}
+                              className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-lg text-xs font-bold flex items-center justify-center">+</button>
+                          </div>
+                          <p className="text-xs text-gray-400 tabular-nums">× {currencySymbol}{parseFloat(item.unit_price || 0).toFixed(2)}</p>
+                          <p className="text-xs font-bold text-purple-600 tabular-nums">{currencySymbol}{(parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {editableItems.some(i => i.confirmed && i.matched) && (
+                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 rounded-2xl p-4">
+                  <p className="text-xs font-semibold text-orange-600 mb-2">📦 Stock will be deducted for:</p>
+                  {editableItems.filter(i => i.confirmed && i.matched).map((item, i) => (
+                    <p key={i} className="text-xs text-orange-700 dark:text-orange-300">
+                      • {item.quantity}× {item.matched_name || item.name}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => { setStep('upload'); setError('') }}
+                  className="py-3.5 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold text-sm">
+                  ← Rescan
+                </button>
+                <button onClick={handleConfirm} disabled={editableItems.filter(i => i.confirmed).length === 0}
+                  className="py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-sm hover:opacity-90 transition disabled:opacity-40">
+                  Confirm & Save
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* SAVING */}
+          {step === 'saving' && (
+            <div className="py-16 text-center">
+              <div className="w-20 h-20 bg-green-500 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">✅</div>
+              <p className="font-bold text-gray-800 dark:text-white text-lg mb-1">Saving everything...</p>
+              <p className="text-gray-400 text-sm">Revenue recorded · Stock deducted · Alerts checked</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── AI EXPENSE SHEET ──────────────────────────────────────
 function AIExpenseSheet({ onClose, onSave, currencySymbol, ingredients }) {
-  const [step, setStep]           = useState('input') // input | ai_review | saving
-  const [form, setForm]           = useState({ amount: '', category: 'Ingredients', description: '', date: new Date().toISOString().split('T')[0], is_recurring: false })
-  const [aiResult, setAiResult]   = useState(null)
+  const [step, setStep]         = useState('input')
+  const [form, setForm]         = useState({ amount: '', category: 'Ingredients', description: '', date: new Date().toISOString().split('T')[0], is_recurring: false })
+  const [aiResult, setAiResult] = useState(null)
   const [aiLoading, setAiLoading] = useState(false)
-  const [aiError, setAiError]     = useState('')
-  const BIZ_CATS = ['Ingredients', 'Staff', 'Rent', 'Utilities', 'Marketing', 'Equipment', 'Packaging', 'Other']
+  const [aiError, setAiError]   = useState('')
+  const BIZ_CATS = ['Ingredients','Staff','Rent','Utilities','Marketing','Equipment','Packaging','Other']
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
 
   const runAI = async () => {
-    if (!form.description || !form.amount) { setAiError('Please fill description and amount first'); return }
-    setAiLoading(true)
-    setAiError('')
+    if (!form.description || !form.amount) { setAiError('Fill description and amount first'); return }
+    setAiLoading(true); setAiError('')
     try {
       const res = await API.post('/business/ai-verify-expense', {
-        description: form.description,
-        amount: form.amount,
-        category: form.category,
+        description: form.description, amount: form.amount, category: form.category,
         ingredients: ingredients.map(i => ({ id: i.id, name: i.name, unit: i.unit, stock: i.stock_quantity }))
       })
-      setAiResult(res.data)
-      setStep('ai_review')
-    } catch {
-      setAiError('AI check failed. You can still save manually.')
-    }
+      setAiResult(res.data); setStep('ai_review')
+    } catch { setAiError('AI check failed. You can still save manually.') }
     setAiLoading(false)
   }
 
-  const handleConfirm = () => {
-    onSave({ ...form, ai_verified: true, stock_updates: aiResult?.stock_updates || [] })
-  }
-
-  const handleSkipAI = () => {
-    onSave({ ...form, ai_verified: false, stock_updates: [] })
-  }
+  const handleConfirm = () => onSave({ ...form, ai_verified: true, stock_updates: aiResult?.stock_updates || [] })
+  const handleSkipAI  = () => onSave({ ...form, ai_verified: false, stock_updates: [] })
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-
-        {/* Header */}
         <div className="flex justify-between items-center p-6 pb-4 sticky top-0 bg-white dark:bg-gray-800 z-10">
           <div>
             <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Business Expense</h3>
-            <p className="text-xs text-orange-500 font-medium mt-0.5">AI-powered verification</p>
+            <p className="text-xs text-orange-500 font-medium mt-0.5">🤖 AI-powered verification</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-
         <div className="px-6 pb-6 space-y-4">
           {step === 'input' && (
             <>
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({currencySymbol})</label>
-                <input type="number" placeholder="0.00" value={form.amount}
-                  onChange={e => setForm({ ...form, amount: e.target.value })} min="0.01" step="0.01"
-                  className={cls + ' text-2xl font-bold'} />
+                <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} min="0.01" step="0.01" className={cls + ' text-2xl font-bold'} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -107,95 +351,64 @@ function AIExpenseSheet({ onClose, onSave, currencySymbol, ingredients }) {
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">
                   What did you buy?
-                  {form.category === 'Ingredients' && <span className="text-orange-500 ml-1">(be specific — AI will parse it)</span>}
+                  {form.category === 'Ingredients' && <span className="text-orange-500 ml-1">(AI will parse it)</span>}
                 </label>
                 <input type="text"
                   placeholder={form.category === 'Ingredients' ? 'e.g. 2 bags of burger buns, 5kg beef patties' : 'e.g. monthly rent payment'}
-                  value={form.description}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                  className={cls} />
-                {form.category === 'Ingredients' && (
-                  <p className="text-xs text-gray-400 mt-1">AI will automatically update your stock based on what you describe</p>
-                )}
+                  value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className={cls} />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="accent-orange-500 w-4 h-4" />
                 <span className="text-sm text-gray-600 dark:text-gray-300">Recurring monthly</span>
               </label>
               {aiError && <p className="text-red-500 text-xs">{aiError}</p>}
-              <div className="grid grid-cols-2 gap-3">
-                {form.category === 'Ingredients' ? (
-                  <>
-                    <button onClick={runAI} disabled={!form.amount || !form.description || aiLoading}
-                      className="bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
-                      {aiLoading ? (
-                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Analyzing...</>
-                      ) : (
-                        <><span>🤖</span> AI Check</>
-                      )}
-                    </button>
-                    <button onClick={handleSkipAI} disabled={!form.amount || !form.date}
-                      className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white py-4 rounded-2xl font-bold transition disabled:opacity-50">
-                      Save Manually
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={handleSkipAI} disabled={!form.amount || !form.date}
-                    className="col-span-2 bg-red-500 text-white py-4 rounded-2xl font-bold hover:bg-red-600 transition disabled:opacity-50">
-                    Add Expense
+              {form.category === 'Ingredients' ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={runAI} disabled={!form.amount || !form.description || aiLoading}
+                    className="bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                    {aiLoading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Analyzing...</> : <><span>🤖</span>AI Check</>}
                   </button>
-                )}
-              </div>
+                  <button onClick={handleSkipAI} disabled={!form.amount || !form.date}
+                    className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white py-4 rounded-2xl font-bold transition disabled:opacity-50">
+                    Save Manually
+                  </button>
+                </div>
+              ) : (
+                <button onClick={handleSkipAI} disabled={!form.amount || !form.date}
+                  className="w-full bg-red-500 text-white py-4 rounded-2xl font-bold hover:bg-red-600 transition disabled:opacity-50">
+                  Add Expense
+                </button>
+              )}
             </>
           )}
-
           {step === 'ai_review' && aiResult && (
             <>
-              {/* AI Summary Card */}
-              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-2xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xl">🤖</span>
-                  <p className="font-bold text-orange-600 text-sm">AI Verification Complete</p>
-                </div>
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3"><span className="text-xl">🤖</span><p className="font-bold text-orange-600 text-sm">AI Verification Complete</p></div>
                 <p className="text-sm text-gray-700 dark:text-gray-200 mb-3">{aiResult.summary}</p>
-
-                {/* Stock updates */}
                 {aiResult.stock_updates && aiResult.stock_updates.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-semibold text-gray-500 mb-2">Stock will be updated:</p>
-                    {aiResult.stock_updates.map((update, i) => (
-                      <div key={i} className={`flex items-center justify-between text-xs py-2 px-3 rounded-xl ${update.matched ? 'bg-green-100 dark:bg-green-900/30' : 'bg-yellow-100 dark:bg-yellow-900/30'}`}>
+                    {aiResult.stock_updates.map((u, i) => (
+                      <div key={i} className={`flex items-center justify-between text-xs py-2 px-3 rounded-xl ${u.matched ? 'bg-green-100 dark:bg-green-900/30' : 'bg-yellow-100 dark:bg-yellow-900/30'}`}>
                         <div>
-                          <p className="font-semibold text-gray-800 dark:text-white">{update.ingredient_name}</p>
-                          {!update.matched && <p className="text-yellow-600 text-xs">New ingredient will be created</p>}
+                          <p className="font-semibold text-gray-800 dark:text-white">{u.ingredient_name}</p>
+                          {!u.matched && <p className="text-yellow-600">New ingredient will be created</p>}
                         </div>
-                        <div className="text-right">
-                          <p className={`font-bold ${update.matched ? 'text-green-600' : 'text-yellow-600'}`}>+{update.quantity} {update.unit}</p>
-                        </div>
+                        <p className={`font-bold ${u.matched ? 'text-green-600' : 'text-yellow-600'}`}>+{u.quantity} {u.unit}</p>
                       </div>
                     ))}
                   </div>
                 )}
-
-                {/* Warnings */}
                 {aiResult.warnings && aiResult.warnings.length > 0 && (
                   <div className="mt-3 space-y-1">
-                    {aiResult.warnings.map((w, i) => (
-                      <p key={i} className="text-xs text-orange-600 flex items-start gap-1"><span>⚠️</span>{w}</p>
-                    ))}
+                    {aiResult.warnings.map((w, i) => <p key={i} className="text-xs text-orange-600">⚠️ {w}</p>)}
                   </div>
                 )}
               </div>
-
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={handleConfirm}
-                  className="bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition">
-                  ✓ Confirm & Save
-                </button>
-                <button onClick={() => setStep('input')}
-                  className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white py-4 rounded-2xl font-bold transition">
-                  Edit
-                </button>
+                <button onClick={handleConfirm} className="bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition">✓ Confirm & Save</button>
+                <button onClick={() => setStep('input')} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white py-4 rounded-2xl font-bold transition">Edit</button>
               </div>
             </>
           )}
@@ -205,6 +418,7 @@ function AIExpenseSheet({ onClose, onSave, currencySymbol, ingredients }) {
   )
 }
 
+// ── ADD REVENUE SHEET ─────────────────────────────────────
 function AddRevenueSheet({ onClose, onSave, currencySymbol }) {
   const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], total_revenue: '', notes: '' })
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
@@ -214,9 +428,7 @@ function AddRevenueSheet({ onClose, onSave, currencySymbol }) {
       <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-5">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Daily Revenue</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
         </div>
         <div className="space-y-3">
           <div>
@@ -225,14 +437,11 @@ function AddRevenueSheet({ onClose, onSave, currencySymbol }) {
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Total Revenue ({currencySymbol})</label>
-            <input type="number" placeholder="0.00" value={form.total_revenue}
-              onChange={e => setForm({ ...form, total_revenue: e.target.value })} min="0" step="0.01"
-              className={cls + ' text-2xl font-bold'} />
+            <input type="number" placeholder="0.00" value={form.total_revenue} onChange={e => setForm({ ...form, total_revenue: e.target.value })} min="0" step="0.01" className={cls + ' text-2xl font-bold'} />
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Notes (optional)</label>
-            <input type="text" placeholder="e.g. busy Friday night" value={form.notes}
-              onChange={e => setForm({ ...form, notes: e.target.value })} className={cls} />
+            <input type="text" placeholder="e.g. busy Friday night" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className={cls} />
           </div>
           <button onClick={() => onSave(form)} disabled={!form.total_revenue || !form.date}
             className="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition disabled:opacity-50">
@@ -244,9 +453,10 @@ function AddRevenueSheet({ onClose, onSave, currencySymbol }) {
   )
 }
 
+// ── ADD EMPLOYEE SHEET ────────────────────────────────────
 function AddEmployeeSheet({ onClose, onSave, currencySymbol }) {
   const [form, setForm] = useState({ name: '', role: 'Staff', salary: '', phone: '', salary_type: 'monthly' })
-  const ROLES = ['Manager', 'Chef', 'Sous Chef', 'Waiter', 'Cashier', 'Delivery', 'Cleaner', 'Security', 'Staff']
+  const ROLES = ['Manager','Chef','Sous Chef','Waiter','Cashier','Delivery','Cleaner','Security','Staff']
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
@@ -254,15 +464,12 @@ function AddEmployeeSheet({ onClose, onSave, currencySymbol }) {
       <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-5">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Employee</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
         </div>
         <div className="space-y-3">
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Full Name</label>
-            <input type="text" placeholder="e.g. Ahmad Khalil" value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })} className={cls} />
+            <input type="text" placeholder="e.g. Ahmad Khalil" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={cls} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -281,14 +488,11 @@ function AddEmployeeSheet({ onClose, onSave, currencySymbol }) {
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Salary ({currencySymbol}/{form.salary_type === 'monthly' ? 'month' : 'day'})</label>
-            <input type="number" placeholder="0.00" value={form.salary}
-              onChange={e => setForm({ ...form, salary: e.target.value })} min="0" step="0.01"
-              className={cls + ' text-lg font-bold'} />
+            <input type="number" placeholder="0.00" value={form.salary} onChange={e => setForm({ ...form, salary: e.target.value })} min="0" step="0.01" className={cls + ' text-lg font-bold'} />
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Phone (optional)</label>
-            <input type="tel" placeholder="+961 XX XXX XXX" value={form.phone}
-              onChange={e => setForm({ ...form, phone: e.target.value })} className={cls} />
+            <input type="tel" placeholder="+961 XX XXX XXX" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className={cls} />
           </div>
           <button onClick={() => onSave(form)} disabled={!form.name || !form.salary}
             className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition disabled:opacity-50">
@@ -300,22 +504,25 @@ function AddEmployeeSheet({ onClose, onSave, currencySymbol }) {
   )
 }
 
+// ── MAIN DASHBOARD ────────────────────────────────────────
 export default function BusinessDashboard() {
-  const [user, setUser]             = useState(null)
-  const [revenue, setRevenue]       = useState([])
-  const [expenses, setExpenses]     = useState([])
-  const [employees, setEmployees]   = useState([])
+  const [user, setUser]               = useState(null)
+  const [revenue, setRevenue]         = useState([])
+  const [expenses, setExpenses]       = useState([])
+  const [employees, setEmployees]     = useState([])
   const [ingredients, setIngredients] = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [currencySymbol, setSymbol] = useState('$')
-  const [toast, setToast]           = useState(null)
-  const [modalData, setModalData]   = useState(null)
-  const [showAddRev, setShowAddRev] = useState(false)
-  const [showAddExp, setShowAddExp] = useState(false)
-  const [showAddEmp, setShowAddEmp] = useState(false)
-  const [activeTab, setActiveTab]   = useState('overview')
+  const [menuItems, setMenuItems]     = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [currencySymbol, setSymbol]   = useState('$')
+  const [toast, setToast]             = useState(null)
+  const [modalData, setModalData]     = useState(null)
+  const [showAddRev, setShowAddRev]   = useState(false)
+  const [showAddExp, setShowAddExp]   = useState(false)
+  const [showAddEmp, setShowAddEmp]   = useState(false)
+  const [showPOS, setShowPOS]         = useState(false)
+  const [activeTab, setActiveTab]     = useState('overview')
 
-  const today = new Date()
+  const today    = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
 
@@ -332,17 +539,19 @@ export default function BusinessDashboard() {
   const fetchAll = async () => {
     setLoading(true)
     try {
-      const [rev, exp, emp, ing] = await Promise.all([
+      const [rev, exp, emp, ing, menu] = await Promise.all([
         API.get('/business/revenue'),
         API.get('/business/expenses'),
         API.get('/business/employees'),
         API.get('/business/stock'),
+        API.get('/business/menu'),
       ])
       setRevenue(rev.data || [])
       setExpenses(exp.data || [])
       setEmployees(emp.data || [])
       setIngredients(ing.data || [])
-    } catch { console.log('Error fetching business data') }
+      setMenuItems(menu.data || [])
+    } catch { console.log('Error fetching') }
     setLoading(false)
   }
 
@@ -350,7 +559,6 @@ export default function BusinessDashboard() {
     try {
       await API.post('/business/revenue', form)
       setShowAddRev(false)
-      // Optimistic update — only refetch revenue
       const rev = await API.get('/business/revenue')
       setRevenue(rev.data || [])
       showToast('Revenue added!')
@@ -360,14 +568,11 @@ export default function BusinessDashboard() {
   const handleAddExpense = async (form) => {
     try {
       const { stock_updates, ai_verified, ...expenseData } = form
-      // Save expense
       await API.post('/expenses', expenseData)
-      // If AI provided stock updates, apply them
       if (stock_updates && stock_updates.length > 0) {
         await API.post('/business/apply-stock-updates', { stock_updates })
       }
       setShowAddExp(false)
-      // Refetch only what changed
       const [exp, ing] = await Promise.all([API.get('/business/expenses'), API.get('/business/stock')])
       setExpenses(exp.data || [])
       setIngredients(ing.data || [])
@@ -394,7 +599,7 @@ export default function BusinessDashboard() {
     } catch {}
   }
 
-  // Derived values — computed from state, no extra API calls
+  // ── Derived values ───────────────────────────────────────
   const monthRevenue  = revenue.filter(r => { const d = new Date(r.date); return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear() }).reduce((s, r) => s + safeNum(r.total_revenue), 0)
   const monthExpenses = expenses.filter(e => { const d = new Date(e.date); return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear() }).reduce((s, e) => s + safeNum(e.amount), 0)
   const monthPayroll  = employees.filter(e => e.is_active && e.salary_type === 'monthly').reduce((s, e) => s + safeNum(e.salary), 0)
@@ -412,10 +617,11 @@ export default function BusinessDashboard() {
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (6 - i))
     const dateStr = d.toISOString().split('T')[0]
-    const dayRev = revenue.filter(r => r.date?.split('T')[0] === dateStr).reduce((s, r) => s + safeNum(r.total_revenue), 0)
+    const dayRev  = revenue.filter(r => r.date?.split('T')[0] === dateStr).reduce((s, r) => s + safeNum(r.total_revenue), 0)
     return { label: d.toLocaleDateString('default', { weekday: 'short' }), value: dayRev, isToday: i === 6 }
   })
   const maxDay = Math.max(...last7Days.map(d => d.value), 1)
+
   const isRestaurant = user?.business_type === 'restaurant'
   const businessName = user?.business_name || (isRestaurant ? 'My Restaurant' : 'My Business')
 
@@ -432,15 +638,16 @@ export default function BusinessDashboard() {
 
   return (
     <Layout>
-      {toast    && <Toast {...toast} onClose={() => setToast(null)} />}
+      {toast     && <Toast {...toast} onClose={() => setToast(null)} />}
       {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
       {showAddRev && <AddRevenueSheet onClose={() => setShowAddRev(false)} onSave={handleAddRevenue} currencySymbol={currencySymbol} />}
       {showAddExp && <AIExpenseSheet  onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} ingredients={ingredients} />}
       {showAddEmp && <AddEmployeeSheet onClose={() => setShowAddEmp(false)} onSave={handleAddEmployee} currencySymbol={currencySymbol} />}
+      {showPOS    && <POSScanner onClose={() => setShowPOS(false)} menuItems={menuItems} onComplete={() => { setShowPOS(false); fetchAll() }} showToast={showToast} currencySymbol={currencySymbol} />}
 
       <div className="max-w-2xl mx-auto px-4 py-5 pb-8">
 
-        {/* Business header strip */}
+        {/* Business header */}
         <div className="flex justify-between items-center mb-5">
           <div>
             <p className="text-xs text-gray-400">Business Dashboard</p>
@@ -453,7 +660,7 @@ export default function BusinessDashboard() {
 
         {/* Low stock warning */}
         {lowStockCount > 0 && (
-          <a href="/business/stock" className="block bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
+          <a href="/business/stock" className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl px-4 py-3 mb-4">
             <span className="text-xl">⚠️</span>
             <div className="flex-1">
               <p className="text-red-600 font-semibold text-sm">{lowStockCount} ingredient{lowStockCount > 1 ? 's' : ''} running low!</p>
@@ -471,7 +678,7 @@ export default function BusinessDashboard() {
           </div>
           <div className="relative">
             <p className="text-gray-400 text-xs mb-1">{monthName} — Net Profit</p>
-            <button onClick={() => setModalData({ label: 'Net Profit — ' + monthName, value: fmt(Math.abs(netProfit), currencySymbol), sub: profitMargin + '% profit margin' })}>
+            <button onClick={() => setModalData({ label: 'Net Profit', value: fmt(Math.abs(netProfit), currencySymbol), sub: profitMargin + '% margin' })}>
               <p className={`text-4xl font-bold tabular-nums mb-1 ${netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {netProfit >= 0 ? '+' : '-'}{fmt(Math.abs(netProfit), currencySymbol)}
               </p>
@@ -480,9 +687,9 @@ export default function BusinessDashboard() {
           </div>
           <div className="relative grid grid-cols-3 gap-2 mt-4">
             {[
-              { label: 'Revenue',  value: fmt(monthRevenue, currencySymbol),  color: 'text-green-400',  click: () => setModalData({ label: 'Revenue — ' + monthName, value: fmt(monthRevenue, currencySymbol) }) },
-              { label: 'Expenses', value: fmt(monthExpenses, currencySymbol), color: 'text-red-400',    click: () => setModalData({ label: 'Expenses — ' + monthName, value: fmt(monthExpenses, currencySymbol) }) },
-              { label: 'Payroll',  value: fmt(monthPayroll, currencySymbol),  color: 'text-yellow-400', click: () => setModalData({ label: 'Payroll — ' + monthName, value: fmt(monthPayroll, currencySymbol), sub: employees.filter(e => e.is_active).length + ' employees' }) },
+              { label: 'Revenue',  value: fmt(monthRevenue, currencySymbol),  color: 'text-green-400',  click: () => setModalData({ label: 'Revenue', value: fmt(monthRevenue, currencySymbol) }) },
+              { label: 'Expenses', value: fmt(monthExpenses, currencySymbol), color: 'text-red-400',    click: () => setModalData({ label: 'Expenses', value: fmt(monthExpenses, currencySymbol) }) },
+              { label: 'Payroll',  value: fmt(monthPayroll, currencySymbol),  color: 'text-yellow-400', click: () => setModalData({ label: 'Payroll', value: fmt(monthPayroll, currencySymbol), sub: employees.filter(e => e.is_active).length + ' employees' }) },
             ].map((s, i) => (
               <button key={i} onClick={s.click} className="bg-white/10 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
                 <p className="text-gray-400 text-xs mb-0.5">{s.label}</p>
@@ -507,7 +714,7 @@ export default function BusinessDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-4 gap-3 mb-5">
+        <div className="grid grid-cols-4 gap-3 mb-3">
           {[
             { label: 'Revenue', icon: '💵', color: 'bg-green-600',  action: () => setShowAddRev(true) },
             { label: 'Expense', icon: '🧾', color: 'bg-red-500',    action: () => setShowAddExp(true) },
@@ -521,7 +728,18 @@ export default function BusinessDashboard() {
           ))}
         </div>
 
-        {/* Tab bar */}
+        {/* POS Scanner button */}
+        <button onClick={() => setShowPOS(true)}
+          className="w-full mb-5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl py-4 flex items-center justify-center gap-3 active:scale-95 transition-transform shadow-lg">
+          <span className="text-2xl">📷</span>
+          <div className="text-left">
+            <p className="font-bold text-sm">POS End-of-Day Scan</p>
+            <p className="text-xs text-purple-200">Scan receipt → auto revenue + stock deduction</p>
+          </div>
+          <span className="ml-auto text-purple-200 text-xs font-semibold bg-white/20 px-2 py-1 rounded-lg">AI</span>
+        </button>
+
+        {/* Tabs */}
         <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5">
           {[{ key: 'overview', label: 'Overview' }, { key: 'staff', label: 'Staff' }, { key: 'expenses', label: 'Expenses' }].map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
@@ -531,7 +749,7 @@ export default function BusinessDashboard() {
           ))}
         </div>
 
-        {/* Overview Tab */}
+        {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <div className="space-y-4">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
@@ -539,7 +757,7 @@ export default function BusinessDashboard() {
               <div className="flex items-end gap-2" style={{ height: 96 }}>
                 {last7Days.map((day, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                    <p className="text-xs text-gray-400 tabular-nums">{day.value > 0 ? currencySymbol + (day.value >= 1000 ? (day.value / 1000).toFixed(1) + 'k' : day.value.toFixed(0)) : ''}</p>
+                    <p className="text-xs text-gray-400 tabular-nums">{day.value > 0 ? currencySymbol + (day.value >= 1000 ? (day.value/1000).toFixed(1)+'k' : day.value.toFixed(0)) : ''}</p>
                     <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col justify-end" style={{ height: 60 }}>
                       <div className={`w-full rounded-lg transition-all duration-500 ${day.isToday ? 'bg-orange-500' : 'bg-orange-200 dark:bg-orange-800'}`}
                         style={{ height: (day.value / maxDay) * 60 }} />
@@ -558,8 +776,7 @@ export default function BusinessDashboard() {
               {revenue.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-3xl mb-2">📊</p>
-                  <p className="text-gray-400 text-sm">No revenue recorded yet</p>
-                  <button onClick={() => setShowAddRev(true)} className="mt-3 bg-orange-500 text-white px-4 py-2 rounded-xl text-xs font-semibold">Add First Entry</button>
+                  <p className="text-gray-400 text-sm">No revenue yet — scan a receipt or add manually</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -586,10 +803,10 @@ export default function BusinessDashboard() {
                       <div key={i}>
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-sm text-gray-700 dark:text-gray-200">{cat.name}</span>
-                          <span className="text-sm font-bold text-gray-800 dark:text-white tabular-nums">{fmt(cat.value, currencySymbol)} <span className="text-xs text-gray-400">({Math.round(pct)}%)</span></span>
+                          <span className="text-sm font-bold tabular-nums">{fmt(cat.value, currencySymbol)} <span className="text-xs text-gray-400">({Math.round(pct)}%)</span></span>
                         </div>
                         <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-                          <div className="h-1.5 rounded-full bg-red-400 transition-all" style={{ width: pct + '%' }} />
+                          <div className="h-1.5 rounded-full bg-red-400" style={{ width: pct + '%' }} />
                         </div>
                       </div>
                     )
@@ -600,7 +817,7 @@ export default function BusinessDashboard() {
           </div>
         )}
 
-        {/* Staff Tab */}
+        {/* STAFF TAB */}
         {activeTab === 'staff' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
             <div className="flex justify-between items-center mb-4">
@@ -615,7 +832,7 @@ export default function BusinessDashboard() {
             {employees.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-3xl mb-2">👥</p>
-                <p className="text-gray-400 text-sm">No employees added yet</p>
+                <p className="text-gray-400 text-sm">No employees yet</p>
                 <button onClick={() => setShowAddEmp(true)} className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-semibold">Add First Employee</button>
               </div>
             ) : (
@@ -630,10 +847,10 @@ export default function BusinessDashboard() {
                       <p className="text-xs text-gray-400">{emp.role}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-gray-800 dark:text-white tabular-nums">{fmt(emp.salary, currencySymbol)}</p>
+                      <p className="text-sm font-bold tabular-nums">{fmt(emp.salary, currencySymbol)}</p>
                       <p className="text-xs text-gray-400">/{emp.salary_type === 'monthly' ? 'mo' : 'day'}</p>
                     </div>
-                    <button onClick={() => handleDeleteEmployee(emp.id)} className="text-red-400 hover:text-red-600 p-1 ml-1 flex-shrink-0">
+                    <button onClick={() => handleDeleteEmployee(emp.id)} className="text-red-400 hover:text-red-600 p-1 ml-1">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
                     </button>
                   </div>
@@ -643,7 +860,7 @@ export default function BusinessDashboard() {
           </div>
         )}
 
-        {/* Expenses Tab */}
+        {/* EXPENSES TAB */}
         {activeTab === 'expenses' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
             <div className="flex justify-between items-center mb-4">
@@ -653,7 +870,7 @@ export default function BusinessDashboard() {
             {expenses.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-3xl mb-2">🧾</p>
-                <p className="text-gray-400 text-sm">No expenses recorded yet</p>
+                <p className="text-gray-400 text-sm">No expenses yet</p>
                 <button onClick={() => setShowAddExp(true)} className="mt-3 bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-semibold">Add First Expense</button>
               </div>
             ) : (
