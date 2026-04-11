@@ -254,24 +254,34 @@ router.get('/stock', authenticateToken, async (req, res) => {
 
 router.post('/stock', authenticateToken, async (req, res) => {
   try {
-    const { name, unit, cost_per_unit, stock_quantity, low_stock_alert } = req.body;
-    if (!name || !unit || !cost_per_unit)
-      return res.status(400).json({ message: 'Name, unit and cost required' });
+    const { name, unit, cost_per_unit, stock_quantity, low_stock_alert, color, emoji, pieces_per_container } = req.body;
+    if (!name || !unit || !cost_per_unit) return res.status(400).json({ message: 'Name, unit and cost required' });
     const result = await pool.query(
-      'INSERT INTO ingredients (user_id, name, unit, cost_per_unit, stock_quantity, low_stock_alert) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-      [req.userId, name.trim(), unit, cost_per_unit, stock_quantity || 0, low_stock_alert || 0]
+      'INSERT INTO ingredients (user_id, name, unit, cost_per_unit, stock_quantity, low_stock_alert, color, emoji, pieces_per_container) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+      [req.userId, name.trim(), unit, cost_per_unit, stock_quantity || 0, low_stock_alert || 0, color || '#6B7280', emoji || '📦', pieces_per_container || 0]
     );
     res.status(201).json(result.rows[0]);
-  } catch (e) { res.status(500).json({ message: 'Server error' }) }
+  } catch (e) { console.log(e); res.status(500).json({ message: 'Server error' }) }
 });
 
 router.put('/stock/:id', authenticateToken, async (req, res) => {
   try {
-    const { stock_quantity, cost_per_unit, low_stock_alert, name, unit } = req.body;
+    const { stock_quantity, cost_per_unit, low_stock_alert, name, unit, color, emoji, pieces_per_container } = req.body;
     const result = await pool.query(
-      'UPDATE ingredients SET stock_quantity=$1, cost_per_unit=$2, low_stock_alert=$3, name=COALESCE($4,name), unit=COALESCE($5,unit) WHERE id=$6 AND user_id=$7 RETURNING *',
-      [stock_quantity, cost_per_unit, low_stock_alert, name || null, unit || null, req.params.id, req.userId]
+      `UPDATE ingredients SET stock_quantity=$1, cost_per_unit=$2, low_stock_alert=$3,
+       name=COALESCE($4,name), unit=COALESCE($5,unit), color=COALESCE($6,color),
+       emoji=COALESCE($7,emoji), pieces_per_container=COALESCE($8,pieces_per_container)
+       WHERE id=$9 AND user_id=$10 RETURNING *`,
+      [stock_quantity, cost_per_unit, low_stock_alert, name||null, unit||null, color||null, emoji||null, pieces_per_container||null, req.params.id, req.userId]
     );
+    const ing = result.rows[0];
+    if (ing && parseFloat(ing.stock_quantity) <= parseFloat(ing.low_stock_alert) && parseFloat(ing.low_stock_alert) > 0) {
+      await pool.query('INSERT INTO notifications (user_id, type, message) VALUES ($1,$2,$3)',
+        [req.userId, 'stock_alert', `Low stock: ${ing.name} is at ${ing.stock_quantity} ${ing.unit}`]).catch(() => {});
+    }
+    res.json(ing);
+  } catch (e) { res.status(500).json({ message: 'Server error' }) }
+});
     // Check if now low stock — create notification
     const ing = result.rows[0];
     if (ing && parseFloat(ing.stock_quantity) <= parseFloat(ing.low_stock_alert) && parseFloat(ing.low_stock_alert) > 0) {

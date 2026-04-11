@@ -45,4 +45,15 @@ router.put('/currency', authenticateToken, async (req, res) => {
   } catch { res.status(500).json({ message: 'Server error' }) }
 });
 
+router.put('/', authenticateToken, async (req, res) => {
+  try {
+    const { name, email, currency, business_name } = req.body;
+    await pool.query(
+      'UPDATE users SET name=$1, email=$2, currency=$3, business_name=$4 WHERE id=$5',
+      [name, email, currency, business_name || null, req.userId]
+    );
+    res.json({ message: 'Profile updated' });
+  } catch (e) { res.status(500).json({ message: 'Server error' }) }
+});
+
 module.exports = router;
