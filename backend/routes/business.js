@@ -283,22 +283,54 @@ router.put('/stock/:id', authenticateToken, async (req, res) => {
   } catch (e) { res.status(500).json({ message: 'Server error' }) }
 });
     // Check if now low stock — create notification
-    const ing = result.rows[0];
-    if (ing && parseFloat(ing.stock_quantity) <= parseFloat(ing.low_stock_alert) && parseFloat(ing.low_stock_alert) > 0) {
-      await pool.query(
-        'INSERT INTO notifications (user_id, type, message) VALUES ($1, $2, $3)',
-        [req.userId, 'stock_alert', `Low stock: ${ing.name} is at ${ing.stock_quantity}${ing.unit} (minimum: ${ing.low_stock_alert}${ing.unit})`]
-      ).catch(() => {});
-    }
-    res.json(ing);
-  } catch (e) { res.status(500).json({ message: 'Server error' }) }
-});
+    try {
+  const ing = result.rows[0];
 
+  if (
+    ing &&
+    Number(ing.low_stock_alert) > 0 &&
+    Number(ing.stock_quantity) <= Number(ing.low_stock_alert)
+  ) {
+    try {
+      await pool.query(
+        `INSERT INTO notifications (user_id, type, message) 
+         VALUES ($1, $2, $3)`,
+        [
+          req.userId,
+          'stock_alert',
+          `Low stock: ${ing.name} is at ${ing.stock_quantity}${ing.unit} (minimum: ${ing.low_stock_alert}${ing.unit})`
+        ]
+      );
+    } catch (err) {
+      console.error('Notification insert failed:', err);
+    }
+  }
+
+  return res.json(ing);
+
+} catch (err) {
+  console.error('Server error:', err);
+  return res.status(500).json({ message: 'Server error' });
+}
+
+// DELETE route
 router.delete('/stock/:id', authenticateToken, async (req, res) => {
   try {
-    await pool.query('DELETE FROM ingredients WHERE id=$1 AND user_id=$2', [req.params.id, req.userId]);
-    res.json({ message: 'Ingredient removed' });
-  } catch (e) { res.status(500).json({ message: 'Server error' }) }
+    const result = await pool.query(
+      'DELETE FROM ingredients WHERE id = $1 AND user_id = $2 RETURNING *',
+      [req.params.id, req.userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Ingredient not found' });
+    }
+
+    return res.json({ message: 'Ingredient removed' });
+
+  } catch (err) {
+    console.error('Delete error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
 });
 
 // ── DEDUCT STOCK FROM POS SCAN ───────────────────────────
