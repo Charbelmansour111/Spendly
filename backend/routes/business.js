@@ -503,4 +503,107 @@ Rules:
   }
 });
 
+// ── POS SCAN SINGLE SECTION ───────────────────────────────
+router.post('/pos-scan-section', authenticateToken, async (req, res) => {
+  try {
+    const { image, already_found, menu_items, exchange_rate } = req.body;
+    if (!image) return res.status(400).json({ message: 'Image required' });
+
+    const alreadyList = already_found?.length > 0
+      ? `Items already found (do NOT include these again): ${already_found.join(', ')}`
+      : 'No items found yet.';
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.2-11b-vision-preview',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } },
+            { type: 'text', text: `You are scanning a section of a Lebanese restaurant POS receipt.
+Look for the "Summary By Items" section — it shows item names and quantities sold today.
+${alreadyList}
+
+Return ONLY valid JSON, no other text:
+{
+  "items": [
+    { "name": "ITEM NAME", "quantity": 5, "unit_price": 0, "total_price": 0 }
+  ]
+}
+
+Rules:
+- Only extract items from "Summary By Items" section
+- Quantities are numbers next to item names (e.g. "FRIES KBIR  15.00" = qty 15)
+- Skip totals, taxes, payment methods, headers
+- Skip any items in the already_found list above
+- If section has no new items, return empty items array
+- Include delivery zones (DELIVERY ZONE A, B, C etc)` }
+          ]
+        }],
+        max_tokens: 800,
+        temperature: 0.1
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || 'Vision error');
+    const text = data.choices[0].message.content.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const parsed = JSON.parse(text);
+
+    const rate = exchange_rate ? parseFloat(exchange_rate) : null;
+    const items = (parsed.items || []).map(item => {
+      let price = parseFloat(item.unit_price || 0);
+      if (rate && price > 100) price = price / rate; // Auto-detect LL prices
+      const matched = menu_items?.find(m =>
+        m.name.toLowerCase() === item.name.toLowerCase() ||
+        m.name.toLowerCase().includes(item.name.toLowerCase()) ||
+        item.name.toLowerCase().includes(m.name.toLowerCase())
+      );
+      return {
+        ...item,
+        unit_price: price > 0 ? price : (matched ? parseFloat(matched.price) : 0),
+        matched: !!matched,
+        matched_id: matched?.id || null,
+        matched_name: matched?.name || null,
+      };
+    });
+
+    res.json({ items, count: items.length });
+  } catch (e) {
+    console.log('Scan section error:', e);
+    res.status(500).json({ message: 'Scan failed: ' + e.message, items: [] });
+  }
+});
+
+// ── POS SUGGEST NEW ITEMS ─────────────────────────────────
+router.post('/pos-suggest-items', authenticateToken, async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!items?.length) return res.json([]);
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: `For each of these unmatched POS items from a Lebanese restaurant, suggest a menu category and price.
+Items: ${JSON.stringify(items)}
+Return ONLY a JSON array, no other text:
+[{"name": "item name", "category": "Burger|Sandwich|Pizza|Shawarma|Salad|Fried|Drink|Delivery|Other Food", "suggested_price": 5.00}]
+Skip items that look like totals, taxes, or payment methods.` }],
+        max_tokens: 400,
+        temperature: 0.1
+      })
+    });
+    const data = await response.json();
+    const text = data.choices[0].message.content.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const parsed = JSON.parse(text);
+    res.json(parsed);
+  } catch (e) {
+    res.json([]);
+  }
+});
+
 module.exports = router;
