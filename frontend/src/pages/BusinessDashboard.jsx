@@ -33,14 +33,17 @@ function NumberModal({ label, value, sub, onClose }) {
 }
 
 // ── POS SCANNER ───────────────────────────────────────────
-function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol }) {
-  const [step, setStep]                 = useState('upload')
-  const [imageData, setImageData]       = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
-  const [scanResult, setScanResult]     = useState(null)
-  const [date, setDate]                 = useState(new Date().toISOString().split('T')[0])
+function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol, ingredients }) {
+  const [step, setStep]                   = useState('upload')
+  const [imageData, setImageData]         = useState(null)
+  const [imagePreview, setImagePreview]   = useState(null)
+  const [scanResult, setScanResult]       = useState(null)
+  const [date, setDate]                   = useState(new Date().toISOString().split('T')[0])
   const [editableItems, setEditableItems] = useState([])
-  const [error, setError]               = useState('')
+  const [newItemSuggestions, setNewItemSuggestions] = useState([])
+  const [error, setError]                 = useState('')
+  const [summary, setSummary]             = useState(null)
+  const [exchangeRate, setExchangeRate]   = useState('')
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0]
@@ -61,42 +64,88 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol 
     try {
       const res = await API.post('/business/pos-scan', {
         image: imageData,
-        menu_items: menuItems.map(m => ({ id: m.id, name: m.name, price: m.price }))
+        menu_items: menuItems.map(m => ({ id: m.id, name: m.name, price: m.price })),
+        exchange_rate: exchangeRate ? parseFloat(exchangeRate) : null
       })
       setScanResult(res.data)
       setEditableItems(res.data.items.map(item => ({ ...item, confirmed: item.matched })))
+      // New items AI suggests adding to menu
+      setNewItemSuggestions(
+        (res.data.new_item_suggestions || []).map(s => ({ ...s, selected: false, adding: false }))
+      )
       setStep('review')
     } catch {
-      setError('Scan failed. Try a clearer photo or enter revenue manually.')
+      setError('Scan failed. Try a clearer photo.')
       setStep('upload')
+    }
+  }
+
+  const handleAddNewItem = async (idx) => {
+    const item = newItemSuggestions[idx]
+    // Check duplicate
+    const exists = menuItems.some(m => m.name.toLowerCase() === item.name.toLowerCase())
+    if (exists) {
+      showToast(`"${item.name}" already exists in your menu!`, 'error')
+      return
+    }
+    setNewItemSuggestions(prev => prev.map((s, i) => i === idx ? { ...s, adding: true } : s))
+    try {
+      await API.post('/business/menu', { name: item.name, category: item.category, price: item.suggested_price || 0 })
+      setNewItemSuggestions(prev => prev.map((s, i) => i === idx ? { ...s, selected: true, adding: false, added: true } : s))
+      showToast(`✅ "${item.name}" added to menu!`)
+    } catch {
+      setNewItemSuggestions(prev => prev.map((s, i) => i === idx ? { ...s, adding: false } : s))
+      showToast('Error adding item', 'error')
     }
   }
 
   const handleConfirm = async () => {
     setStep('saving')
-    const confirmedItems = editableItems.filter(i => i.confirmed && i.matched_id)
-    const totalRevenue   = editableItems.reduce((s, i) => s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0)), 0)
+    const confirmedItems  = editableItems.filter(i => i.confirmed && i.matched_id)
+    const rate            = exchangeRate ? parseFloat(exchangeRate) : null
+    const totalRevenueUSD = editableItems
+      .filter(i => i.confirmed)
+      .reduce((s, i) => s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0)), 0)
+
     try {
       await API.post('/business/revenue', {
         date,
-        total_revenue: totalRevenue,
-        notes: `POS Scan: ${editableItems.length} items`,
+        total_revenue: totalRevenueUSD,
+        notes: `POS Scan: ${editableItems.filter(i=>i.confirmed).length} items · ${rate ? `Rate: 1$=${rate}LL` : ''}`,
         scan_raw: JSON.stringify(editableItems)
       })
+
+      let deductions = []
       if (confirmedItems.length > 0) {
-        await API.post('/business/deduct-stock', {
+        const deductRes = await API.post('/business/deduct-stock', {
           items_sold: confirmedItems.map(i => ({ menu_item_id: i.matched_id, quantity_sold: i.quantity }))
         })
+        deductions = deductRes.data?.deductions || []
       }
-      showToast(`✅ ${currencySymbol}${totalRevenue.toFixed(2)} revenue saved + stock deducted!`)
-      onComplete()
+
+      // Build summary
+      const topSeller = [...editableItems].filter(i => i.confirmed).sort((a, b) => b.quantity - a.quantity)[0]
+      const totalItems = editableItems.filter(i => i.confirmed).reduce((s, i) => s + parseInt(i.quantity || 0), 0)
+      setSummary({
+        date,
+        revenueUSD: totalRevenueUSD,
+        revenueLL: rate ? (totalRevenueUSD * rate) : null,
+        itemCount: editableItems.filter(i => i.confirmed).length,
+        totalQty: totalItems,
+        topSeller: topSeller ? `${topSeller.matched_name || topSeller.name} × ${topSeller.quantity}` : null,
+        deductions,
+        matched: confirmedItems.length,
+        unmatched: editableItems.filter(i => !i.matched).length,
+      })
+      setStep('summary')
     } catch {
-      showToast('Error saving scan results', 'error')
+      showToast('Error saving', 'error')
       setStep('review')
     }
   }
 
-  const totalRevenue = editableItems.reduce((s, i) => s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0)), 0)
+  const totalRevenueUSD = editableItems.filter(i => i.confirmed).reduce((s, i) => s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0)), 0)
+  const rate = exchangeRate ? parseFloat(exchangeRate) : null
   const inputCls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
 
   return (
@@ -121,14 +170,14 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol 
           </div>
           {/* Steps */}
           <div className="flex items-center gap-1 mt-4">
-            {['Upload', 'Scan', 'Review', 'Done'].map((s, i) => {
-              const stepIdx = { upload: 0, scanning: 1, review: 2, saving: 3 }[step]
+            {['Upload','Scan','Review','Done'].map((s, i) => {
+              const stepIdx = { upload:0, scanning:1, review:2, saving:2, summary:3 }[step]
               const done    = i < stepIdx
               const active  = i === stepIdx
               return (
                 <div key={s} className="flex items-center flex-1">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${done ? 'bg-green-500 text-white' : active ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
-                    {done ? '✓' : i + 1}
+                    {done ? '✓' : i+1}
                   </div>
                   <p className={`text-xs font-medium ml-1 ${active ? 'text-purple-600' : 'text-gray-400'}`}>{s}</p>
                   {i < 3 && <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700 mx-2" />}
@@ -140,13 +189,26 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol 
 
         <div className="px-6 py-5 space-y-4">
 
-          {/* UPLOAD */}
+          {/* ── UPLOAD ── */}
           {step === 'upload' && (
             <>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 mb-2 block">Sale Date</label>
-                <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-2 block">Sale Date</label>
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-2 block">Exchange Rate</label>
+                  <div className="relative">
+                    <input type="number" placeholder="e.g. 90000"
+                      value={exchangeRate} onChange={e => setExchangeRate(e.target.value)}
+                      className={inputCls} />
+                  </div>
+                  {exchangeRate && <p className="text-xs text-purple-500 mt-1">1{currencySymbol} = {parseInt(exchangeRate).toLocaleString()} LL</p>}
+                  {!exchangeRate && <p className="text-xs text-gray-400 mt-1">Optional — for LL receipts</p>}
+                </div>
               </div>
+
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-2 block">Receipt Photo</label>
                 <label className={`block w-full border-2 border-dashed rounded-2xl cursor-pointer transition ${imagePreview ? 'border-purple-300 bg-purple-50 dark:bg-purple-900/10' : 'border-gray-300 dark:border-gray-600 hover:border-purple-400 bg-gray-50 dark:bg-gray-700/50'}`}>
@@ -159,17 +221,15 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol 
                   ) : (
                     <div className="p-10 text-center">
                       <p className="text-4xl mb-3">📷</p>
-                      <p className="font-semibold text-gray-600 dark:text-gray-300 text-sm">Take a photo or upload receipt</p>
-                      <p className="text-xs text-gray-400 mt-1">AI will read all items and quantities automatically</p>
+                      <p className="font-semibold text-gray-600 dark:text-gray-300 text-sm">Take photo or upload receipt</p>
+                      <p className="text-xs text-gray-400 mt-1">AI reads all items, quantities and prices</p>
                     </div>
                   )}
                 </label>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
-                <p className="text-xs text-gray-500 font-medium mb-1">No receipt?</p>
-                <p className="text-xs text-gray-400">Use the + Revenue button on the dashboard to add revenue manually.</p>
-              </div>
+
               {error && <p className="text-red-500 text-sm bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-xl">{error}</p>}
+
               <button onClick={handleScan} disabled={!imageData}
                 className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-2xl font-bold hover:opacity-90 transition disabled:opacity-40 flex items-center justify-center gap-2">
                 <span>🤖</span> Scan with AI
@@ -177,14 +237,12 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol 
             </>
           )}
 
-          {/* SCANNING */}
+          {/* ── SCANNING ── */}
           {step === 'scanning' && (
             <div className="py-16 text-center">
               <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">📷</div>
-              <div className="flex items-center justify-center gap-2 mb-4">
-                {[0, 150, 300].map(d => (
-                  <div key={d} className="w-3 h-3 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: d + 'ms' }} />
-                ))}
+              <div className="flex justify-center gap-2 mb-4">
+                {[0,150,300].map(d => <div key={d} className="w-3 h-3 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: d+'ms' }} />)}
               </div>
               <p className="font-bold text-gray-800 dark:text-white text-lg mb-1">AI is reading your receipt...</p>
               <p className="text-gray-400 text-sm">Identifying items, quantities and prices</p>
@@ -192,13 +250,21 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol 
             </div>
           )}
 
-          {/* REVIEW */}
+          {/* ── REVIEW ── */}
           {step === 'review' && scanResult && (
             <>
+              {/* Revenue summary banner */}
               <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-4 text-white">
-                <p className="text-xs text-purple-200 mb-1">AI found {scanResult.items?.length || 0} items · {scanResult.total_matched} matched to menu</p>
-                <p className="text-3xl font-bold tabular-nums">{currencySymbol}{totalRevenue.toFixed(2)}</p>
-                <p className="text-xs text-purple-200 mt-1">{date}</p>
+                <p className="text-xs text-purple-200 mb-1">
+                  {scanResult.total_found} items found · {scanResult.total_matched} matched to your menu
+                </p>
+                <p className="text-3xl font-bold tabular-nums">{currencySymbol}{totalRevenueUSD.toFixed(2)}</p>
+                {rate && (
+                  <p className="text-sm text-purple-200 mt-1 tabular-nums">
+                    = {Math.round(totalRevenueUSD * rate).toLocaleString()} LL
+                  </p>
+                )}
+                <p className="text-xs text-purple-300 mt-1">{date}</p>
               </div>
 
               {scanResult.notes && (
@@ -207,51 +273,89 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol 
                 </div>
               )}
 
+              {/* Items */}
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">Items Found</p>
                   <p className="text-xs text-gray-400">Tap to include / exclude</p>
                 </div>
                 <div className="space-y-2">
-                  {editableItems.map((item, idx) => (
-                    <div key={idx}
-                      className={`rounded-2xl border-2 p-3 transition ${item.confirmed ? 'border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 opacity-60'}`}>
-                      <div className="flex items-start gap-3">
-                        <button
-                          onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, confirmed: !it.confirmed } : it))}
-                          className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition ${item.confirmed ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                          {item.confirmed && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-semibold text-gray-800 dark:text-white">{item.name}</p>
-                            {item.matched
-                              ? <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-semibold">✓ Matched</span>
-                              : <span className="text-xs bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full font-semibold">⚠ Not in menu</span>
-                            }
+                  {editableItems.map((item, idx) => {
+                    const lineUSD = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
+                    return (
+                      <div key={idx}
+                        className={`rounded-2xl border-2 p-3 transition ${item.confirmed ? 'border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 opacity-60'}`}>
+                        <div className="flex items-start gap-3">
+                          <button
+                            onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, confirmed: !it.confirmed } : it))}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition ${item.confirmed ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                            {item.confirmed && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-semibold text-gray-800 dark:text-white">{item.name}</p>
+                              {item.matched
+                                ? <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-semibold">✓ Matched</span>
+                                : <span className="text-xs bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full font-semibold">⚠ Not in menu</span>
+                              }
+                            </div>
+                            {item.matched_name && item.matched_name !== item.name && (
+                              <p className="text-xs text-purple-500 mt-0.5">→ {item.matched_name}</p>
+                            )}
+                            {!item.matched && <p className="text-xs text-gray-400">Stock won't be deducted</p>}
                           </div>
-                          {item.matched_name && item.matched_name !== item.name && (
-                            <p className="text-xs text-purple-500 mt-0.5">→ {item.matched_name}</p>
-                          )}
-                          {!item.matched && <p className="text-xs text-gray-400">Stock won't be deducted</p>}
-                        </div>
-                        <div className="flex-shrink-0 text-right">
-                          <div className="flex items-center gap-1 justify-end mb-1">
-                            <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, (it.quantity || 1) - 1) } : it))}
-                              className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-lg text-xs font-bold flex items-center justify-center">−</button>
-                            <span className="text-sm font-bold w-8 text-center tabular-nums">{item.quantity}</span>
-                            <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: (it.quantity || 1) + 1 } : it))}
-                              className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-lg text-xs font-bold flex items-center justify-center">+</button>
+                          <div className="flex-shrink-0 text-right">
+                            <div className="flex items-center gap-1 justify-end mb-1">
+                              <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))}
+                                className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-lg text-xs font-bold flex items-center justify-center">−</button>
+                              <span className="text-sm font-bold w-8 text-center tabular-nums">{item.quantity}</span>
+                              <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: (it.quantity||1)+1 } : it))}
+                                className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-lg text-xs font-bold flex items-center justify-center">+</button>
+                            </div>
+                            <p className="text-xs text-gray-400">× {currencySymbol}{parseFloat(item.unit_price||0).toFixed(2)}</p>
+                            <p className="text-xs font-bold text-purple-600 tabular-nums">{currencySymbol}{lineUSD.toFixed(2)}</p>
+                            {rate && <p className="text-xs text-gray-400 tabular-nums">{Math.round(lineUSD * rate).toLocaleString()} LL</p>}
                           </div>
-                          <p className="text-xs text-gray-400 tabular-nums">× {currencySymbol}{parseFloat(item.unit_price || 0).toFixed(2)}</p>
-                          <p className="text-xs font-bold text-purple-600 tabular-nums">{currencySymbol}{(parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)).toFixed(2)}</p>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 
+              {/* New item suggestions from AI */}
+              {newItemSuggestions.length > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
+                  <p className="text-sm font-bold text-blue-600 mb-1">🤖 AI found new items not in your menu</p>
+                  <p className="text-xs text-blue-400 mb-3">Add them now so they'll be matched next time</p>
+                  <div className="space-y-2">
+                    {newItemSuggestions.map((s, idx) => (
+                      <div key={idx} className={`flex items-center gap-3 bg-white dark:bg-gray-800 rounded-xl px-3 py-2.5 ${s.added ? 'opacity-60' : ''}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 dark:text-white">{s.name}</p>
+                          <p className="text-xs text-gray-400">{s.category} · {currencySymbol}{parseFloat(s.suggested_price||0).toFixed(2)}</p>
+                        </div>
+                        {s.added ? (
+                          <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded-lg font-semibold">✓ Added</span>
+                        ) : (
+                          <div className="flex gap-2">
+                            <button onClick={() => handleAddNewItem(idx)} disabled={s.adding}
+                              className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50">
+                              {s.adding ? '...' : '+ Add'}
+                            </button>
+                            <button onClick={() => setNewItemSuggestions(prev => prev.filter((_, i) => i !== idx))}
+                              className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 px-2 py-1.5 rounded-lg">
+                              Skip
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Stock deduction preview */}
               {editableItems.some(i => i.confirmed && i.matched) && (
                 <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 rounded-2xl p-4">
                   <p className="text-xs font-semibold text-orange-600 mb-2">📦 Stock will be deducted for:</p>
@@ -276,19 +380,99 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol 
             </>
           )}
 
-          {/* SAVING */}
+          {/* ── SAVING ── */}
           {step === 'saving' && (
             <div className="py-16 text-center">
-              <div className="w-20 h-20 bg-green-500 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">✅</div>
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg animate-pulse">💾</div>
               <p className="font-bold text-gray-800 dark:text-white text-lg mb-1">Saving everything...</p>
               <p className="text-gray-400 text-sm">Revenue recorded · Stock deducted · Alerts checked</p>
             </div>
+          )}
+
+          {/* ── SUMMARY ── */}
+          {step === 'summary' && summary && (
+            <>
+              {/* Success header */}
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white text-center">
+                <p className="text-4xl mb-2">✅</p>
+                <p className="font-bold text-xl">Day Closed Successfully!</p>
+                <p className="text-green-100 text-sm mt-1">{summary.date}</p>
+              </div>
+
+              {/* Revenue */}
+              <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 border border-gray-100 dark:border-gray-600">
+                <p className="text-xs text-gray-400 font-semibold mb-3 uppercase tracking-wide">💰 Revenue</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-300 text-sm">Total Revenue (USD)</span>
+                  <span className="font-bold text-green-600 text-lg tabular-nums">{currencySymbol}{summary.revenueUSD.toFixed(2)}</span>
+                </div>
+                {summary.revenueLL && (
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-gray-400 text-xs">Total Revenue (LBP)</span>
+                    <span className="font-semibold text-gray-500 dark:text-gray-300 text-sm tabular-nums">{summary.revenueLL.toLocaleString()} LL</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Sales breakdown */}
+              <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 border border-gray-100 dark:border-gray-600">
+                <p className="text-xs text-gray-400 font-semibold mb-3 uppercase tracking-wide">📊 Sales</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Items sold</span>
+                    <span className="font-semibold text-gray-800 dark:text-white">{summary.itemCount} items</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Total quantity</span>
+                    <span className="font-semibold text-gray-800 dark:text-white">{summary.totalQty} units</span>
+                  </div>
+                  {summary.topSeller && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Top seller</span>
+                      <span className="font-semibold text-orange-600">🏆 {summary.topSeller}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Matched to menu</span>
+                    <span className="font-semibold text-green-600">{summary.matched} items</span>
+                  </div>
+                  {summary.unmatched > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Not in menu</span>
+                      <span className="font-semibold text-yellow-600">{summary.unmatched} items (not deducted)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Stock deductions */}
+              {summary.deductions && summary.deductions.length > 0 && (
+                <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 border border-gray-100 dark:border-gray-600">
+                  <p className="text-xs text-gray-400 font-semibold mb-3 uppercase tracking-wide">📦 Stock Deducted</p>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {summary.deductions.map((d, i) => (
+                      <div key={i} className="flex justify-between text-xs">
+                        <span className="text-gray-600 dark:text-gray-300">{d.ingredient}</span>
+                        <span className="text-red-500 font-semibold tabular-nums">-{parseFloat(d.used).toFixed(3)} → {parseFloat(d.remaining).toFixed(2)} left</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button onClick={() => { onComplete(); }}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-2xl font-bold text-base hover:opacity-90 transition">
+                Done ✓
+              </button>
+            </>
           )}
         </div>
       </div>
     </div>
   )
 }
+
+       
 
 // ── AI EXPENSE SHEET ──────────────────────────────────────
 function AIExpenseSheet({ onClose, onSave, currencySymbol, ingredients }) {
@@ -643,7 +827,7 @@ export default function BusinessDashboard() {
       {showAddRev && <AddRevenueSheet onClose={() => setShowAddRev(false)} onSave={handleAddRevenue} currencySymbol={currencySymbol} />}
       {showAddExp && <AIExpenseSheet  onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} ingredients={ingredients} />}
       {showAddEmp && <AddEmployeeSheet onClose={() => setShowAddEmp(false)} onSave={handleAddEmployee} currencySymbol={currencySymbol} />}
-      {showPOS    && <POSScanner onClose={() => setShowPOS(false)} menuItems={menuItems} onComplete={() => { setShowPOS(false); fetchAll() }} showToast={showToast} currencySymbol={currencySymbol} />}
+      {showPOS    && <POSScanner onClose={() => setShowPOS(false)} menuItems={menuItems} onComplete={() => { setShowPOS(false); fetchAll() }} showToast={showToast} currencySymbol={currencySymbol} ingredients={ingredients} />}
 
       <div className="max-w-2xl mx-auto px-4 py-5 pb-8">
 

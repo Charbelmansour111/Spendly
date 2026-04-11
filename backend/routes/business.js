@@ -138,11 +138,24 @@ router.get('/menu', authenticateToken, async (req, res) => {
   } catch (e) { console.log(e); res.status(500).json({ message: 'Server error' }) }
 });
 
-router.post('/menu', authenticateToken, async (req, res) => {
+rrouter.post('/menu', authenticateToken, async (req, res) => {
   try {
     const { name, category, price } = req.body;
     if (!name || !price) return res.status(400).json({ message: 'Name and price required' });
-    const result = await pool.query('INSERT INTO menu_items (user_id, name, category, price) VALUES ($1,$2,$3,$4) RETURNING *', [req.userId, name.trim(), category || 'Main', price]);
+
+    // Check for duplicate
+    const existing = await pool.query(
+      'SELECT id FROM menu_items WHERE user_id=$1 AND LOWER(name)=LOWER($2) AND is_active=TRUE',
+      [req.userId, name.trim()]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ message: `"${name}" already exists in your menu!` });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO menu_items (user_id, name, category, price) VALUES ($1,$2,$3,$4) RETURNING *',
+      [req.userId, name.trim(), category || 'Main', price]
+    );
     res.status(201).json(result.rows[0]);
   } catch (e) { res.status(500).json({ message: 'Server error' }) }
 });
