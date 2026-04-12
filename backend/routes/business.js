@@ -408,7 +408,16 @@ CRITICAL RULES:
 - Everything else = type "food"
 - NO TOMATO is a food modifier, skip it
 - Extract ALL items visible in the Summary By Items section
-- Currency is Lebanese Pounds (LL)`;
+- Currency is Lebanese Pounds (LL)
+- Management figures (Grand Total, Net Sales, Discount, Average Customer, Average Check, Sub Total, Net Total, Cash LL, Cash $) are ALL in Lebanese Pounds (LL) - these large numbers like 27300000 are LL amounts
+- ANY variation of Pepsi, 7UP, Miranda, Sprite, Fanta, Ice Tea, Red Bull = type "drink"
+- Water brands (Reem, Nestle, Evian, Aquafina, Perrier) = type "water"
+- Soft drinks type "drink" includes ALL of: Pepsi, Pepsi Diet, Pepsi Zero, Pepsi Max, 7UP, 7UP Free, Miranda, Miranda Orange, Sprite, Sprite Zero, Fanta, Ice Tea (all flavors), Lipton, Red Bull, Schweppes, Cola, AB3A, and any variation
+- Water type "water" includes: Water Small, Water Large, Reem, Nestle, Evian, Aquafina, Perrier, and any water brand
+- ALL management numbers (Grand Total, Net Sales, Discount, Average Customer, Average Check, Sub Total, Net Total) are in Lebanese Pounds (LL) - divide by exchange rate to get USD
+- When you see a number like 27300000 next to "Grand Total" = 27,300,000 LL`;
+
+
 
     const modelsToTry = [
       'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -416,54 +425,59 @@ CRITICAL RULES:
       'llama-3.2-11b-vision-preview',
     ];
 
-    for (const model of modelsToTry) {
-      try {
-        console.log(`Trying vision model: ${model}`);
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model,
-            messages: [{
-              role: 'user',
-              content: [
-                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } },
-                { type: 'text', text: visionPrompt }
-              ]
-            }],
-            max_tokens: 2000,
-            temperature: 0.1
-          })
-        });
+    try {
+      for (const model of modelsToTry) {
+        try {
+          console.log(`Trying vision model: ${model}`);
+          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model,
+              messages: [{
+                role: 'user',
+                content: [
+                  { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } },
+                  { type: 'text', text: visionPrompt }
+                ]
+              }],
+              max_tokens: 2000,
+              temperature: 0.1
+            })
+          });
 
-        const data = await response.json();
-        console.log(`Model ${model} response status:`, response.status);
+          const data = await response.json();
+          console.log(`Model ${model} response status:`, response.status);
 
-        if (!response.ok) {
-          console.log(`Model ${model} error:`, JSON.stringify(data.error));
-          visionError = data.error?.message || `Model ${model} failed`;
+          if (!response.ok) {
+            console.log(`Model ${model} error:`, JSON.stringify(data.error));
+            visionError = data.error?.message || `Model ${model} failed`;
+            continue;
+          }
+
+          const rawText = data.choices[0].message.content.trim();
+          console.log('Raw AI response (first 500 chars):', rawText.substring(0, 500));
+
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            console.log('No JSON found in response');
+            visionError = 'AI did not return JSON';
+            continue;
+          }
+
+          analysis = JSON.parse(jsonMatch[0]);
+          console.log('Successfully parsed with model:', model);
+          break;
+
+        } catch (modelErr) {
+          console.log(`Model ${model} threw error:`, modelErr.message);
+          visionError = modelErr.message;
           continue;
         }
-
-        const rawText = data.choices[0].message.content.trim();
-        console.log('Raw AI response (first 500 chars):', rawText.substring(0, 500));
-
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          console.log('No JSON found in response');
-          visionError = 'AI did not return JSON';
-          continue;
-        }
-
-        analysis = JSON.parse(jsonMatch[0]);
-        console.log('Successfully parsed with model:', model);
-        break;
-
-      } catch (modelErr) {
-        console.log(`Model ${model} threw error:`, modelErr.message);
-        visionError = modelErr.message;
-        continue;
       }
+    } catch (e) {
+      console.log('POS scan fatal error:', e.message, e.stack);
+      return res.status(500).json({ message: 'Scan failed: ' + e.message, items: [] });
     }
 
     if (!analysis) {
@@ -515,30 +529,32 @@ const items = (analysis.items || [])
     };
   });
 
-    let mgmt = { ...(analysis.management || {}) };
-    if (isLL && rate) {
-      ['grand_total','net_total','discount','service','avg_customer','avg_check'].forEach(f => {
-        if (mgmt[f] && parseFloat(mgmt[f]) > 1000) {
-          mgmt[f + '_ll'] = mgmt[f];
-          mgmt[f] = (parseFloat(mgmt[f]) / rate).toFixed(2);
-        }
-      });
+   let mgmt = { ...(analysis.management || {}) };
+
+if (isLL && rate) {
+  // All these management fields are always in LL on Lebanese POS receipts
+  ['grand_total','net_total','discount','service','avg_customer','avg_check','sub_total','cash_ll'].forEach(f => {
+    if (mgmt[f] && parseFloat(mgmt[f]) > 1000) {
+      mgmt[f + '_ll'] = mgmt[f];
+      mgmt[f] = (parseFloat(mgmt[f]) / rate).toFixed(2);
     }
+  });
+} // <-- THIS WAS MISSING
 
-    console.log(`Scan complete: ${items.length} items found`);
+// cash_usd stays in USD — don't convert it
+console.log(`Scan complete: ${items.length} items found`);
 
-    res.json({
-      items,
-      management: mgmt,
-      sales_by_category: analysis.sales_by_category || [],
-      currency: analysis.management?.currency || 'unknown',
-      notes: analysis.notes || null,
-      count: items.length
-    });
-
+res.json({
+  items,
+  management: mgmt,
+  sales_by_category: analysis.sales_by_category || [],
+  currency: analysis.management?.currency || 'unknown',
+  notes: analysis.notes || null,
+  count: items.length
+});
   } catch (e) {
     console.log('POS scan fatal error:', e.message, e.stack);
-    res.status(500).json({ message: 'Scan failed: ' + e.message, items: [] });
+    return res.status(500).json({ message: 'Scan failed: ' + e.message, items: [] });
   }
 });
 

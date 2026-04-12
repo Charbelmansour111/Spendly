@@ -7,7 +7,35 @@ function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 function fmt(a, s) { return s + Math.abs(safeNum(a)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
 const FOOD_CATS = ['Burger','Sandwich','Pizza','Shawarma','Wrap','Salad','Soup','Pasta','Rice Dish','Grilled','Fried','Breakfast','Dessert','Side Dish','Kids Meal','Seafood','Vegetarian','Other Food']
-const CAT_ICONS = { 'Burger':'🍔','Sandwich':'🥪','Pizza':'🍕','Shawarma':'🌯','Wrap':'🌯','Salad':'🥗','Soup':'🍲','Pasta':'🍝','Rice Dish':'🍚','Grilled':'🥩','Fried':'🍟','Breakfast':'🍳','Dessert':'🍰','Side Dish':'🍟','Kids Meal':'🧒','Seafood':'🦐','Vegetarian':'🥦','Other Food':'🍽️' }
+const DRINK_CATS = ['Drink - Can','Drink - Bottle','Water']
+const ALL_MENU_CATS = [...FOOD_CATS, ...DRINK_CATS, 'Delivery']
+const CAT_ICONS = {
+  'Burger':'🍔','Sandwich':'🥪','Pizza':'🍕','Shawarma':'🌯','Wrap':'🌯','Salad':'🥗','Soup':'🍲',
+  'Pasta':'🍝','Rice Dish':'🍚','Grilled':'🥩','Fried':'🍟','Breakfast':'🍳','Dessert':'🍰',
+  'Side Dish':'🍟','Kids Meal':'🧒','Seafood':'🦐','Vegetarian':'🥦','Other Food':'🍽️',
+  'Drink - Can':'🥤','Drink - Bottle':'🍶','Water':'💧','Delivery':'🛵'
+}
+
+const CAN_SIZES    = ['185 ml (small can)','355 ml (classic can)','Custom']
+const BOTTLE_SIZES = ['250 ml (small glass)','330 ml (PET)','500 ml (PET)','1 L','1.25 L','1.5 L (family)','2 L','2.25 L (jumbo)','Custom']
+const WATER_SIZES  = [
+  '200 ml (Reem small)','250 ml (small glass)','330 ml','500 ml',
+  '600 ml','1 L','1.5 L','2 L','2.25 L (jumbo)','Custom'
+]
+
+// All known soft drink keywords — for POS matching
+const SOFT_DRINK_KEYWORDS = [
+  'pepsi','pepsi diet','pepsi max','pepsi zero','pepsi 1.25',
+  '7up','7 up','7up free','7up diet',
+  'miranda','miranda orange','miranda apple',
+  'sprite','sprite zero',
+  'fanta','fanta orange','fanta lemon',
+  'cola','diet cola',
+  'ice tea','ice tea peach','ice tea lemon','ice tea diet','lipton',
+  'redbull','red bull',
+  'schweppes','tonic',
+  'ab3a','aba','abo'
+]
 
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t) }, [onClose])
@@ -30,8 +58,21 @@ export default function BusinessMenu() {
   const [showAddItem, setShowAddItem]   = useState(false)
   const [expandedItem, setExpandedItem] = useState(null)
   const [editingItem, setEditingItem]   = useState(null)
-  const [itemForm, setItemForm]         = useState({ name: '', category: 'Burger', price: '', num_ingredients: 1 })
   const [recipeRows, setRecipeRows]     = useState([{ ...EMPTY_ROW }])
+
+  const [itemForm, setItemForm] = useState({ name: '', category: 'Burger', price: '', num_ingredients: 1 })
+  const [drinkDetails, setDrinkDetails] = useState({
+  drink_type: 'can',         // can | bottle | water
+  size: '',
+  custom_size: '',
+  box_cost: '',
+  box_cost_currency: 'USD',  // USD | LBP
+  cans_per_box: '',
+  exchange_rate: localStorage.getItem('pos_exchange_rate') || '90000',
+  })
+  const isDrink = DRINK_CATS.includes(itemForm.category)
+  const isWater = itemForm.category === 'Water'
+  const isDelivery = itemForm.category === 'Delivery'
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
 
@@ -73,25 +114,48 @@ export default function BusinessMenu() {
     setRecipeRows(prev => prev.map((r, i) => i === rowIdx ? { ...r, [field]: value } : r))
   }
 
+const calcDrinkCostUSD = () => {
+  const rate = parseFloat(drinkDetails.exchange_rate) || 90000
+  const boxCost = parseFloat(drinkDetails.box_cost) || 0
+  const cansPerBox = parseFloat(drinkDetails.cans_per_box) || 1
+  const costPerCan = boxCost / cansPerBox
+  if (drinkDetails.box_cost_currency === 'LBP') {
+    return { usd: (costPerCan / rate).toFixed(4), lbp: costPerCan.toFixed(0) }
+  }
+  return { usd: costPerCan.toFixed(4), lbp: (costPerCan * rate).toFixed(0) }
+}
+
   const handleAddItem = async () => {
-    if (!itemForm.name || !itemForm.price) { showToast('Name and price required', 'error'); return }
-    const validRows = recipeRows.filter(r => r.ingredient_id && r.quantity && parseFloat(r.quantity) > 0)
-    if (validRows.length === 0) { showToast('Add at least 1 ingredient', 'error'); return }
-    try {
-      const itemRes = await API.post('/business/menu', { name: itemForm.name, category: itemForm.category, price: itemForm.price })
-      const newItemId = itemRes.data.id
+  if (!itemForm.name || !itemForm.price) { showToast('Name and price required', 'error'); return }
+  
+  // Drinks and delivery don't need recipes
+  const needsRecipe = !isDrink && !isDelivery
+  const validRows = recipeRows.filter(r => r.ingredient_id && r.quantity && parseFloat(r.quantity) > 0)
+  if (needsRecipe && validRows.length === 0) { showToast('Add at least 1 ingredient', 'error'); return }
+  
+  try {
+    const itemRes = await API.post('/business/menu', {
+      name: itemForm.name,
+      category: itemForm.category,
+      price: itemForm.price,
+      drink_details: isDrink || isWater ? drinkDetails : null
+    })
+    const newItemId = itemRes.data.id
+    if (validRows.length > 0) {
       await Promise.all(validRows.map(row =>
         API.post('/business/recipe', { menu_item_id: newItemId, ingredient_id: row.ingredient_id, quantity: row.quantity, recipe_unit: row.unit })
       ))
-      setItemForm({ name: '', category: 'Burger', price: '', num_ingredients: 1 })
-      setRecipeRows([{ ...EMPTY_ROW }])
-      setShowAddItem(false)
-      fetchAll()
-      showToast('Menu item added!')
-    } catch (e) {
-      showToast(e.response?.data?.message || 'Error adding item', 'error')
     }
+    setItemForm({ name: '', category: 'Burger', price: '', num_ingredients: 1 })
+    setRecipeRows([{ ...EMPTY_ROW }])
+    setDrinkDetails({ drink_type: 'can', size: '', custom_size: '', box_cost: '', box_cost_currency: 'USD', cans_per_box: '', exchange_rate: localStorage.getItem('pos_exchange_rate') || '90000' })
+    setShowAddItem(false)
+    fetchAll()
+    showToast('Menu item added!')
+  } catch (e) {
+    showToast(e.response?.data?.message || 'Error adding item', 'error')
   }
+}
 
   const handleDeleteItem = async (id) => {
     if (!window.confirm('Remove this item?')) return
@@ -202,11 +266,114 @@ export default function BusinessMenu() {
                     onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))} min="0" step="0.01" className={cls} />
                 </div>
               </div>
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-xs font-semibold text-gray-500">Number of Ingredients</label>
-                  <span className="text-xl font-bold text-orange-500">{itemForm.num_ingredients}</span>
-                </div>
+              {/* DRINK SPECIAL FIELDS */}
+{(isDrink || isWater) && (
+  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-2xl p-4 space-y-3">
+    <p className="text-xs font-bold text-blue-600 mb-1">
+      {isWater ? '💧 Water Details' : '🥤 Drink Details'}
+    </p>
+
+    {/* Size selector */}
+    <div>
+      <label className="text-xs font-semibold text-gray-500 mb-1 block">Size</label>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {(isWater ? WATER_SIZES : itemForm.category === 'Drink - Can' ? CAN_SIZES : BOTTLE_SIZES).map(s => (
+          <button key={s} type="button"
+            onClick={() => setDrinkDetails(d => ({ ...d, size: s, custom_size: '' }))}
+            className={`text-xs px-2.5 py-1.5 rounded-lg font-medium transition ${drinkDetails.size === s ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-blue-200'}`}>
+            {s}
+          </button>
+        ))}
+      </div>
+      {drinkDetails.size === 'Custom' && (
+        <input type="text" placeholder="Enter custom size (e.g. 473 ml)"
+          value={drinkDetails.custom_size}
+          onChange={e => setDrinkDetails(d => ({ ...d, custom_size: e.target.value }))}
+          className={cls} />
+      )}
+    </div>
+
+    {/* Box cost + cans per box */}
+    <div>
+      <label className="text-xs font-semibold text-gray-500 mb-1 block">
+        Cost per {itemForm.category === 'Water' ? 'pack/case' : 'box/case'}
+      </label>
+      <div className="flex gap-2 items-center">
+        <input type="number" placeholder="0.00" step="0.01" min="0"
+          value={drinkDetails.box_cost}
+          onChange={e => setDrinkDetails(d => ({ ...d, box_cost: e.target.value }))}
+          className={cls} />
+        {/* Currency toggle */}
+        <button type="button"
+          onClick={() => setDrinkDetails(d => ({ ...d, box_cost_currency: d.box_cost_currency === 'USD' ? 'LBP' : 'USD' }))}
+          className={`flex-shrink-0 px-3 py-2.5 rounded-xl text-xs font-bold border-2 transition ${drinkDetails.box_cost_currency === 'USD' ? 'bg-green-500 text-white border-green-500' : 'bg-orange-500 text-white border-orange-500'}`}>
+          {drinkDetails.box_cost_currency === 'USD' ? '$' : 'LL'}
+        </button>
+      </div>
+      <p className="text-xs text-gray-400 mt-1">Tap $ / LL to switch currency</p>
+    </div>
+
+    <div>
+      <label className="text-xs font-semibold text-gray-500 mb-1 block">
+        How many {itemForm.category === 'Drink - Can' ? 'cans' : itemForm.category === 'Water' ? 'bottles' : 'bottles'} per box?
+      </label>
+      <input type="number" placeholder="e.g. 24" step="1" min="1"
+        value={drinkDetails.cans_per_box}
+        onChange={e => setDrinkDetails(d => ({ ...d, cans_per_box: e.target.value }))}
+        className={cls} />
+    </div>
+
+    {/* Exchange rate for LL conversion */}
+    {drinkDetails.box_cost_currency === 'LBP' && (
+      <div>
+        <label className="text-xs font-semibold text-gray-500 mb-1 block">Exchange Rate (1$ = ? LL)</label>
+        <input type="number" placeholder="e.g. 90000"
+          value={drinkDetails.exchange_rate}
+          onChange={e => { setDrinkDetails(d => ({ ...d, exchange_rate: e.target.value })); localStorage.setItem('pos_exchange_rate', e.target.value) }}
+          className={cls} />
+      </div>
+    )}
+
+    {/* Live cost calculation */}
+    {drinkDetails.box_cost && drinkDetails.cans_per_box && (() => {
+      const calc = calcDrinkCostUSD()
+      return (
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 space-y-1">
+          <p className="text-xs font-bold text-blue-600 mb-1">💡 Cost per unit</p>
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-500">In USD</span>
+            <span className="font-bold text-green-600">${calc.usd}</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-500">In LBP</span>
+            <span className="font-bold text-orange-500">{parseInt(calc.lbp).toLocaleString()} LL</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-500">Box of {drinkDetails.cans_per_box} units</span>
+            <span className="font-semibold text-gray-700 dark:text-gray-200">
+              {drinkDetails.box_cost_currency === 'USD'
+                ? `$${parseFloat(drinkDetails.box_cost).toFixed(2)}`
+                : `${parseInt(drinkDetails.box_cost).toLocaleString()} LL`}
+            </span>
+          </div>
+        </div>
+      )
+    })()}
+  </div>
+)}
+
+{/* DELIVERY SPECIAL FIELDS */}
+{isDelivery && (
+  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 rounded-2xl p-4">
+    <p className="text-xs font-bold text-yellow-600 mb-2">🛵 Delivery Zone</p>
+    <p className="text-xs text-yellow-500">The selling price above is the delivery fee charged to the customer. No recipe or stock needed for delivery zones.</p>
+  </div>
+)}
+               <div>
+               <div className="flex justify-between items-center mb-2">
+               <label className="text-xs font-semibold text-gray-500">Number of Ingredients</label>
+               <span className="text-xl font-bold text-orange-500">{itemForm.num_ingredients}</span>
+               </div>
                 <input type="range" min="1" max="20" value={itemForm.num_ingredients}
                   onChange={e => handleNumIngredients(e.target.value)} className="w-full accent-orange-500 h-2" />
                 <div className="flex justify-between text-xs text-gray-400 mt-1">
