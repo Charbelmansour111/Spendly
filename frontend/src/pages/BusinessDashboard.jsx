@@ -984,7 +984,13 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
 // ── AI EXPENSE SHEET ──────────────────────────────────────
 function AIExpenseSheet({ onClose, onSave, currencySymbol, ingredients }) {
   const [step, setStep]           = useState('input')
-  const [form, setForm]           = useState({ amount: '', category: 'Ingredients', description: '', date: new Date().toISOString().split('T')[0], is_recurring: false })
+  const [form, setForm]           = useState({
+    amount: '', category: 'Ingredients', description: '',
+    date: new Date().toISOString().split('T')[0],
+    is_recurring: false,
+    expense_scope: 'monthly', // 'daily' | 'monthly'
+    linked_date: new Date().toISOString().split('T')[0],
+  })
   const [aiResult, setAiResult]   = useState(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError]     = useState('')
@@ -1011,7 +1017,8 @@ function AIExpenseSheet({ onClose, onSave, currencySymbol, ingredients }) {
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center p-6 pb-4 sticky top-0 bg-white dark:bg-gray-800 z-10">
+
+        <div className="flex justify-between items-center p-6 pb-4 sticky top-0 bg-white dark:bg-gray-800 z-10 border-b border-gray-100 dark:border-gray-700">
           <div>
             <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Business Expense</h3>
             <p className="text-xs text-orange-500 font-medium mt-0.5">🤖 AI-powered verification</p>
@@ -1020,44 +1027,119 @@ function AIExpenseSheet({ onClose, onSave, currencySymbol, ingredients }) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-        <div className="px-6 pb-6 space-y-4">
+
+        <div className="px-6 pb-6 pt-4 space-y-4">
+
           {step === 'input' && (
             <>
+              {/* ── EXPENSE TYPE TOGGLE ── */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Expense Type</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button"
+                    onClick={() => setForm(f => ({ ...f, expense_scope: 'daily' }))}
+                    className={`rounded-2xl p-3 border-2 text-left transition ${form.expense_scope === 'daily' ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50'}`}>
+                    <p className="text-xl mb-1">📅</p>
+                    <p className={`text-sm font-bold ${form.expense_scope === 'daily' ? 'text-orange-600' : 'text-gray-700 dark:text-gray-200'}`}>Daily</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Linked to a specific day's report (gas, packaging, today's supplies)</p>
+                    {form.expense_scope === 'daily' && (
+                      <span className="mt-1.5 inline-block text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full font-semibold">✓ Selected</span>
+                    )}
+                  </button>
+                  <button type="button"
+                    onClick={() => setForm(f => ({ ...f, expense_scope: 'monthly' }))}
+                    className={`rounded-2xl p-3 border-2 text-left transition ${form.expense_scope === 'monthly' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50'}`}>
+                    <p className="text-xl mb-1">📆</p>
+                    <p className={`text-sm font-bold ${form.expense_scope === 'monthly' ? 'text-indigo-600' : 'text-gray-700 dark:text-gray-200'}`}>Monthly</p>
+                    <p className="text-xs text-gray-400 mt-0.5">General overhead (rent, salaries, utilities, subscriptions)</p>
+                    {form.expense_scope === 'monthly' && (
+                      <span className="mt-1.5 inline-block text-xs bg-indigo-500 text-white px-2 py-0.5 rounded-full font-semibold">✓ Selected</span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Explanation banner */}
+                <div className={`mt-2 rounded-xl px-3 py-2 text-xs ${form.expense_scope === 'daily' ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600' : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600'}`}>
+                  {form.expense_scope === 'daily'
+                    ? '📅 This expense will appear in the selected day\'s report folder and affect that day\'s profit calculation.'
+                    : '📆 This expense will appear in the monthly overview. It\'s distributed across the month, not a specific day.'}
+                </div>
+              </div>
+
+              {/* Date — label changes based on type */}
+              {form.expense_scope === 'daily' ? (
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">
+                    📅 Which day does this belong to?
+                  </label>
+                  <input type="date" value={form.linked_date}
+                    onChange={e => setForm(f => ({ ...f, linked_date: e.target.value, date: e.target.value }))}
+                    className={cls} />
+                  <p className="text-xs text-orange-400 mt-1">This expense will be added to that day's report</p>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">
+                    📆 Date
+                  </label>
+                  <input type="date" value={form.date}
+                    onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                    className={cls} />
+                </div>
+              )}
+
+              {/* Amount */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({currencySymbol})</label>
-                <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} min="0.01" step="0.01" className={cls + ' text-2xl font-bold'} />
+                <input type="number" placeholder="0.00" value={form.amount}
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                  min="0.01" step="0.01" className={cls + ' text-2xl font-bold'} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Category</label>
-                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className={cls}>
-                    {BIZ_CATS.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Date</label>
-                  <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className={cls} />
+
+              {/* Category */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Category</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {BIZ_CATS.map(c => (
+                    <button key={c} type="button"
+                      onClick={() => setForm(f => ({ ...f, category: c }))}
+                      className={`text-xs px-3 py-1.5 rounded-xl font-medium transition ${form.category === c ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
+                      {c === 'Ingredients' ? '🥩' : c === 'Staff' ? '👥' : c === 'Rent' ? '🏠' : c === 'Utilities' ? '💡' : c === 'Marketing' ? '📣' : c === 'Equipment' ? '🔧' : c === 'Packaging' ? '📦' : '🧾'} {c}
+                    </button>
+                  ))}
                 </div>
               </div>
+
+              {/* Description */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">
-                  What did you buy?
-                  {form.category === 'Ingredients' && <span className="text-orange-500 ml-1">(AI will parse it)</span>}
+                  Description
+                  {form.category === 'Ingredients' && <span className="text-orange-500 ml-1">(AI will parse & update stock)</span>}
                 </label>
                 <input type="text"
-                  placeholder={form.category === 'Ingredients' ? 'e.g. 2 bags of burger buns, 5kg beef' : 'e.g. monthly rent'}
+                  placeholder={form.category === 'Ingredients' ? 'e.g. 2 bags of burger buns, 5kg beef' : form.expense_scope === 'daily' ? 'e.g. gas for delivery, extra packaging' : 'e.g. monthly rent payment'}
                   value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className={cls} />
               </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.is_recurring} onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))} className="accent-orange-500 w-4 h-4" />
-                <span className="text-sm text-gray-600 dark:text-gray-300">Recurring monthly</span>
-              </label>
-              {aiError && <p className="text-red-500 text-xs">{aiError}</p>}
+
+              {/* Recurring — only for monthly */}
+              {form.expense_scope === 'monthly' && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={form.is_recurring}
+                    onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))}
+                    className="accent-orange-500 w-4 h-4" />
+                  <span className="text-sm text-gray-600 dark:text-gray-300">Recurring monthly expense</span>
+                </label>
+              )}
+
+              {aiError && <p className="text-red-500 text-xs bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-xl">{aiError}</p>}
+
               {form.category === 'Ingredients' ? (
                 <div className="grid grid-cols-2 gap-3">
                   <button onClick={runAI} disabled={!form.amount || !form.description || aiLoading}
                     className="bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
-                    {aiLoading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Analyzing...</> : <><span>🤖</span>AI Check</>}
+                    {aiLoading
+                      ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Analyzing...</>
+                      : <><span>🤖</span>AI Check + Stock</>}
                   </button>
                   <button onClick={handleSkipAI} disabled={!form.amount || !form.date}
                     className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white py-4 rounded-2xl font-bold transition disabled:opacity-50">
@@ -1066,17 +1148,27 @@ function AIExpenseSheet({ onClose, onSave, currencySymbol, ingredients }) {
                 </div>
               ) : (
                 <button onClick={handleSkipAI} disabled={!form.amount || !form.date}
-                  className="w-full bg-red-500 text-white py-4 rounded-2xl font-bold hover:bg-red-600 transition disabled:opacity-50">
-                  Add Expense
+                  className={`w-full py-4 rounded-2xl font-bold transition disabled:opacity-50 text-white ${form.expense_scope === 'daily' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                  {form.expense_scope === 'daily' ? '📅 Add Daily Expense' : '📆 Add Monthly Expense'}
                 </button>
               )}
             </>
           )}
+
           {step === 'ai_review' && aiResult && (
             <>
               <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 rounded-2xl p-4">
-                <div className="flex items-center gap-2 mb-3"><span className="text-xl">🤖</span><p className="font-bold text-orange-600 text-sm">AI Verification Complete</p></div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">🤖</span>
+                  <p className="font-bold text-orange-600 text-sm">AI Verification Complete</p>
+                </div>
                 <p className="text-sm text-gray-700 dark:text-gray-200 mb-3">{aiResult.summary}</p>
+
+                {/* Show scope badge */}
+                <div className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold mb-3 ${form.expense_scope === 'daily' ? 'bg-orange-100 text-orange-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                  {form.expense_scope === 'daily' ? '📅 Daily expense — will appear in day report' : '📆 Monthly overhead'}
+                </div>
+
                 {aiResult.stock_updates?.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-semibold text-gray-500 mb-2">Stock will be updated:</p>
@@ -1098,8 +1190,14 @@ function AIExpenseSheet({ onClose, onSave, currencySymbol, ingredients }) {
                 )}
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={handleConfirm} className="bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition">✓ Confirm & Save</button>
-                <button onClick={() => setStep('input')} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white py-4 rounded-2xl font-bold transition">Edit</button>
+                <button onClick={handleConfirm}
+                  className="bg-orange-500 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition">
+                  ✓ Confirm & Save
+                </button>
+                <button onClick={() => setStep('input')}
+                  className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white py-4 rounded-2xl font-bold transition">
+                  Edit
+                </button>
               </div>
             </>
           )}
@@ -1567,7 +1665,12 @@ export default function BusinessDashboard() {
                         <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{exp.description || exp.category}</p>
                         {exp.ai_verified && <span className="text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full flex-shrink-0">🤖</span>}
                       </div>
-                      <p className="text-xs text-gray-400">{exp.date?.split('T')[0]} · {exp.category}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+  <p className="text-xs text-gray-400">{exp.date?.split('T')[0]} · {exp.category}</p>
+  {exp.expense_scope === 'daily'
+    ? <span className="text-xs bg-orange-100 text-orange-500 px-1.5 py-0.5 rounded-full font-semibold">📅 Daily</span>
+    : <span className="text-xs bg-indigo-100 text-indigo-500 px-1.5 py-0.5 rounded-full font-semibold">📆 Monthly</span>}
+</div>
                     </div>
                     <p className="font-bold text-red-500 tabular-nums text-sm flex-shrink-0">-{fmt(exp.amount, currencySymbol)}</p>
                   </div>

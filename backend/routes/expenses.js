@@ -12,17 +12,23 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { amount, category, description, date, is_recurring, ai_verified } = req.body;
-    if (!amount || parseFloat(amount) <= 0)
-      return res.status(400).json({ message: 'Amount must be greater than 0' });
-    const newExpense = await pool.query(
-      `INSERT INTO expenses (user_id, amount, category, description, date, is_recurring, ai_verified)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [req.userId, amount, category, description, date, is_recurring || false, ai_verified || false]
+    const { amount, category, description, date, is_recurring, expense_scope, linked_date } = req.body;
+    if (!amount || !date) return res.status(400).json({ message: 'Amount and date required' });
+    const result = await pool.query(
+      `INSERT INTO expenses (user_id, amount, category, description, date, is_recurring, expense_scope, linked_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       RETURNING *`,
+      [
+        req.userId, amount, category || 'Other',
+        description || null, date,
+        is_recurring || false,
+        expense_scope || 'monthly',
+        linked_date || null
+      ]
     );
-    res.status(201).json(newExpense.rows[0]);
+    res.status(201).json(result.rows[0]);
   } catch (e) {
-    console.log(e);
+    console.log('Expense error:', e);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -111,4 +117,4 @@ router.get('/trends', authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router;  

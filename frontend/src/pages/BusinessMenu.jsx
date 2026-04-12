@@ -58,6 +58,8 @@ export default function BusinessMenu() {
   const [showAddItem, setShowAddItem]   = useState(false)
   const [expandedItem, setExpandedItem] = useState(null)
   const [editingItem, setEditingItem]   = useState(null)
+  const [editingRecipes, setEditingRecipes] = useState(null) // { item, newRow }
+  const [addIngRow, setAddIngRow]           = useState({ ingredient_id: '', quantity: '', unit: '' })
   const [recipeRows, setRecipeRows]     = useState([{ ...EMPTY_ROW }])
 
   const [itemForm, setItemForm] = useState({ name: '', category: 'Burger', price: '', num_ingredients: 1 })
@@ -85,6 +87,21 @@ export default function BusinessMenu() {
     setSymbol(CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
     fetchAll()
   }, [])
+
+const handleAddIngredientToItem = async () => {
+  if (!addIngRow.ingredient_id || !addIngRow.quantity) { showToast('Select ingredient and quantity', 'error'); return }
+  try {
+    await API.post('/business/recipe', {
+      menu_item_id: editingRecipes.id,
+      ingredient_id: addIngRow.ingredient_id,
+      quantity: addIngRow.quantity,
+      recipe_unit: addIngRow.unit
+    })
+    setAddIngRow({ ingredient_id: '', quantity: '', unit: '' })
+    fetchAll()
+    showToast('Ingredient added!')
+  } catch (e) { showToast(e.response?.data?.message || 'Error', 'error') }
+}
 
   const fetchAll = async () => {
     setLoading(true)
@@ -186,6 +203,100 @@ const calcDrinkCostUSD = () => {
     <Layout>
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
+{editingRecipes && (
+  <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={() => setEditingRecipes(null)}>
+    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+    <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h3 className="font-bold text-gray-800 dark:text-white">✏️ Edit Recipe</h3>
+          <p className="text-xs text-orange-500">{editingRecipes.name}</p>
+        </div>
+        <button onClick={() => setEditingRecipes(null)} className="text-gray-400 hover:text-gray-600">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      {/* Current ingredients */}
+      <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Current Ingredients</p>
+      {editingRecipes.recipes?.length === 0 ? (
+        <p className="text-xs text-gray-400 mb-4">No ingredients yet</p>
+      ) : (
+        <div className="space-y-2 mb-4">
+          {editingRecipes.recipes?.map(r => {
+            const ing = ingredients.find(i => i.id === r.ingredient_id)
+            return (
+              <div key={r.id} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl px-3 py-2.5">
+                <span className="text-lg">{ing?.emoji || '📦'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 dark:text-white">{ing?.name || 'Unknown'}</p>
+                  <p className="text-xs text-gray-400">{safeNum(r.quantity).toFixed(3)} {ing?.unit}</p>
+                </div>
+                <button onClick={async () => {
+                  if (!window.confirm(`Remove ${ing?.name} from this recipe?`)) return
+                  try {
+                    await API.delete('/business/recipe/' + r.id)
+                    setEditingRecipes(prev => ({ ...prev, recipes: prev.recipes.filter(x => x.id !== r.id) }))
+                    fetchAll()
+                    showToast('Ingredient removed')
+                  } catch { showToast('Error', 'error') }
+                }} className="text-red-400 hover:text-red-600 p-1 flex-shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Add new ingredient */}
+      <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Add Ingredient</p>
+      <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-3 space-y-2">
+        <select value={addIngRow.ingredient_id}
+          onChange={e => {
+            const ing = ingredients.find(i => String(i.id) === e.target.value)
+            setAddIngRow(r => ({ ...r, ingredient_id: e.target.value, unit: ing?.unit || '' }))
+          }}
+          className="w-full px-3 py-2.5 border border-orange-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+          <option value="">Select ingredient...</option>
+          {ingredients.map(ing => (
+            <option key={ing.id} value={ing.id}>{ing.emoji || '📦'} {ing.name} ({safeNum(ing.stock_quantity).toFixed(1)} {ing.unit})</option>
+          ))}
+        </select>
+        <div className="grid grid-cols-2 gap-2">
+          <input type="number" placeholder="Quantity" step="0.001" min="0"
+            value={addIngRow.quantity}
+            onChange={e => setAddIngRow(r => ({ ...r, quantity: e.target.value }))}
+            className="w-full px-3 py-2 border border-orange-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-bold" />
+          <select value={addIngRow.unit}
+            onChange={e => setAddIngRow(r => ({ ...r, unit: e.target.value }))}
+            className="w-full px-3 py-2 border border-orange-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+            {(() => {
+              const ing = ingredients.find(i => String(i.id) === String(addIngRow.ingredient_id))
+              if (!ing) return <option value="">Unit</option>
+              return <>
+                <option value={ing.unit}>{ing.unit}</option>
+                {ing.unit === 'kg' && <option value="g">g</option>}
+                {ing.unit === 'g'  && <option value="kg">kg</option>}
+                {ing.unit === 'L'  && <option value="ml">ml</option>}
+                {ing.unit === 'ml' && <option value="L">L</option>}
+              </>
+            })()}
+          </select>
+        </div>
+        <button onClick={handleAddIngredientToItem} disabled={!addIngRow.ingredient_id || !addIngRow.quantity}
+          className="w-full bg-orange-500 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-orange-600 transition disabled:opacity-50">
+          + Add to Recipe
+        </button>
+      </div>
+
+      <button onClick={() => setEditingRecipes(null)}
+        className="w-full mt-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white py-3 rounded-2xl font-semibold text-sm">
+        Done
+      </button>
+    </div>
+  </div>
+)}
       {/* Edit modal */}
       {editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setEditingItem(null)}>
@@ -518,6 +629,16 @@ const calcDrinkCostUSD = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
+                      <button onClick={e => {
+  e.stopPropagation()
+  const fullItem = menuItems.find(m => m.id === item.id)
+  setEditingRecipes(fullItem)
+  setAddIngRow({ ingredient_id: '', quantity: '', unit: '' })
+}}
+  className="text-orange-400 hover:text-orange-600 p-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition"
+  title="Edit recipe">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2H2v10l9.29 9.29a1 1 0 001.41 0l6.58-6.58a1 1 0 000-1.41L12 2z"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></svg>
+</button>
                       <button onClick={e => { e.stopPropagation(); setEditingItem({ ...item }) }}
                         className="text-indigo-400 hover:text-indigo-600 p-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>

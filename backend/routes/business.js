@@ -661,4 +661,16 @@ router.post('/reports/months/generate', authenticateToken, async (req, res) => {
   } catch (e) { console.log(e); res.status(500).json({ message: 'Server error' }) }
 });
 
+router.post('/stock-movement', authenticateToken, async (req, res) => {
+  try {
+    const { ingredient_id, movement_type, quantity, cost_per_unit, note, date } = req.body;
+    await pool.query(
+      `INSERT INTO stock_movements (user_id, ingredient_id, movement_type, quantity, note, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [req.userId, ingredient_id, movement_type, quantity, note || null, date ? new Date(date) : new Date()]
+    );
+    res.json({ message: 'Movement logged' });
+  } catch (e) { res.status(500).json({ message: 'Server error' }) }
+});
+
 module.exports = router;

@@ -32,6 +32,8 @@ export default function BusinessStock() {
   const [editingIng, setEditingIng]       = useState(null)
   const [search, setSearch]               = useState('')
   const [sortBy, setSortBy]               = useState('name')
+  const [restockCost, setRestockCost]   = useState('')
+  const [restockDate, setRestockDate]   = useState(new Date().toISOString().split('T')[0])
   const [pendingItems, setPendingItems]   = useState(() => {
     try { return JSON.parse(localStorage.getItem('pending_stock_items') || '[]') } catch { return [] }
   })
@@ -77,17 +79,41 @@ export default function BusinessStock() {
   }
 
   const handleRestock = async (id) => {
-    const amount = safeNum(restockAmount)
-    if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return }
-    const ing = ingredients.find(i => i.id === id)
-    const newQty = safeNum(ing.stock_quantity) + amount
+  const amount = safeNum(restockAmount)
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return }
+  const ing = ingredients.find(i => i.id === id)
+  const newQty = safeNum(ing.stock_quantity) + amount
+  const newCost = restockCost ? parseFloat(restockCost) : parseFloat(ing.cost_per_unit)
+  try {
+    await API.put('/business/stock/' + id, {
+      stock_quantity: newQty,
+      cost_per_unit: newCost,
+    })
+    // Log the restock movement with date
     try {
-      await API.put('/business/stock/' + id, { stock_quantity: newQty })
-      setRestockId(null); setRestockAmount('')
-      setIngredients(prev => prev.map(i => i.id === id ? { ...i, stock_quantity: newQty } : i))
-      showToast('Stock updated!')
-    } catch { showToast('Error', 'error') }
-  }
+      await API.post('/business/stock-movement', {
+        ingredient_id: id,
+        movement_type: 'in',
+        quantity: amount,
+        cost_per_unit: newCost,
+        note: `Restocked on ${new Date().toLocaleDateString()}`,
+        date: restockDate
+      })
+    } catch {}
+    setRestockId(null)
+    setRestockAmount('')
+    setRestockCost('')
+    setRestockDate(new Date().toISOString().split('T')[0])
+    // Move restocked item to top
+    setIngredients(prev => {
+      const updated = prev.map(i => i.id === id ? { ...i, stock_quantity: newQty, cost_per_unit: newCost } : i)
+      const item    = updated.find(i => i.id === id)
+      const rest    = updated.filter(i => i.id !== id)
+      return [item, ...rest]
+    })
+    showToast(`✅ ${ing.name} restocked — ${amount} ${ing.unit} added!`)
+  } catch { showToast('Error', 'error') }
+}
 
   const handleSaveEdit = async () => {
     if (!editingIng) return
@@ -420,26 +446,78 @@ export default function BusinessStock() {
                           </div>
                         </div>
 
-                        {isRestock && (
-                          <div className="mt-3 flex gap-2">
-                            <input type="number" placeholder={`Add amount (${ing.unit})`} value={restockAmount}
-                              onChange={e => setRestockAmount(e.target.value)} min="0" step="0.01"
-                              className="flex-1 px-3 py-2 border border-orange-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-                            <button onClick={() => handleRestock(ing.id)}
-                              className="bg-orange-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-orange-600 transition">Add</button>
-                            <button onClick={() => { setRestockId(null); setRestockAmount('') }}
-                              className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-2 rounded-xl text-sm">✕</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
+  {isRestock && (
+  <div className="mt-3 flex gap-2 bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-3">
 
+    <div className="space-y-2 w-full">
+      <p className="text-xs font-bold text-orange-600">📦 Restock {ing.name}</p>
+
+      {/* Date */}
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Restock Date</label>
+        <input type="date" value={restockDate}
+          onChange={e => setRestockDate(e.target.value)}
+          className="w-full px-3 py-2 border border-orange-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+      </div>
+
+      {/* Amount */}
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Amount to add ({ing.unit})</label>
+        <input type="number" placeholder={`Add amount (${ing.unit})`} value={restockAmount}
+          onChange={e => setRestockAmount(e.target.value)} min="0" step="0.01"
+          className="w-full px-3 py-2 border border-orange-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-bold" />
+      </div>
+
+      {/* Cost — prefilled with current cost */}
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">
+          New cost per {ing.unit} ({symbol}) — current: {symbol}{safeNum(ing.cost_per_unit).toFixed(3)}
+        </label>
+        <input type="number" placeholder={`${safeNum(ing.cost_per_unit).toFixed(3)} (leave blank to keep)`}
+          value={restockCost}
+          onChange={e => setRestockCost(e.target.value)} min="0" step="0.001"
+          className="w-full px-3 py-2 border border-orange-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+        <p className="text-xs text-gray-400 mt-0.5">Leave blank to keep current cost</p>
+      </div>
+
+      {/* Preview */}
+      {restockAmount && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-2.5 space-y-1">
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-500">Current stock</span>
+            <span className="font-semibold">{safeNum(ing.stock_quantity).toFixed(2)} {ing.unit}</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-500">Adding</span>
+            <span className="font-semibold text-green-600">+{restockAmount} {ing.unit}</span>
+          </div>
+          <div className="flex justify-between text-xs border-t border-gray-100 dark:border-gray-700 pt-1">
+            <span className="text-gray-500">New total</span>
+            <span className="font-bold text-orange-600">{(safeNum(ing.stock_quantity) + safeNum(restockAmount)).toFixed(2)} {ing.unit}</span>
+          </div>
+          {restockCost && (
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-500">New cost/unit</span>
+              <span className="font-bold text-purple-600">{symbol}{parseFloat(restockCost).toFixed(3)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <button onClick={() => { setRestockId(null); setRestockAmount(''); setRestockCost(''); }}
+          className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-2.5 rounded-xl text-sm font-semibold">
+          Cancel
+        </button>
+        <button onClick={() => handleRestock(ing.id)} disabled={!restockAmount}
+          className="flex-1 bg-orange-500 text-white px-3 py-2.5 rounded-xl text-sm font-bold hover:bg-orange-600 transition disabled:opacity-50">
+          ✓ Confirm Restock
+        </button>
+      </div>
+    </div>
+
+  </div>
+)}
         {/* LOW STOCK TAB */}
         {activeTab === 'low' && (
           <div className="space-y-3">
