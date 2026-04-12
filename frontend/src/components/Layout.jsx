@@ -20,16 +20,15 @@ const Icons = {
   close: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
 }
 
-// ── Personal nav ─────────────────────────────────────────
 const PERSONAL_NAV = [
-  { label: 'Dashboard',      icon: 'home',         href: '/dashboard' },
-  { label: 'Transactions',   icon: 'transactions', href: '/transactions' },
-  { label: 'Budget & Alerts',icon: 'budget',       href: '/budgets' },
-  { label: 'Savings Goals',  icon: 'savings',      href: '/savings' },
-  { label: 'Reports',        icon: 'reports',      href: '/reports' },
-  { label: 'AI Insights',    icon: 'ai',           href: '/insights' },
-  { label: 'My Wellness',    icon: 'wellness',     href: '/wellness' },
-  { label: 'Profile',        icon: 'profile',      href: '/profile' },
+  { label: 'Dashboard',       icon: 'home',         href: '/dashboard' },
+  { label: 'Transactions',    icon: 'transactions', href: '/transactions' },
+  { label: 'Budget & Alerts', icon: 'budget',       href: '/budgets' },
+  { label: 'Savings Goals',   icon: 'savings',      href: '/savings' },
+  { label: 'Reports',         icon: 'reports',      href: '/reports' },
+  { label: 'AI Insights',     icon: 'ai',           href: '/insights' },
+  { label: 'My Wellness',     icon: 'wellness',     href: '/wellness' },
+  { label: 'Profile',         icon: 'profile',      href: '/profile' },
 ]
 
 const PERSONAL_TABS = [
@@ -40,25 +39,24 @@ const PERSONAL_TABS = [
   { href: '/profile',      icon: 'profile',      label: 'Profile' },
 ]
 
-// ── Business nav ─────────────────────────────────────────
 const BUSINESS_NAV = [
-  { label: 'Dashboard',        icon: 'home',         href: '/business' },
-  { label: 'Transactions',     icon: 'transactions', href: '/business/transactions' },
-  { label: 'Budget & Alerts',  icon: 'budget',       href: '/budgets' },
-  { label: 'Reports',          icon: 'reports',      href: '/reports' },
-  { label: 'AI Insights',      icon: 'ai',           href: '/insights' },
-  { label: '─── Restaurant ───', icon: null,          href: null, separator: true },
-  { label: 'Menu Builder',     icon: 'menu_icon',    href: '/business/menu' },
-  { label: 'Stock & Ingredients', icon: 'stock',     href: '/business/stock' },
-  { label: '─────────────────', icon: null,          href: null, separator: true },
-  { label: 'Profile',          icon: 'profile',      href: '/profile' },
+  { label: 'Dashboard',           icon: 'home',         href: '/business' },
+  { label: 'Transactions',        icon: 'transactions', href: '/business/transactions' },
+  { label: 'Budget & Alerts',     icon: 'budget',       href: '/budgets' },
+  { label: 'Reports',             icon: 'reports',      href: '/business/reports' },
+  { label: 'AI Insights',         icon: 'ai',           href: '/insights' },
+  { label: '─── Restaurant ───',  icon: null,           href: null, separator: true },
+  { label: 'Menu Builder',        icon: 'menu_icon',    href: '/business/menu' },
+  { label: 'Stock & Ingredients', icon: 'stock',        href: '/business/stock', badge: 'stock' },
+  { label: '─────────────────',   icon: null,           href: null, separator: true },
+  { label: 'Profile',             icon: 'profile',      href: '/profile' },
 ]
 
 const BUSINESS_TABS = [
   { href: '/business',              icon: 'home',         label: 'Dashboard' },
   { href: '/business/transactions', icon: 'transactions', label: 'Transactions' },
   { href: '/insights',              icon: 'ai',           label: 'AI' },
-  { href: '/business/stock',        icon: 'stock',        label: 'Stock' },
+  { href: '/business/stock',        icon: 'stock',        label: 'Stock', badge: 'stock' },
   { href: '/profile',               icon: 'profile',      label: 'Profile' },
 ]
 
@@ -69,9 +67,12 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isBusiness = user?.account_type === 'business'
 
-  // Theme colors
+  // Read pending stock items count
+  const pendingStockCount = (() => {
+    try { return JSON.parse(localStorage.getItem('pending_stock_items') || '[]').length } catch { return 0 }
+  })()
+
   const accent      = isBusiness ? 'text-orange-500'  : 'text-indigo-600'
-  const accentBg    = isBusiness ? 'bg-orange-500'     : 'bg-indigo-600'
   const accentHover = isBusiness ? 'hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20' : 'hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-700/50'
   const activeClass = isBusiness ? 'bg-orange-500 text-white shadow-sm' : 'bg-indigo-600 text-white shadow-sm'
   const tabActive   = isBusiness ? 'text-orange-500 dark:text-orange-400' : 'text-indigo-600 dark:text-indigo-400'
@@ -86,6 +87,11 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       localStorage.removeItem('user')
       window.location.href = '/login'
     }
+  }
+
+  const getBadgeCount = (badgeKey) => {
+    if (badgeKey === 'stock') return pendingStockCount
+    return 0
   }
 
   const SidebarContent = () => (
@@ -121,15 +127,21 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
               <p className="text-xs text-gray-400 font-medium truncate">{item.label}</p>
             </div>
           )
-          const isActive = current === item.href
+          const isActive  = current === item.href
+          const badgeCount = item.badge ? getBadgeCount(item.badge) : 0
           return (
             <a key={item.href} href={item.href}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? activeClass : `text-gray-600 dark:text-gray-300 ${accentHover}`}`}>
               <span className={isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'}>
                 {Icons[item.icon]?.(isActive)}
               </span>
-              <span className="truncate">{item.label}</span>
-              {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white/70 flex-shrink-0" />}
+              <span className="truncate flex-1">{item.label}</span>
+              {badgeCount > 0 && (
+                <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold flex-shrink-0">
+                  {badgeCount > 9 ? '9+' : badgeCount}
+                </span>
+              )}
+              {isActive && badgeCount === 0 && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white/70 flex-shrink-0" />}
             </a>
           )
         })}
@@ -204,14 +216,21 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700/60">
         <div className="flex items-stretch h-16">
           {TAB_ITEMS.map(item => {
-            const isActive = current === item.href
+            const isActive   = current === item.href
+            const badgeCount = item.badge ? getBadgeCount(item.badge) : 0
             return (
               <a key={item.href} href={item.href}
                 className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative ${isActive ? tabActive : 'text-gray-400 dark:text-gray-500'}`}>
                 {isActive && <span className={`absolute top-0 w-6 h-0.5 rounded-full ${tabLine}`} />}
-                <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
+                <span className={`relative transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
                   {Icons[item.icon]?.(isActive)}
+                  {badgeCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                      {badgeCount > 9 ? '9+' : badgeCount}
+                    </span>
+                  )}
                 </span>
+                <span className="text-[10px] font-medium">{item.label}</span>
               </a>
             )
           })}

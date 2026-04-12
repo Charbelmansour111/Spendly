@@ -17,6 +17,7 @@ import Reports from './pages/Reports'
 import Insights from './pages/Insights'
 import Wellness from './pages/Wellness'
 import Transactions from './pages/Transactions'
+import BusinessReports from './pages/BusinessReports'
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
         <Route path="/business/menu"         element={<BusinessMenu />} />
         <Route path="/business/stock"        element={<BusinessStock />} />
         <Route path="/business/transactions" element={<BusinessTransactions />} />
+        <Route path="/business/reports"      element={<BusinessReports />} />
 
         <Route path="/alerts"                element={<Navigate to="/budgets" replace />} />
       </Routes>

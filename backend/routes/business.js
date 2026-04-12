@@ -567,4 +567,82 @@ Skip items that look like totals, taxes, or payment methods.` }],
   } catch (e) { res.json([]) }
 });
 
+// ── DAY REPORTS ───────────────────────────────────────────
+
+router.get('/reports/days', authenticateToken, async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    let query = 'SELECT * FROM day_reports WHERE user_id=$1';
+    const params = [req.userId];
+    if (month && year) {
+      query += ' AND EXTRACT(MONTH FROM date)=$2 AND EXTRACT(YEAR FROM date)=$3';
+      params.push(month, year);
+    }
+    query += ' ORDER BY date DESC';
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (e) { res.status(500).json({ message: 'Server error' }) }
+});
+
+router.post('/reports/days', authenticateToken, async (req, res) => {
+  try {
+    const { date, revenue, expenses, external_expenses, profit, items_sold, top_seller, num_customers, exchange_rate, scan_data, notes } = req.body;
+    // Check if report for this date already exists
+    const existing = await pool.query('SELECT id FROM day_reports WHERE user_id=$1 AND date=$2', [req.userId, date]);
+    if (existing.rows.length > 0) {
+      // Update existing
+      const result = await pool.query(
+        `UPDATE day_reports SET revenue=$1, expenses=$2, external_expenses=$3, profit=$4,
+         items_sold=$5, top_seller=$6, num_customers=$7, exchange_rate=$8, scan_data=$9, notes=$10
+         WHERE user_id=$11 AND date=$12 RETURNING *`,
+        [revenue, expenses, external_expenses, profit, items_sold, top_seller, num_customers, exchange_rate, JSON.stringify(scan_data), notes, req.userId, date]
+      );
+      return res.json(result.rows[0]);
+    }
+    const result = await pool.query(
+      `INSERT INTO day_reports (user_id, date, revenue, expenses, external_expenses, profit, items_sold, top_seller, num_customers, exchange_rate, scan_data, notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [req.userId, date, revenue, expenses, external_expenses, profit, items_sold, top_seller, num_customers, exchange_rate, JSON.stringify(scan_data), notes]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (e) { console.log(e); res.status(500).json({ message: 'Server error' }) }
+});
+
+router.get('/reports/months', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM month_reports WHERE user_id=$1 ORDER BY year DESC, month DESC', [req.userId]);
+    res.json(result.rows);
+  } catch (e) { res.status(500).json({ message: 'Server error' }) }
+});
+
+router.post('/reports/months/generate', authenticateToken, async (req, res) => {
+  try {
+    const { month, year } = req.body;
+    const days = await pool.query(
+      'SELECT * FROM day_reports WHERE user_id=$1 AND EXTRACT(MONTH FROM date)=$2 AND EXTRACT(YEAR FROM date)=$3',
+      [req.userId, month, year]
+    );
+    const totals = days.rows.reduce((acc, d) => ({
+      revenue: acc.revenue + parseFloat(d.revenue || 0),
+      expenses: acc.expenses + parseFloat(d.expenses || 0) + parseFloat(d.external_expenses || 0),
+      profit: acc.profit + parseFloat(d.profit || 0),
+    }), { revenue: 0, expenses: 0, profit: 0 });
+
+    const existing = await pool.query('SELECT id FROM month_reports WHERE user_id=$1 AND month=$2 AND year=$3', [req.userId, month, year]);
+    let result;
+    if (existing.rows.length > 0) {
+      result = await pool.query(
+        'UPDATE month_reports SET total_revenue=$1, total_expenses=$2, total_profit=$3, total_days=$4, scan_data=$5 WHERE user_id=$6 AND month=$7 AND year=$8 RETURNING *',
+        [totals.revenue, totals.expenses, totals.profit, days.rows.length, JSON.stringify(days.rows), req.userId, month, year]
+      );
+    } else {
+      result = await pool.query(
+        'INSERT INTO month_reports (user_id, month, year, total_revenue, total_expenses, total_profit, total_days, scan_data) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+        [req.userId, month, year, totals.revenue, totals.expenses, totals.profit, days.rows.length, JSON.stringify(days.rows)]
+      );
+    }
+    res.status(201).json(result.rows[0]);
+  } catch (e) { console.log(e); res.status(500).json({ message: 'Server error' }) }
+});
+
 module.exports = router;

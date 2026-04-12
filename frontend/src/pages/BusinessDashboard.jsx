@@ -64,6 +64,11 @@ function MultiScanStep({ date, setDate, exchangeRate, setExchangeRate, onComplet
 
   useEffect(() => { return () => { if (stream) stream.getTracks().forEach(t => t.stop()) } }, [stream])
 
+  const handleRateChange = (val) => {
+    setExchangeRate(val)
+    if (val) localStorage.setItem('pos_exchange_rate', val)
+  }
+
   const captureAndScan = async () => {
     if (!videoRef.current || !canvasRef.current || scanning) return
     setScanning(true)
@@ -151,7 +156,8 @@ function MultiScanStep({ date, setDate, exchangeRate, setExchangeRate, onComplet
         </div>
         <div>
           <label className="text-xs font-semibold text-gray-500 mb-2 block">Exchange Rate</label>
-          <input type="number" placeholder="e.g. 90000" value={exchangeRate} onChange={e => setExchangeRate(e.target.value)} className={inputCls} />
+          <input type="number" placeholder="e.g. 90000" value={exchangeRate}
+            onChange={e => handleRateChange(e.target.value)} className={inputCls} />
           {exchangeRate
             ? <p className="text-xs text-purple-500 mt-1">1{currencySymbol} = {parseInt(exchangeRate).toLocaleString()} LL</p>
             : <p className="text-xs text-gray-400 mt-1">Optional — for LL receipts</p>}
@@ -273,25 +279,35 @@ function MultiScanStep({ date, setDate, exchangeRate, setExchangeRate, onComplet
 }
 
 // ── POS SCANNER ───────────────────────────────────────────
-function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol, ingredients }) {
+function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol, ingredients, expenses }) {
   const [step, setStep]                   = useState('upload')
   const [scanResult, setScanResult]       = useState(null)
   const [date, setDate]                   = useState(new Date().toISOString().split('T')[0])
   const [editableItems, setEditableItems] = useState([])
   const [newItemSuggestions, setNewItemSuggestions] = useState([])
-  const [unmatchedDetails, setUnmatchedDetails] = useState({}) // {name: {selling_price, cost, ingredient_notes}}
+  const [unmatchedDetails, setUnmatchedDetails] = useState({})
+  const [externalExpenses, setExternalExpenses] = useState([])
+  const [newExpense, setNewExpense]        = useState({ description: '', amount: '' })
   const [error, setError]                 = useState('')
   const [summary, setSummary]             = useState(null)
-  const [exchangeRate, setExchangeRate]   = useState('')
+  const [exchangeRate, setExchangeRate]   = useState(() => localStorage.getItem('pos_exchange_rate') || '')
 
   const inputCls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
   const rate = exchangeRate ? parseFloat(exchangeRate) : null
+
+  const DRINK_KEYWORDS = ['pepsi','7up','sprite','cola','fanta','miranda','juice','lemonade','ice tea','iced tea','schweppes','redbull','red bull','soda','diet','zero','light','ab3a']
+  const WATER_KEYWORDS = ['water small','water large','water','nestle','evian','aquafina','perrier']
 
   const handleScanComplete = async (rawItems, managementData, categorySummary) => {
     setStep('matching')
     try {
       const matched = rawItems.map(item => {
         const nameLower = item.name.toLowerCase().trim()
+        let detectedType = item.type || 'food'
+        if (WATER_KEYWORDS.some(w => nameLower.includes(w))) detectedType = 'water'
+        else if (DRINK_KEYWORDS.some(d => nameLower.includes(d))) detectedType = 'drink'
+        else if (nameLower.includes('delivery')) detectedType = 'delivery'
+
         let match = menuItems.find(m => m.name.toLowerCase().trim() === nameLower)
         if (!match) match = menuItems.find(m =>
           m.name.toLowerCase().includes(nameLower) ||
@@ -299,26 +315,20 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
           m.name.toLowerCase().replace(/\s/g,'') === nameLower.replace(/\s/g,'')
         )
         const finalPrice = item.unit_price > 0 ? item.unit_price : (match ? parseFloat(match.price) : 0)
-        return { ...item, unit_price: finalPrice, matched: !!match, matched_id: match?.id || null, matched_name: match?.name || null }
+        return { ...item, type: detectedType, unit_price: finalPrice, matched: !!match, matched_id: match?.id || null, matched_name: match?.name || null }
       })
 
-      // Get AI suggestions for unmatched items
       const unmatched = matched.filter(i => !i.matched)
       let suggestions = []
       if (unmatched.length > 0) {
         try {
-          const res = await API.post('/business/pos-suggest-items', {
-            items: unmatched.map(i => ({ name: i.name, unit_price: i.unit_price, type: i.type }))
-          })
+          const res = await API.post('/business/pos-suggest-items', { items: unmatched.map(i => ({ name: i.name, unit_price: i.unit_price, type: i.type })) })
           suggestions = res.data || []
         } catch {}
       }
 
-      // Init unmatched details form
       const initDetails = {}
-      unmatched.forEach(i => {
-        initDetails[i.name] = { selling_price: i.unit_price || '', cost: '', ingredient_notes: '' }
-      })
+      unmatched.forEach(i => { initDetails[i.name] = { selling_price: i.unit_price || '', cost: '' } })
       setUnmatchedDetails(initDetails)
 
       setScanResult({ items: matched, total_found: matched.length, total_matched: matched.filter(i => i.matched).length, management: managementData || null, sales_by_category: categorySummary || [] })
@@ -346,30 +356,27 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
     }
   }
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (extExpenses = []) => {
     setStep('saving')
-    const confirmedItems  = editableItems.filter(i => i.confirmed && i.matched_id)
-    const confirmedAll    = editableItems.filter(i => i.confirmed)
+    const confirmedItems = editableItems.filter(i => i.confirmed && i.matched_id)
+    const confirmedAll   = editableItems.filter(i => i.confirmed)
 
-    // Revenue = matched items (menu price × qty) + unmatched (user-entered price × qty)
     const matchedRevenue = confirmedItems.reduce((s, i) => s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0)), 0)
     const unmatchedRevenue = editableItems.filter(i => i.confirmed && !i.matched).reduce((s, i) => {
       const detail = unmatchedDetails[i.name]
       const price  = detail?.selling_price ? parseFloat(detail.selling_price) : parseFloat(i.unit_price || 0)
       return s + (price * parseInt(i.quantity || 0))
     }, 0)
-    const totalRevenueUSD = matchedRevenue + unmatchedRevenue
-
-    // Cost = unmatched items user-entered cost
-    const unmatchedCost = editableItems.filter(i => i.confirmed && !i.matched).reduce((s, i) => {
+    const totalRevenueUSD  = matchedRevenue + unmatchedRevenue
+    const unmatchedCost    = editableItems.filter(i => i.confirmed && !i.matched).reduce((s, i) => {
       const detail = unmatchedDetails[i.name]
       return s + (detail?.cost ? parseFloat(detail.cost) * parseInt(i.quantity || 0) : 0)
     }, 0)
+    const totalExternalCost = extExpenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0)
 
-    // Group drinks for summary
     const drinkItems  = confirmedAll.filter(i => i.type === 'drink')
     const waterItems  = confirmedAll.filter(i => i.type === 'water')
-    const foodItems   = confirmedAll.filter(i => i.type === 'food' || !i.type)
+    const foodItems   = confirmedAll.filter(i => i.type === 'food' || (!i.type && i.type !== 'delivery'))
     const delivItems  = confirmedAll.filter(i => i.type === 'delivery')
 
     try {
@@ -379,51 +386,78 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
         scan_raw: JSON.stringify(editableItems)
       })
 
-      // Deduct stock + get alerts
-      let deductions = []
-      let restockAlerts = []
-      if (confirmedItems.length > 0) {
-        const dr = await API.post('/business/deduct-stock', {
-          items_sold: confirmedItems.map(i => ({ menu_item_id: i.matched_id, quantity_sold: i.quantity }))
-        })
-        deductions     = dr.data?.deductions || []
-        restockAlerts  = deductions.filter(d => parseFloat(d.remaining) <= 0 || d.low_stock)
+      // Save external expenses
+      for (const exp of extExpenses) {
+        try {
+          await API.post('/expenses', { amount: exp.amount, category: 'Other', description: exp.description, date })
+        } catch {}
       }
 
-      // Check current stock for low alerts
-      const stockRes = await API.get('/business/stock')
-      const currentStock = stockRes.data || []
-      const lowStockAlerts = currentStock.filter(s =>
-        parseFloat(s.stock_quantity) <= parseFloat(s.low_stock_alert) && parseFloat(s.low_stock_alert) > 0
-      )
+      let deductions = []
+      let lowStockAlerts = []
+      if (confirmedItems.length > 0) {
+        const dr = await API.post('/business/deduct-stock', { items_sold: confirmedItems.map(i => ({ menu_item_id: i.matched_id, quantity_sold: i.quantity })) })
+        deductions = dr.data?.deductions || []
+      }
 
-      const topSeller = [...confirmedAll].sort((a, b) => b.quantity - a.quantity)[0]
-      const totalQty  = confirmedAll.reduce((s, i) => s + parseInt(i.quantity || 0), 0)
-      const totalDrinkQty = drinkItems.reduce((s, i) => s + parseInt(i.quantity || 0), 0)
-      const totalWaterQty = waterItems.reduce((s, i) => s + parseInt(i.quantity || 0), 0)
+      try {
+        const stockRes = await API.get('/business/stock')
+        lowStockAlerts = (stockRes.data || []).filter(s => parseFloat(s.stock_quantity) <= parseFloat(s.low_stock_alert) && parseFloat(s.low_stock_alert) > 0)
+      } catch {}
+
+      // Save pending items for stock page
+      const pendingItems = editableItems.filter(i => !i.matched && i.confirmed).map(i => ({
+        name: i.name,
+        selling_price: unmatchedDetails[i.name]?.selling_price || '',
+        cost: unmatchedDetails[i.name]?.cost || '',
+        quantity_sold: i.quantity,
+        type: i.type,
+        date
+      }))
+      if (pendingItems.length > 0) {
+        localStorage.setItem('pending_stock_items', JSON.stringify(pendingItems))
+      }
+
+      // Auto-save day report
+      try {
+        const todayExpenses = (expenses || [])
+          .filter(e => e.date?.split('T')[0] === date)
+          .reduce((s, e) => s + safeNum(e.amount), 0)
+        const topSeller = [...confirmedAll].sort((a, b) => b.quantity - a.quantity)[0]
+        await API.post('/business/reports/days', {
+          date, revenue: totalRevenueUSD,
+          expenses: todayExpenses,
+          external_expenses: totalExternalCost,
+          profit: totalRevenueUSD - todayExpenses - totalExternalCost - unmatchedCost,
+          items_sold: confirmedAll.length,
+          top_seller: topSeller ? `${topSeller.matched_name || topSeller.name} × ${topSeller.quantity}` : null,
+          num_customers: scanResult?.management?.num_customers || null,
+          exchange_rate: rate,
+          scan_data: { items: editableItems, management: scanResult?.management },
+          notes: `POS Scan · ${confirmedAll.length} items${rate ? ` · 1$=${rate}LL` : ''}`
+        })
+      } catch (e) { console.log('Report save error:', e) }
+
+      const topSeller2 = [...confirmedAll].sort((a, b) => b.quantity - a.quantity)[0]
+      const totalQty   = confirmedAll.reduce((s, i) => s + parseInt(i.quantity || 0), 0)
 
       setSummary({
-        date,
-        revenueUSD: totalRevenueUSD,
+        date, revenueUSD: totalRevenueUSD,
         revenueLL: rate ? Math.round(totalRevenueUSD * rate) : null,
-        matchedRevenue,
-        unmatchedRevenue,
-        unmatchedCost,
-        itemCount: confirmedAll.length,
-        totalQty,
-        topSeller: topSeller ? `${topSeller.matched_name || topSeller.name} × ${topSeller.quantity}` : null,
+        matchedRevenue, unmatchedRevenue, unmatchedCost,
+        totalExternalCost,
+        itemCount: confirmedAll.length, totalQty,
+        topSeller: topSeller2 ? `${topSeller2.matched_name || topSeller2.name} × ${topSeller2.quantity}` : null,
         matched: confirmedItems.length,
         unmatched: editableItems.filter(i => !i.matched).length,
         foodItems, drinkItems, waterItems, delivItems,
-        totalDrinkQty, totalWaterQty,
-        deductions,
-        lowStockAlerts,
+        totalDrinkQty: drinkItems.reduce((s,i)=>s+parseInt(i.quantity||0),0),
+        totalWaterQty: waterItems.reduce((s,i)=>s+parseInt(i.quantity||0),0),
+        deductions, lowStockAlerts,
         management: scanResult?.management || null,
         sales_by_category: scanResult?.sales_by_category || [],
-        unmatchedItems: editableItems.filter(i => i.confirmed && !i.matched).map(i => ({
-          ...i,
-          ...unmatchedDetails[i.name]
-        }))
+        unmatchedItems: editableItems.filter(i => i.confirmed && !i.matched).map(i => ({ ...i, ...unmatchedDetails[i.name] })),
+        externalExpenses: extExpenses,
       })
       setStep('summary')
     } catch { showToast('Error saving', 'error'); setStep('review') }
@@ -438,10 +472,9 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
     return s + (parseFloat(i.unit_price || 0) * parseInt(i.quantity || 0))
   }, 0)
 
-  // Group drinks for display
   const drinkItems   = editableItems.filter(i => i.type === 'drink')
   const waterItems   = editableItems.filter(i => i.type === 'water')
-  const foodItems    = editableItems.filter(i => i.type === 'food' || (!i.type && i.type !== 'delivery'))
+  const foodItems    = editableItems.filter(i => i.type === 'food' || (!i.type && i.type !== 'delivery' && i.type !== 'drink' && i.type !== 'water'))
   const delivItems   = editableItems.filter(i => i.type === 'delivery')
   const unmatchedList = editableItems.filter(i => !i.matched)
 
@@ -466,7 +499,7 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
           </div>
           <div className="flex items-center gap-1 mt-4">
             {['Scan','Match','Review','Done'].map((s, i) => {
-              const stepIdx = { upload:0, matching:1, review:2, saving:2, summary:3 }[step] ?? 0
+              const stepIdx = { upload:0, matching:1, review:2, expenses_prompt:2, saving:2, summary:3 }[step] ?? 0
               const done = i < stepIdx, active = i === stepIdx
               return (
                 <div key={s} className="flex items-center flex-1">
@@ -533,7 +566,7 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
               {/* FOOD ITEMS */}
               {foodItems.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 mb-2">🍔 Food Items ({foodItems.length})</p>
+                  <p className="text-xs font-semibold text-gray-500 mb-2">🍔 Food ({foodItems.length} types)</p>
                   <div className="space-y-1.5">
                     {foodItems.map((item, idx) => {
                       const lineUSD = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
@@ -551,11 +584,9 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                               : <p className="text-xs text-yellow-500">⚠ Not in menu</p>}
                           </div>
                           <div className="flex items-center gap-1">
-                            <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))}
-                              className="w-5 h-5 bg-gray-200 dark:bg-gray-600 rounded text-xs font-bold flex items-center justify-center">−</button>
+                            <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))} className="w-5 h-5 bg-gray-200 dark:bg-gray-600 rounded text-xs font-bold flex items-center justify-center">−</button>
                             <span className="text-xs font-bold w-6 text-center">{item.quantity}</span>
-                            <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))}
-                              className="w-5 h-5 bg-gray-200 dark:bg-gray-600 rounded text-xs font-bold flex items-center justify-center">+</button>
+                            <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))} className="w-5 h-5 bg-gray-200 dark:bg-gray-600 rounded text-xs font-bold flex items-center justify-center">+</button>
                           </div>
                           <p className="text-xs font-bold text-purple-600 tabular-nums flex-shrink-0 ml-1">{currencySymbol}{lineUSD.toFixed(2)}</p>
                         </div>
@@ -566,56 +597,52 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
               )}
 
               {/* DRINKS GROUP */}
-              {(drinkItems.length > 0 || waterItems.length > 0) && (
-                <div>
-                  {drinkItems.length > 0 && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-3 mb-2">
-                      <div className="flex justify-between items-center mb-2">
-                        <p className="text-xs font-semibold text-blue-600">🥤 Soft Drinks</p>
-                        <p className="text-xs font-bold text-blue-600">{drinkItems.reduce((s,i)=>s+parseInt(i.quantity||0),0)} total units</p>
+              {drinkItems.length > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs font-semibold text-blue-600">🥤 Soft Drinks</p>
+                    <p className="text-xs font-bold text-blue-600">{drinkItems.reduce((s,i)=>s+parseInt(i.quantity||0),0)} units</p>
+                  </div>
+                  {drinkItems.map((item, idx) => {
+                    const globalIdx = editableItems.findIndex(i => i.name === item.name)
+                    const lineUSD   = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
+                    return (
+                      <div key={idx} className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-blue-700 dark:text-blue-300 font-medium">{item.name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))} className="w-4 h-4 bg-blue-200 rounded font-bold flex items-center justify-center">−</button>
+                          <span className="font-bold w-5 text-center">{item.quantity}</span>
+                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))} className="w-4 h-4 bg-blue-200 rounded font-bold flex items-center justify-center">+</button>
+                          <span className="text-blue-600 font-bold ml-1">{currencySymbol}{lineUSD.toFixed(2)}</span>
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        {drinkItems.map((item, idx) => {
-                          const globalIdx = editableItems.findIndex(i => i.name === item.name)
-                          const lineUSD = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
-                          return (
-                            <div key={idx} className="flex items-center justify-between text-xs">
-                              <span className="text-blue-700 dark:text-blue-300 font-medium">{item.name}</span>
-                              <div className="flex items-center gap-1.5">
-                                <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))} className="w-4 h-4 bg-blue-200 rounded text-xs font-bold flex items-center justify-center">−</button>
-                                <span className="font-bold w-5 text-center">{item.quantity}</span>
-                                <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))} className="w-4 h-4 bg-blue-200 rounded text-xs font-bold flex items-center justify-center">+</button>
-                                <span className="text-blue-600 font-bold tabular-nums ml-1">{currencySymbol}{lineUSD.toFixed(2)}</span>
-                              </div>
-                            </div>
-                          )
-                        })}
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* WATER GROUP */}
+              {waterItems.length > 0 && (
+                <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded-2xl p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs font-semibold text-cyan-600">💧 Water</p>
+                    <p className="text-xs font-bold text-cyan-600">{waterItems.reduce((s,i)=>s+parseInt(i.quantity||0),0)} units</p>
+                  </div>
+                  {waterItems.map((item, idx) => {
+                    const globalIdx = editableItems.findIndex(i => i.name === item.name)
+                    const lineUSD   = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
+                    return (
+                      <div key={idx} className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-cyan-700 dark:text-cyan-300 font-medium">{item.name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))} className="w-4 h-4 bg-cyan-200 rounded font-bold flex items-center justify-center">−</button>
+                          <span className="font-bold w-5 text-center">{item.quantity}</span>
+                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))} className="w-4 h-4 bg-cyan-200 rounded font-bold flex items-center justify-center">+</button>
+                          <span className="text-cyan-600 font-bold ml-1">{currencySymbol}{lineUSD.toFixed(2)}</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {waterItems.length > 0 && (
-                    <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded-2xl p-3">
-                      <div className="flex justify-between items-center mb-2">
-                        <p className="text-xs font-semibold text-cyan-600">💧 Water</p>
-                        <p className="text-xs font-bold text-cyan-600">{waterItems.reduce((s,i)=>s+parseInt(i.quantity||0),0)} total units</p>
-                      </div>
-                      {waterItems.map((item, idx) => {
-                        const globalIdx = editableItems.findIndex(i => i.name === item.name)
-                        const lineUSD = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
-                        return (
-                          <div key={idx} className="flex items-center justify-between text-xs">
-                            <span className="text-cyan-700 dark:text-cyan-300 font-medium">{item.name}</span>
-                            <div className="flex items-center gap-1.5">
-                              <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))} className="w-4 h-4 bg-cyan-200 rounded text-xs font-bold flex items-center justify-center">−</button>
-                              <span className="font-bold w-5 text-center">{item.quantity}</span>
-                              <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))} className="w-4 h-4 bg-cyan-200 rounded text-xs font-bold flex items-center justify-center">+</button>
-                              <span className="text-cyan-600 font-bold tabular-nums ml-1">{currencySymbol}{lineUSD.toFixed(2)}</span>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                    )
+                  })}
                 </div>
               )}
 
@@ -625,15 +652,15 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                   <p className="text-xs font-semibold text-yellow-600 mb-2">🛵 Delivery ({delivItems.reduce((s,i)=>s+parseInt(i.quantity||0),0)} orders)</p>
                   {delivItems.map((item, idx) => {
                     const globalIdx = editableItems.findIndex(i => i.name === item.name)
-                    const lineUSD = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
+                    const lineUSD   = parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0)
                     return (
                       <div key={idx} className="flex items-center justify-between text-xs mb-1">
                         <span className="text-yellow-700 dark:text-yellow-300 font-medium">{item.name}</span>
                         <div className="flex items-center gap-1.5">
-                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))} className="w-4 h-4 bg-yellow-200 rounded text-xs font-bold flex items-center justify-center">−</button>
+                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: Math.max(1, (it.quantity||1)-1) } : it))} className="w-4 h-4 bg-yellow-200 rounded font-bold flex items-center justify-center">−</button>
                           <span className="font-bold w-5 text-center">{item.quantity}</span>
-                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))} className="w-4 h-4 bg-yellow-200 rounded text-xs font-bold flex items-center justify-center">+</button>
-                          <span className="text-yellow-600 font-bold tabular-nums ml-1">{currencySymbol}{lineUSD.toFixed(2)}</span>
+                          <button onClick={() => setEditableItems(prev => prev.map((it, i) => i === globalIdx ? { ...it, quantity: (it.quantity||1)+1 } : it))} className="w-4 h-4 bg-yellow-200 rounded font-bold flex items-center justify-center">+</button>
+                          <span className="text-yellow-600 font-bold ml-1">{currencySymbol}{lineUSD.toFixed(2)}</span>
                         </div>
                       </div>
                     )
@@ -641,17 +668,17 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                 </div>
               )}
 
-              {/* UNMATCHED ITEMS — user fills price + cost */}
+              {/* UNMATCHED ITEMS */}
               {unmatchedList.length > 0 && (
                 <div className="bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-2xl p-4">
                   <p className="text-sm font-bold text-orange-600 mb-1">⚠️ {unmatchedList.length} items not in your menu</p>
-                  <p className="text-xs text-orange-400 mb-3">Fill the selling price and cost so we can calculate profit correctly. These will be suggested to add to your menu.</p>
+                  <p className="text-xs text-orange-400 mb-3">Fill selling price and cost to calculate profit correctly.</p>
                   <div className="space-y-3">
                     {unmatchedList.map((item, idx) => (
                       <div key={idx} className="bg-white dark:bg-gray-800 rounded-xl p-3">
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-sm font-bold text-gray-800 dark:text-white">{item.name}</p>
-                          <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-semibold">× {item.quantity} sold</span>
+                          <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">× {item.quantity} sold</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
@@ -669,21 +696,15 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                               className="w-full px-2 py-1.5 border border-orange-200 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-500" />
                           </div>
                         </div>
-                        {/* Live profit preview */}
                         {unmatchedDetails[item.name]?.selling_price && unmatchedDetails[item.name]?.cost && (
-                          <div className="mt-2 flex gap-3 text-xs">
-                            <span className="text-green-600 font-semibold">
-                              Revenue: {currencySymbol}{(parseFloat(unmatchedDetails[item.name].selling_price) * item.quantity).toFixed(2)}
-                            </span>
-                            <span className="text-red-500 font-semibold">
-                              Cost: {currencySymbol}{(parseFloat(unmatchedDetails[item.name].cost) * item.quantity).toFixed(2)}
-                            </span>
+                          <div className="mt-2 flex gap-3 text-xs flex-wrap">
+                            <span className="text-green-600 font-semibold">Rev: {currencySymbol}{(parseFloat(unmatchedDetails[item.name].selling_price) * item.quantity).toFixed(2)}</span>
+                            <span className="text-red-500 font-semibold">Cost: {currencySymbol}{(parseFloat(unmatchedDetails[item.name].cost) * item.quantity).toFixed(2)}</span>
                             <span className={`font-bold ${(parseFloat(unmatchedDetails[item.name].selling_price) - parseFloat(unmatchedDetails[item.name].cost)) >= 0 ? 'text-purple-600' : 'text-red-500'}`}>
                               Profit: {currencySymbol}{((parseFloat(unmatchedDetails[item.name].selling_price) - parseFloat(unmatchedDetails[item.name].cost)) * item.quantity).toFixed(2)}
                             </span>
                           </div>
                         )}
-                        <p className="text-xs text-orange-400 mt-1.5">💡 After saving, AI will suggest adding this to your menu</p>
                       </div>
                     ))}
                   </div>
@@ -694,7 +715,6 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
               {newItemSuggestions.length > 0 && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-2xl p-4">
                   <p className="text-sm font-bold text-blue-600 mb-1">🤖 Add unmatched items to menu?</p>
-                  <p className="text-xs text-blue-400 mb-3">They'll be matched automatically next time</p>
                   <div className="space-y-2">
                     {newItemSuggestions.map((s, idx) => (
                       <div key={idx} className={`flex items-center gap-3 bg-white dark:bg-gray-800 rounded-xl px-3 py-2.5 ${s.added ? 'opacity-60' : ''}`}>
@@ -720,11 +740,10 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                 </div>
               )}
 
-              {/* Stock deduction preview */}
               {editableItems.some(i => i.confirmed && i.matched) && (
                 <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 rounded-2xl p-3">
                   <p className="text-xs font-semibold text-orange-600 mb-1">📦 Stock will be auto-deducted for {editableItems.filter(i => i.confirmed && i.matched).length} items</p>
-                  <p className="text-xs text-orange-400">Low stock alerts will fire automatically if needed</p>
+                  <p className="text-xs text-orange-400">Low stock alerts will fire automatically</p>
                 </div>
               )}
 
@@ -733,26 +752,84 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                   className="py-3.5 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold text-sm">
                   ← Rescan
                 </button>
-                <button onClick={handleConfirm}
+                <button onClick={() => setStep('expenses_prompt')}
                   className="py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-sm">
-                  Confirm & Close Day
+                  Next →
                 </button>
               </div>
             </>
+          )}
+
+          {/* EXTERNAL EXPENSES PROMPT */}
+          {step === 'expenses_prompt' && (
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-4 text-white text-center">
+                <p className="text-2xl mb-1">🧾</p>
+                <p className="font-bold text-lg">Any extra expenses today?</p>
+                <p className="text-orange-100 text-xs mt-1">Add any external costs before closing the day (supplies, delivery fees, gas, etc.)</p>
+              </div>
+
+              {externalExpenses.length > 0 && (
+                <div className="space-y-2">
+                  {externalExpenses.map((exp, i) => (
+                    <div key={i} className="flex justify-between items-center bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2">
+                      <span className="text-sm text-gray-700 dark:text-gray-200">{exp.description}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-red-500">{currencySymbol}{parseFloat(exp.amount).toFixed(2)}</span>
+                        <button onClick={() => setExternalExpenses(prev => prev.filter((_, idx) => idx !== i))}
+                          className="text-red-400 hover:text-red-600 text-xs font-bold">✕</button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex justify-between text-sm font-bold px-1">
+                    <span className="text-gray-600 dark:text-gray-300">Total extra expenses</span>
+                    <span className="text-red-500">{currencySymbol}{externalExpenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 space-y-2 border border-gray-100 dark:border-gray-600">
+                <input type="text" placeholder="Description (e.g. gas, packaging)"
+                  value={newExpense.description}
+                  onChange={e => setNewExpense(f => ({ ...f, description: e.target.value }))}
+                  className={inputCls} />
+                <div className="flex gap-2">
+                  <input type="number" placeholder="Amount" step="0.01" min="0"
+                    value={newExpense.amount}
+                    onChange={e => setNewExpense(f => ({ ...f, amount: e.target.value }))}
+                    className={inputCls} />
+                  <button onClick={() => {
+                    if (!newExpense.description || !newExpense.amount) return
+                    setExternalExpenses(prev => [...prev, { ...newExpense }])
+                    setNewExpense({ description: '', amount: '' })
+                  }} className="bg-red-500 text-white px-4 rounded-xl font-bold text-sm flex-shrink-0 hover:bg-red-600 transition">+ Add</button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setStep('review')}
+                  className="py-3.5 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold text-sm">
+                  ← Back
+                </button>
+                <button onClick={() => handleConfirm(externalExpenses)}
+                  className="py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-sm">
+                  {externalExpenses.length > 0 ? '💾 Save & Close Day' : '✓ Close Day'}
+                </button>
+              </div>
+            </div>
           )}
 
           {step === 'saving' && (
             <div className="py-16 text-center">
               <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 animate-pulse">💾</div>
               <p className="font-bold text-gray-800 dark:text-white text-lg mb-1">Closing the day...</p>
-              <p className="text-gray-400 text-sm">Revenue saved · Stock deducted · Alerts checked</p>
+              <p className="text-gray-400 text-sm">Revenue saved · Stock deducted · Report generated</p>
             </div>
           )}
 
           {/* EMAIL-STYLE SUMMARY */}
           {step === 'summary' && summary && (
             <div className="space-y-4">
-              {/* Email header */}
               <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-5 text-white">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-xl">📧</div>
@@ -768,7 +845,7 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                 </div>
               </div>
 
-              {/* Financial breakdown */}
+              {/* Financial */}
               <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 border border-gray-100 dark:border-gray-600">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">💰 Financial Summary</p>
                 <div className="space-y-2">
@@ -784,34 +861,38 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                   )}
                   {summary.unmatchedCost > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Cost of other items</span>
+                      <span className="text-gray-500">Cost of unmatched items</span>
                       <span className="font-semibold text-red-500">-{currencySymbol}{summary.unmatchedCost.toFixed(2)}</span>
                     </div>
                   )}
+                  {summary.totalExternalCost > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">External expenses</span>
+                      <span className="font-semibold text-red-500">-{currencySymbol}{summary.totalExternalCost.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="border-t border-gray-200 dark:border-gray-600 pt-2 flex justify-between text-sm font-bold">
-                    <span className="text-gray-700 dark:text-white">Total Revenue</span>
+                    <span className="text-gray-700 dark:text-white">Total Revenue (static)</span>
                     <span className="text-green-600">{currencySymbol}{summary.revenueUSD.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Sales breakdown */}
+              {/* Sales */}
               <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 border border-gray-100 dark:border-gray-600">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">📊 Sales Breakdown</p>
                 <div className="space-y-1.5">
                   {[
-                    { label: '🍔 Food items sold', value: summary.foodItems?.length + ' types · ' + summary.foodItems?.reduce((s,i)=>s+parseInt(i.quantity||0),0) + ' units' },
-                    summary.totalDrinkQty > 0 && { label: '🥤 Soft drinks sold', value: summary.totalDrinkQty + ' units' },
-                    summary.totalWaterQty > 0 && { label: '💧 Water sold', value: summary.totalWaterQty + ' units' },
-                    summary.delivItems?.length > 0 && { label: '🛵 Delivery orders', value: summary.delivItems.reduce((s,i)=>s+parseInt(i.quantity||0),0) + ' orders' },
+                    { label: '🍔 Food types', value: (summary.foodItems?.length || 0) + ' types · ' + (summary.foodItems?.reduce((s,i)=>s+parseInt(i.quantity||0),0)||0) + ' units' },
+                    summary.totalDrinkQty > 0 && { label: '🥤 Soft drinks', value: summary.totalDrinkQty + ' units' },
+                    summary.totalWaterQty > 0 && { label: '💧 Water', value: summary.totalWaterQty + ' units' },
+                    summary.delivItems?.length > 0 && { label: '🛵 Delivery', value: summary.delivItems.reduce((s,i)=>s+parseInt(i.quantity||0),0) + ' orders' },
                     summary.topSeller && { label: '🏆 Top seller', value: summary.topSeller },
-                    { label: '📦 Total units sold', value: summary.totalQty + ' units' },
-                    { label: '✅ Matched to menu', value: summary.matched + ' items' },
-                    summary.unmatched > 0 && { label: '⚠️ Not in menu', value: summary.unmatched + ' items' },
+                    { label: '📦 Total units', value: summary.totalQty + ' units' },
                   ].filter(Boolean).map((row, i) => (
                     <div key={i} className="flex justify-between text-sm py-1 border-b border-gray-100 dark:border-gray-600 last:border-0">
                       <span className="text-gray-500">{row.label}</span>
-                      <span className="font-semibold text-gray-800 dark:text-white text-right">{row.value}</span>
+                      <span className="font-semibold text-gray-800 dark:text-white">{row.value}</span>
                     </div>
                   ))}
                 </div>
@@ -855,11 +936,10 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                 </div>
               )}
 
-              {/* 🚨 RESTOCK ALERTS */}
+              {/* Restock alerts */}
               {summary.lowStockAlerts?.length > 0 && (
                 <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-2xl p-4">
                   <p className="text-sm font-bold text-red-600 mb-2">🚨 Restock Needed!</p>
-                  <p className="text-xs text-red-400 mb-3">These ingredients dropped below minimum after today's sales:</p>
                   <div className="space-y-2">
                     {summary.lowStockAlerts.map((ing, i) => (
                       <div key={i} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-xl px-3 py-2">
@@ -874,19 +954,21 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
                 </div>
               )}
 
-              {/* Unmatched items recommendation */}
+              {/* Unmatched recommendation */}
               {summary.unmatchedItems?.length > 0 && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-2xl p-4">
-                  <p className="text-sm font-bold text-blue-600 mb-2">💡 Recommendation</p>
-                  <p className="text-xs text-blue-400 mb-3">These items were sold today but aren't in your menu yet. Add them so next scan matches automatically:</p>
+                  <p className="text-sm font-bold text-blue-600 mb-2">💡 Add to Menu</p>
+                  <p className="text-xs text-blue-400 mb-2">These items were sold but aren't in your menu yet:</p>
                   {summary.unmatchedItems.map((item, i) => (
-                    <div key={i} className="text-xs text-blue-700 dark:text-blue-300 py-1 flex justify-between">
-                      <span>• {item.name} × {item.quantity}</span>
-                      <a href="/business/menu" className="text-blue-600 font-semibold underline">Add to menu →</a>
+                    <div key={i} className="flex justify-between text-xs py-1">
+                      <span className="text-blue-700 dark:text-blue-300">• {item.name} × {item.quantity}</span>
+                      <a href="/business/menu" className="text-blue-600 font-semibold underline">Add →</a>
                     </div>
                   ))}
                 </div>
               )}
+
+              <p className="text-xs text-center text-gray-400">📁 Day report saved automatically to Reports</p>
 
               <button onClick={onComplete} className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-2xl font-bold hover:opacity-90 transition">
                 Done ✓
@@ -1249,7 +1331,7 @@ export default function BusinessDashboard() {
       {showAddRev && <AddRevenueSheet onClose={() => setShowAddRev(false)} onSave={handleAddRevenue} currencySymbol={currencySymbol} />}
       {showAddExp && <AIExpenseSheet  onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} ingredients={ingredients} />}
       {showAddEmp && <AddEmployeeSheet onClose={() => setShowAddEmp(false)} onSave={handleAddEmployee} currencySymbol={currencySymbol} />}
-      {showPOS    && <POSScanner onClose={() => setShowPOS(false)} menuItems={menuItems} onComplete={() => { setShowPOS(false); fetchAll() }} showToast={showToast} currencySymbol={currencySymbol} ingredients={ingredients} />}
+      {showPOS    && <POSScanner onClose={() => setShowPOS(false)} menuItems={menuItems} onComplete={() => { setShowPOS(false); fetchAll() }} showToast={showToast} currencySymbol={currencySymbol} ingredients={ingredients} expenses={expenses} />}
 
       <div className="max-w-2xl mx-auto px-4 py-5 pb-8">
 
@@ -1274,7 +1356,7 @@ export default function BusinessDashboard() {
           </a>
         )}
 
-        {/* Hero P&L Card */}
+        {/* Hero P&L */}
         <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-6 mb-4 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10">
             <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-orange-400" />
