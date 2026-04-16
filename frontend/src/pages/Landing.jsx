@@ -9,7 +9,6 @@ function Landing() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) window.location.href = '/dashboard'
-
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault()
       setDeferredPrompt(e)
@@ -25,126 +24,218 @@ function Landing() {
     setDeferredPrompt(null)
   }
 
+  const features = [
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+      bg: 'bg-emerald-100 dark:bg-emerald-900/30', color: 'text-emerald-600 dark:text-emerald-400',
+      title: 'Spending Charts',
+      desc: 'Visualize your cash flow with interactive charts broken down by category and time period.',
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>,
+      bg: 'bg-violet-100 dark:bg-violet-900/30', color: 'text-violet-600 dark:text-violet-400',
+      title: 'AI-Powered Insights',
+      desc: 'Chat with your personal AI finance advisor to uncover spending patterns and get tailored tips.',
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+      bg: 'bg-sky-100 dark:bg-sky-900/30', color: 'text-sky-600 dark:text-sky-400',
+      title: 'Receipt Scanner',
+      desc: 'Snap a photo of any receipt and automatically extract the amount — no manual entry needed.',
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>,
+      bg: 'bg-amber-100 dark:bg-amber-900/30', color: 'text-amber-600 dark:text-amber-400',
+      title: 'Budget Goals',
+      desc: 'Set monthly limits per category and receive real-time alerts before you overspend.',
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+      bg: 'bg-rose-100 dark:bg-rose-900/30', color: 'text-rose-600 dark:text-rose-400',
+      title: 'PDF & CSV Reports',
+      desc: 'Export a professional financial report of all your expenses and income in one click.',
+    },
+    {
+      icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
+      bg: 'bg-pink-100 dark:bg-pink-900/30', color: 'text-pink-600 dark:text-pink-400',
+      title: 'Wellness Score',
+      desc: 'Get a financial wellness score based on your habits, with actionable tips to improve.',
+    },
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
+
       {/* Navbar */}
-      <nav className="flex justify-between items-center px-8 py-5 bg-white dark:bg-gray-900 shadow-sm">
-        <h1 className="text-2xl font-bold text-indigo-600">Spendly 💸</h1>
-        <div className="flex gap-3 items-center">
-          <button onClick={toggleDark} className="text-xl hover:scale-110 transition" title="Toggle dark mode">
-            {dark ? '☀️' : '🌙'}
-          </button>
-          {showInstall && (
-            <button onClick={handleInstall} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition flex items-center gap-2">
-              📲 Install App
+      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/60">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+              </svg>
+            </div>
+            <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Spendly</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={toggleDark} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Toggle theme">
+              {dark ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+              )}
             </button>
-          )}
-          <a href="/login" className="px-4 py-2 text-indigo-600 font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-xl transition">Login</a>
-          <a href="/register" className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition">Register</a>
+            {showInstall && (
+              <button onClick={handleInstall} className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition text-sm">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Install
+              </button>
+            )}
+            <a href="/login" className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
+              Sign in
+            </a>
+            <a href="/register" className="px-4 py-2 text-sm font-semibold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 active:scale-95 transition shadow-sm">
+              Get started
+            </a>
+          </div>
         </div>
       </nav>
 
       {/* Hero */}
-      <div className="max-w-4xl mx-auto px-6 py-24 text-center">
-        <div className="inline-block bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 text-sm font-semibold px-4 py-2 rounded-full mb-6">
-          🚀 Your personal finance assistant
-        </div>
-        <h1 className="text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
-          Track smarter,<br />
-          <span className="text-indigo-600">spend better</span>
-        </h1>
-        <p className="text-xl text-gray-500 dark:text-gray-400 mb-10 max-w-2xl mx-auto">
-          Spendly helps you track your expenses, set budget goals, scan receipts, and get AI-powered insights — all in one place.
-        </p>
-        <div className="flex gap-4 justify-center flex-wrap">
-          <a href="/register" className="px-8 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition text-lg shadow-lg shadow-indigo-200">Start for Free →</a>
-          <a href="/login" className="px-8 py-4 bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-bold rounded-2xl hover:bg-indigo-50 dark:hover:bg-gray-700 transition text-lg border border-indigo-200 dark:border-gray-600">Login</a>
-          {showInstall && (
-            <button onClick={handleInstall} className="px-8 py-4 bg-green-500 text-white font-bold rounded-2xl hover:bg-green-600 transition text-lg shadow-lg shadow-green-200">
-              📲 Install Spendly
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Install Banner */}
-      {showInstall && (
-        <div className="max-w-4xl mx-auto px-6 mb-8">
-          <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 text-white flex justify-between items-center">
-            <div>
-              <p className="font-bold text-lg">📲 Install Spendly on your device!</p>
-              <p className="text-green-100 text-sm mt-1">Add to your home screen and use it like a real app — works offline too!</p>
-            </div>
-            <button onClick={handleInstall} className="bg-white text-green-600 px-6 py-3 rounded-xl font-bold hover:bg-green-50 transition whitespace-nowrap ml-4">
-              Install Now
-            </button>
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-b from-emerald-50/70 via-white to-white dark:from-emerald-950/20 dark:via-gray-950 dark:to-gray-950 pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-150 h-150 bg-emerald-400/10 dark:bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative max-w-3xl mx-auto px-6 pt-24 pb-20 text-center">
+          <div className="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-400 text-xs font-semibold px-4 py-2 rounded-full mb-8 uppercase tracking-widest">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+            Personal Finance, Simplified
+          </div>
+          <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 dark:text-white leading-[1.1] mb-6 tracking-tight">
+            Your money,<br />
+            <span className="text-emerald-600 dark:text-emerald-400">under control.</span>
+          </h1>
+          <p className="text-lg text-gray-500 dark:text-gray-400 mb-10 max-w-xl mx-auto leading-relaxed">
+            Track expenses, set budgets, scan receipts, and get AI-powered insights — all in one clean, intuitive app.
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <a href="/register" className="px-7 py-3.5 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 active:scale-95 transition shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30 text-base">
+              Start for free →
+            </a>
+            <a href="/login" className="px-7 py-3.5 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition border border-gray-200 dark:border-gray-700 text-base">
+              Sign in
+            </a>
+            {showInstall && (
+              <button onClick={handleInstall} className="px-7 py-3.5 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition border border-gray-200 dark:border-gray-700 text-base flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Install App
+              </button>
+            )}
           </div>
         </div>
-      )}
+      </section>
 
-      {/* iOS Install Instructions */}
-<div className="max-w-4xl mx-auto px-6 mb-8">
-  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-    <h3 className="font-bold text-gray-800 text-lg mb-3">📱 Install on iPhone / iPad</h3>
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
-        <span className="bg-indigo-100 text-indigo-600 w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">1</span>
-        <p className="text-gray-600 text-sm">Open this page in <strong>Safari</strong> browser</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="bg-indigo-100 text-indigo-600 w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">2</span>
-        <p className="text-gray-600 text-sm">Tap the <strong>Share button</strong> at the bottom of Safari (the box with arrow pointing up)</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="bg-indigo-100 text-indigo-600 w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">3</span>
-        <p className="text-gray-600 text-sm">Scroll down and tap <strong>"Add to Home Screen"</strong></p>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="bg-indigo-100 text-indigo-600 w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">4</span>
-        <p className="text-gray-600 text-sm">Tap <strong>"Add"</strong> — Spendly will appear on your home screen!</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-      {/* Features */}
-      <div className="max-w-5xl mx-auto px-6 pb-24">
-        <h2 className="text-3xl font-bold text-center text-gray-800 dark:text-white mb-12">Everything you need to manage your money</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Stats strip */}
+      <section className="border-y border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40">
+        <div className="max-w-4xl mx-auto px-6 py-10 grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
           {[
-            { icon: '📊', title: 'Spending Charts', desc: 'Visualize your spending with beautiful pie and bar charts broken down by category.' },
-            { icon: '🤖', title: 'AI Insights', desc: 'Get personalized tips and analysis on your spending habits powered by AI.' },
-            { icon: '📷', title: 'Receipt Scanner', desc: 'Take a photo of any receipt and automatically extract the amount instantly.' },
-            { icon: '🎯', title: 'Budget Goals', desc: 'Set monthly limits per category and get real-time alerts when you are close.' },
-            { icon: '📄', title: 'PDF Reports', desc: 'Download a professional PDF report of all your expenses with one click.' },
-            { icon: '📲', title: 'Install as App', desc: 'Add Spendly to your home screen and use it like a native app on any device.' },
-          ].map((feature, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-              <div className="text-4xl mb-4">{feature.icon}</div>
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">{feature.title}</h3>
-              <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">{feature.desc}</p>
+            { value: 'Free', label: 'Forever plan' },
+            { value: '8', label: 'Currencies' },
+            { value: 'AI', label: 'Powered insights' },
+            { value: 'PWA', label: 'Works offline' },
+          ].map((s, i) => (
+            <div key={i}>
+              <p className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{s.value}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">{s.label}</p>
             </div>
           ))}
         </div>
-      </div>
+      </section>
+
+      {/* Features */}
+      <section className="max-w-5xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
+            Everything you need to manage your money
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto leading-relaxed">
+            Powerful tools with a clean, intuitive interface so you can focus on what matters.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {features.map((f, i) => (
+            <div key={i} className="group bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 hover:border-emerald-200 dark:hover:border-emerald-800/60 hover:shadow-xl hover:shadow-emerald-50 dark:hover:shadow-emerald-950/30 transition-all duration-200">
+              <div className={`w-11 h-11 ${f.bg} ${f.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200`}>
+                {f.icon}
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">{f.title}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* iOS Install */}
+      <section className="max-w-4xl mx-auto px-6 pb-24">
+        <div className="bg-gray-50 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 rounded-2xl p-8">
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 bg-gray-200 dark:bg-gray-700 rounded-xl flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-400">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="2"/>
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Install on iPhone / iPad</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Add Spendly to your home screen for a full native app experience.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {['Open this page in Safari', 'Tap the Share button (box with arrow)', 'Select "Add to Home Screen"', 'Tap "Add" to confirm'].map((step, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                    <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 flex items-center justify-center text-xs font-bold shrink-0">{i + 1}</span>
+                    <span>{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* CTA */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 py-20 px-6 text-center">
-        <h2 className="text-4xl font-bold text-white mb-4">Ready to take control of your money?</h2>
-        <p className="text-indigo-200 mb-8 text-lg">Join Spendly today — it's completely free.</p>
-        <div className="flex gap-4 justify-center flex-wrap">
-          <a href="/register" className="px-8 py-4 bg-white text-indigo-600 font-bold rounded-2xl hover:bg-indigo-50 transition text-lg">Create Your Free Account →</a>
-          {showInstall && (
-            <button onClick={handleInstall} className="px-8 py-4 bg-green-400 text-white font-bold rounded-2xl hover:bg-green-500 transition text-lg">
-              📲 Install App
-            </button>
-          )}
+      <section className="relative overflow-hidden bg-emerald-600 dark:bg-emerald-700 py-24 px-6">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.1),transparent_60%)] pointer-events-none" />
+        <div className="relative max-w-2xl mx-auto text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">
+            Ready to take control of your finances?
+          </h2>
+          <p className="text-emerald-100 mb-10 text-lg">Join Spendly today — completely free, no credit card required.</p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <a href="/register" className="px-8 py-3.5 bg-white text-emerald-700 font-semibold rounded-xl hover:bg-emerald-50 active:scale-95 transition shadow-lg text-base">
+              Create your free account →
+            </a>
+            {showInstall && (
+              <button onClick={handleInstall} className="px-8 py-3.5 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-400 active:scale-95 transition border border-emerald-400/60 flex items-center gap-2 text-base">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Install App
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      </section>
 
-      <footer className="text-center py-6 text-gray-400 dark:text-gray-500 text-sm bg-white dark:bg-gray-900">
-        <p>© 2026 <span className="text-indigo-600 font-semibold">Spendly</span> — Track smarter, spend better 💸</p>
+      {/* Footer */}
+      <footer className="bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 py-8 px-6">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-emerald-600 rounded-md flex items-center justify-center">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+              </svg>
+            </div>
+            <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">Spendly</span>
+          </div>
+          <p className="text-sm text-gray-400 dark:text-gray-500">© 2026 Spendly — Track smarter, spend better.</p>
+        </div>
       </footer>
+
     </div>
   )
 }

@@ -7,17 +7,19 @@ import VerifyEmail from './pages/VerifyEmail'
 import ForgotPassword from './pages/ForgotPassword'
 import AccountType from './pages/AccountType'
 import Dashboard from './pages/Dashboard'
-import BusinessDashboard from './pages/BusinessDashboard'
-import BusinessMenu from './pages/BusinessMenu'
-import BusinessStock from './pages/BusinessStock'
-import BusinessTransactions from './pages/BusinessTransactions'
 import Budgets from './pages/Budgets'
 import Savings from './pages/Savings'
 import Reports from './pages/Reports'
 import Insights from './pages/Insights'
 import Wellness from './pages/Wellness'
 import Transactions from './pages/Transactions'
-import BusinessReports from './pages/BusinessReports'
+
+// Business imports — disabled until business mode is re-enabled
+// import BusinessDashboard from './pages/BusinessDashboard'
+// import BusinessMenu from './pages/BusinessMenu'
+// import BusinessStock from './pages/BusinessStock'
+// import BusinessTransactions from './pages/BusinessTransactions'
+// import BusinessReports from './pages/BusinessReports'
 
 function App() {
   return (
@@ -40,13 +42,15 @@ function App() {
         <Route path="/wellness"              element={<Wellness />} />
         <Route path="/transactions"          element={<Transactions />} />
 
-        {/* Business */}
-        <Route path="/business"              element={<BusinessDashboard />} />
-        <Route path="/business/menu"         element={<BusinessMenu />} />
-        <Route path="/business/stock"        element={<BusinessStock />} />
-        <Route path="/business/transactions" element={<BusinessTransactions />} />
-        <Route path="/business/reports"      element={<BusinessReports />} />
+        {/* Business routes — disabled until business mode is re-enabled */}
+        {/* <Route path="/business"              element={<BusinessDashboard />} /> */}
+        {/* <Route path="/business/menu"         element={<BusinessMenu />} /> */}
+        {/* <Route path="/business/stock"        element={<BusinessStock />} /> */}
+        {/* <Route path="/business/transactions" element={<BusinessTransactions />} /> */}
+        {/* <Route path="/business/reports"      element={<BusinessReports />} /> */}
 
+        <Route path="/business"              element={<Navigate to="/dashboard" replace />} />
+        <Route path="/business/*"            element={<Navigate to="/dashboard" replace />} />
         <Route path="/alerts"                element={<Navigate to="/budgets" replace />} />
       </Routes>
     </BrowserRouter>
