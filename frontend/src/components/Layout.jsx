@@ -47,12 +47,12 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
       {/* Logo */}
       <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700/60">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-emerald-600 rounded-lg flex items-center justify-center shrink-0">
+          <div className="w-7 h-7 bg-violet-600 rounded-lg flex items-center justify-center shrink-0">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
             </svg>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">Fynlo</h1>
+          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">Spendly</h1>
         </div>
         <p className="text-xs text-gray-400 mt-1 ml-9">Track smarter, spend better</p>
       </div>
@@ -60,7 +60,7 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
       {/* User info */}
       <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700/60">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
+          <div className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-400 flex items-center justify-center font-bold text-sm shrink-0">
             {user?.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div className="min-w-0">
@@ -78,8 +78,8 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
             <a key={item.href} href={item.href}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 isActive
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                  ? 'bg-violet-600 text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-violet-700 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20'
               }`}>
               <span className={isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500'}>
                 {Icons[item.icon]?.(isActive)}
@@ -146,12 +146,12 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-700/60 px-4 py-3 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-emerald-600 rounded-md flex items-center justify-center">
+          <div className="w-6 h-6 bg-violet-600 rounded-md flex items-center justify-center">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
             </svg>
           </div>
-          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">Fynlo</h1>
+          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">Spendly</h1>
         </div>
         <div className="flex items-center gap-1">
           <button onClick={onBellClick} className="relative p-2 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
@@ -183,8 +183,8 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
             const isActive = current === item.href
             return (
               <a key={item.href} href={item.href}
-                className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                {isActive && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                {isActive && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
                 <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
                   {Icons[item.icon]?.(isActive)}
                 </span>

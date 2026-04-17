@@ -32,9 +32,9 @@ function NumberModal({ label, value, sub, onClose }) {
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 text-center w-full max-w-xs" onClick={e => e.stopPropagation()}>
         <p className="text-sm text-gray-400 mb-3">{label}</p>
-        <p className="text-4xl font-bold text-emerald-600 tabular-nums break-all">{value}</p>
+        <p className="text-4xl font-bold text-violet-600 tabular-nums break-all">{value}</p>
         {sub && <p className="text-sm text-gray-400 mt-2">{sub}</p>}
-        <button onClick={onClose} className="mt-6 w-full bg-emerald-600 text-white py-3 rounded-2xl font-semibold">Done</button>
+        <button onClick={onClose} className="mt-6 w-full bg-violet-600 text-white py-3 rounded-2xl font-semibold">Done</button>
       </div>
     </div>
   )
@@ -53,7 +53,7 @@ export default function Insights() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "Hi there! I'm Fynlo AI, your personal finance assistant. How can I help you with your finances today? I can see your real spending data. What's on your mind?"
+      content: "Hi there! I'm Spendly AI, your personal finance assistant. How can I help you with your finances today? I can see your real spending data. What's on your mind?"
     }
   ])
   const [input, setInput] = useState('')
@@ -163,7 +163,7 @@ export default function Insights() {
             label="Top Category"
             value={topCatStr}
             sub={topCatAmt}
-            color="text-emerald-600"
+            color="text-violet-600"
             onClick={() => topCategory && setModalData({ label: 'Top Spending Category', value: topCatStr, sub: topCatAmt + ' this month' })}
           />
         </div>
@@ -175,13 +175,13 @@ export default function Insights() {
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`flex items-start gap-2 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${
-                    msg.role === 'user' ? 'bg-emerald-600 text-white' : 'bg-gradient-to-br from-emerald-500 to-purple-600 text-white'
+                    msg.role === 'user' ? 'bg-violet-600 text-white' : 'bg-linear-to-br from-violet-500 to-purple-600 text-white'
                   }`}>
                     {msg.role === 'user' ? 'U' : 'AI'}
                   </div>
                   <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                     msg.role === 'user'
-                      ? 'bg-emerald-600 text-white rounded-tr-sm'
+                      ? 'bg-violet-600 text-white rounded-tr-sm'
                       : 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm'
                   }`}>
                     {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
@@ -192,12 +192,12 @@ export default function Insights() {
             {loading && (
               <div className="flex justify-start">
                 <div className="flex items-start gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-purple-600 text-white flex items-center justify-center text-xs font-bold">AI</div>
+                  <div className="w-8 h-8 rounded-full bg-linear-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center text-xs font-bold">AI</div>
                   <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 rounded-2xl rounded-tl-sm">
                     <div className="flex gap-1 items-center">
-                      <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
                   </div>
                 </div>
@@ -215,12 +215,12 @@ export default function Insights() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask anything about your finances..."
-                className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
               />
               <button
                 onClick={() => sendMessage()}
                 disabled={loading || !input.trim()}
-                className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                className="bg-violet-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm">
                 {loading ? '...' : 'Send'}
               </button>
             </div>
@@ -236,7 +236,7 @@ export default function Insights() {
                 key={i}
                 onClick={() => sendMessage(q)}
                 disabled={loading}
-                className="flex-shrink-0 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs font-medium hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition disabled:opacity-50 whitespace-nowrap">
+                className="flex-shrink-0 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs font-medium hover:border-violet-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition disabled:opacity-50 whitespace-nowrap">
                 {q}
               </button>
             ))}

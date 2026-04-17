@@ -36,7 +36,7 @@ function Landing() {
   const features = [
     {
       icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
-      bg: 'bg-emerald-100 dark:bg-emerald-900/30', color: 'text-emerald-600 dark:text-emerald-400',
+      bg: 'bg-violet-100 dark:bg-violet-900/30', color: 'text-violet-600 dark:text-violet-400',
       title: 'Spending Charts',
       desc: 'Visualize your cash flow with interactive charts broken down by category and time period.',
       detail: 'See exactly where every dollar goes. Interactive charts reveal your spending by category and show trends over 6 months — helping you spot habits before they become costly.',
@@ -57,7 +57,7 @@ function Landing() {
       bg: 'bg-sky-100 dark:bg-sky-900/30', color: 'text-sky-600 dark:text-sky-400',
       title: 'Receipt Scanner',
       desc: 'Snap a photo of any receipt and automatically extract the amount — no manual entry needed.',
-      detail: 'Stop typing in amounts. Point your camera at any receipt and Fynlo reads the total and logs it instantly. Works with paper receipts, digital screenshots, and invoices of any kind.',
+      detail: 'Stop typing in amounts. Point your camera at any receipt and Spendly reads the total and logs it instantly. Works with paper receipts, digital screenshots, and invoices of any kind.',
       bullets: ['Works with any receipt type', 'Any currency supported', 'Instant expense logging'],
       cta: 'Start scanning',
     },
@@ -84,7 +84,7 @@ function Landing() {
       bg: 'bg-pink-100 dark:bg-pink-900/30', color: 'text-pink-600 dark:text-pink-400',
       title: 'Wellness Score',
       desc: 'Get a financial wellness score based on your habits, with actionable tips to improve.',
-      detail: 'Knowing the score is the first step to changing it. Fynlo calculates a 0–100 financial wellness score based on your saving habits and spending discipline — then hands you a clear plan to improve.',
+      detail: 'Knowing the score is the first step to changing it. Spendly calculates a 0–100 financial wellness score based on your saving habits and spending discipline — then hands you a clear plan to improve.',
       bullets: ['0–100 financial health score', 'Personalized improvement tips', 'Track progress over time'],
       cta: 'Check your score',
     },
@@ -97,12 +97,12 @@ function Landing() {
       <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/60">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <a href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
+            <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-sm">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
               </svg>
             </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Fynlo</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Spendly</span>
           </a>
           <div className="flex items-center gap-2">
             <button onClick={toggleDark} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Toggle theme">
@@ -121,7 +121,7 @@ function Landing() {
             <a href="/login" className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
               Sign in
             </a>
-            <a href="/register" className="px-4 py-2 text-sm font-semibold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 active:scale-95 transition shadow-sm">
+            <a href="/register" className="px-4 py-2 text-sm font-semibold bg-violet-600 text-white rounded-xl hover:bg-violet-700 active:scale-95 transition shadow-sm">
               Get started
             </a>
           </div>
@@ -130,22 +130,22 @@ function Landing() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-linear-to-b from-emerald-50/70 via-white to-white dark:from-emerald-950/20 dark:via-gray-950 dark:to-gray-950 pointer-events-none" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-150 h-150 bg-emerald-400/10 dark:bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-linear-to-b from-violet-50/70 via-white to-white dark:from-violet-950/20 dark:via-gray-950 dark:to-gray-950 pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-150 h-150 bg-violet-400/10 dark:bg-violet-500/5 rounded-full blur-3xl pointer-events-none" />
         <div className="relative max-w-3xl mx-auto px-6 pt-24 pb-20 text-center">
-          <div className="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-400 text-xs font-semibold px-4 py-2 rounded-full mb-8 uppercase tracking-widest">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+          <div className="inline-flex items-center gap-2 bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-800/60 text-violet-700 dark:text-violet-400 text-xs font-semibold px-4 py-2 rounded-full mb-8 uppercase tracking-widest">
+            <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse" />
             Personal Finance, Simplified
           </div>
           <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 dark:text-white leading-[1.1] mb-6 tracking-tight">
             Your money,<br />
-            <span className="text-emerald-600 dark:text-emerald-400">under control.</span>
+            <span className="text-violet-600 dark:text-violet-400">under control.</span>
           </h1>
           <p className="text-lg text-gray-500 dark:text-gray-400 mb-10 max-w-xl mx-auto leading-relaxed">
             Track expenses, set budgets, scan receipts, and get AI-powered insights — all in one clean, intuitive app.
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
-            <a href="/register" className="px-7 py-3.5 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 active:scale-95 transition shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30 text-base">
+            <a href="/register" className="px-7 py-3.5 bg-violet-600 text-white font-semibold rounded-xl hover:bg-violet-700 active:scale-95 transition shadow-lg shadow-violet-200 dark:shadow-violet-900/30 text-base">
               Start for free →
             </a>
             <a href="/login" className="px-7 py-3.5 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition border border-gray-200 dark:border-gray-700 text-base">
@@ -197,8 +197,8 @@ function Landing() {
                 onClick={() => toggleFeature(i)}
                 className={`group bg-white dark:bg-gray-900 border rounded-2xl p-6 cursor-pointer transition-all duration-200 ${
                   isOpen
-                    ? 'border-emerald-300 dark:border-emerald-700 shadow-xl shadow-emerald-50 dark:shadow-emerald-950/30'
-                    : 'border-gray-100 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800/60 hover:shadow-lg hover:shadow-emerald-50 dark:hover:shadow-emerald-950/20'
+                    ? 'border-violet-300 dark:border-violet-700 shadow-xl shadow-violet-50 dark:shadow-violet-950/30'
+                    : 'border-gray-100 dark:border-gray-800 hover:border-violet-200 dark:hover:border-violet-800/60 hover:shadow-lg hover:shadow-violet-50 dark:hover:shadow-violet-950/20'
                 }`}
               >
                 {/* Card header */}
@@ -227,7 +227,7 @@ function Landing() {
                     </ul>
                     <a
                       href="/register"
-                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition"
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition"
                     >
                       {f.cta} →
                     </a>
@@ -250,11 +250,11 @@ function Landing() {
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Install on iPhone / iPad</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Add Fynlo to your home screen for a full native app experience.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Add Spendly to your home screen for a full native app experience.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {['Open this page in Safari', 'Tap the Share button (box with arrow)', 'Select "Add to Home Screen"', 'Tap "Add" to confirm'].map((step, i) => (
                   <div key={i} className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                    <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 flex items-center justify-center text-xs font-bold shrink-0">{i + 1}</span>
+                    <span className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-400 flex items-center justify-center text-xs font-bold shrink-0">{i + 1}</span>
                     <span>{step}</span>
                   </div>
                 ))}
@@ -265,19 +265,19 @@ function Landing() {
       </section>
 
       {/* CTA */}
-      <section className="relative overflow-hidden bg-emerald-600 dark:bg-emerald-700 py-24 px-6">
+      <section className="relative overflow-hidden bg-violet-600 dark:bg-violet-700 py-24 px-6">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.1),transparent_60%)] pointer-events-none" />
         <div className="relative max-w-2xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">
             Ready to take control of your finances?
           </h2>
-          <p className="text-emerald-100 mb-10 text-lg">Join Fynlo today — completely free, no credit card required.</p>
+          <p className="text-violet-100 mb-10 text-lg">Join Spendly today — completely free, no credit card required.</p>
           <div className="flex flex-wrap gap-3 justify-center">
-            <a href="/register" className="px-8 py-3.5 bg-white text-emerald-700 font-semibold rounded-xl hover:bg-emerald-50 active:scale-95 transition shadow-lg text-base">
+            <a href="/register" className="px-8 py-3.5 bg-white text-violet-700 font-semibold rounded-xl hover:bg-violet-50 active:scale-95 transition shadow-lg text-base">
               Create your free account →
             </a>
             {showInstall && (
-              <button onClick={handleInstall} className="px-8 py-3.5 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-400 active:scale-95 transition border border-emerald-400/60 flex items-center gap-2 text-base">
+              <button onClick={handleInstall} className="px-8 py-3.5 bg-violet-500 text-white font-semibold rounded-xl hover:bg-violet-400 active:scale-95 transition border border-violet-400/60 flex items-center gap-2 text-base">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Install App
               </button>
@@ -290,17 +290,17 @@ function Landing() {
       <footer className="bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-emerald-600 rounded-md flex items-center justify-center">
+            <div className="w-6 h-6 bg-violet-600 rounded-md flex items-center justify-center">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
               </svg>
             </div>
-            <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">Fynlo</span>
+            <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">Spendly</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-gray-400 dark:text-gray-500">
             <a href="/login" className="hover:text-gray-600 dark:hover:text-gray-300 transition">Sign in</a>
             <a href="/register" className="hover:text-gray-600 dark:hover:text-gray-300 transition">Get started</a>
-            <span>© 2026 Fynlo</span>
+            <span>© 2026 Spendly</span>
           </div>
         </div>
       </footer>

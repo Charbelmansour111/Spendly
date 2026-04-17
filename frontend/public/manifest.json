@@ -1,11 +1,11 @@
 {
-  "name": "Fynlo",
-  "short_name": "Fynlo",
+  "name": "Spendly",
+  "short_name": "Spendly",
   "description": "Your money, under control.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f9fafb",
-  "theme_color": "#059669",
+  "theme_color": "#7C3AED",
   "orientation": "portrait",
   "icons": [
     {

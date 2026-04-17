@@ -8,7 +8,7 @@ const CURRENCY_SYMBOLS = { USD:'$',EUR:'€',GBP:'£',LBP:'L£',AED:'AED',SAR:'S
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t) }, [onClose])
   return (
-    <div className={`fixed top-6 right-4 left-4 md:left-auto md:right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${type === 'error' ? 'bg-red-500' : 'bg-emerald-500'}`}>
+    <div className={`fixed top-6 right-4 left-4 md:left-auto md:right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${type === 'error' ? 'bg-red-500' : 'bg-violet-500'}`}>
       <span className="flex-1 truncate">{message}</span>
       <button onClick={onClose} className="font-bold opacity-70">x</button>
     </div>
@@ -33,7 +33,7 @@ export default function Profile() {
   // Business mode disabled — business_name field removed
   // const [form, setForm] = useState({ name: '', email: '', currency: 'USD', business_name: '' })
 
-  const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+  const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
   const showToast = (msg, type = 'success') => setToast({ message: msg, type })
 
   // Business mode disabled — always personal
@@ -81,13 +81,13 @@ export default function Profile() {
 
         {/* Avatar header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-20 rounded-3xl bg-emerald-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30 mb-3">
+          <div className="w-20 h-20 rounded-3xl bg-violet-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30 mb-3">
             {user?.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <h1 className="text-xl font-bold text-gray-800 dark:text-white">{user?.name}</h1>
           <p className="text-gray-400 text-sm">{user?.email}</p>
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs px-3 py-1 rounded-full font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+            <span className="text-xs px-3 py-1 rounded-full font-semibold bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400">
               Personal
             </span>
             <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-3 py-1 rounded-full font-semibold">
@@ -115,7 +115,7 @@ export default function Profile() {
             <button key={t.key} onClick={() => setActiveTab(t.key)}
               className={`flex-1 py-2 rounded-xl text-xs font-semibold transition ${
                 activeTab === t.key
-                  ? 'bg-white dark:bg-gray-700 shadow-sm text-emerald-600 dark:text-emerald-400'
+                  ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600 dark:text-violet-400'
                   : 'text-gray-500 dark:text-gray-400'
               }`}>
               {t.label}
@@ -155,7 +155,7 @@ export default function Profile() {
             </div>
 
             <button onClick={handleSave} disabled={saving}
-              className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-700 transition disabled:opacity-50">
+              className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
@@ -181,7 +181,7 @@ export default function Profile() {
                 onChange={e => setPwForm({ ...pwForm, confirm: e.target.value })} className={cls} />
             </div>
             <button onClick={handleChangePassword} disabled={!pwForm.current || !pwForm.newPw || !pwForm.confirm}
-              className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-700 transition disabled:opacity-50">
+              className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
               Change Password
             </button>
           </div>
@@ -200,7 +200,7 @@ export default function Profile() {
 
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
               <h3 className="font-semibold text-gray-800 dark:text-white text-sm mb-1">Your Plan</h3>
-              <div className="rounded-xl p-3 text-xs bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
+              <div className="rounded-xl p-3 text-xs bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400">
                 Personal plan — includes Expense Tracking, Budgets, Savings Goals, AI Insights, Receipt Scanner & more.
               </div>
             </div>

@@ -12,9 +12,9 @@ function NumberModal({ label, value, sub, onClose }) {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-gray-800 rounded-3xl p-8 text-center w-full max-w-xs shadow-2xl" onClick={e => e.stopPropagation()}>
         <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">{label}</p>
-        <p className="text-4xl font-bold text-emerald-600 tabular-nums break-all">{value}</p>
+        <p className="text-4xl font-bold text-violet-600 tabular-nums break-all">{value}</p>
         {sub && <p className="text-sm text-gray-400 mt-2">{sub}</p>}
-        <button onClick={onClose} className="mt-6 w-full bg-emerald-600 text-white py-3 rounded-2xl font-semibold">Done</button>
+        <button onClick={onClose} className="mt-6 w-full bg-violet-600 text-white py-3 rounded-2xl font-semibold">Done</button>
       </div>
     </div>
   )
@@ -61,7 +61,7 @@ function EditSheet({ expense, currencySymbol, onSave, onClose }) {
     date: expense.date?.split('T')[0] || '',
     is_recurring: expense.is_recurring || false,
   })
-  const inputCls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+  const inputCls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -97,12 +97,12 @@ function EditSheet({ expense, currencySymbol, onSave, onClose }) {
               placeholder="Optional" className={inputCls} />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="accent-emerald-600 w-4 h-4" />
+            <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="accent-violet-600 w-4 h-4" />
             <span className="text-sm text-gray-600 dark:text-gray-300">Recurring monthly</span>
           </label>
           <button onClick={() => onSave(form)}
             disabled={!form.amount || !form.date}
-            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-700 transition disabled:opacity-50">
+            className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
             Save Changes
           </button>
         </div>
@@ -248,7 +248,7 @@ export default function Transactions() {
             <p className="text-gray-400 text-sm mt-0.5">{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</p>
           </div>
           <button onClick={exportCSV}
-            className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3 py-2 rounded-xl text-xs font-semibold hover:border-emerald-300 hover:text-emerald-600 transition shadow-sm">
+            className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3 py-2 rounded-xl text-xs font-semibold hover:border-violet-300 hover:text-violet-600 transition shadow-sm">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Export
           </button>
@@ -259,7 +259,7 @@ export default function Transactions() {
   {[
     { label: 'Income', value: fmt(totalIncome, currencySymbol),   color: 'text-green-600',  bg: 'bg-green-50 dark:bg-green-900/20',   sub: income.length + ' sources' },
     { label: 'Spent',  value: fmt(totalExpenses, currencySymbol), color: 'text-red-500',    bg: 'bg-red-50 dark:bg-red-900/20',       sub: expenses.length + ' expenses' },
-    { label: 'Total',  value: String(allTransactions.length),     color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', sub: 'all time transactions' },
+    { label: 'Total',  value: String(allTransactions.length),     color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/20', sub: 'all time transactions' },
   ].map((s, i) => (
     <button key={i} onClick={() => setModalData({ label: s.label, value: s.value, sub: s.sub })}
       className={`${s.bg} rounded-2xl p-3 text-center active:scale-95 transition-transform`}>
@@ -275,7 +275,7 @@ export default function Transactions() {
           <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search transactions..."
-            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-white shadow-sm" />
+            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 text-gray-900 dark:text-white shadow-sm" />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -286,7 +286,7 @@ export default function Transactions() {
         {/* Filter toggle */}
         <div className="flex gap-2 mb-4">
           <button onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${showFilters || hasActiveFilters ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${showFilters || hasActiveFilters ? 'bg-violet-600 text-white border-violet-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
             Filters {hasActiveFilters && '•'}
           </button>
@@ -294,7 +294,7 @@ export default function Transactions() {
           {/* Type quick filters */}
           {['all', 'expense', 'income'].map(t => (
             <button key={t} onClick={() => setType(t)}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition capitalize ${typeFilter === t ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>
+              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition capitalize ${typeFilter === t ? 'bg-violet-600 text-white border-violet-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>
               {t === 'all' ? 'All' : t === 'expense' ? 'Expenses' : 'Income'}
             </button>
           ))}
@@ -307,7 +307,7 @@ export default function Transactions() {
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">Category</label>
                 <select value={catFilter} onChange={e => setCat(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                   <option value="All">All Categories</option>
                   <option>Food</option><option>Transport</option><option>Shopping</option>
                   <option>Subscriptions</option><option>Entertainment</option><option>Other</option>
@@ -317,7 +317,7 @@ export default function Transactions() {
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">Sort by</label>
                 <select value={sortBy} onChange={e => setSort(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                   <option value="newest">Newest First</option>
                   <option value="oldest">Oldest First</option>
                   <option value="highest">Highest Amount</option>
@@ -348,7 +348,7 @@ export default function Transactions() {
             </p>
             {hasActiveFilters && (
               <button onClick={() => { setType('all'); setCat('All'); setSort('newest'); setSearch('') }}
-                className="mt-4 text-emerald-600 text-sm font-semibold hover:underline">
+                className="mt-4 text-violet-600 text-sm font-semibold hover:underline">
                 Clear filters
               </button>
             )}
@@ -405,7 +405,7 @@ export default function Transactions() {
                         {tx.txType === 'expense' && (
                           <div className="hidden group-hover:flex items-center gap-1">
                             <button onClick={() => setEditing(tx)}
-                              className="text-emerald-400 hover:text-emerald-600 p-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition">
+                              className="text-violet-400 hover:text-violet-600 p-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
                                 <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
