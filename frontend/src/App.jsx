@@ -13,13 +13,10 @@ import Reports from './pages/Reports'
 import Insights from './pages/Insights'
 import Wellness from './pages/Wellness'
 import Transactions from './pages/Transactions'
-
-// Business imports — disabled until business mode is re-enabled
-// import BusinessDashboard from './pages/BusinessDashboard'
-// import BusinessMenu from './pages/BusinessMenu'
-// import BusinessStock from './pages/BusinessStock'
-// import BusinessTransactions from './pages/BusinessTransactions'
-// import BusinessReports from './pages/BusinessReports'
+import Debts from './pages/Debts'
+import Subscriptions from './pages/Subscriptions'
+import Terms from './pages/Terms'
+import Privacy from './pages/Privacy'
 
 function App() {
   return (
@@ -31,6 +28,8 @@ function App() {
         <Route path="/verify-email"          element={<VerifyEmail />} />
         <Route path="/forgot-password"       element={<ForgotPassword />} />
         <Route path="/account-type"          element={<AccountType />} />
+        <Route path="/terms"                 element={<Terms />} />
+        <Route path="/privacy"               element={<Privacy />} />
 
         {/* Personal */}
         <Route path="/dashboard"             element={<Dashboard />} />
@@ -41,13 +40,8 @@ function App() {
         <Route path="/insights"              element={<Insights />} />
         <Route path="/wellness"              element={<Wellness />} />
         <Route path="/transactions"          element={<Transactions />} />
-
-        {/* Business routes — disabled until business mode is re-enabled */}
-        {/* <Route path="/business"              element={<BusinessDashboard />} /> */}
-        {/* <Route path="/business/menu"         element={<BusinessMenu />} /> */}
-        {/* <Route path="/business/stock"        element={<BusinessStock />} /> */}
-        {/* <Route path="/business/transactions" element={<BusinessTransactions />} /> */}
-        {/* <Route path="/business/reports"      element={<BusinessReports />} /> */}
+        <Route path="/debts"                 element={<Debts />} />
+        <Route path="/subscriptions"         element={<Subscriptions />} />
 
         <Route path="/business"              element={<Navigate to="/dashboard" replace />} />
         <Route path="/business/*"            element={<Navigate to="/dashboard" replace />} />

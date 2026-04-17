@@ -4,6 +4,7 @@ import API from '../utils/api'
 import ReceiptScanner from '../components/ReceiptScanner'
 import { DashboardSkeleton } from '../components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import Onboarding from '../components/Onboarding'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
@@ -192,11 +193,16 @@ export default function Dashboard() {
   const [editingExpense, setEditing]  = useState(null)
   const [editForm, setEditForm]       = useState({ amount: '', category: 'Food', description: '', date: '', is_recurring: false })
   const [showNotifs, setShowNotifs]   = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('spendly_onboarded'))
 
   // Carousel + news state
   const [carouselPanel, setCarousel]  = useState(0)
   const [news, setNews]               = useState([])
   const [newsLoading, setNewsLoading] = useState(() => !!localStorage.getItem('token'))
+
+  // Net worth data
+  const [debts, setDebts]   = useState([])
+  const [subs, setSubs]     = useState([])
   const touchStartX = useRef(null)
   const notifRef    = useRef(null)
 
@@ -239,6 +245,13 @@ export default function Dashboard() {
   useEffect(() => {
     if (!localStorage.getItem('token')) return
     API.get('/news').then(r => setNews(r.data || [])).catch(() => { /* noop */ }).finally(() => setNewsLoading(false))
+  }, [])
+
+  // Fetch debts + subscriptions for net worth
+  useEffect(() => {
+    if (!localStorage.getItem('token')) return
+    API.get('/debts').then(r => setDebts(r.data || [])).catch(() => {})
+    API.get('/subscriptions').then(r => setSubs(r.data || [])).catch(() => {})
   }, [])
 
   // Close notification panel on outside click
@@ -413,6 +426,7 @@ export default function Dashboard() {
     <Layout unreadCount={unread} onBellClick={() => { setShowNotifs(v => !v); if (!showNotifs) markRead() }}>
       {toast    && <Toast {...toast} onClose={() => setToast(null)} />}
       {confirm  && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
+      {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('spendly_onboarded', '1'); setShowOnboarding(false) }} />}
       {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
       {showAddExp && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} />}
       {showAddInc && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}
@@ -618,6 +632,37 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Upcoming Bills */}
+        {(() => {
+          const upcoming = subs.filter(s => {
+            if (!s.next_billing_date) return false
+            const days = Math.ceil((new Date(s.next_billing_date) - new Date()) / (1000 * 60 * 60 * 24))
+            return days >= 0 && days <= 7
+          }).sort((a, b) => new Date(a.next_billing_date) - new Date(b.next_billing_date))
+          if (!upcoming.length) return null
+          return (
+            <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-4 mb-4">
+              <h3 className="font-semibold text-amber-800 dark:text-amber-400 text-sm mb-3">⏰ Bills Due This Week</h3>
+              <div className="space-y-2">
+                {upcoming.map(s => {
+                  const days = Math.ceil((new Date(s.next_billing_date) - new Date()) / (1000 * 60 * 60 * 24))
+                  return (
+                    <div key={s.id} className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800 dark:text-white">{s.name}</p>
+                        <p className={`text-xs font-semibold ${days === 0 ? 'text-red-500' : 'text-amber-600 dark:text-amber-400'}`}>
+                          {days === 0 ? 'Due today' : `In ${days} day${days > 1 ? 's' : ''}`}
+                        </p>
+                      </div>
+                      <p className="font-bold text-gray-800 dark:text-white text-sm tabular-nums">{currencySymbol}{safeNum(s.amount).toFixed(2)}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Recent Transactions */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
           <div className="flex justify-between items-center mb-4">
@@ -806,6 +851,34 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* Net Worth */}
+        {(debts.length > 0 || savingsGoals.length > 0) && (() => {
+          const totalSaved = savingsGoals.reduce((s, g) => s + safeNum(g.saved_amount), 0)
+          const totalDebt  = debts.reduce((s, d) => s + safeNum(d.remaining_amount), 0)
+          const netWorth   = totalSaved - totalDebt
+          return (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Net Worth</h3>
+                <a href="/debts" className="text-violet-600 text-xs font-semibold hover:underline">Manage Debts</a>
+              </div>
+              <p className={`text-3xl font-bold tabular-nums mb-4 ${netWorth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {netWorth >= 0 ? '+' : '-'}{fmt(Math.abs(netWorth), currencySymbol)}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3">
+                  <p className="text-xs text-green-600 dark:text-green-400 font-semibold mb-1">Assets (Savings)</p>
+                  <p className="text-base font-bold text-green-600 tabular-nums">{fmt(totalSaved, currencySymbol)}</p>
+                </div>
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
+                  <p className="text-xs text-red-500 font-semibold mb-1">Liabilities (Debt)</p>
+                  <p className="text-base font-bold text-red-500 tabular-nums">{fmt(totalDebt, currencySymbol)}</p>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* 6-Month Trend */}
         {trendsData.length > 1 && (

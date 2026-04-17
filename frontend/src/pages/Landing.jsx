@@ -300,6 +300,8 @@ function Landing() {
           <div className="flex items-center gap-6 text-sm text-gray-400 dark:text-gray-500">
             <a href="/login" className="hover:text-gray-600 dark:hover:text-gray-300 transition">Sign in</a>
             <a href="/register" className="hover:text-gray-600 dark:hover:text-gray-300 transition">Get started</a>
+            <a href="/terms" className="hover:text-gray-600 dark:hover:text-gray-300 transition">Terms</a>
+            <a href="/privacy" className="hover:text-gray-600 dark:hover:text-gray-300 transition">Privacy</a>
             <span>© 2026 Spendly</span>
           </div>
         </div>
