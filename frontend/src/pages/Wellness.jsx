@@ -191,12 +191,12 @@ export default function Wellness() {
         </div>
 
         {/* Health Score */}
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white mb-6">
+        <div className="bg-gradient-to-r from-emerald-600 to-purple-600 rounded-2xl p-6 text-white mb-6">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <ScoreRing score={data?.score || 0} />
             <div className="flex-1 w-full">
               <h2 className="text-xl font-bold mb-1">Financial Health Score</h2>
-              <p className="text-indigo-200 text-sm mb-4">{monthName}</p>
+              <p className="text-emerald-200 text-sm mb-4">{monthName}</p>
               <div className="space-y-2">
                 {data?.breakdown?.map((item, i) => (
                   <div key={i} className="flex items-center gap-3">
@@ -230,7 +230,7 @@ export default function Wellness() {
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center">
             <p className="text-xs text-gray-400 mb-1">Saved</p>
-            <p className={`text-lg font-bold ${(data?.balance || 0) >= 0 ? 'text-indigo-600' : 'text-red-500'}`}>
+            <p className={`text-lg font-bold ${(data?.balance || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
               {(data?.balance || 0) >= 0 ? '+' : '-'}{currencySymbol}{Math.abs(data?.balance || 0).toFixed(2)}
             </p>
           </div>
@@ -246,7 +246,7 @@ export default function Wellness() {
           {data?.achievements?.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {data.achievements.map((a, i) => (
-                <div key={i} className="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3">
+                <div key={i} className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3">
                   <span className="text-2xl">{a.icon}</span>
                   <div>
                     <p className="text-sm font-semibold text-gray-800 dark:text-white">{a.title}</p>
@@ -279,7 +279,7 @@ export default function Wellness() {
               {highScore > 0 && <p className="text-yellow-400 text-xs mt-1">🏆 Best: ${highScore}</p>}
             </div>
             <button onClick={() => setShowGame(true)}
-              className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition">
+              className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700 transition">
               🎮 Play
             </button>
           </div>
@@ -297,18 +297,18 @@ export default function Wellness() {
             <div className="flex justify-between mb-4">
               {moods.map((m) => (
                 <button key={m.value} onClick={() => saveMood(m.value)}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${selectedMood === m.value || data?.mood?.mood === m.value ? 'bg-indigo-100 dark:bg-indigo-900/30 scale-110' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                  className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${selectedMood === m.value || data?.mood?.mood === m.value ? 'bg-emerald-100 dark:bg-emerald-900/30 scale-110' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                   <span className="text-2xl">{m.emoji}</span>
                   <span className="text-xs text-gray-500 dark:text-gray-400">{m.label}</span>
                 </button>
               ))}
             </div>
             {moodResponseLoading && (
-              <div className="animate-pulse h-8 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl" />
+              <div className="animate-pulse h-8 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl" />
             )}
             {moodResponse && !moodResponseLoading && (
-              <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl px-4 py-3">
-                <p className="text-sm text-indigo-700 dark:text-indigo-300 leading-relaxed">{moodResponse}</p>
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl px-4 py-3">
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 leading-relaxed">{moodResponse}</p>
               </div>
             )}
           </div>
@@ -335,18 +335,18 @@ export default function Wellness() {
         </div>
 
         {/* AI Quote */}
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-2xl p-6 mb-6 border border-indigo-100 dark:border-indigo-800">
+        <div className="bg-gradient-to-r from-emerald-50 to-purple-50 dark:from-emerald-900/20 dark:to-purple-900/20 rounded-2xl p-6 mb-6 border border-emerald-100 dark:border-emerald-800">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-semibold text-indigo-600">💬 Motivational Quote</h3>
+            <h3 className="text-sm font-semibold text-emerald-600">💬 Motivational Quote</h3>
             <button onClick={fetchQuote} disabled={quoteLoading}
-              className="text-xs text-indigo-500 hover:text-indigo-600 font-semibold disabled:opacity-50 flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/30 px-3 py-1.5 rounded-full transition">
+              className="text-xs text-emerald-500 hover:text-emerald-600 font-semibold disabled:opacity-50 flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full transition">
               {quoteLoading ? '⏳' : '🔄'} New quote
             </button>
           </div>
           {quoteLoading ? (
             <div className="animate-pulse space-y-2">
-              <div className="h-5 bg-indigo-100 dark:bg-gray-600 rounded-xl w-3/4" />
-              <div className="h-4 bg-indigo-100 dark:bg-gray-600 rounded-xl w-1/3" />
+              <div className="h-5 bg-emerald-100 dark:bg-gray-600 rounded-xl w-3/4" />
+              <div className="h-4 bg-emerald-100 dark:bg-gray-600 rounded-xl w-1/3" />
             </div>
           ) : (
             <>
@@ -364,9 +364,9 @@ export default function Wellness() {
             <textarea value={monthlyGoal} onChange={e => setMonthlyGoal(e.target.value)}
               placeholder="e.g. Spend less on food and save $200..."
               rows={3}
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none" />
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none" />
             <button onClick={saveGoal}
-              className="mt-3 w-full bg-indigo-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">
+              className="mt-3 w-full bg-emerald-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition">
               {goalSaved ? '✅ Saved!' : 'Save Goal'}
             </button>
           </div>
@@ -377,7 +377,7 @@ export default function Wellness() {
             <textarea value={note} onChange={e => setNote(e.target.value)}
               placeholder="Write anything — reminders, thoughts, goals..."
               rows={3}
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none" />
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none" />
             <button onClick={saveNote}
               className="mt-3 w-full bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition">
               {noteSaved ? '✅ Saved!' : 'Save Note'}
@@ -393,24 +393,24 @@ export default function Wellness() {
             <div className="flex-1">
               <input type="text" placeholder="What are you saving for? (e.g. Dream vacation)"
                 value={visionTitle} onChange={e => setVisionTitle(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm mb-3" />
-              <label className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-indigo-300 dark:border-indigo-700 rounded-xl py-6 cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm mb-3" />
+              <label className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-emerald-300 dark:border-emerald-700 rounded-xl py-6 cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition">
                 <span className="text-2xl">📸</span>
-                <span className="text-sm text-indigo-600 font-medium">Upload Image</span>
+                <span className="text-sm text-emerald-600 font-medium">Upload Image</span>
                 <input type="file" accept="image/*" className="hidden" onChange={handleVisionUpload} />
               </label>
             </div>
             {visionPreview && (
               <div className="md:w-48 w-full">
                 <img src={visionPreview} alt="Vision" className="w-full h-40 object-cover rounded-xl shadow-sm" />
-                {visionTitle && <p className="text-center text-sm font-medium text-indigo-600 mt-2">{visionTitle}</p>}
+                {visionTitle && <p className="text-center text-sm font-medium text-emerald-600 mt-2">{visionTitle}</p>}
               </div>
             )}
           </div>
         </div>
 
         <footer className="text-center py-6 text-gray-400 text-sm">
-          <p>2026 <span className="text-indigo-600 font-semibold">Spendly</span> — Track smarter, spend better</p>
+          <p>2026 <span className="text-emerald-600 font-semibold">Fynlo</span> — Track smarter, spend better</p>
         </footer>
 
       </div>

@@ -52,7 +52,7 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
               <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
             </svg>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">Spendly</h1>
+          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">Fynlo</h1>
         </div>
         <p className="text-xs text-gray-400 mt-1 ml-9">Track smarter, spend better</p>
       </div>
@@ -151,7 +151,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
               <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
             </svg>
           </div>
-          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">Spendly</h1>
+          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">Fynlo</h1>
         </div>
         <div className="flex items-center gap-1">
           <button onClick={onBellClick} className="relative p-2 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">

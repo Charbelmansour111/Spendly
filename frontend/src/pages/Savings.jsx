@@ -21,8 +21,8 @@ function NumberModal({ label, value, onClose }) {
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 text-center w-full max-w-xs" onClick={e => e.stopPropagation()}>
         <p className="text-sm text-gray-400 mb-3">{label}</p>
-        <p className="text-4xl font-bold text-indigo-600 tabular-nums break-all">{value}</p>
-        <button onClick={onClose} className="mt-6 w-full bg-indigo-600 text-white py-3 rounded-2xl font-semibold">Done</button>
+        <p className="text-4xl font-bold text-emerald-600 tabular-nums break-all">{value}</p>
+        <button onClick={onClose} className="mt-6 w-full bg-emerald-600 text-white py-3 rounded-2xl font-semibold">Done</button>
       </div>
     </div>
   )
@@ -110,7 +110,7 @@ export default function Savings() {
   const totalTarget = goals.reduce((sum, g) => sum + safeNum(g.target_amount), 0)
   const completed   = goals.filter(g => safeNum(g.saved_amount) >= safeNum(g.target_amount)).length
 
-  const inputCls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+  const inputCls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
 
   return (
     <Layout>
@@ -126,7 +126,7 @@ export default function Savings() {
             <p className="text-gray-400 text-sm mt-0.5">Track your progress toward financial goals</p>
           </div>
           <button onClick={() => setShowForm(!showForm)}
-            className="flex-shrink-0 bg-indigo-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-indigo-700 transition text-sm">
+            className="flex-shrink-0 bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition text-sm">
             {showForm ? 'Cancel' : '+ New Goal'}
           </button>
         </div>
@@ -136,7 +136,7 @@ export default function Savings() {
           <div className="grid grid-cols-3 gap-3 mb-6">
             {[
               { label: 'Total Saved',  value: currencySymbol + totalSaved.toFixed(2),  color: 'text-green-600' },
-              { label: 'Total Target', value: currencySymbol + totalTarget.toFixed(2), color: 'text-indigo-600' },
+              { label: 'Total Target', value: currencySymbol + totalTarget.toFixed(2), color: 'text-emerald-600' },
               { label: 'Completed',    value: completed + '/' + goals.length,          color: 'text-purple-600' },
             ].map((s, i) => (
               <button key={i} onClick={() => setModalData({ label: s.label, value: s.value })}
@@ -151,7 +151,7 @@ export default function Savings() {
 
         {/* New Goal Form */}
         {showForm && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 mb-5 border-2 border-indigo-200 dark:border-indigo-700">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 mb-5 border-2 border-emerald-200 dark:border-emerald-700">
             <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-4">Create New Goal</h2>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
@@ -175,7 +175,7 @@ export default function Savings() {
                   onChange={e => setForm({ ...form, deadline: e.target.value })} required className={inputCls} />
               </div>
               <div className="col-span-2">
-                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition">
+                <button type="submit" className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition">
                   Create Goal
                 </button>
               </div>
@@ -194,7 +194,7 @@ export default function Savings() {
             <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-2">No savings goals yet</h3>
             <p className="text-gray-400 text-sm mb-6">Create your first goal to start tracking your savings progress!</p>
             <button onClick={() => setShowForm(true)}
-              className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-indigo-700 transition text-sm">
+              className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-emerald-700 transition text-sm">
               + Create First Goal
             </button>
           </div>
@@ -261,14 +261,14 @@ export default function Savings() {
                   {/* Progress bar */}
                   <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 mb-2">
                     <div className={`h-3 rounded-full transition-all duration-500 ${
-                      isComplete ? 'bg-green-500' : pct >= 75 ? 'bg-lime-500' : pct >= 40 ? 'bg-yellow-400' : 'bg-indigo-500'
+                      isComplete ? 'bg-green-500' : pct >= 75 ? 'bg-lime-500' : pct >= 40 ? 'bg-yellow-400' : 'bg-emerald-500'
                     }`} style={{ width: pct + '%' }} />
                   </div>
 
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-xs text-gray-400">{pct.toFixed(0)}% complete</span>
                     {!isComplete && monthlyNeeded > 0 && (
-                      <span className="text-xs text-indigo-600 font-semibold">
+                      <span className="text-xs text-emerald-600 font-semibold">
                         Save {currencySymbol}{monthlyNeeded.toFixed(0)}/mo
                       </span>
                     )}
@@ -283,7 +283,7 @@ export default function Savings() {
                           min="0.01" step="0.01" className={inputCls} />
                         <div className="flex gap-2">
                           <button onClick={() => handleAddFunds(goal.id)}
-                            className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">
+                            className="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition">
                             Add Funds
                           </button>
                           <button onClick={() => { setAddFundsId(null); setAddFundsAmount('') }}
@@ -294,7 +294,7 @@ export default function Savings() {
                       </div>
                     ) : (
                       <button onClick={() => setAddFundsId(goal.id)}
-                        className="w-full border border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+                        className="w-full border border-emerald-200 dark:border-emerald-700 text-emerald-600 dark:text-emerald-400 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition">
                         + Add Funds
                       </button>
                     )

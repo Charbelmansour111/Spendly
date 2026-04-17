@@ -24,8 +24,8 @@ function NumberModal({ label, value, onClose }) {
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 text-center w-full max-w-xs" onClick={e => e.stopPropagation()}>
         <p className="text-sm text-gray-400 mb-3">{label}</p>
-        <p className="text-4xl font-bold text-indigo-600 tabular-nums break-all">{value}</p>
-        <button onClick={onClose} className="mt-6 w-full bg-indigo-600 text-white py-3 rounded-2xl font-semibold">Done</button>
+        <p className="text-4xl font-bold text-emerald-600 tabular-nums break-all">{value}</p>
+        <button onClick={onClose} className="mt-6 w-full bg-emerald-600 text-white py-3 rounded-2xl font-semibold">Done</button>
       </div>
     </div>
   )
@@ -101,7 +101,7 @@ export default function Reports() {
 
   const exportPDF = () => {
     const doc = new jsPDF()
-    doc.setFontSize(24); doc.setTextColor(79, 70, 229); doc.text('Spendly', 14, 20)
+    doc.setFontSize(24); doc.setTextColor(5, 150, 105); doc.text('Fynlo', 14, 20)
     doc.setFontSize(11); doc.setTextColor(100, 100, 100)
     doc.text('Report for: ' + (user?.name || 'User'), 14, 30)
     doc.text('Period: ' + monthName, 14, 37)
@@ -118,7 +118,7 @@ export default function Reports() {
         currencySymbol + c.value.toFixed(2),
         total > 0 ? ((c.value / total) * 100).toFixed(0) + '%' : '0%'
       ]),
-      headStyles: { fillColor: [79, 70, 229] }
+      headStyles: { fillColor: [5, 150, 105] }
     })
     const firstEnd = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : 120
     autoTable(doc, {
@@ -130,7 +130,7 @@ export default function Reports() {
         e.description || '-',
         currencySymbol + parseFloat(e.amount).toFixed(2)
       ]),
-      headStyles: { fillColor: [79, 70, 229] }
+      headStyles: { fillColor: [5, 150, 105] }
     })
     doc.save('spendly-' + monthName.replace(' ', '-') + '.pdf')
     showToast('PDF downloaded!')
@@ -175,15 +175,15 @@ export default function Reports() {
         {/* Month Selector */}
         <div className="flex items-center justify-between mb-6 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm">
           <button onClick={prevMonth}
-            className="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition text-lg font-bold text-gray-600 dark:text-gray-300">
+            className="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 transition text-lg font-bold text-gray-600 dark:text-gray-300">
             &lsaquo;
           </button>
           <div className="text-center">
             <p className="font-semibold text-gray-800 dark:text-white">{monthName}</p>
-            {isCurrentMonth && <span className="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-600 px-2 py-0.5 rounded-full">Current</span>}
+            {isCurrentMonth && <span className="text-xs bg-emerald-100 dark:bg-emerald-900 text-emerald-600 px-2 py-0.5 rounded-full">Current</span>}
           </div>
           <button onClick={nextMonth} disabled={isCurrentMonth}
-            className={`w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center transition text-lg font-bold ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600'}`}>
+            className={`w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center transition text-lg font-bold ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-emerald-50 hover:text-emerald-600'}`}>
             &rsaquo;
           </button>
         </div>
@@ -193,7 +193,7 @@ export default function Reports() {
           {[
             { label: 'Income',  value: currencySymbol + totalIncome.toFixed(2), color: 'text-green-600' },
             { label: 'Spent',   value: currencySymbol + total.toFixed(2),       color: 'text-red-500' },
-            { label: 'Balance', value: (balance >= 0 ? '+' : '') + currencySymbol + balance.toFixed(2), color: balance >= 0 ? 'text-indigo-600' : 'text-red-500' },
+            { label: 'Balance', value: (balance >= 0 ? '+' : '') + currencySymbol + balance.toFixed(2), color: balance >= 0 ? 'text-emerald-600' : 'text-red-500' },
           ].map((s, i) => (
             <button key={i} onClick={() => setModalData({ label: s.label + ' — ' + monthName, value: s.value })}
               className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center min-w-0 active:scale-95 transition-transform">
@@ -210,7 +210,7 @@ export default function Reports() {
           <p className="text-gray-400 text-xs mb-4">Download your financial data in your preferred format</p>
           <div className="flex gap-3">
             <button onClick={exportPDF}
-              className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition flex items-center justify-center gap-2 text-sm">
+              className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition flex items-center justify-center gap-2 text-sm">
               PDF
             </button>
             <button onClick={exportCSV}
@@ -277,7 +277,7 @@ export default function Reports() {
                     <tr key={e.id} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
                       <td className="py-3 px-2 text-gray-500 text-xs whitespace-nowrap">{e.date?.split('T')[0]}</td>
                       <td className="py-3 px-2">
-                        <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
+                        <span className="bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
                           {e.category}
                         </span>
                       </td>

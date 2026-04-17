@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useDarkMode } from '../hooks/useDarkMode'
 
+const ChevronDown = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9"/>
+  </svg>
+)
+
 function Landing() {
   const [dark, toggleDark] = useDarkMode()
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstall, setShowInstall] = useState(false)
+  const [openFeature, setOpenFeature] = useState(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -24,42 +31,62 @@ function Landing() {
     setDeferredPrompt(null)
   }
 
+  const toggleFeature = (i) => setOpenFeature(prev => prev === i ? null : i)
+
   const features = [
     {
       icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
       bg: 'bg-emerald-100 dark:bg-emerald-900/30', color: 'text-emerald-600 dark:text-emerald-400',
       title: 'Spending Charts',
       desc: 'Visualize your cash flow with interactive charts broken down by category and time period.',
+      detail: 'See exactly where every dollar goes. Interactive charts reveal your spending by category and show trends over 6 months — helping you spot habits before they become costly.',
+      bullets: ['Monthly & weekly views', 'Category breakdowns', '6-month trend history'],
+      cta: 'Start tracking free',
     },
     {
       icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>,
       bg: 'bg-violet-100 dark:bg-violet-900/30', color: 'text-violet-600 dark:text-violet-400',
       title: 'AI-Powered Insights',
       desc: 'Chat with your personal AI finance advisor to uncover spending patterns and get tailored tips.',
+      detail: 'Have a real conversation about your finances. Our intelligent advisor analyzes your actual transactions and delivers answers that are specific to you — not generic advice from a template.',
+      bullets: ['Knows your real spending data', 'Ask anything, anytime', 'Personalized action items'],
+      cta: 'Try AI Insights',
     },
     {
       icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>,
       bg: 'bg-sky-100 dark:bg-sky-900/30', color: 'text-sky-600 dark:text-sky-400',
       title: 'Receipt Scanner',
       desc: 'Snap a photo of any receipt and automatically extract the amount — no manual entry needed.',
+      detail: 'Stop typing in amounts. Point your camera at any receipt and Fynlo reads the total and logs it instantly. Works with paper receipts, digital screenshots, and invoices of any kind.',
+      bullets: ['Works with any receipt type', 'Any currency supported', 'Instant expense logging'],
+      cta: 'Start scanning',
     },
     {
       icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>,
       bg: 'bg-amber-100 dark:bg-amber-900/30', color: 'text-amber-600 dark:text-amber-400',
       title: 'Budget Goals',
       desc: 'Set monthly limits per category and receive real-time alerts before you overspend.',
+      detail: 'Set the limits and we handle the rest. Define monthly budgets per spending category and receive a real-time alert the moment you\'re approaching your limit — before the damage is done.',
+      bullets: ['Per-category monthly limits', 'Real-time alert notifications', 'Visual progress tracking'],
+      cta: 'Set your first budget',
     },
     {
       icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
       bg: 'bg-rose-100 dark:bg-rose-900/30', color: 'text-rose-600 dark:text-rose-400',
       title: 'PDF & CSV Reports',
       desc: 'Export a professional financial report of all your expenses and income in one click.',
+      detail: 'Your complete financial picture, ready in seconds. Generate a clean breakdown of every transaction — perfect for personal review, tax season, or sharing with your accountant.',
+      bullets: ['One-click PDF or CSV export', 'Filter by month or date range', 'Clean, professional layout'],
+      cta: 'Get your report',
     },
     {
       icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
       bg: 'bg-pink-100 dark:bg-pink-900/30', color: 'text-pink-600 dark:text-pink-400',
       title: 'Wellness Score',
       desc: 'Get a financial wellness score based on your habits, with actionable tips to improve.',
+      detail: 'Knowing the score is the first step to changing it. Fynlo calculates a 0–100 financial wellness score based on your saving habits and spending discipline — then hands you a clear plan to improve.',
+      bullets: ['0–100 financial health score', 'Personalized improvement tips', 'Track progress over time'],
+      cta: 'Check your score',
     },
   ]
 
@@ -69,14 +96,14 @@ function Landing() {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/60">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2.5">
+          <a href="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
               </svg>
             </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Spendly</span>
-          </div>
+            <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Fynlo</span>
+          </a>
           <div className="flex items-center gap-2">
             <button onClick={toggleDark} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Toggle theme">
               {dark ? (
@@ -151,26 +178,64 @@ function Landing() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Features — click any card to learn more */}
       <section className="max-w-5xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
             Everything you need to manage your money
           </h2>
           <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto leading-relaxed">
-            Powerful tools with a clean, intuitive interface so you can focus on what matters.
+            Powerful tools with a clean, intuitive interface. Click any feature to learn more.
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {features.map((f, i) => (
-            <div key={i} className="group bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 hover:border-emerald-200 dark:hover:border-emerald-800/60 hover:shadow-xl hover:shadow-emerald-50 dark:hover:shadow-emerald-950/30 transition-all duration-200">
-              <div className={`w-11 h-11 ${f.bg} ${f.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200`}>
-                {f.icon}
+          {features.map((f, i) => {
+            const isOpen = openFeature === i
+            return (
+              <div
+                key={i}
+                onClick={() => toggleFeature(i)}
+                className={`group bg-white dark:bg-gray-900 border rounded-2xl p-6 cursor-pointer transition-all duration-200 ${
+                  isOpen
+                    ? 'border-emerald-300 dark:border-emerald-700 shadow-xl shadow-emerald-50 dark:shadow-emerald-950/30'
+                    : 'border-gray-100 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800/60 hover:shadow-lg hover:shadow-emerald-50 dark:hover:shadow-emerald-950/20'
+                }`}
+              >
+                {/* Card header */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className={`w-11 h-11 ${f.bg} ${f.color} rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 ${isOpen ? 'scale-110' : 'group-hover:scale-105'}`}>
+                    {f.icon}
+                  </div>
+                  <span className={`mt-1 transition-transform duration-200 text-gray-400 dark:text-gray-500 ${isOpen ? 'rotate-180' : ''}`}>
+                    <ChevronDown />
+                  </span>
+                </div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white mt-4 mb-2">{f.title}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
+
+                {/* Expanded panel */}
+                {isOpen && (
+                  <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-700/60" onClick={e => e.stopPropagation()}>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{f.detail}</p>
+                    <ul className="space-y-2 mb-5">
+                      {f.bullets.map((b, j) => (
+                        <li key={j} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${f.color.replace('text-', 'bg-').split(' ')[0]}`} />
+                          {b}
+                        </li>
+                      ))}
+                    </ul>
+                    <a
+                      href="/register"
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition"
+                    >
+                      {f.cta} →
+                    </a>
+                  </div>
+                )}
               </div>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">{f.title}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </section>
 
@@ -185,7 +250,7 @@ function Landing() {
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Install on iPhone / iPad</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Add Spendly to your home screen for a full native app experience.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Add Fynlo to your home screen for a full native app experience.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {['Open this page in Safari', 'Tap the Share button (box with arrow)', 'Select "Add to Home Screen"', 'Tap "Add" to confirm'].map((step, i) => (
                   <div key={i} className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
@@ -206,7 +271,7 @@ function Landing() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">
             Ready to take control of your finances?
           </h2>
-          <p className="text-emerald-100 mb-10 text-lg">Join Spendly today — completely free, no credit card required.</p>
+          <p className="text-emerald-100 mb-10 text-lg">Join Fynlo today — completely free, no credit card required.</p>
           <div className="flex flex-wrap gap-3 justify-center">
             <a href="/register" className="px-8 py-3.5 bg-white text-emerald-700 font-semibold rounded-xl hover:bg-emerald-50 active:scale-95 transition shadow-lg text-base">
               Create your free account →
@@ -230,9 +295,13 @@ function Landing() {
                 <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
               </svg>
             </div>
-            <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">Spendly</span>
+            <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">Fynlo</span>
           </div>
-          <p className="text-sm text-gray-400 dark:text-gray-500">© 2026 Spendly — Track smarter, spend better.</p>
+          <div className="flex items-center gap-6 text-sm text-gray-400 dark:text-gray-500">
+            <a href="/login" className="hover:text-gray-600 dark:hover:text-gray-300 transition">Sign in</a>
+            <a href="/register" className="hover:text-gray-600 dark:hover:text-gray-300 transition">Get started</a>
+            <span>© 2026 Fynlo</span>
+          </div>
         </div>
       </footer>
 

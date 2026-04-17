@@ -23,9 +23,9 @@ function NumberModal({ label, value, sub, onClose }) {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-gray-800 rounded-3xl p-8 text-center w-full max-w-xs shadow-2xl" onClick={e => e.stopPropagation()}>
         <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">{label}</p>
-        <p className="text-4xl font-bold text-indigo-600 tabular-nums break-all">{value}</p>
+        <p className="text-4xl font-bold text-emerald-600 tabular-nums break-all">{value}</p>
         {sub && <p className="text-sm text-gray-400 mt-2">{sub}</p>}
-        <button onClick={onClose} className="mt-6 w-full bg-indigo-600 text-white py-3 rounded-2xl font-semibold">Done</button>
+        <button onClick={onClose} className="mt-6 w-full bg-emerald-600 text-white py-3 rounded-2xl font-semibold">Done</button>
       </div>
     </div>
   )
@@ -82,13 +82,13 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
             <input type="number" placeholder="0.00" value={form.amount}
               onChange={e => setForm({ ...form, amount: e.target.value })}
               required min="0.01" step="0.01"
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Category</label>
               <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
-                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
                 <option>Food</option><option>Transport</option><option>Shopping</option>
                 <option>Subscriptions</option><option>Entertainment</option><option>Other</option>
               </select>
@@ -96,22 +96,22 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Date</label>
               <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
-                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
             </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Description (optional)</label>
             <input type="text" placeholder="What was this for?" value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="w-4 h-4 accent-indigo-600" />
+            <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="w-4 h-4 accent-emerald-600" />
             <span className="text-sm text-gray-600 dark:text-gray-300">Recurring monthly</span>
           </label>
           <button onClick={() => onSave(form)}
             disabled={!form.amount || !form.date}
-            className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-indigo-700 transition disabled:opacity-50 mt-1">
+            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-emerald-700 transition disabled:opacity-50 mt-1">
             Add Expense
           </button>
         </div>
@@ -139,12 +139,12 @@ function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
             <input type="number" placeholder="0.00" value={form.amount}
               onChange={e => setForm({ ...form, amount: e.target.value })}
               min="0.01" step="0.01"
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Source</label>
             <select value={form.source} onChange={e => setForm({ ...form, source: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
               <option>Salary</option><option>Freelance</option><option>Business</option><option>Investment</option><option>Other</option>
             </select>
           </div>
@@ -320,7 +320,7 @@ export default function Dashboard() {
     </Layout>
   )
 
-  const inputCls = "w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+  const inputCls = "w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
 
   return (
     <Layout unreadCount={unread} onBellClick={() => { setShowNotifs(!showNotifs); if (!showNotifs) markRead() }}>
@@ -353,25 +353,25 @@ export default function Dashboard() {
 
         {/* Month Selector */}
         <div className="flex items-center justify-between mb-5">
-          <button onClick={prevMonth} className="w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 transition font-bold text-lg">&lsaquo;</button>
+          <button onClick={prevMonth} className="w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-emerald-50 hover:text-emerald-600 transition font-bold text-lg">&lsaquo;</button>
           <div className="text-center">
             <p className="font-semibold text-gray-800 dark:text-white text-sm">{monthName}</p>
-            {isCurrentMonth && <span className="text-xs text-indigo-500 font-medium">Current month</span>}
+            {isCurrentMonth && <span className="text-xs text-emerald-500 font-medium">Current month</span>}
           </div>
           <button onClick={nextMonth} disabled={isCurrentMonth}
-            className={`w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center transition font-bold text-lg ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600'}`}>
+            className={`w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center transition font-bold text-lg ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-emerald-50 hover:text-emerald-600'}`}>
             &rsaquo;
           </button>
         </div>
 
         {/* Hero Balance Card */}
-        <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 rounded-3xl p-6 mb-4 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-purple-700 rounded-3xl p-6 mb-4 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10">
             <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white" />
             <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white" />
           </div>
           <div className="relative">
-            <p className="text-indigo-200 text-xs font-medium mb-1">
+            <p className="text-emerald-200 text-xs font-medium mb-1">
               {user?.name ? 'Hey, ' + user.name.split(' ')[0] : 'Balance'} — {monthName}
             </p>
             <button onClick={() => setModalData({ label: 'Balance — ' + monthName, value: (balance >= 0 ? '+' : '-') + fmt(Math.abs(balance), currencySymbol), sub: savingsRate + '% savings rate' })}
@@ -380,7 +380,7 @@ export default function Dashboard() {
                 {balance >= 0 ? '+' : '-'}{fmt(Math.abs(balance), currencySymbol)}
               </p>
             </button>
-            <p className="text-indigo-200 text-xs">
+            <p className="text-emerald-200 text-xs">
               {balance >= 0 ? savingsRate + '% saved this month' : 'Spending over income'}
             </p>
           </div>
@@ -399,7 +399,7 @@ export default function Dashboard() {
             </button>
             <button onClick={() => setModalData({ label: 'Transactions', value: String(monthExpenses.length), sub: 'this month' })}
               className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
-              <p className="text-indigo-200 text-xs mb-0.5">Transactions</p>
+              <p className="text-emerald-200 text-xs mb-0.5">Transactions</p>
               <p className="text-white font-bold text-sm tabular-nums">{monthExpenses.length}</p>
             </button>
           </div>
@@ -409,7 +409,7 @@ export default function Dashboard() {
         {isCurrentMonth && (
           <div className="grid grid-cols-4 gap-3 mb-5">
             {[
-              { label: 'Expense', icon: '➕', color: 'bg-indigo-600', action: () => setShowAddExp(true) },
+              { label: 'Expense', icon: '➕', color: 'bg-emerald-600', action: () => setShowAddExp(true) },
               { label: 'Income',  icon: '💵', color: 'bg-green-600',  action: () => setShowAddInc(true) },
               { label: 'AI',      icon: '🤖', color: 'bg-purple-600', action: () => window.location.href = '/insights' },
               { label: 'Reports', icon: '📄', color: 'bg-gray-700',   action: () => window.location.href = '/reports' },
@@ -427,14 +427,14 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Recent Transactions</h3>
-            <a href="/reports" className="text-indigo-600 text-xs font-semibold hover:underline">View all</a>
+            <a href="/reports" className="text-emerald-600 text-xs font-semibold hover:underline">View all</a>
           </div>
           {recentExpenses.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-3xl mb-2">💸</p>
               <p className="text-gray-400 text-sm">No expenses for {monthName}</p>
               {isCurrentMonth && (
-                <button onClick={() => setShowAddExp(true)} className="mt-3 bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-semibold">Add First Expense</button>
+                <button onClick={() => setShowAddExp(true)} className="mt-3 bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-semibold">Add First Expense</button>
               )}
             </div>
           ) : (
@@ -452,11 +452,11 @@ export default function Dashboard() {
                         <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })} required className={inputCls} />
                       </div>
                       <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
-                        <input type="checkbox" checked={editForm.is_recurring} onChange={e => setEditForm({ ...editForm, is_recurring: e.target.checked })} className="accent-indigo-600" />
+                        <input type="checkbox" checked={editForm.is_recurring} onChange={e => setEditForm({ ...editForm, is_recurring: e.target.checked })} className="accent-emerald-600" />
                         Recurring monthly
                       </label>
                       <div className="flex gap-2">
-                        <button type="submit" className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-sm font-semibold">Save</button>
+                        <button type="submit" className="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-sm font-semibold">Save</button>
                         <button type="button" onClick={() => setEditing(null)} className="flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-white py-2 rounded-xl text-sm">Cancel</button>
                       </div>
                     </form>
@@ -478,7 +478,7 @@ export default function Dashboard() {
                         </p>
                         <div className="hidden group-hover:flex items-center gap-1">
                           <button onClick={() => { setEditing(expense.id); setEditForm({ amount: expense.amount, category: expense.category, description: expense.description || '', date: expense.date?.split('T')[0], is_recurring: expense.is_recurring || false }) }}
-                            className="text-indigo-400 hover:text-indigo-600 p-1">
+                            className="text-emerald-400 hover:text-emerald-600 p-1">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                           </button>
                           <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-400 hover:text-red-600 p-1">
@@ -519,10 +519,10 @@ export default function Dashboard() {
                     </div>
                     <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
                       {budget ? (
-                        <div className={`h-1.5 rounded-full transition-all ${isOver ? 'bg-red-500' : 'bg-indigo-500'}`}
+                        <div className={`h-1.5 rounded-full transition-all ${isOver ? 'bg-red-500' : 'bg-emerald-500'}`}
                           style={{ width: budgetPct + '%' }} />
                       ) : (
-                        <div className="h-1.5 rounded-full bg-indigo-300 dark:bg-indigo-700 transition-all"
+                        <div className="h-1.5 rounded-full bg-emerald-300 dark:bg-emerald-700 transition-all"
                           style={{ width: pct + '%' }} />
                       )}
                     </div>
@@ -533,7 +533,7 @@ export default function Dashboard() {
                 )
               })}
             </div>
-            <a href="/budgets" className="mt-3 block text-center text-indigo-600 text-xs font-semibold hover:underline">Manage Budgets</a>
+            <a href="/budgets" className="mt-3 block text-center text-emerald-600 text-xs font-semibold hover:underline">Manage Budgets</a>
           </div>
         )}
 
@@ -581,7 +581,7 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Savings Goals</h3>
-              <a href="/savings" className="text-indigo-600 text-xs font-semibold hover:underline">View all</a>
+              <a href="/savings" className="text-emerald-600 text-xs font-semibold hover:underline">View all</a>
             </div>
             <div className="space-y-3">
               {savingsGoals.slice(0, 3).map((g, i) => {
@@ -598,7 +598,7 @@ export default function Dashboard() {
                       <span className="text-xs text-gray-500 tabular-nums">{Math.round(pct)}%</span>
                     </div>
                     <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
-                      <div className={`h-2 rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : 'bg-indigo-500'}`}
+                      <div className={`h-2 rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : 'bg-emerald-500'}`}
                         style={{ width: pct + '%' }} />
                     </div>
                     <div className="flex justify-between mt-0.5">

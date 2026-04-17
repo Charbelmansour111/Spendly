@@ -163,7 +163,7 @@ export default function Budgets() {
     return true
   })
 
-  const inputCls = "w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+  const inputCls = "w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
 
   return (
     <Layout>
@@ -181,7 +181,7 @@ export default function Budgets() {
         {budgets.length > 0 && (
           <div className="grid grid-cols-3 gap-3 mb-6">
             {[
-              { label: 'Total Budget', value: totalBudget, color: 'text-indigo-600' },
+              { label: 'Total Budget', value: totalBudget, color: 'text-emerald-600' },
               { label: 'Total Spent', value: totalSpent, color: totalSpent > totalBudget ? 'text-red-500' : 'text-green-600', sub: totalBudget > 0 ? `${((totalSpent / totalBudget) * 100).toFixed(0)}% used` : '0% used' },
               { label: 'Over Budget', rawValue: overBudgetCount, color: overBudgetCount > 0 ? 'text-red-500' : 'text-green-600', sub: overBudgetCount === 0 ? '✅ All clear' : `${overBudgetCount} over` },
             ].map((card, i) => (
@@ -205,12 +205,12 @@ export default function Budgets() {
           ].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition ${
-                tab === t.key ? 'bg-white dark:bg-gray-700 text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                tab === t.key ? 'bg-white dark:bg-gray-700 text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
               }`}>
               <span className="truncate">{t.label}</span>
               {t.count > 0 && (
                 <span className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded-full font-bold ${
-                  tab === t.key ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 dark:bg-gray-600 text-gray-500'
+                  tab === t.key ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-200 dark:bg-gray-600 text-gray-500'
                 }`}>{t.count}</span>
               )}
             </button>
@@ -228,7 +228,7 @@ export default function Budgets() {
               <div className="flex flex-wrap gap-2 items-center">
                 {/* Category filter */}
                 <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-                  className="px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                  className="px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                   <option value="All">All Categories</option>
                   {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                 </select>
@@ -239,7 +239,7 @@ export default function Budgets() {
                     <button key={s} onClick={() => setFilterStatus(s)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
                         filterStatus === s
-                          ? s === 'Over' ? 'bg-red-100 text-red-600' : s === 'Close' ? 'bg-orange-100 text-orange-600' : s === 'OnTrack' ? 'bg-green-100 text-green-600' : 'bg-indigo-600 text-white'
+                          ? s === 'Over' ? 'bg-red-100 text-red-600' : s === 'Close' ? 'bg-orange-100 text-orange-600' : s === 'OnTrack' ? 'bg-green-100 text-green-600' : 'bg-emerald-600 text-white'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700'
                       }`}>
                       {s === 'OnTrack' ? '✅ On Track' : s === 'Over' ? '⚠️ Over' : s === 'Close' ? '⚡ Close' : 'All'}
@@ -250,7 +250,7 @@ export default function Budgets() {
                 {/* Spacer + Add button */}
                 <div className="flex-1" />
                 <button onClick={() => setShowBudgetForm(v => !v)}
-                  className="flex-shrink-0 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">
+                  className="flex-shrink-0 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition">
                   {showBudgetForm ? '✕ Cancel' : '+ Set Budget'}
                 </button>
               </div>
@@ -272,10 +272,10 @@ export default function Budgets() {
                         required min="1" step="0.01" className={inputCls} />
                     </div>
                   </div>
-                  <button type="submit" className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-semibold hover:bg-indigo-700 transition text-sm">
+                  <button type="submit" className="w-full bg-emerald-600 text-white py-2.5 rounded-xl font-semibold hover:bg-emerald-700 transition text-sm">
                     Set Budget Goal
                   </button>
-                  <div className="mt-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3">
+                  <div className="mt-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3">
                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                       💡 You'll be alerted at <strong>80%</strong> of your limit and when you go over. Budgets track this month's expenses automatically.
                     </p>
@@ -381,7 +381,7 @@ export default function Budgets() {
                   {['All', 'daily', 'weekly', 'monthly'].map(p => (
                     <button key={p} onClick={() => setFilterCategory(p)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition capitalize ${
-                        filterCategory === p ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700'
+                        filterCategory === p ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700'
                       }`}>
                       {p}
                     </button>
@@ -393,7 +393,7 @@ export default function Budgets() {
                   {[{ key: 'All', label: 'All' }, { key: 'Active', label: '✅ Active' }, { key: 'Paused', label: '⏸ Paused' }, { key: 'Triggered', label: '🔔 Triggered' }].map(s => (
                     <button key={s.key} onClick={() => setFilterStatus(s.key)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                        filterStatus === s.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700'
+                        filterStatus === s.key ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700'
                       }`}>
                       {s.label}
                     </button>
@@ -402,7 +402,7 @@ export default function Budgets() {
 
                 <div className="flex-1" />
                 <button onClick={() => setShowAlertForm(v => !v)}
-                  className="flex-shrink-0 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">
+                  className="flex-shrink-0 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition">
                   {showAlertForm ? '✕ Cancel' : '+ New Alert'}
                 </button>
               </div>
@@ -441,7 +441,7 @@ export default function Budgets() {
                         required min="1" step="0.01" className={inputCls} />
                     </div>
                   </div>
-                  <button type="submit" className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-semibold hover:bg-indigo-700 transition text-sm">
+                  <button type="submit" className="w-full bg-emerald-600 text-white py-2.5 rounded-xl font-semibold hover:bg-emerald-700 transition text-sm">
                     Create Alert
                   </button>
                   <p className="text-xs text-gray-400 mt-2 text-center">
@@ -483,7 +483,7 @@ export default function Budgets() {
 
                     return (
                       <div key={alert.id} className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border-l-4 transition ${
-                        !alert.is_active ? 'border-gray-200 opacity-60' : isTriggered ? 'border-red-500' : 'border-indigo-500'
+                        !alert.is_active ? 'border-gray-200 opacity-60' : isTriggered ? 'border-red-500' : 'border-emerald-500'
                       }`}>
                         <div className="flex items-start gap-3 mb-4 min-w-0">
                           <span className="text-2xl flex-shrink-0">{categoryIcons[alert.category] || '📊'}</span>
@@ -514,7 +514,7 @@ export default function Budgets() {
 
                         <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 mb-2">
                           <div className={`h-2.5 rounded-full transition-all duration-500 ${
-                            isTriggered ? 'bg-red-500' : pct >= 80 ? 'bg-orange-400' : 'bg-indigo-500'
+                            isTriggered ? 'bg-red-500' : pct >= 80 ? 'bg-orange-400' : 'bg-emerald-500'
                           }`} style={{ width: `${pct}%` }} />
                         </div>
 
@@ -529,7 +529,7 @@ export default function Budgets() {
                             <Money amount={limit} symbol={currencySymbol} size="sm"
                               className="flex-1 min-w-0 text-gray-600 dark:text-gray-300" />
                           </div>
-                          <span className={`flex-shrink-0 text-xs font-semibold ${isTriggered ? 'text-red-500' : 'text-indigo-600'}`}>
+                          <span className={`flex-shrink-0 text-xs font-semibold ${isTriggered ? 'text-red-500' : 'text-emerald-600'}`}>
                             {pct.toFixed(0)}%
                           </span>
                         </div>
