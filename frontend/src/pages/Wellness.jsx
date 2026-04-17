@@ -5,29 +5,42 @@ import MoneyDefender from '../components/MoneyDefender'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: '\u062f.\u0625', SAR: '\ufdfc', CAD: 'C$', AUD: 'A$' }
 
-function ScoreRing({ score }) {
+function ScoreRing({ score, ready }) {
   const radius = 54
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (score / 100) * circumference
   const color = score >= 80 ? '#10B981' : score >= 60 ? '#F59E0B' : score >= 40 ? '#F97316' : '#EF4444'
   const grade = score >= 90 ? 'A+' : score >= 80 ? 'A' : score >= 70 ? 'B' : score >= 60 ? 'C' : score >= 40 ? 'D' : 'F'
+  const label = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : score >= 40 ? 'Fair' : score > 0 ? 'Needs Work' : null
+
   return (
     <div className="flex flex-col items-center">
       <div className="relative w-36 h-36">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
           <circle cx="60" cy="60" r={radius} fill="none" stroke="#E5E7EB" strokeWidth="10" />
-          <circle cx="60" cy="60" r={radius} fill="none" stroke={color} strokeWidth="10"
-            strokeDasharray={circumference} strokeDashoffset={offset}
+          <circle cx="60" cy="60" r={radius} fill="none" stroke={ready ? color : '#E5E7EB'} strokeWidth="10"
+            strokeDasharray={circumference} strokeDashoffset={ready ? offset : circumference}
             strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease' }} />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-3xl font-bold text-gray-800 dark:text-white">{score}</span>
-          <span className="text-xs text-gray-400">out of 100</span>
+          {ready ? (
+            <>
+              <span className="text-3xl font-bold text-gray-800 dark:text-white">{score}</span>
+              <span className="text-xs text-gray-400">/ 100</span>
+            </>
+          ) : (
+            <span className="text-xs text-gray-400 text-center px-2 leading-tight">Start tracking to see your score</span>
+          )}
         </div>
       </div>
-      <div className="mt-2 px-4 py-1 rounded-full text-white font-bold text-lg" style={{ backgroundColor: color }}>
-        Grade {grade}
-      </div>
+      {ready && (
+        <div className="mt-2 flex items-center gap-2">
+          <span className="px-3 py-1 rounded-full text-white font-bold text-sm" style={{ backgroundColor: color }}>
+            {grade}
+          </span>
+          {label && <span className="text-sm font-semibold" style={{ color }}>{label}</span>}
+        </div>
+      )}
     </div>
   )
 }
@@ -193,7 +206,7 @@ export default function Wellness() {
         {/* Health Score */}
         <div className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-2xl p-6 text-white mb-6">
           <div className="flex flex-col md:flex-row items-center gap-8">
-            <ScoreRing score={data?.score || 0} />
+            <ScoreRing score={data?.score || 0} ready={!!data && (data.score > 0 || data.totalIncome > 0)} />
             <div className="flex-1 w-full">
               <h2 className="text-xl font-bold mb-1">Financial Health Score</h2>
               <p className="text-violet-200 text-sm mb-4">{monthName}</p>

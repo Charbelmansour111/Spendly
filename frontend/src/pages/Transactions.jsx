@@ -193,9 +193,11 @@ export default function Transactions() {
       return 0
     })
 
-  // Summary stats
-  const totalExpenses = expenses.reduce((s, e) => s + safeNum(e.amount), 0)
-  const totalIncome   = income.reduce((s, i)   => s + safeNum(i.amount), 0)
+  // Summary stats — always reflect the current filter
+  const filteredExpenses = filtered.filter(tx => tx.txType === 'expense')
+  const filteredIncome   = filtered.filter(tx => tx.txType === 'income')
+  const totalExpenses = filteredExpenses.reduce((s, e) => s + safeNum(e.amount), 0)
+  const totalIncome   = filteredIncome.reduce((s, i)   => s + safeNum(i.amount), 0)
 
   // Group by date label
   const grouped = filtered.reduce((acc, tx) => {
@@ -257,9 +259,9 @@ export default function Transactions() {
         {/* Summary Pills */}
    <div className="grid grid-cols-3 gap-3 mb-5">
   {[
-    { label: 'Income', value: fmt(totalIncome, currencySymbol),   color: 'text-green-600',  bg: 'bg-green-50 dark:bg-green-900/20',   sub: income.length + ' sources' },
-    { label: 'Spent',  value: fmt(totalExpenses, currencySymbol), color: 'text-red-500',    bg: 'bg-red-50 dark:bg-red-900/20',       sub: expenses.length + ' expenses' },
-    { label: 'Total',  value: String(allTransactions.length),     color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/20', sub: 'all time transactions' },
+    { label: 'Income', value: fmt(totalIncome, currencySymbol),   color: 'text-green-600',  bg: 'bg-green-50 dark:bg-green-900/20',   sub: filteredIncome.length + ' entr' + (filteredIncome.length !== 1 ? 'ies' : 'y') },
+    { label: 'Spent',  value: fmt(totalExpenses, currencySymbol), color: 'text-red-500',    bg: 'bg-red-50 dark:bg-red-900/20',       sub: filteredExpenses.length + ' expense' + (filteredExpenses.length !== 1 ? 's' : '') },
+    { label: 'Shown',  value: String(filtered.length),            color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/20', sub: 'matching results' },
   ].map((s, i) => (
     <button key={i} onClick={() => setModalData({ label: s.label, value: s.value, sub: s.sub })}
       className={`${s.bg} rounded-2xl p-3 text-center active:scale-95 transition-transform`}>

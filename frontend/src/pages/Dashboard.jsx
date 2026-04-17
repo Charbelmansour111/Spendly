@@ -279,13 +279,18 @@ export default function Dashboard() {
     } catch { /* noop */ }
   }
 
-  // Carousel touch swipe
+  // Carousel touch swipe — disabled on panel 1 (news) so horizontal scroll works
   const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX }
   const onTouchEnd   = (e) => {
     if (touchStartX.current === null) return
     const diff = touchStartX.current - e.changedTouches[0].clientX
-    if (Math.abs(diff) > 50) setCarousel(p => Math.max(0, Math.min(2, p + (diff > 0 ? 1 : -1))))
+    if (Math.abs(diff) > 50 && carouselPanel !== 1) setCarousel(p => Math.max(0, Math.min(2, p + (diff > 0 ? 1 : -1))))
     touchStartX.current = null
+  }
+
+  const refreshNews = () => {
+    setNewsLoading(true)
+    API.get('/news').then(r => setNews(r.data || [])).catch(() => {}).finally(() => setNewsLoading(false))
   }
 
   // Derived values
@@ -540,9 +545,19 @@ export default function Dashboard() {
                 <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden" style={{ minHeight: '212px' }}>
                   <div className="px-5 pt-4 pb-2 flex items-center justify-between border-b border-gray-50 dark:border-gray-700/60">
                     <p className="font-semibold text-gray-800 dark:text-white text-sm">World & Financial News</p>
-                    <span className="flex items-center gap-1 text-xs text-green-500 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />Live
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={refreshNews} disabled={newsLoading}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition disabled:opacity-40"
+                        title="Refresh news">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                          className={newsLoading ? 'animate-spin' : ''}>
+                          <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                      </button>
+                      <span className="flex items-center gap-1 text-xs text-green-500 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />Live
+                      </span>
+                    </div>
                   </div>
                   {newsLoading ? (
                     <div className="flex items-center justify-center py-12 gap-3">

@@ -197,11 +197,27 @@ export default function Budgets() {
           </div>
         )}
 
+        {/* ── Feature explainer ── */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <button onClick={() => setTab('budgets')}
+            className={`text-left p-4 rounded-2xl border-2 transition ${tab === 'budgets' ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20' : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-violet-300'}`}>
+            <p className="text-lg mb-1">🎯</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-white">Monthly Limits</p>
+            <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">Cap spending per category (Food, Transport…). Turns red when you go over.</p>
+          </button>
+          <button onClick={() => setTab('alerts')}
+            className={`text-left p-4 rounded-2xl border-2 transition ${tab === 'alerts' ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20' : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-violet-300'}`}>
+            <p className="text-lg mb-1">⚡</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-white">Custom Alerts</p>
+            <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">Get a notification when you hit a daily, weekly, or monthly threshold.</p>
+          </button>
+        </div>
+
         {/* ── Tab Bar ── */}
         <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-6 w-full">
           {[
-            { key: 'budgets', label: '🎯 Budget Goals', count: budgets.length },
-            { key: 'alerts', label: '⚡ Spending Alerts', count: alerts.length },
+            { key: 'budgets', label: '🎯 Monthly Limits', count: budgets.length },
+            { key: 'alerts', label: '⚡ Custom Alerts', count: alerts.length },
           ].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition ${
