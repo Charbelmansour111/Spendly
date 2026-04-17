@@ -8,13 +8,11 @@ import ForgotPassword from './pages/ForgotPassword'
 import AccountType from './pages/AccountType'
 import Dashboard from './pages/Dashboard'
 import Budgets from './pages/Budgets'
-import Savings from './pages/Savings'
+import Goals from './pages/Goals'
 import Reports from './pages/Reports'
 import Insights from './pages/Insights'
 import Wellness from './pages/Wellness'
 import Transactions from './pages/Transactions'
-import Debts from './pages/Debts'
-import Subscriptions from './pages/Subscriptions'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 
@@ -35,13 +33,14 @@ function App() {
         <Route path="/dashboard"             element={<Dashboard />} />
         <Route path="/profile"               element={<Profile />} />
         <Route path="/budgets"               element={<Budgets />} />
-        <Route path="/savings"               element={<Savings />} />
+        <Route path="/goals"                 element={<Goals />} />
+        <Route path="/savings"               element={<Navigate to="/goals" replace />} />
+        <Route path="/debts"                 element={<Navigate to="/goals" replace />} />
+        <Route path="/subscriptions"         element={<Navigate to="/dashboard" replace />} />
         <Route path="/reports"               element={<Reports />} />
         <Route path="/insights"              element={<Insights />} />
         <Route path="/wellness"              element={<Wellness />} />
         <Route path="/transactions"          element={<Transactions />} />
-        <Route path="/debts"                 element={<Debts />} />
-        <Route path="/subscriptions"         element={<Subscriptions />} />
 
         <Route path="/business"              element={<Navigate to="/dashboard" replace />} />
         <Route path="/business/*"            element={<Navigate to="/dashboard" replace />} />

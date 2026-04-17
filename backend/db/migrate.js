@@ -30,6 +30,10 @@ async function migrate() {
       )
     `);
 
+    // Add period + name columns to budgets if they don't exist
+    await pool.query(`ALTER TABLE budgets ADD COLUMN IF NOT EXISTS period VARCHAR(20) DEFAULT 'monthly'`);
+    await pool.query(`ALTER TABLE budgets ADD COLUMN IF NOT EXISTS name VARCHAR(255)`);
+
     console.log('DB migration complete');
   } catch (e) {
     console.error('DB migration error:', e.message);

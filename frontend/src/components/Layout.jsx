@@ -21,23 +21,21 @@ const Icons = {
 }
 
 const NAV_ITEMS = [
-  { label: 'Dashboard',       icon: 'home',         href: '/dashboard' },
-  { label: 'Transactions',    icon: 'transactions', href: '/transactions' },
-  { label: 'Budget & Alerts', icon: 'budget',       href: '/budgets' },
-  { label: 'Savings Goals',   icon: 'savings',      href: '/savings' },
-  { label: 'Debt Tracker',    icon: 'debt',         href: '/debts' },
-  { label: 'Subscriptions',   icon: 'subs',         href: '/subscriptions' },
-  { label: 'Reports',         icon: 'reports',      href: '/reports' },
-  { label: 'AI Insights',     icon: 'ai',           href: '/insights' },
-  { label: 'My Wellness',     icon: 'wellness',     href: '/wellness' },
-  { label: 'Profile',         icon: 'profile',      href: '/profile' },
+  { label: 'Dashboard',    icon: 'home',         href: '/dashboard' },
+  { label: 'Transactions', icon: 'transactions', href: '/transactions' },
+  { label: 'Budgets',      icon: 'budget',       href: '/budgets' },
+  { label: 'Goals',        icon: 'savings',      href: '/goals' },
+  { label: 'Reports',      icon: 'reports',      href: '/reports' },
+  { label: 'AI Insights',  icon: 'ai',           href: '/insights' },
+  { label: 'My Wellness',  icon: 'wellness',     href: '/wellness' },
+  { label: 'Profile',      icon: 'profile',      href: '/profile' },
 ]
 
 const TAB_ITEMS = [
   { href: '/dashboard',    icon: 'home',         label: 'Home' },
   { href: '/transactions', icon: 'transactions', label: 'Transactions' },
   { href: '/insights',     icon: 'ai',           label: 'AI' },
-  { href: '/savings',      icon: 'savings',      label: 'Savings' },
+  { href: '/goals',        icon: 'savings',      label: 'Goals' },
   { href: '/profile',      icon: 'profile',      label: 'Profile' },
 ]
 

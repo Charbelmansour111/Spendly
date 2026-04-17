@@ -170,7 +170,7 @@ export default function Transactions() {
   // Merge expenses + income into one feed
   const allTransactions = [
     ...expenses.map(e => ({ ...e, txType: 'expense' })),
-    ...income.map(i  => ({ ...i, txType: 'income',  category: i.source || 'Income', date: i.created_at || new Date().toISOString() })),
+    ...income.map(i  => ({ ...i, txType: 'income',  category: i.source || 'Income', date: i.date || i.created_at || new Date().toISOString() })),
   ]
 
   // Apply filters

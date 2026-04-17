@@ -68,11 +68,58 @@ function ConfirmModal({ message, onConfirm, onCancel, confirmText = 'Delete' }) 
   )
 }
 
+const SUBCATEGORIES = {
+  Food: [
+    { label: "McDonald's", emoji: '🍔' }, { label: 'KFC', emoji: '🍗' },
+    { label: 'Starbucks', emoji: '☕' }, { label: 'Pizza', emoji: '🍕' },
+    { label: 'Groceries', emoji: '🛒' }, { label: 'Restaurant', emoji: '🍽️' },
+    { label: 'Delivery', emoji: '📦' }, { label: 'Burger King', emoji: '🍔' },
+  ],
+  Transport: [
+    { label: 'Uber', emoji: '🚗' }, { label: 'Taxi', emoji: '🚕' },
+    { label: 'Gas', emoji: '⛽' }, { label: 'Metro', emoji: '🚇' },
+    { label: 'Bus', emoji: '🚌' }, { label: 'Parking', emoji: '🅿️' },
+    { label: 'Flight', emoji: '✈️' }, { label: 'Bike', emoji: '🚲' },
+  ],
+  Shopping: [
+    { label: 'Amazon', emoji: '📦' }, { label: 'Clothing', emoji: '👕' },
+    { label: 'Electronics', emoji: '💻' }, { label: 'Beauty', emoji: '💄' },
+    { label: 'IKEA', emoji: '🛋️' }, { label: 'Pharmacy', emoji: '💊' },
+    { label: 'Books', emoji: '📚' }, { label: 'Sports', emoji: '🏋️' },
+  ],
+  Entertainment: [
+    { label: 'Netflix', emoji: '🎬' }, { label: 'Spotify', emoji: '🎵' },
+    { label: 'Disney+', emoji: '🏰' }, { label: 'HBO', emoji: '🎭' },
+    { label: 'Cinema', emoji: '🎥' }, { label: 'Games', emoji: '🎮' },
+    { label: 'Bar', emoji: '🍺' }, { label: 'Concert', emoji: '🎤' },
+  ],
+  Other: [
+    { label: 'Healthcare', emoji: '🏥' }, { label: 'Education', emoji: '🎓' },
+    { label: 'Gifts', emoji: '🎁' }, { label: 'Insurance', emoji: '🛡️' },
+    { label: 'Gym', emoji: '🏋️' }, { label: 'Charity', emoji: '❤️' },
+    { label: 'Rent', emoji: '🏠' }, { label: 'Utilities', emoji: '💡' },
+  ],
+}
+
 function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
   const [form, setForm] = useState({
     amount: '', category: 'Food', description: '',
     date: new Date().toISOString().split('T')[0], is_recurring: false
   })
+  const [selectedSub, setSelectedSub] = useState(null)
+
+  const handleCategoryChange = (cat) => {
+    setForm(f => ({ ...f, category: cat }))
+    setSelectedSub(null)
+  }
+
+  const handleSubSelect = (sub) => {
+    setSelectedSub(sub.label)
+    setForm(f => ({ ...f, description: sub.label }))
+  }
+
+  const subs = SUBCATEGORIES[form.category] || []
+
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -92,20 +139,48 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
               required min="0.01" step="0.01"
               className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Category</label>
-              <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
-                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
-                <option>Food</option><option>Transport</option><option>Shopping</option>
-                <option>Subscriptions</option><option>Entertainment</option><option>Other</option>
-              </select>
+
+          {/* Category selector */}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Category</label>
+            <div className="grid grid-cols-3 gap-2">
+              {['Food','Transport','Shopping','Entertainment','Other'].map(cat => (
+                <button key={cat} type="button" onClick={() => handleCategoryChange(cat)}
+                  className={`py-2 px-2 rounded-xl text-xs font-semibold border-2 transition ${
+                    form.category === cat
+                      ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-violet-300'
+                  }`}>
+                  {cat === 'Food' ? '🍔' : cat === 'Transport' ? '🚗' : cat === 'Shopping' ? '🛍️' : cat === 'Entertainment' ? '🎬' : '📦'} {cat}
+                </button>
+              ))}
             </div>
+          </div>
+
+          {/* Subcategory tiles */}
+          {subs.length > 0 && (
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Date</label>
-              <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
-                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Quick-fill</label>
+              <div className="grid grid-cols-4 gap-2">
+                {subs.map(sub => (
+                  <button key={sub.label} type="button" onClick={() => handleSubSelect(sub)}
+                    className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border-2 transition ${
+                      selectedSub === sub.label
+                        ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30'
+                        : 'border-gray-100 dark:border-gray-700 hover:border-violet-300 bg-gray-50 dark:bg-gray-700/50'
+                    }`}>
+                    <span className="text-xl">{sub.emoji}</span>
+                    <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 leading-tight text-center">{sub.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
+          )}
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Date</label>
+            <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Description (optional)</label>
