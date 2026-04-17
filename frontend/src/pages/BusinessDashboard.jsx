@@ -192,7 +192,7 @@ function MultiScanStep({ date, setDate, exchangeRate, setExchangeRate, onComplet
 
       {mode === 'scanning_file' && (
         <div className="py-12 text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg">📷</div>
+          <div className="w-16 h-16 bg-linear-to-br from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg">📷</div>
           <div className="flex justify-center gap-2 mb-3">
             {[0,150,300].map(d => <div key={d} className="w-2.5 h-2.5 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: d+'ms' }} />)}
           </div>
@@ -487,7 +487,7 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
         <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-700">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center text-xl">📷</div>
+              <div className="w-10 h-10 bg-linear-to-br from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center text-xl">📷</div>
               <div>
                 <h3 className="font-bold text-gray-800 dark:text-white">POS End-of-Day Scan</h3>
                 <p className="text-xs text-purple-500">AI-powered receipt scanner</p>
@@ -524,7 +524,7 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
 
           {step === 'matching' && (
             <div className="py-16 text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">🔍</div>
+              <div className="w-20 h-20 bg-linear-to-br from-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">🔍</div>
               <div className="flex justify-center gap-2 mb-4">
                 {[0,150,300].map(d => <div key={d} className="w-3 h-3 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: d+'ms' }} />)}
               </div>
@@ -821,7 +821,7 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
 
           {step === 'saving' && (
             <div className="py-16 text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 animate-pulse">💾</div>
+              <div className="w-20 h-20 bg-linear-to-br from-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 animate-pulse">💾</div>
               <p className="font-bold text-gray-800 dark:text-white text-lg mb-1">Closing the day...</p>
               <p className="text-gray-400 text-sm">Revenue saved · Stock deducted · Report generated</p>
             </div>
@@ -830,7 +830,7 @@ function POSScanner({ onClose, menuItems, onComplete, showToast, currencySymbol,
           {/* EMAIL-STYLE SUMMARY */}
           {step === 'summary' && summary && (
             <div className="space-y-4">
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-5 text-white">
+              <div className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-5 text-white">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-xl">📧</div>
                   <div>
@@ -1455,7 +1455,7 @@ export default function BusinessDashboard() {
         )}
 
         {/* Hero P&L */}
-        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-6 mb-4 relative overflow-hidden">
+        <div className="bg-linear-to-br from-gray-900 to-gray-800 rounded-3xl p-6 mb-4 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10">
             <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-orange-400" />
             <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-orange-400" />
