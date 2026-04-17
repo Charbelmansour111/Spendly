@@ -270,17 +270,17 @@ export default function Wellness() {
           )}
         </div>
 
-        {/* Mini Game */}
-        <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 mb-6 border border-gray-700">
+        {/* Mini Games */}
+        <div className="bg-linear-to-br from-violet-950 to-gray-900 rounded-2xl p-6 mb-6 border border-violet-700/40">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-white font-bold text-lg">💼 Money Defender</h3>
-              <p className="text-gray-400 text-sm mt-1">Collect money, reach the vault, defeat zombies!</p>
-              {highScore > 0 && <p className="text-yellow-400 text-xs mt-1">🏆 Best: ${highScore}</p>}
+              <h3 className="text-white font-bold text-lg">🎮 Finance Mini-Games</h3>
+              <p className="text-gray-400 text-sm mt-1">7 games to sharpen your money skills while having fun!</p>
+              {highScore > 0 && <p className="text-yellow-400 text-xs mt-1">🏆 Best score: {highScore}</p>}
             </div>
             <button onClick={() => setShowGame(true)}
-              className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-violet-700 transition">
-              🎮 Play
+              className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-violet-500 transition shadow-lg shadow-violet-900/40">
+              Play Now
             </button>
           </div>
         </div>

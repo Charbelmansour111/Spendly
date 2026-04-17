@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+const migrate = require('./db/migrate');
+
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
 const insightRoutes = require('./routes/insights');
@@ -15,6 +17,8 @@ const notificationsRouter = require('./routes/notifications');
 const profileRoutes = require('./routes/profile');
 const businessRoutes = require('./routes/business');
 const newsRoutes = require('./routes/news');
+const debtsRoutes = require('./routes/debts');
+const subscriptionsRoutes = require('./routes/subscriptions');
 
 const app = express();
 
@@ -35,12 +39,15 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/profile', profileRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/debts', debtsRoutes);
+app.use('/api/subscriptions', subscriptionsRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Spendly API is running' });
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  await migrate();
   console.log(`Server running on port ${PORT}`);
 });
