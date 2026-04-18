@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 
@@ -49,44 +49,30 @@ const QUICK_QUESTIONS = [
   "How is my spending?",
 ]
 
+const TODAY = new Date()
+const CURRENT_MONTH = TODAY.getMonth()
+const CURRENT_YEAR  = TODAY.getFullYear()
+const MONTH_NAME    = TODAY.toLocaleString('default', { month: 'long', year: 'numeric' })
+
+const GREETING = "Oh, you've decided to check your finances. Brave. 😏 I've seen your spending data and... we have things to discuss. Ask me anything — I'll be honest, accurate, and maybe a little savage about it."
+
 export default function Insights() {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: "Hi there! I'm Spendly AI, your personal finance assistant. How can I help you with your finances today? I can see your real spending data. What's on your mind?"
-    }
-  ])
+  const [messages, setMessages] = useState([{ role: 'assistant', content: GREETING }])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [expenses, setExpenses] = useState([])
   const [income, setIncome] = useState([])
-  const [currencySymbol, setCurrencySymbol] = useState('$')
+  const [currencySymbol] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
   const [modalData, setModalData] = useState(null)
   const messagesEndRef = useRef(null)
-  const today = new Date()
-  const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
-
-  useEffect(() => {
-    const storedCurrency = localStorage.getItem('currency') || 'USD'
-    setCurrencySymbol(CURRENCY_SYMBOLS[storedCurrency] || '$')
-  }, [])
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [e, i] = await Promise.all([
-        API.get('/expenses'),
-        API.get('/income?month=' + (today.getMonth() + 1) + '&year=' + today.getFullYear())
-      ])
-      setExpenses(e.data)
-      setIncome(i.data)
-    } catch { console.log('Error fetching data') }
-  }, [])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { window.location.href = '/login'; return }
-    fetchData()
-  }, [fetchData])
+    Promise.all([API.get('/expenses'), API.get(`/income?month=${CURRENT_MONTH + 1}&year=${CURRENT_YEAR}`)])
+      .then(([e, i]) => { setExpenses(e.data); setIncome(i.data) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -99,11 +85,11 @@ export default function Insights() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setLoading(true)
     try {
-      const history = messages.filter((m, idx) => idx > 0)
-      const res = await API.post('/insights/chat', { message: userMessage, history })
+      const history = messages.filter((_, idx) => idx > 0)
+      const res = await API.post('/insights/chat', { message: userMessage, history, mode: 'sarcastic' })
       setMessages(prev => [...prev, { role: 'assistant', content: res.data.reply }])
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I had trouble connecting. Please try again.' }])
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Even I had a technical issue. The irony. Try again.' }])
     }
     setLoading(false)
   }
@@ -114,7 +100,7 @@ export default function Insights() {
 
   const monthExpenses = expenses.filter(e => {
     const d = new Date(e.date)
-    return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()
+    return d.getMonth() === TODAY.getMonth() && d.getFullYear() === TODAY.getFullYear()
   })
   const total = monthExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
   const totalIncome = income.reduce((sum, i) => sum + parseFloat(i.amount), 0)
@@ -148,16 +134,16 @@ export default function Insights() {
           <StatCard
             label="Spent"
             value={spentStr}
-            sub={monthName}
+            sub={MONTH_NAME}
             color="text-red-500"
-            onClick={() => setModalData({ label: 'Spent — ' + monthName, value: spentStr, sub: monthExpenses.length + ' transactions' })}
+            onClick={() => setModalData({ label: 'Spent — ' + MONTH_NAME, value: spentStr, sub: monthExpenses.length + ' transactions' })}
           />
           <StatCard
             label="Income"
             value={incomeStr}
             sub={savedPct}
             color="text-green-600"
-            onClick={() => setModalData({ label: 'Income — ' + monthName, value: incomeStr, sub: savedPct })}
+            onClick={() => setModalData({ label: 'Income — ' + MONTH_NAME, value: incomeStr, sub: savedPct })}
           />
           <StatCard
             label="Top Category"

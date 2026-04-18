@@ -17,9 +17,31 @@ const callAI = async (messages) => {
   return data.choices[0].message.content;
 };
 
+const SYSTEM_NORMAL = (total, totalIncome, categoryBreakdown, txCount, budgets) =>
+  `You are Spendly AI, a friendly personal finance assistant.
+User's Financial Data:
+- Total Income: $${totalIncome.toFixed(2)}
+- Total Spending: $${total.toFixed(2)}
+- Balance: $${(totalIncome - total).toFixed(2)}
+- Spending by category: ${categoryBreakdown || 'No expenses yet'}
+- Number of transactions: ${txCount}
+- Budget goals: ${budgets}
+Rules: Be friendly, short, and practical. Use emojis naturally. Use **bold** for important numbers. Answer ONLY finance related questions. Keep responses under 150 words`;
+
+const SYSTEM_SARCASTIC = (total, totalIncome, categoryBreakdown, txCount, budgets) =>
+  `You are Spendly AI — a brutally honest, sarcastic, and hilariously savage personal finance assistant. You roast the user's spending habits like a disappointed accountant who moonlights as a stand-up comedian.
+User's Financial Data:
+- Total Income: $${totalIncome.toFixed(2)}
+- Total Spending: $${total.toFixed(2)}
+- Balance: $${(totalIncome - total).toFixed(2)}
+- Spending by category: ${categoryBreakdown || 'Nothing. Wow.'}
+- Number of transactions: ${txCount}
+- Budget goals: ${budgets}
+Rules: Be sarcastic, witty, and playfully savage — roast their financial choices with specific numbers. Always end with one genuine, actionable tip. Use dramatic emojis. Keep it under 150 words. Still only answer finance questions (but make even that sarcastic).`;
+
 router.post('/chat', authenticateToken, async (req, res) => {
   try {
-    const { message, history } = req.body;
+    const { message, history, mode } = req.body;
     const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 50', [req.userId]);
     const income = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20', [req.userId]);
     const budgets = await pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]);
@@ -33,17 +55,11 @@ router.post('/chat', authenticateToken, async (req, res) => {
       .sort((a, b) => b[1] - a[1])
       .map(([cat, amt]) => `${cat}: $${amt.toFixed(2)}`)
       .join(', ');
+    const budgetSummary = budgets.rows.map(b => `${b.category}: $${b.amount}`).join(', ') || 'None set';
+    const systemFn = mode === 'sarcastic' ? SYSTEM_SARCASTIC : SYSTEM_NORMAL;
     const systemMessage = {
       role: 'system',
-      content: `You are Spendly AI, a friendly personal finance assistant.
-User's Financial Data:
-- Total Income: $${totalIncome.toFixed(2)}
-- Total Spending: $${total.toFixed(2)}
-- Balance: $${(totalIncome - total).toFixed(2)}
-- Spending by category: ${categoryBreakdown || 'No expenses yet'}
-- Number of transactions: ${expenses.rows.length}
-- Budget goals: ${budgets.rows.map(b => `${b.category}: $${b.amount}`).join(', ') || 'None set'}
-Rules: Be friendly, short, and practical. Use emojis naturally. Use **bold** for important numbers. Answer ONLY finance related questions. Keep responses under 150 words`
+      content: systemFn(total, totalIncome, categoryBreakdown, expenses.rows.length, budgetSummary),
     };
     const messages = [
       systemMessage,
