@@ -10,15 +10,21 @@ router.get('/', authenticateToken, async (req, res) => {
     const month = today.getMonth() + 1;
     const year = today.getFullYear();
 
-    const [expenses, income, budgets, savings, notes, mood, vision, goal] = await Promise.all([
+    // Core financial tables — must succeed
+    const [expenses, income, budgets, savings] = await Promise.all([
       pool.query('SELECT * FROM expenses WHERE user_id = $1', [req.userId]),
       pool.query('SELECT * FROM income WHERE user_id = $1', [req.userId]),
       pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]),
       pool.query('SELECT * FROM savings_goals WHERE user_id = $1', [req.userId]),
-      pool.query('SELECT * FROM wellness_notes WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 1', [req.userId]),
-      pool.query('SELECT * FROM wellness_mood WHERE user_id = $1 AND date = CURRENT_DATE', [req.userId]),
-      pool.query('SELECT * FROM wellness_vision WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1', [req.userId]),
-      pool.query('SELECT * FROM monthly_goals WHERE user_id = $1 AND month = $2 AND year = $3', [req.userId, month, year])
+    ]);
+
+    // Optional wellness tables — fail silently if not yet created
+    const safeQuery = async (sql, params) => { try { return await pool.query(sql, params) } catch { return { rows: [] } } }
+    const [notes, mood, vision, goal] = await Promise.all([
+      safeQuery('SELECT * FROM wellness_notes WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 1', [req.userId]),
+      safeQuery('SELECT * FROM wellness_mood WHERE user_id = $1 AND date = CURRENT_DATE', [req.userId]),
+      safeQuery('SELECT * FROM wellness_vision WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1', [req.userId]),
+      safeQuery('SELECT * FROM monthly_goals WHERE user_id = $1 AND month = $2 AND year = $3', [req.userId, month, year]),
     ]);
 
     let score = 0;
