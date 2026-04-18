@@ -69,10 +69,25 @@ function AiModal({ title, prompt, onClose }) {
   )
 }
 
+function NumberModal({ label, value, sub, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 text-center w-full max-w-xs" onClick={e => e.stopPropagation()}>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{label}</p>
+        <p className="text-4xl font-bold text-violet-600 tabular-nums break-all leading-tight">{value}</p>
+        {sub && <p className="text-sm text-gray-400 mt-2">{sub}</p>}
+        <button onClick={onClose} className="mt-6 w-full bg-violet-600 text-white py-3 rounded-2xl font-bold hover:bg-violet-700 transition">Done</button>
+      </div>
+    </div>
+  )
+}
+
 export default function Goals() {
   const [goals, setGoals]   = useState([])
   const [debts, setDebts]   = useState([])
   const [filter, setFilter] = useState('All')
+  const [numModal, setNumModal] = useState(null)
   const [showForm, setShowForm]   = useState(false)
   const [formType, setFormType]   = useState('saving')
   const [savingForm, setSavingForm] = useState({ name: '', target_amount: '', saved_amount: '', deadline: '', goal_type: 'Other' })
@@ -211,23 +226,25 @@ export default function Goals() {
           <p className="text-gray-400 text-sm mt-0.5">Savings goals and debts in one place</p>
         </div>
 
-        {/* Progress Overview — replaces Net Worth */}
+        {/* Progress Overview */}
+        {numModal && <NumberModal {...numModal} onClose={() => setNumModal(null)} />}
         {(goals.length > 0 || debts.length > 0) && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[
-              { label: 'Active Goals',   value: activeGoals.length,    sub: `${completedGoals.length} completed`, color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/20', emoji: '🎯' },
-              { label: 'Total Saved',    value: `${sym}${totalSaved.toFixed(2)}`, sub: `across ${goals.length} goal${goals.length !== 1 ? 's' : ''}`, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20', emoji: '💰' },
-              { label: 'Active Debts',   value: activeDebts.length,    sub: `${paidOffDebts.length} paid off`,  color: 'text-red-500',    bg: 'bg-red-50 dark:bg-red-900/20',     emoji: '💳' },
-              { label: 'Still Owed',     value: `${sym}${totalDebtLeft.toFixed(2)}`, sub: `total remaining`, color: totalDebtLeft > 0 ? 'text-orange-500' : 'text-green-600', bg: 'bg-orange-50 dark:bg-orange-900/20', emoji: '📉' },
+              { label: 'Active Goals', value: String(activeGoals.length),             sub: `${completedGoals.length} completed`, color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/20', emoji: '🎯' },
+              { label: 'Total Saved',  value: `${sym}${totalSaved.toFixed(2)}`,       sub: `across ${goals.length} goal${goals.length !== 1 ? 's' : ''}`, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20', emoji: '💰' },
+              { label: 'Active Debts', value: String(activeDebts.length),             sub: `${paidOffDebts.length} paid off`, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20', emoji: '💳' },
+              { label: 'Still Owed',   value: `${sym}${totalDebtLeft.toFixed(2)}`,    sub: 'total remaining', color: totalDebtLeft > 0 ? 'text-orange-500' : 'text-green-600', bg: 'bg-orange-50 dark:bg-orange-900/20', emoji: '📉' },
             ].map((s, i) => (
-              <div key={i} className={`${s.bg} rounded-2xl p-4`}>
+              <button key={i} onClick={() => setNumModal({ label: s.label, value: s.value, sub: s.sub })}
+                className={`${s.bg} rounded-2xl p-4 text-left active:scale-95 transition-transform`}>
                 <div className="flex items-center gap-1.5 mb-1">
                   <span className="text-base">{s.emoji}</span>
                   <p className="text-xs text-gray-400 truncate">{s.label}</p>
                 </div>
                 <p className={`text-lg font-bold tabular-nums truncate ${s.color}`}>{s.value}</p>
                 <p className="text-xs text-gray-400 mt-0.5 truncate">{s.sub}</p>
-              </div>
+              </button>
             ))}
           </div>
         )}

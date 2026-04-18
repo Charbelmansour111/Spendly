@@ -82,6 +82,7 @@ export default function Budgets() {
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(true)
   const [formAiLoading, setFormAiLoading] = useState(false)
+  const [numModal, setNumModal] = useState(null)
   const [formAiSuggestion, setFormAiSuggestion] = useState('')
   const [currencySymbol] = useState(() => {
     const stored = localStorage.getItem('currency') || 'USD'
@@ -199,18 +200,30 @@ export default function Budgets() {
         </div>
 
         {/* Summary Cards */}
+        {numModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setNumModal(null)}>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 text-center w-full max-w-xs" onClick={e => e.stopPropagation()}>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{numModal.label}</p>
+              <p className="text-4xl font-bold text-violet-600 tabular-nums break-all leading-tight">{numModal.value}</p>
+              {numModal.sub && <p className="text-sm text-gray-400 mt-2">{numModal.sub}</p>}
+              <button onClick={() => setNumModal(null)} className="mt-6 w-full bg-violet-600 text-white py-3 rounded-2xl font-bold hover:bg-violet-700 transition">Done</button>
+            </div>
+          </div>
+        )}
         {budgets.length > 0 && (
           <div className="grid grid-cols-3 gap-3 mb-6">
             {[
               { label: 'Total Budget', value: `${currencySymbol}${totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'text-violet-600' },
-              { label: 'Total Spent', value: `${currencySymbol}${totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: totalSpent > totalBudget ? 'text-red-500' : 'text-green-600', sub: totalBudget > 0 ? `${((totalSpent/totalBudget)*100).toFixed(0)}% used` : '0% used' },
-              { label: 'Over Budget', value: String(overCount), color: overCount > 0 ? 'text-red-500' : 'text-green-600', sub: overCount === 0 ? '✅ All clear' : `${overCount} over` },
+              { label: 'Total Spent',  value: `${currencySymbol}${totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: totalSpent > totalBudget ? 'text-red-500' : 'text-green-600', sub: totalBudget > 0 ? `${((totalSpent/totalBudget)*100).toFixed(0)}% used` : '0% used' },
+              { label: 'Over Budget',  value: String(overCount), color: overCount > 0 ? 'text-red-500' : 'text-green-600', sub: overCount === 0 ? '✅ All clear' : `${overCount} over` },
             ].map((card, i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm min-w-0">
+              <button key={i} onClick={() => setNumModal({ label: card.label, value: card.value, sub: card.sub })}
+                className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm min-w-0 text-left active:scale-95 transition-transform">
                 <p className="text-xs text-gray-400 mb-1 truncate">{card.label}</p>
                 <p className={`text-lg font-bold tabular-nums truncate ${card.color}`}>{card.value}</p>
                 {card.sub && <p className="text-xs text-gray-400 mt-0.5 truncate">{card.sub}</p>}
-              </div>
+              </button>
             ))}
           </div>
         )}

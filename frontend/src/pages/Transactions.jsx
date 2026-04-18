@@ -110,6 +110,20 @@ function EditSheet({ expense, sym, onSave, onClose }) {
 // ──────────────────────────────────────────────────────────────
 //  Main page
 // ──────────────────────────────────────────────────────────────
+function NumberModal({ label, value, sub, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 text-center w-full max-w-xs" onClick={e => e.stopPropagation()}>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{label}</p>
+        <p className="text-4xl font-bold text-violet-600 tabular-nums break-all leading-tight">{value}</p>
+        {sub && <p className="text-sm text-gray-400 mt-2">{sub}</p>}
+        <button onClick={onClose} className="mt-6 w-full bg-violet-600 text-white py-3 rounded-2xl font-bold hover:bg-violet-700 transition">Done</button>
+      </div>
+    </div>
+  )
+}
+
 export default function Transactions() {
   const [expenses, setExpenses] = useState([])
   const [income, setIncome]     = useState([])
@@ -119,6 +133,7 @@ export default function Transactions() {
   const [toast, setToast]       = useState(null)
   const [confirm, setConfirm]   = useState(null)
   const [editing, setEditing]   = useState(null)
+  const [numModal, setNumModal] = useState(null)
 
   // Filters
   const [search, setSearch]       = useState('')
@@ -413,24 +428,28 @@ export default function Transactions() {
         </div>
 
         {/* Summary Strip */}
+        {numModal && <NumberModal {...numModal} onClose={() => setNumModal(null)} />}
         <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-4 text-center">
+          <button onClick={() => setNumModal({ label: 'Total Income', value: '+' + fmtMoney(totalIncome, sym), sub: filteredIncome.length + ' entries' })}
+            className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-4 text-center active:scale-95 transition-transform">
             <p className="text-xs text-gray-400 mb-1">Total Income</p>
             <p className="text-base font-bold text-green-600 tabular-nums truncate">+{fmtMoney(totalIncome, sym)}</p>
             <p className="text-xs text-gray-400 mt-0.5">{filteredIncome.length} entr{filteredIncome.length !== 1 ? 'ies' : 'y'}</p>
-          </div>
-          <div className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-4 text-center">
+          </button>
+          <button onClick={() => setNumModal({ label: 'Total Spent', value: '-' + fmtMoney(totalExpenses, sym), sub: filteredExpenses.length + ' expenses' })}
+            className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-4 text-center active:scale-95 transition-transform">
             <p className="text-xs text-gray-400 mb-1">Total Spent</p>
             <p className="text-base font-bold text-red-500 tabular-nums truncate">-{fmtMoney(totalExpenses, sym)}</p>
             <p className="text-xs text-gray-400 mt-0.5">{filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}</p>
-          </div>
-          <div className={`rounded-2xl p-4 text-center ${net >= 0 ? 'bg-violet-50 dark:bg-violet-900/20' : 'bg-orange-50 dark:bg-orange-900/20'}`}>
+          </button>
+          <button onClick={() => setNumModal({ label: 'Balance', value: (net >= 0 ? '+' : '') + fmtMoney(net, sym), sub: net >= 0 ? 'surplus' : 'deficit' })}
+            className={`rounded-2xl p-4 text-center active:scale-95 transition-transform ${net >= 0 ? 'bg-violet-50 dark:bg-violet-900/20' : 'bg-orange-50 dark:bg-orange-900/20'}`}>
             <p className="text-xs text-gray-400 mb-1">Balance</p>
             <p className={`text-base font-bold tabular-nums truncate ${net >= 0 ? 'text-violet-600' : 'text-orange-500'}`}>
               {net >= 0 ? '+' : ''}{fmtMoney(net, sym)}
             </p>
             <p className="text-xs text-gray-400 mt-0.5">{net >= 0 ? 'surplus' : 'deficit'}</p>
-          </div>
+          </button>
         </div>
 
         {/* Tab bar */}
