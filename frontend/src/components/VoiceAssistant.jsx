@@ -18,6 +18,7 @@ export default function VoiceAssistant({ onClose }) {
   const [aiResponse, setAiResponse] = useState('')
   const [actionLabel, setActionLabel] = useState('')
   const recognitionRef = useRef(null)
+  const transcriptRef = useRef('')
   const lang = localStorage.getItem('spendly_lang') || 'en-US'
 
   const executeIntent = useCallback(async (result) => {
@@ -102,9 +103,12 @@ export default function VoiceAssistant({ onClose }) {
     recognition.onresult = (e) => {
       const text = Array.from(e.results).map(r => r[0].transcript).join('')
       setTranscript(text)
+      transcriptRef.current = text
     }
     recognition.onend = () => {
-      if (transcript) sendToAI(transcript)
+      const captured = transcriptRef.current
+      transcriptRef.current = ''
+      if (captured) sendToAI(captured)
       else { setStatus('idle'); setTranscript('') }
     }
     recognition.onerror = (e) => {
@@ -118,7 +122,7 @@ export default function VoiceAssistant({ onClose }) {
 
     setTranscript('')
     recognition.start()
-  }, [lang, transcript, sendToAI])
+  }, [lang, sendToAI])
 
   // Auto-start on mount
   useEffect(() => {
