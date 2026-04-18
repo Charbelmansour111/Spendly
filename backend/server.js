@@ -19,6 +19,7 @@ const businessRoutes = require('./routes/business');
 const newsRoutes = require('./routes/news');
 const debtsRoutes = require('./routes/debts');
 const subscriptionsRoutes = require('./routes/subscriptions');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api/business', businessRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/debts', debtsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Spendly API is running' });

@@ -5,6 +5,31 @@ import API from '../utils/api'
 const CURRENCIES = ['USD','EUR','GBP','LBP','AED','SAR','CAD','AUD']
 const CURRENCY_SYMBOLS = { USD:'$',EUR:'€',GBP:'£',LBP:'L£',AED:'AED',SAR:'SAR',CAD:'C$',AUD:'A$' }
 const INCOME_FREQS = ['Monthly','Bi-weekly','Weekly','Irregular']
+const LANGUAGES = [
+  { code: 'en-US', label: 'English (US)' },
+  { code: 'en-GB', label: 'English (UK)' },
+  { code: 'ar-SA', label: 'العربية – السعودية' },
+  { code: 'ar-LB', label: 'العربية – لبنان' },
+  { code: 'ar-JO', label: 'العربية – الأردن' },
+  { code: 'ar-SY', label: 'العربية – سوريا' },
+  { code: 'ar-BH', label: 'العربية – البحرين' },
+  { code: 'ar-AE', label: 'العربية – الإمارات' },
+  { code: 'ar-EG', label: 'العربية – مصر' },
+  { code: 'ar-KW', label: 'العربية – الكويت' },
+  { code: 'ar-IQ', label: 'العربية – العراق' },
+  { code: 'ar-MA', label: 'العربية – المغرب' },
+  { code: 'es-ES', label: 'Español (España)' },
+  { code: 'es-MX', label: 'Español (México)' },
+  { code: 'fr-FR', label: 'Français' },
+  { code: 'de-DE', label: 'Deutsch' },
+  { code: 'it-IT', label: 'Italiano' },
+  { code: 'pt-PT', label: 'Português' },
+  { code: 'nl-NL', label: 'Nederlands' },
+  { code: 'pl-PL', label: 'Polski' },
+  { code: 'ru-RU', label: 'Русский' },
+  { code: 'tr-TR', label: 'Türkçe' },
+  { code: 'af-ZA', label: 'Afrikaans' },
+]
 
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t) }, [onClose])
@@ -34,6 +59,7 @@ export default function Profile() {
     try { return JSON.parse(localStorage.getItem('spendly_prefs') || '{}') } catch { return {} }
   })
   const [prefsSaved, setPrefsSaved] = useState(false)
+  const [aiLang, setAiLang] = useState(() => localStorage.getItem('spendly_lang') || 'en-US')
 
   // Business mode disabled — business_name field removed
   // const [form, setForm] = useState({ name: '', email: '', currency: 'USD', business_name: '' })
@@ -202,6 +228,14 @@ export default function Profile() {
               <p className="text-xs text-gray-400 mt-1">Industry recommendation: 20% (the 50/30/20 rule)</p>
             </div>
             <div>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">
+                AI Voice Language <span className="text-gray-400 font-normal">(mic & responses)</span>
+              </label>
+              <select value={aiLang} onChange={e => setAiLang(e.target.value)} className={cls}>
+                {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+              </select>
+            </div>
+            <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Currency Note</label>
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-4 py-3">
                 <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
@@ -212,6 +246,7 @@ export default function Profile() {
             <button
               onClick={() => {
                 localStorage.setItem('spendly_prefs', JSON.stringify(prefs))
+                localStorage.setItem('spendly_lang', aiLang)
                 setPrefsSaved(true)
                 setTimeout(() => setPrefsSaved(false), 2000)
               }}

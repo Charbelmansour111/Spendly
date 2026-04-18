@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useDarkMode } from '../hooks/useDarkMode'
+import VoiceAssistant from './VoiceAssistant'
 
 const Icons = {
   home: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.15:0}/><path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
@@ -122,8 +123,24 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
 export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const [dark, toggleDark] = useDarkMode()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [showVoice, setShowVoice] = useState(false)
+  const lastAiTapRef = useRef(0)
+  const aiTapTimerRef = useRef(null)
   const current = window.location.pathname
   const user = JSON.parse(localStorage.getItem('user') || '{}')
+
+  const handleAiTabClick = () => {
+    const now = Date.now()
+    if (now - lastAiTapRef.current < 350) {
+      clearTimeout(aiTapTimerRef.current)
+      lastAiTapRef.current = 0
+      setShowVoice(true)
+    } else {
+      lastAiTapRef.current = now
+      clearTimeout(aiTapTimerRef.current)
+      aiTapTimerRef.current = setTimeout(() => { window.location.href = '/insights' }, 350)
+    }
+  }
 
   // Business mode disabled — always use personal nav
   // const isBusiness = user?.account_type === 'business'
@@ -183,6 +200,18 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
         <div className="flex items-stretch h-16">
           {TAB_ITEMS.map(item => {
             const isActive = current === item.href
+            if (item.icon === 'ai') {
+              return (
+                <button key={item.href} onClick={handleAiTabClick}
+                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                  {isActive && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
+                  <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
+                    {Icons[item.icon]?.(isActive)}
+                  </span>
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </button>
+              )
+            }
             return (
               <a key={item.href} href={item.href}
                 className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>
@@ -196,6 +225,8 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
           })}
         </div>
       </nav>
+
+      {showVoice && <VoiceAssistant onClose={() => setShowVoice(false)} />}
     </div>
   )
 }
