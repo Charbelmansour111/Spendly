@@ -325,6 +325,205 @@ function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
   )
 }
 
+const CAT_ICONS_MAP = { Food:'🍔', Transport:'🚗', Shopping:'🛍️', Subscriptions:'📱', Entertainment:'🎬', Other:'📦' }
+const EXAMPLE_PROMPTS = [
+  "Starbucks $6 this morning, Uber $22 to the mall, KFC lunch $11",
+  "Netflix monthly $15, groceries at Carrefour $85, parking $4",
+  "Yesterday: McDonald's $9, Shell gas $45, cinema tickets $28",
+  "Rent $800, gym subscription $30, Amazon order $55, coffee $4.50",
+]
+
+function QuickLogSheet({ onClose, onSaved, currencySymbol }) {
+  const today = new Date().toISOString().split('T')[0]
+  const [text, setText] = useState('')
+  const [step, setStep] = useState('input')   // input | preview | saving | done
+  const [parsed, setParsed] = useState([])
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [savedCount, setSavedCount] = useState(0)
+  const exampleRef = useState(() => EXAMPLE_PROMPTS[Math.floor(Math.random() * EXAMPLE_PROMPTS.length)])[0]
+
+  const parse = async () => {
+    if (!text.trim()) return
+    setStep('input')
+    setError('')
+    setSaving(true)
+    try {
+      const res = await API.post('/expenses/parse-natural', { text })
+      setParsed(res.data.transactions.map((t, i) => ({ ...t, _id: i, date: t.date || today })))
+      setStep('preview')
+    } catch (e) {
+      setError(e.response?.data?.message || 'Could not parse — try rephrasing')
+    }
+    setSaving(false)
+  }
+
+  const updateRow = (id, field, val) => {
+    setParsed(prev => prev.map(t => t._id === id ? { ...t, [field]: val } : t))
+  }
+
+  const removeRow = (id) => setParsed(prev => prev.filter(t => t._id !== id))
+
+  const saveAll = async () => {
+    setSaving(true)
+    let count = 0
+    for (const t of parsed) {
+      try {
+        await API.post('/expenses', { amount: t.amount, category: t.category, description: t.description, date: t.date, is_recurring: false })
+        count++
+      } catch { /* skip failed ones */ }
+    }
+    setSavedCount(count)
+    setStep('done')
+    setSaving(false)
+    setTimeout(() => { onSaved(); onClose() }, 1500)
+  }
+
+  const inputCls = "px-2 py-1 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-violet-500 w-full"
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-lg shadow-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="bg-linear-to-br from-violet-600 to-purple-700 rounded-t-3xl md:rounded-t-3xl px-6 pt-6 pb-5 text-white shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">💬</span>
+              <h3 className="text-lg font-bold">Quick Log with AI</h3>
+            </div>
+            <button onClick={onClose} className="text-white/60 hover:text-white p-1">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <p className="text-violet-200 text-sm leading-relaxed">
+            Just tell me what you spent today — I'll sort it all out.
+          </p>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-6 py-5">
+
+          {step === 'input' && (
+            <div className="space-y-4">
+              {/* Example */}
+              <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/40 rounded-2xl p-4">
+                <p className="text-xs font-bold text-violet-600 dark:text-violet-400 mb-2">💡 Example — say it like this:</p>
+                <p className="text-sm text-violet-800 dark:text-violet-200 italic leading-relaxed">"{exampleRef}"</p>
+                <p className="text-xs text-violet-500 mt-2">Include merchant name, amount, and optionally the date or "yesterday".</p>
+              </div>
+
+              {/* Input */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Your transactions</label>
+                <textarea
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  placeholder="e.g. Starbucks $6 this morning, Uber $22 to the mall, Netflix $15 monthly subscription"
+                  rows={4}
+                  autoFocus
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-2xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none leading-relaxed"
+                />
+                {error && <p className="text-red-500 text-xs mt-1.5">⚠️ {error}</p>}
+              </div>
+
+              {/* Quick example pills */}
+              <div>
+                <p className="text-xs text-gray-400 mb-2">Quick examples</p>
+                <div className="flex flex-wrap gap-2">
+                  {EXAMPLE_PROMPTS.map((p, i) => (
+                    <button key={i} type="button" onClick={() => setText(p)}
+                      className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full hover:bg-violet-100 hover:text-violet-600 transition">
+                      {p.substring(0, 30)}…
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === 'preview' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-semibold text-gray-800 dark:text-white">{parsed.length} transaction{parsed.length !== 1 ? 's' : ''} found</p>
+                <button onClick={() => setStep('input')} className="text-xs text-violet-600 font-semibold hover:underline">← Edit text</button>
+              </div>
+              {parsed.map(t => (
+                <div key={t._id} className="bg-gray-50 dark:bg-gray-700/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xl">{CAT_ICONS_MAP[t.category] || '📦'}</span>
+                    <input value={t.description} onChange={e => updateRow(t._id, 'description', e.target.value)}
+                      className={inputCls + ' font-semibold flex-1'} />
+                    <button onClick={() => removeRow(t._id)} className="text-red-400 hover:text-red-600 p-1 shrink-0">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] text-gray-400 mb-0.5 block">Amount ({currencySymbol})</label>
+                      <input type="number" value={t.amount} onChange={e => updateRow(t._id, 'amount', parseFloat(e.target.value) || 0)}
+                        className={inputCls + ' font-bold text-violet-600'} min="0.01" step="0.01" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400 mb-0.5 block">Category</label>
+                      <select value={t.category} onChange={e => updateRow(t._id, 'category', e.target.value)} className={inputCls}>
+                        {Object.keys(CAT_ICONS_MAP).map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400 mb-0.5 block">Date</label>
+                      <input type="date" value={t.date} onChange={e => updateRow(t._id, 'date', e.target.value)} className={inputCls} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {parsed.length === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-3xl mb-2">🗑️</p>
+                  <p className="text-sm">All removed — go back and rephrase</p>
+                  <button onClick={() => setStep('input')} className="mt-3 text-violet-600 text-sm font-semibold hover:underline">← Edit text</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 'done' && (
+            <div className="text-center py-10">
+              <span className="text-5xl">✅</span>
+              <p className="text-lg font-bold text-gray-800 dark:text-white mt-4">{savedCount} expense{savedCount !== 1 ? 's' : ''} added!</p>
+              <p className="text-gray-400 text-sm mt-1">Closing...</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer buttons */}
+        {step === 'input' && (
+          <div className="px-6 pb-6 pt-3 shrink-0 border-t border-gray-100 dark:border-gray-700">
+            <button onClick={parse} disabled={!text.trim() || saving}
+              className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50 flex items-center justify-center gap-2">
+              {saving ? (
+                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Parsing...</>
+              ) : '🤖 Parse with AI'}
+            </button>
+          </div>
+        )}
+
+        {step === 'preview' && parsed.length > 0 && (
+          <div className="px-6 pb-6 pt-3 shrink-0 border-t border-gray-100 dark:border-gray-700">
+            <button onClick={saveAll} disabled={saving}
+              className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2">
+              {saving ? (
+                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving...</>
+              ) : `✅ Add All ${parsed.length} Transaction${parsed.length !== 1 ? 's' : ''}`}
+            </button>
+            <p className="text-xs text-gray-400 text-center mt-2">You can edit any field above before confirming</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main Dashboard ───────────────────────────────────────
 export default function Dashboard() {
   const [user]                        = useState(() => {
@@ -343,8 +542,9 @@ export default function Dashboard() {
   const [toast, setToast]             = useState(null)
   const [confirm, setConfirm]         = useState(null)
   const [modalData, setModalData]     = useState(null)
-  const [showAddExp, setShowAddExp]   = useState(false)
-  const [showAddInc, setShowAddInc]   = useState(false)
+  const [showAddExp, setShowAddExp]     = useState(false)
+  const [showAddInc, setShowAddInc]     = useState(false)
+  const [showQuickLog, setShowQuickLog] = useState(false)
   const [editingExpense, setEditing]  = useState(null)
   const [editForm, setEditForm]       = useState({ amount: '', category: 'Food', description: '', date: '', is_recurring: false })
   const [showNotifs, setShowNotifs]   = useState(false)
@@ -591,8 +791,9 @@ export default function Dashboard() {
       {confirm  && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
       {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('spendly_onboarded', '1'); setShowOnboarding(false) }} />}
       {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
-      {showAddExp && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} />}
-      {showAddInc && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}
+      {showAddExp   && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} />}
+      {showAddInc   && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}
+      {showQuickLog && <QuickLogSheet onClose={() => setShowQuickLog(false)} onSaved={fetchExpenses} currencySymbol={currencySymbol} />}
 
       {/* Notifications panel */}
       {showNotifs && (
@@ -807,19 +1008,31 @@ export default function Dashboard() {
 
         {/* Quick Actions */}
         {isCurrentMonth && (
-          <div className="grid grid-cols-4 gap-3 mb-5">
-            {[
-              { label: 'Expense', icon: '➕', color: 'bg-violet-600', action: () => setShowAddExp(true) },
-              { label: 'Income',  icon: '💵', color: 'bg-green-600',  action: () => setShowAddInc(true) },
-              { label: 'AI',      icon: '🤖', color: 'bg-purple-600', action: () => window.location.href = '/insights' },
-              { label: 'Reports', icon: '📄', color: 'bg-gray-700',   action: () => window.location.href = '/reports' },
-            ].map((a, i) => (
-              <button key={i} onClick={a.action}
-                className={`${a.color} text-white rounded-2xl py-3 flex flex-col items-center gap-1 active:scale-95 transition-transform shadow-sm`}>
-                <span className="text-xl">{a.icon}</span>
-                <span className="text-xs font-semibold">{a.label}</span>
-              </button>
-            ))}
+          <div className="space-y-3 mb-5">
+            {/* Quick Log CTA — prominent */}
+            <button onClick={() => setShowQuickLog(true)}
+              className="w-full bg-linear-to-r from-violet-600 to-purple-600 text-white rounded-2xl py-4 flex items-center justify-center gap-3 active:scale-95 transition-transform shadow-md shadow-violet-200 dark:shadow-violet-900/30">
+              <span className="text-2xl">💬</span>
+              <div className="text-left">
+                <p className="font-bold text-sm leading-tight">Quick Log with AI</p>
+                <p className="text-violet-200 text-xs leading-tight">Just describe what you spent — I'll fill it all in</p>
+              </div>
+              <svg className="ml-auto shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { label: 'Expense', icon: '➕', color: 'bg-violet-600', action: () => setShowAddExp(true) },
+                { label: 'Income',  icon: '💵', color: 'bg-green-600',  action: () => setShowAddInc(true) },
+                { label: 'AI Chat', icon: '🤖', color: 'bg-purple-600', action: () => window.location.href = '/insights' },
+                { label: 'Reports', icon: '📄', color: 'bg-gray-700',   action: () => window.location.href = '/reports' },
+              ].map((a, i) => (
+                <button key={i} onClick={a.action}
+                  className={`${a.color} text-white rounded-2xl py-3 flex flex-col items-center gap-1 active:scale-95 transition-transform shadow-sm`}>
+                  <span className="text-xl">{a.icon}</span>
+                  <span className="text-xs font-semibold">{a.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

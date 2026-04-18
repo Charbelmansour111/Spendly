@@ -85,6 +85,59 @@ router.post('/apply-recurring', authenticateToken, async (req, res) => {
   }
 });
 
+router.post('/parse-natural', authenticateToken, async (req, res) => {
+  try {
+    const { text } = req.body
+    if (!text || text.trim().length < 3) return res.status(400).json({ message: 'Text required' })
+    const today = new Date().toISOString().split('T')[0]
+    const systemPrompt = `You are a transaction parser for a personal finance app. Extract ALL expense transactions from the user's message.
+
+Return ONLY a valid JSON array — no explanation, no markdown, no extra text. Just the raw JSON array.
+
+Each object must have:
+- "amount": number (required, no currency symbol)
+- "category": exactly one of "Food", "Transport", "Shopping", "Subscriptions", "Entertainment", "Other"
+- "description": merchant or item name (max 5 words)
+- "date": "YYYY-MM-DD" (use today ${today} if not mentioned)
+
+Category rules:
+- Food → restaurants, cafes, groceries, delivery, fast food
+- Transport → Uber, taxi, gas, parking, flight, metro, bus
+- Shopping → clothes, electronics, pharmacy, Amazon, household items
+- Subscriptions → Netflix, Spotify, streaming, software, monthly/annual plans
+- Entertainment → cinema, bars, gaming, concerts, clubs, bowling
+- Other → rent, utilities, healthcare, gym, insurance, gifts
+
+If multiple transactions are mentioned, return ALL as separate objects.
+Example output: [{"amount":6.50,"category":"Food","description":"Starbucks coffee","date":"${today}"},{"amount":22,"category":"Transport","description":"Uber to mall","date":"${today}"}]`
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 600,
+        temperature: 0.1,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: text }
+        ]
+      })
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error?.message || 'AI error')
+    const raw = data.choices[0].message.content.trim()
+    const jsonMatch = raw.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) return res.status(422).json({ message: 'Could not parse transactions from text' })
+    const transactions = JSON.parse(jsonMatch[0])
+    if (!Array.isArray(transactions) || transactions.length === 0) return res.status(422).json({ message: 'No transactions found' })
+    res.json({ transactions })
+  } catch (e) {
+    console.error('Parse natural error:', e)
+    res.status(500).json({ message: 'Error parsing transactions' })
+  }
+})
+
 router.get('/trends', authenticateToken, async (req, res) => {
   try {
     const months = []
