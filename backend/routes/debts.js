@@ -35,6 +35,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
   } catch { res.status(500).json({ message: 'Server error' }) }
 });
 
+router.patch('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { remaining_amount } = req.body;
+    const result = await pool.query(
+      'UPDATE debts SET remaining_amount = $1 WHERE id = $2 AND user_id = $3 RETURNING *',
+      [remaining_amount, req.params.id, req.userId]
+    );
+    res.json(result.rows[0]);
+  } catch { res.status(500).json({ message: 'Server error' }) }
+});
+
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     await pool.query('DELETE FROM debts WHERE id=$1 AND user_id=$2', [req.params.id, req.userId]);

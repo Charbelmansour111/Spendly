@@ -12,10 +12,10 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, target_amount, saved_amount, deadline } = req.body;
+    const { name, target_amount, saved_amount, deadline, goal_type } = req.body;
     const result = await pool.query(
-      `INSERT INTO savings_goals (user_id, name, target_amount, saved_amount, deadline) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [req.userId, name, target_amount, saved_amount || 0, deadline]
+      `INSERT INTO savings_goals (user_id, name, target_amount, saved_amount, deadline, goal_type) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [req.userId, name, target_amount, saved_amount || 0, deadline || null, goal_type || 'Other']
     );
     res.status(201).json(result.rows[0]);
   } catch { res.status(500).json({ message: 'Server error' }) }

@@ -34,6 +34,9 @@ async function migrate() {
     await pool.query(`ALTER TABLE budgets ADD COLUMN IF NOT EXISTS period VARCHAR(20) DEFAULT 'monthly'`);
     await pool.query(`ALTER TABLE budgets ADD COLUMN IF NOT EXISTS name VARCHAR(255)`);
 
+    // Add goal_type to savings_goals
+    await pool.query(`ALTER TABLE savings_goals ADD COLUMN IF NOT EXISTS goal_type VARCHAR(50) DEFAULT 'Other'`);
+
     console.log('DB migration complete');
   } catch (e) {
     console.error('DB migration error:', e.message);

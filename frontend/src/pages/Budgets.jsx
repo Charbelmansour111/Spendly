@@ -28,8 +28,12 @@ function AiModal({ budget, spent, symbol, onClose }) {
     if (fetched.current) return
     fetched.current = true
     const limit = parseFloat(budget.amount)
+    const pct = ((spent / limit) * 100).toFixed(0)
     const periodLabel = budget.period === 'weekly' ? 'this week' : 'this month'
-    const msg = `I've exceeded my ${budget.category} budget ${periodLabel}. My limit was ${symbol}${limit.toFixed(2)} and I've spent ${symbol}${spent.toFixed(2)} (${((spent/limit)*100).toFixed(0)}% of budget). What should I do to get back on track? Give me 3 specific actionable steps.`
+    const isOver = spent >= limit
+    const msg = isOver
+      ? `I've exceeded my ${budget.category} budget ${periodLabel}. My limit was ${symbol}${limit.toFixed(2)} and I've spent ${symbol}${spent.toFixed(2)} (${pct}% used). What should I do to get back on track? Give me 3 specific actionable steps.`
+      : `I'm at ${pct}% of my ${budget.category} budget ${periodLabel}. My limit is ${symbol}${limit.toFixed(2)} and I've spent ${symbol}${spent.toFixed(2)} so far. I still have ${symbol}${(limit - spent).toFixed(2)} left. Give me 3 practical tips to stay under my limit for the rest of the ${budget.period === 'weekly' ? 'week' : 'month'}.`
     API.post('/insights/chat', { message: msg })
       .then(r => setReply(r.data.reply || r.data.message || 'No advice available.'))
       .catch(() => setReply('Unable to load AI advice right now. Try again later.'))
@@ -44,9 +48,11 @@ function AiModal({ budget, spent, symbol, onClose }) {
             <span className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full">🤖 AI Advice</span>
             <button onClick={onClose} className="text-white/60 hover:text-white text-xl leading-none">✕</button>
           </div>
-          <p className="text-lg font-bold">You've gone over your {budget.category} budget</p>
+          <p className="text-lg font-bold">
+            {spent >= parseFloat(budget.amount) ? `Over budget: ${budget.category}` : `Heads up: ${budget.category} budget`}
+          </p>
           <p className="text-white/70 text-sm mt-1">
-            Spent {symbol}{spent.toFixed(2)} of {symbol}{parseFloat(budget.amount).toFixed(2)} limit ({budget.period})
+            {symbol}{spent.toFixed(2)} of {symbol}{parseFloat(budget.amount).toFixed(2)} · {((spent/parseFloat(budget.amount))*100).toFixed(0)}% used · {budget.period}
           </p>
         </div>
         <div className="px-6 py-5">
@@ -332,12 +338,19 @@ export default function Budgets() {
                     </button>
                   )}
 
-                  {/* Warning nudge at 85% */}
+                  {/* Warning at 85% — with AI tips button */}
                   {isWarning && (
-                    <div className="mt-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-xl px-3 py-2">
-                      <p className="text-xs text-orange-700 dark:text-orange-300 font-medium">
-                        ⚠️ You're at {b.pct.toFixed(0)}% of your limit — slow down on {b.category} spending to stay on track.
-                      </p>
+                    <div className="mt-3 space-y-2">
+                      <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-xl px-3 py-2">
+                        <p className="text-xs text-orange-700 dark:text-orange-300 font-medium">
+                          ⚠️ You're at {b.pct.toFixed(0)}% of your {b.category} limit — only {currencySymbol}{remaining.toFixed(2)} left.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setAiModal({ budget: b, spent: b.spent })}
+                        className="w-full flex items-center justify-center gap-2 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-500 dark:text-gray-400 text-xs font-medium hover:border-violet-300 hover:text-violet-600 transition">
+                        🤖 Ask AI how to stay under budget
+                      </button>
                     </div>
                   )}
                 </div>
