@@ -6,7 +6,12 @@ const authenticateToken = require('../middleware/auth');
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const { month, year } = req.query;
-    const result = await pool.query('SELECT * FROM income WHERE user_id = $1 AND month = $2 AND year = $3', [req.userId, month, year]);
+    let result;
+    if (month && year) {
+      result = await pool.query('SELECT * FROM income WHERE user_id = $1 AND month = $2 AND year = $3 ORDER BY created_at DESC', [req.userId, month, year]);
+    } else {
+      result = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC', [req.userId]);
+    }
     res.json(result.rows);
   } catch { res.status(500).json({ message: 'Server error' }) }
 });

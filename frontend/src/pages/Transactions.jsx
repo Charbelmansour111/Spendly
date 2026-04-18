@@ -134,14 +134,26 @@ export default function Transactions() {
     const token = localStorage.getItem('token')
     if (!token) { window.location.href = '/login'; return }
     Promise.all([API.get('/expenses'), API.get('/income')])
-      .then(([e, i]) => { setExpenses(e.data || []); setIncome(i.data || []) })
+      .then(([e, i]) => {
+        setExpenses(e.data || [])
+        setIncome((i.data || []).map(inc => ({
+          ...inc,
+          date: inc.created_at || new Date(inc.year, (inc.month || 1) - 1, 1).toISOString()
+        })))
+      })
       .catch(() => showToast('Error loading data', 'error'))
       .finally(() => setLoading(false))
   }, [showToast])
 
   const fetchAll = useCallback(() => {
     Promise.all([API.get('/expenses'), API.get('/income')])
-      .then(([e, i]) => { setExpenses(e.data || []); setIncome(i.data || []) })
+      .then(([e, i]) => {
+        setExpenses(e.data || [])
+        setIncome((i.data || []).map(inc => ({
+          ...inc,
+          date: inc.created_at || new Date(inc.year, (inc.month || 1) - 1, 1).toISOString()
+        })))
+      })
       .catch(() => showToast('Error loading', 'error'))
   }, [showToast])
 

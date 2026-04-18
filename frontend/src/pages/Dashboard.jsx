@@ -276,8 +276,10 @@ export default function Dashboard() {
   const [newsLoading, setNewsLoading] = useState(() => !!localStorage.getItem('token'))
 
   // Net worth data
-  const [debts, setDebts]   = useState([])
-  const [subs, setSubs]     = useState([])
+  const [debts, setDebts]         = useState([])
+  const [subs, setSubs]           = useState([])
+  const [allTimeIncome, setAllTimeIncome] = useState([])
+  const [showNWDetails, setShowNWDetails] = useState(false)
   const touchStartX = useRef(null)
   const notifRef    = useRef(null)
 
@@ -322,11 +324,12 @@ export default function Dashboard() {
     API.get('/news').then(r => setNews(r.data || [])).catch(() => { /* noop */ }).finally(() => setNewsLoading(false))
   }, [])
 
-  // Fetch debts + subscriptions for net worth
+  // Fetch debts + subscriptions + all-time income for net worth
   useEffect(() => {
     if (!localStorage.getItem('token')) return
     API.get('/debts').then(r => setDebts(r.data || [])).catch(() => {})
     API.get('/subscriptions').then(r => setSubs(r.data || [])).catch(() => {})
+    API.get('/income').then(r => setAllTimeIncome(r.data || [])).catch(() => {})
   }, [])
 
   // Close notification panel on outside click
@@ -943,29 +946,76 @@ export default function Dashboard() {
         )}
 
         {/* Net Worth */}
-        {(debts.length > 0 || savingsGoals.length > 0) && (() => {
-          const totalSaved = savingsGoals.reduce((s, g) => s + safeNum(g.saved_amount), 0)
-          const totalDebt  = debts.reduce((s, d) => s + safeNum(d.remaining_amount), 0)
-          const netWorth   = totalSaved - totalDebt
+        {(() => {
+          const cashIncome   = allTimeIncome.reduce((s, i) => s + safeNum(i.amount), 0)
+          const cashExpenses = expenses.reduce((s, e) => s + safeNum(e.amount), 0)
+          const cashBalance  = cashIncome - cashExpenses
+          const totalSaved   = savingsGoals.reduce((s, g) => s + safeNum(g.saved_amount), 0)
+          const totalDebt    = debts.reduce((s, d) => s + safeNum(d.remaining_amount), 0)
+          const netWorth     = cashBalance + totalSaved - totalDebt
+          if (cashIncome === 0 && totalSaved === 0 && totalDebt === 0) return null
           return (
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-3">
                 <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Net Worth</h3>
-                <a href="/debts" className="text-violet-600 text-xs font-semibold hover:underline">Manage Debts</a>
+                <button onClick={() => setShowNWDetails(v => !v)}
+                  className="text-xs text-violet-600 font-semibold hover:underline">
+                  {showNWDetails ? 'Hide details' : 'Show details'}
+                </button>
               </div>
-              <p className={`text-3xl font-bold tabular-nums mb-4 ${netWorth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {netWorth >= 0 ? '+' : '-'}{fmt(Math.abs(netWorth), currencySymbol)}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3">
-                  <p className="text-xs text-green-600 dark:text-green-400 font-semibold mb-1">Assets (Savings)</p>
-                  <p className="text-base font-bold text-green-600 tabular-nums">{fmt(totalSaved, currencySymbol)}</p>
+              <button onClick={() => setModalData({ label: 'Net Worth', value: (netWorth >= 0 ? '+' : '-') + fmt(Math.abs(netWorth), currencySymbol), sub: 'Cash + Savings − Debt' })}
+                className="text-left mb-4">
+                <p className={`text-3xl font-bold tabular-nums ${netWorth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {netWorth >= 0 ? '+' : '-'}{fmt(Math.abs(netWorth), currencySymbol)}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">Cash + Savings Goals − Debts</p>
+              </button>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
+                  <p className="text-xs text-blue-500 font-semibold mb-1">💳 Cash</p>
+                  <p className={`text-sm font-bold tabular-nums ${cashBalance >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                    {cashBalance >= 0 ? '+' : '-'}{fmt(Math.abs(cashBalance), currencySymbol)}
+                  </p>
                 </div>
-                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
-                  <p className="text-xs text-red-500 font-semibold mb-1">Liabilities (Debt)</p>
-                  <p className="text-base font-bold text-red-500 tabular-nums">{fmt(totalDebt, currencySymbol)}</p>
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
+                  <p className="text-xs text-green-600 font-semibold mb-1">🏦 Savings</p>
+                  <p className="text-sm font-bold text-green-600 tabular-nums">+{fmt(totalSaved, currencySymbol)}</p>
+                </div>
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3 text-center">
+                  <p className="text-xs text-red-500 font-semibold mb-1">💸 Debt</p>
+                  <p className="text-sm font-bold text-red-500 tabular-nums">-{fmt(totalDebt, currencySymbol)}</p>
                 </div>
               </div>
+              {showNWDetails && (
+                <div className="mt-4 space-y-2 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Total income (all time)</span>
+                    <span className="text-green-600 font-semibold tabular-nums">+{fmt(cashIncome, currencySymbol)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Total expenses (all time)</span>
+                    <span className="text-red-500 font-semibold tabular-nums">-{fmt(cashExpenses, currencySymbol)}</span>
+                  </div>
+                  {savingsGoals.map(g => (
+                    <div key={g.id} className="flex justify-between text-xs text-gray-500">
+                      <span>Savings: {g.name}</span>
+                      <span className="text-green-600 font-semibold tabular-nums">+{fmt(g.saved_amount, currencySymbol)}</span>
+                    </div>
+                  ))}
+                  {debts.map(d => (
+                    <div key={d.id} className="flex justify-between text-xs text-gray-500">
+                      <span>Debt: {d.name}</span>
+                      <span className="text-red-500 font-semibold tabular-nums">-{fmt(d.remaining_amount, currencySymbol)}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between text-sm font-bold text-gray-800 dark:text-white pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <span>Net Worth</span>
+                    <span className={netWorth >= 0 ? 'text-green-500' : 'text-red-500'}>
+                      {netWorth >= 0 ? '+' : '-'}{fmt(Math.abs(netWorth), currencySymbol)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )
         })()}
