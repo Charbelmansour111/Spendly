@@ -52,7 +52,8 @@ export default function Wellness() {
   const [noteSaved, setNoteSaved] = useState(false)
   const [scoreRevealed, setScoreRevealed] = useState(false)
   const [scoreAnimating, setScoreAnimating] = useState(false)
-  const [currencySymbol, setCurrencySymbol] = useState('$')
+  const [currencySymbol] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
+  const [financials, setFinancials] = useState({ totalIncome: 0, totalSpent: 0, balance: 0, streak: 0 })
   const [joke, setJoke] = useState('')
   const [jokeLoading, setJokeLoading] = useState(false)
   const [quote, setQuote] = useState({ text: '', author: '' })
@@ -65,11 +66,8 @@ export default function Wellness() {
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
   const dayOfMonth = today.getDate()
-
-  useEffect(() => {
-    const storedCurrency = localStorage.getItem('currency') || 'USD'
-    setCurrencySymbol(CURRENCY_SYMBOLS[storedCurrency] || '$')
-  }, [])
+  const currentMonth = today.getMonth() + 1
+  const currentYear = today.getFullYear()
 
   const fetchJoke = useCallback(async () => {
     setJokeLoading(true)
@@ -91,13 +89,46 @@ export default function Wellness() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await API.get('/wellness')
-      setData(res.data)
-      setNote(res.data.note?.content || '')
-      if (res.data.mood?.mood) setSelectedMood(res.data.mood.mood)
-    } catch { console.log('Error fetching wellness') }
+      // Fetch financials directly from working endpoints (same as dashboard)
+      const [expRes, incRes, wellRes] = await Promise.allSettled([
+        API.get('/expenses'),
+        API.get(`/income?month=${currentMonth}&year=${currentYear}`),
+        API.get('/wellness'),
+      ])
+
+      // Compute financials from direct endpoints
+      if (expRes.status === 'fulfilled' && incRes.status === 'fulfilled') {
+        const allExpenses = expRes.value.data || []
+        const monthExpenses = allExpenses.filter(e => {
+          const d = new Date(e.date)
+          return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear
+        })
+        const totalSpent = monthExpenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0)
+        const totalIncome = (incRes.value.data || []).reduce((s, i) => s + parseFloat(i.amount || 0), 0)
+        const balance = totalIncome - totalSpent
+
+        // Streak: consecutive days with at least one expense
+        const dateset = new Set(allExpenses.map(e => e.date?.split('T')[0]).filter(Boolean))
+        let streak = 0
+        const check = new Date()
+        for (let i = 0; i < 60; i++) {
+          const ds = check.toISOString().split('T')[0]
+          if (dateset.has(ds)) { streak++; check.setDate(check.getDate() - 1) }
+          else { if (i > 0) break; check.setDate(check.getDate() - 1) }
+        }
+
+        setFinancials({ totalIncome, totalSpent, balance, streak })
+      }
+
+      // Wellness score/breakdown/achievements from wellness endpoint
+      if (wellRes.status === 'fulfilled') {
+        setData(wellRes.value.data)
+        setNote(wellRes.value.data.note?.content || '')
+        if (wellRes.value.data.mood?.mood) setSelectedMood(wellRes.value.data.mood.mood)
+      }
+    } catch (e) { console.log('Error fetching wellness', e) }
     setLoading(false)
-  }, [])
+  }, [currentMonth, currentYear])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -140,16 +171,17 @@ export default function Wellness() {
   }
 
   // Computed stats
-  const savingsRate = data?.totalIncome > 0 ? ((data.balance / data.totalIncome) * 100) : null
-  const dailyBurn = data?.totalSpent > 0 && dayOfMonth > 0 ? (data.totalSpent / dayOfMonth) : null
+  const { totalIncome, totalSpent, balance, streak } = financials
+  const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100) : null
+  const dailyBurn = totalSpent > 0 && dayOfMonth > 0 ? (totalSpent / dayOfMonth) : null
   const budgetUnder = data?.breakdown?.find(b => b.label === 'Under Budget')
   const budgetsOk = budgetUnder?.achieved
 
   const getPersonality = () => {
-    if (!data || data.totalSpent === 0) return { label: 'Just Getting Started', emoji: '🌱', color: 'from-gray-500 to-gray-600', desc: 'Start logging expenses to unlock your financial identity.' }
-    const rate = data.totalIncome > 0 ? data.balance / data.totalIncome : -1
+    if (totalSpent === 0) return { label: 'Just Getting Started', emoji: '🌱', color: 'from-gray-500 to-gray-600', desc: 'Start logging expenses to unlock your financial identity.' }
+    const rate = totalIncome > 0 ? balance / totalIncome : -1
     if (rate >= 0.3) return { label: 'Wealth Builder', emoji: '🏗️', color: 'from-emerald-500 to-teal-600', desc: "Saving 30%+ of income — you're building real wealth." }
-    if (data.score >= 80) return { label: 'The Disciplined One', emoji: '🎯', color: 'from-violet-500 to-purple-600', desc: 'Consistent, under budget, and crushing your goals.' }
+    if (data?.score >= 80) return { label: 'The Disciplined One', emoji: '🎯', color: 'from-violet-500 to-purple-600', desc: 'Consistent, under budget, and crushing your goals.' }
     if (rate >= 0.1) return { label: 'Steady Climber', emoji: '📈', color: 'from-blue-500 to-indigo-600', desc: "Saving something every month — momentum is everything." }
     if (rate >= 0) return { label: 'Break-Even Racer', emoji: '⚖️', color: 'from-yellow-500 to-orange-500', desc: "You're covering your costs — now push for savings." }
     return { label: 'Free Spirit', emoji: '🎪', color: 'from-pink-500 to-rose-500', desc: 'Life is for living — but a little budget goes a long way.' }
@@ -241,10 +273,10 @@ export default function Wellness() {
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Income', value: `${currencySymbol}${(data?.totalIncome || 0).toFixed(2)}`, color: 'text-emerald-600', icon: '📥' },
-            { label: 'Spent', value: `${currencySymbol}${(data?.totalSpent || 0).toFixed(2)}`, color: 'text-red-500', icon: '💸' },
-            { label: 'Balance', value: `${(data?.balance || 0) >= 0 ? '+' : ''}${currencySymbol}${Math.abs(data?.balance || 0).toFixed(2)}`, color: (data?.balance || 0) >= 0 ? 'text-violet-600' : 'text-red-500', icon: '💰' },
-            { label: 'Streak', value: `${data?.streak || 0}d 🔥`, color: 'text-orange-500', icon: '📅' },
+            { label: 'Income', value: `${currencySymbol}${totalIncome.toFixed(2)}`, color: 'text-emerald-600', icon: '📥' },
+            { label: 'Spent', value: `${currencySymbol}${totalSpent.toFixed(2)}`, color: 'text-red-500', icon: '💸' },
+            { label: 'Balance', value: `${balance >= 0 ? '+' : ''}${currencySymbol}${Math.abs(balance).toFixed(2)}`, color: balance >= 0 ? 'text-violet-600' : 'text-red-500', icon: '💰' },
+            { label: 'Streak', value: `${streak}d 🔥`, color: 'text-orange-500', icon: '📅' },
           ].map((s, i) => (
             <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center">
               <p className="text-lg mb-1">{s.icon}</p>
