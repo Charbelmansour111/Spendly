@@ -81,6 +81,8 @@ export default function Budgets() {
   const [aiModal, setAiModal] = useState(null)
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [formAiLoading, setFormAiLoading] = useState(false)
+  const [formAiSuggestion, setFormAiSuggestion] = useState('')
   const [currencySymbol] = useState(() => {
     const stored = localStorage.getItem('currency') || 'USD'
     return CURRENCY_SYMBOLS[stored] || '$'
@@ -130,11 +132,25 @@ export default function Budgets() {
       .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
   }
 
+  const getFormAiAdvice = async () => {
+    setFormAiLoading(true)
+    setFormAiSuggestion('')
+    const spent = getSpent(form.category, form.period)
+    const periodLabel = form.period === 'weekly' ? 'weekly' : 'monthly'
+    const msg = `I want to set a ${periodLabel} budget for ${form.category}. I've spent ${currencySymbol}${spent.toFixed(2)} on ${form.category} ${form.period === 'weekly' ? 'this week' : 'this month'}. What's a realistic and healthy ${periodLabel} budget limit I should set? Reply in 2 sentences max with a specific number suggestion.`
+    try {
+      const res = await API.post('/insights/chat', { message: msg })
+      setFormAiSuggestion(res.data.reply || '')
+    } catch { setFormAiSuggestion('Unable to get suggestion right now.') }
+    setFormAiLoading(false)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
       await API.post('/budgets', form)
       setForm({ category: 'Food', period: 'monthly', name: '', amount: '' })
+      setFormAiSuggestion('')
       setShowForm(false)
       fetchAll()
       showToast('🎯 Budget set!')
@@ -242,10 +258,21 @@ export default function Budgets() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Limit ({currencySymbol})</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 font-medium">Limit ({currencySymbol})</label>
+                    <button type="button" onClick={getFormAiAdvice} disabled={formAiLoading}
+                      className="text-[10px] font-semibold text-violet-600 bg-violet-50 dark:bg-violet-900/30 px-2 py-1 rounded-full hover:bg-violet-100 transition disabled:opacity-50 flex items-center gap-1">
+                      {formAiLoading ? <><div className="w-2.5 h-2.5 border border-violet-400 border-t-violet-600 rounded-full animate-spin"/>Thinking…</> : '✨ Ask AI'}
+                    </button>
+                  </div>
                   <input type="number" placeholder="e.g. 200" value={form.amount}
                     onChange={e => setForm({ ...form, amount: e.target.value })}
                     required min="1" step="0.01" className={inputCls} />
+                  {formAiSuggestion && (
+                    <div className="mt-2 bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/40 rounded-xl px-3 py-2">
+                      <p className="text-xs text-violet-700 dark:text-violet-300 leading-relaxed">{formAiSuggestion}</p>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Label <span className="text-gray-300">(optional)</span></label>

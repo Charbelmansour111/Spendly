@@ -64,13 +64,22 @@ const TOUR = [
     hint: 'Try the quick-question pills at the bottom — "Where am I overspending?" is a great start.',
   },
   {
+    emoji: '🎤',
+    title: 'AI Voice Assistant',
+    desc: 'Double-tap the AI tab in the bottom nav to open the voice assistant. Speak in any language — add expenses, set budgets, create goals, or navigate anywhere, hands-free.',
+    color: 'from-violet-600 to-indigo-700',
+    href: null,
+    cta: 'Next',
+    hint: 'Works in 12+ languages. Tap "Preferences" in Profile to set your mic language and AI response language separately.',
+  },
+  {
     emoji: '💚',
     title: 'My Wellness',
-    desc: 'Your financial health score (0–100), achievements, a vision board, mood tracker, and mini-games that teach money skills while you play.',
+    desc: 'Your financial health score (0–100), a breakdown of good habits, achievements, mood tracker, and mini-games that teach money skills while you play.',
     color: 'from-teal-500 to-teal-700',
     href: '/wellness',
     cta: "Let's go!",
-    hint: 'Your score improves as you track consistently and stay under budget.',
+    hint: 'Press "Calculate My Score" to see your score update in real time.',
   },
 ]
 

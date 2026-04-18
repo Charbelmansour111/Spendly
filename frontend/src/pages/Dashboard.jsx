@@ -341,7 +341,25 @@ function QuickLogSheet({ onClose, onSaved, currencySymbol }) {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
+  const [micActive, setMicActive] = useState(false)
   const exampleRef = useState(() => EXAMPLE_PROMPTS[Math.floor(Math.random() * EXAMPLE_PROMPTS.length)])[0]
+  const micRef = useRef(null)
+
+  const startMic = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) return
+    const rec = new SR()
+    rec.lang = localStorage.getItem('spendly_lang_mic') || 'en-US'
+    rec.interimResults = false
+    micRef.current = rec
+    rec.onstart = () => setMicActive(true)
+    rec.onresult = e => setText(t => t ? t + ', ' + e.results[0][0].transcript : e.results[0][0].transcript)
+    rec.onend = () => { setMicActive(false); micRef.current = null }
+    rec.onerror = () => { setMicActive(false); micRef.current = null }
+    rec.start()
+  }
+
+  const stopMic = () => { micRef.current?.stop() }
 
   const parse = async () => {
     if (!text.trim()) return
@@ -350,7 +368,7 @@ function QuickLogSheet({ onClose, onSaved, currencySymbol }) {
     setSaving(true)
     try {
       const res = await API.post('/expenses/parse-natural', { text })
-      setParsed(res.data.transactions.map((t, i) => ({ ...t, _id: i, date: t.date || today })))
+      setParsed(res.data.transactions.map((tx, i) => ({ ...tx, _id: i, date: tx.date || today })))
       setStep('preview')
     } catch (e) {
       setError(e.response?.data?.message || 'Could not parse — try rephrasing')
@@ -359,17 +377,17 @@ function QuickLogSheet({ onClose, onSaved, currencySymbol }) {
   }
 
   const updateRow = (id, field, val) => {
-    setParsed(prev => prev.map(t => t._id === id ? { ...t, [field]: val } : t))
+    setParsed(prev => prev.map(tx => tx._id === id ? { ...tx, [field]: val } : tx))
   }
 
-  const removeRow = (id) => setParsed(prev => prev.filter(t => t._id !== id))
+  const removeRow = (id) => setParsed(prev => prev.filter(tx => tx._id !== id))
 
   const saveAll = async () => {
     setSaving(true)
     let count = 0
-    for (const t of parsed) {
+    for (const tx of parsed) {
       try {
-        await API.post('/expenses', { amount: t.amount, category: t.category, description: t.description, date: t.date, is_recurring: false })
+        await API.post('/expenses', { amount: tx.amount, category: tx.category, description: tx.description, date: tx.date, is_recurring: false })
         count++
       } catch { /* skip failed ones */ }
     }
@@ -387,57 +405,92 @@ function QuickLogSheet({ onClose, onSaved, currencySymbol }) {
       <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-lg shadow-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="bg-linear-to-br from-violet-600 to-purple-700 rounded-t-3xl md:rounded-t-3xl px-6 pt-6 pb-5 text-white shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">💬</span>
-              <h3 className="text-lg font-bold">Quick Log with AI</h3>
+        <div className="bg-linear-to-br from-violet-600 to-indigo-700 rounded-t-3xl md:rounded-t-3xl px-6 pt-6 pb-5 text-white shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-white/20 rounded-2xl flex items-center justify-center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-bold leading-tight">Smart Log</h3>
+                <p className="text-white/60 text-[10px] font-medium">AI-powered expense capture</p>
+              </div>
             </div>
-            <button onClick={onClose} className="text-white/60 hover:text-white p-1">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            <button onClick={onClose} className="text-white/60 hover:text-white w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
-          <p className="text-violet-200 text-sm leading-relaxed">
-            Just tell me what you spent today — I'll sort it all out.
+          <p className="text-white/70 text-xs leading-relaxed mt-1">
+            Type or speak your expenses — AI parses amounts, categories &amp; dates instantly.
           </p>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-6 py-5">
+        <div className="overflow-y-auto flex-1 px-5 py-4">
 
           {step === 'input' && (
             <div className="space-y-4">
-              {/* Example */}
-              <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/40 rounded-2xl p-4">
-                <p className="text-xs font-bold text-violet-600 dark:text-violet-400 mb-2">💡 Example — say it like this:</p>
-                <p className="text-sm text-violet-800 dark:text-violet-200 italic leading-relaxed">"{exampleRef}"</p>
-                <p className="text-xs text-violet-500 mt-2">Include merchant name, amount, and optionally the date or "yesterday".</p>
-              </div>
-
-              {/* Input */}
+              {/* Input with mic */}
               <div>
-                <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Your transactions</label>
-                <textarea
-                  value={text}
-                  onChange={e => setText(e.target.value)}
-                  placeholder="e.g. Starbucks $6 this morning, Uber $22 to the mall, Netflix $15 monthly subscription"
-                  rows={4}
-                  autoFocus
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-2xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none leading-relaxed"
-                />
-                {error && <p className="text-red-500 text-xs mt-1.5">⚠️ {error}</p>}
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">What did you spend?</label>
+                  {(window.SpeechRecognition || window.webkitSpeechRecognition) && (
+                    <button
+                      type="button"
+                      onClick={micActive ? stopMic : startMic}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                        micActive
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 hover:bg-violet-200'
+                      }`}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <rect x="9" y="2" width="6" height="12" rx="3" fill={micActive ? 'currentColor' : 'none'} fillOpacity="0.3"/>
+                        <path d="M5 10a7 7 0 0014 0M12 19v3M9 22h6"/>
+                      </svg>
+                      {micActive ? 'Stop' : 'Speak'}
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <textarea
+                    value={text}
+                    onChange={e => setText(e.target.value)}
+                    placeholder={`e.g. "${exampleRef}"`}
+                    rows={4}
+                    autoFocus
+                    className="w-full px-4 py-3 border-2 border-gray-100 dark:border-gray-700 rounded-2xl focus:outline-none focus:border-violet-400 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white text-sm resize-none leading-relaxed transition"
+                  />
+                  {micActive && (
+                    <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full">
+                      <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                      Listening…
+                    </div>
+                  )}
+                </div>
+                {error && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{error}</p>}
               </div>
 
               {/* Quick example pills */}
               <div>
-                <p className="text-xs text-gray-400 mb-2">Quick examples</p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Quick examples</p>
                 <div className="flex flex-wrap gap-2">
                   {EXAMPLE_PROMPTS.map((p, i) => (
                     <button key={i} type="button" onClick={() => setText(p)}
-                      className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full hover:bg-violet-100 hover:text-violet-600 transition">
-                      {p.substring(0, 30)}…
+                      className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400 rounded-full hover:bg-violet-100 dark:hover:bg-violet-900/30 hover:text-violet-600 transition border border-gray-200 dark:border-gray-600">
+                      {p.substring(0, 28)}…
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Info note */}
+              <div className="flex items-start gap-2.5 bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/30 rounded-xl px-4 py-3">
+                <span className="text-violet-500 text-sm mt-0.5">✦</span>
+                <p className="text-xs text-violet-700 dark:text-violet-300 leading-relaxed">
+                  Include merchant name, amount, and optionally <span className="font-semibold">"yesterday"</span> or a date. Multiple expenses in one sentence work great.
+                </p>
               </div>
             </div>
           )}
@@ -1012,10 +1065,12 @@ export default function Dashboard() {
             {/* Quick Log CTA — prominent */}
             <button onClick={() => setShowQuickLog(true)}
               className="w-full bg-linear-to-r from-violet-600 to-purple-600 text-white rounded-2xl py-4 flex items-center justify-center gap-3 active:scale-95 transition-transform shadow-md shadow-violet-200 dark:shadow-violet-900/30">
-              <span className="text-2xl">💬</span>
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+              </div>
               <div className="text-left">
-                <p className="font-bold text-sm leading-tight">Quick Log with AI</p>
-                <p className="text-violet-200 text-xs leading-tight">Just describe what you spent — I'll fill it all in</p>
+                <p className="font-bold text-sm leading-tight">Smart Log</p>
+                <p className="text-violet-200 text-xs leading-tight">Type or speak your expenses — AI does the rest</p>
               </div>
               <svg className="ml-auto shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </button>

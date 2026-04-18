@@ -64,6 +64,7 @@ export default function Insights() {
   const [income, setIncome] = useState([])
   const [currencySymbol] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
   const [modalData, setModalData] = useState(null)
+  const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('spendly_insights_tts') === 'true')
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -78,6 +79,22 @@ export default function Insights() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const speak = (text) => {
+    if (!window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    const utt = new SpeechSynthesisUtterance(text)
+    utt.lang = localStorage.getItem('spendly_lang_app') || 'en-US'
+    utt.rate = 0.95
+    window.speechSynthesis.speak(utt)
+  }
+
+  const toggleTts = () => {
+    const next = !ttsEnabled
+    setTtsEnabled(next)
+    localStorage.setItem('spendly_insights_tts', String(next))
+    if (!next) window.speechSynthesis?.cancel()
+  }
+
   const sendMessage = async (text) => {
     const userMessage = text || input.trim()
     if (!userMessage || loading) return
@@ -87,7 +104,9 @@ export default function Insights() {
     try {
       const history = messages.filter((_, idx) => idx > 0)
       const res = await API.post('/insights/chat', { message: userMessage, history, mode: 'sarcastic' })
-      setMessages(prev => [...prev, { role: 'assistant', content: res.data.reply }])
+      const reply = res.data.reply
+      setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+      if (ttsEnabled) speak(reply)
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Even I had a technical issue. The irony. Try again.' }])
     }
@@ -124,9 +143,22 @@ export default function Insights() {
       <div className="max-w-3xl mx-auto px-4 py-6 flex flex-col" style={{ minHeight: 'calc(100vh - 80px)' }}>
 
         {/* Header */}
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Finance Assistant</h1>
-          <p className="text-gray-400 text-sm mt-0.5">Ask me anything — I know your real spending data</p>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Finance Assistant</h1>
+            <p className="text-gray-400 text-sm mt-0.5">Ask me anything — I know your real spending data</p>
+          </div>
+          <button onClick={toggleTts} title={ttsEnabled ? 'Disable voice' : 'Enable voice'}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition mt-1 ${
+              ttsEnabled ? 'bg-violet-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-violet-600'
+            }`}>
+            {ttsEnabled ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+            )}
+            {ttsEnabled ? 'Voice On' : 'Voice Off'}
+          </button>
         </div>
 
         {/* Quick Stats — tappable */}
