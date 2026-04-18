@@ -59,7 +59,8 @@ export default function Profile() {
     try { return JSON.parse(localStorage.getItem('spendly_prefs') || '{}') } catch { return {} }
   })
   const [prefsSaved, setPrefsSaved] = useState(false)
-  const [aiLang, setAiLang] = useState(() => localStorage.getItem('spendly_lang') || 'en-US')
+  const [micLang, setMicLang] = useState(() => localStorage.getItem('spendly_lang_mic') || 'en-US')
+  const [responseLang, setResponseLang] = useState(() => localStorage.getItem('spendly_lang_response') || 'en-US')
 
   // Business mode disabled — business_name field removed
   // const [form, setForm] = useState({ name: '', email: '', currency: 'USD', business_name: '' })
@@ -229,9 +230,17 @@ export default function Profile() {
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">
-                AI Voice Language <span className="text-gray-400 font-normal">(mic & responses)</span>
+                Mic Language <span className="text-gray-400 font-normal">(language you speak)</span>
               </label>
-              <select value={aiLang} onChange={e => setAiLang(e.target.value)} className={cls}>
+              <select value={micLang} onChange={e => setMicLang(e.target.value)} className={cls}>
+                {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">
+                AI Response Language <span className="text-gray-400 font-normal">(language AI replies in)</span>
+              </label>
+              <select value={responseLang} onChange={e => setResponseLang(e.target.value)} className={cls}>
                 {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
               </select>
             </div>
@@ -246,7 +255,8 @@ export default function Profile() {
             <button
               onClick={() => {
                 localStorage.setItem('spendly_prefs', JSON.stringify(prefs))
-                localStorage.setItem('spendly_lang', aiLang)
+                localStorage.setItem('spendly_lang_mic', micLang)
+                localStorage.setItem('spendly_lang_response', responseLang)
                 setPrefsSaved(true)
                 setTimeout(() => setPrefsSaved(false), 2000)
               }}

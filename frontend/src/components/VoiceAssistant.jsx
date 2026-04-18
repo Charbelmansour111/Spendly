@@ -19,7 +19,8 @@ export default function VoiceAssistant({ onClose }) {
   const [actionLabel, setActionLabel] = useState('')
   const recognitionRef = useRef(null)
   const transcriptRef = useRef('')
-  const lang = localStorage.getItem('spendly_lang') || 'en-US'
+  const micLang = localStorage.getItem('spendly_lang_mic') || 'en-US'
+  const responseLang = localStorage.getItem('spendly_lang_response') || 'en-US'
 
   const executeIntent = useCallback(async (result) => {
     const { intent, data, navigate_to, response } = result
@@ -28,7 +29,7 @@ export default function VoiceAssistant({ onClose }) {
     // Speak response using Web Speech Synthesis
     if (response && window.speechSynthesis) {
       const utterance = new SpeechSynthesisUtterance(response)
-      utterance.lang = lang
+      utterance.lang = responseLang
       utterance.rate = 0.95
       window.speechSynthesis.cancel()
       window.speechSynthesis.speak(utterance)
@@ -70,19 +71,19 @@ export default function VoiceAssistant({ onClose }) {
     }
 
     setStatus('done')
-  }, [lang])
+  }, [responseLang])
 
   const sendToAI = useCallback(async (text) => {
     setStatus('processing')
     try {
-      const { data } = await API.post('/ai/command', { text, language: lang })
+      const { data } = await API.post('/ai/command', { text, language: responseLang })
       await executeIntent(data)
     } catch (e) {
       console.error('AI error:', e)
       setAiResponse('Something went wrong. Please try again.')
       setStatus('error')
     }
-  }, [lang, executeIntent])
+  }, [responseLang, executeIntent])
 
   const startListening = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -93,7 +94,7 @@ export default function VoiceAssistant({ onClose }) {
     }
 
     const recognition = new SpeechRecognition()
-    recognition.lang = lang
+    recognition.lang = micLang
     recognition.interimResults = true
     recognition.maxAlternatives = 1
     recognition.continuous = false
@@ -122,7 +123,7 @@ export default function VoiceAssistant({ onClose }) {
 
     setTranscript('')
     recognition.start()
-  }, [lang, sendToAI])
+  }, [micLang, sendToAI])
 
   // Auto-start on mount
   useEffect(() => {
@@ -161,7 +162,7 @@ export default function VoiceAssistant({ onClose }) {
             ✕
           </button>
           <p className="text-white/70 text-xs font-semibold mb-4 uppercase tracking-widest">
-            {LANG_LABELS[lang] || 'AI Assistant'}
+            {LANG_LABELS[micLang] || 'AI Assistant'} → {LANG_LABELS[responseLang] || responseLang}
           </p>
 
           {/* Mic Button */}
