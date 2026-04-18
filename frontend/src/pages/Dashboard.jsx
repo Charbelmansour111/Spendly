@@ -1064,15 +1064,15 @@ export default function Dashboard() {
           <div className="space-y-3 mb-5">
             {/* Quick Log CTA — prominent */}
             <button onClick={() => setShowQuickLog(true)}
-              className="w-full bg-linear-to-r from-violet-600 to-purple-600 text-white rounded-2xl py-4 flex items-center justify-center gap-3 active:scale-95 transition-transform shadow-md shadow-violet-200 dark:shadow-violet-900/30">
-              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+              className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white rounded-2xl px-5 py-4 flex items-center gap-4 active:scale-95 transition-transform shadow-sm hover:shadow-md hover:border-violet-200 dark:hover:border-violet-700">
+              <div className="w-11 h-11 bg-violet-100 dark:bg-violet-900/40 rounded-2xl flex items-center justify-center shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.2" strokeLinecap="round"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
               </div>
-              <div className="text-left">
+              <div className="text-left flex-1 min-w-0">
                 <p className="font-bold text-sm leading-tight">Smart Log</p>
-                <p className="text-violet-200 text-xs leading-tight">Type or speak your expenses — AI does the rest</p>
+                <p className="text-gray-400 text-xs leading-tight mt-0.5">Type or speak your expenses — AI does the rest</p>
               </div>
-              <svg className="ml-auto shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
+              <svg className="shrink-0 text-gray-300 dark:text-gray-600" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </button>
             <div className="grid grid-cols-4 gap-3">
               {[
