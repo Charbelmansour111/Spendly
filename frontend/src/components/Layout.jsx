@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useDarkMode } from '../hooks/useDarkMode'
 import VoiceAssistant from './VoiceAssistant'
+import { t, isRTL } from '../i18n'
 
 const Icons = {
   home: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.15:0}/><path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
@@ -22,22 +23,22 @@ const Icons = {
 }
 
 const NAV_ITEMS = [
-  { label: 'Dashboard',    icon: 'home',         href: '/dashboard' },
-  { label: 'Transactions', icon: 'transactions', href: '/transactions' },
-  { label: 'Budgets',      icon: 'budget',       href: '/budgets' },
-  { label: 'Goals',        icon: 'savings',      href: '/goals' },
-  { label: 'Reports',      icon: 'reports',      href: '/reports' },
-  { label: 'AI Insights',  icon: 'ai',           href: '/insights' },
-  { label: 'My Wellness',  icon: 'wellness',     href: '/wellness' },
-  { label: 'Profile',      icon: 'profile',      href: '/profile' },
+  { key: 'nav_dashboard',    icon: 'home',         href: '/dashboard' },
+  { key: 'nav_transactions', icon: 'transactions', href: '/transactions' },
+  { key: 'nav_budgets',      icon: 'budget',       href: '/budgets' },
+  { key: 'nav_goals',        icon: 'savings',      href: '/goals' },
+  { key: 'nav_reports',      icon: 'reports',      href: '/reports' },
+  { key: 'nav_ai',           icon: 'ai',           href: '/insights' },
+  { key: 'nav_wellness',     icon: 'wellness',     href: '/wellness' },
+  { key: 'nav_profile',      icon: 'profile',      href: '/profile' },
 ]
 
 const TAB_ITEMS = [
-  { href: '/dashboard',    icon: 'home',         label: 'Home' },
-  { href: '/transactions', icon: 'transactions', label: 'Transactions' },
-  { href: '/insights',     icon: 'ai',           label: 'AI' },
-  { href: '/goals',        icon: 'savings',      label: 'Goals' },
-  { href: '/profile',      icon: 'profile',      label: 'Profile' },
+  { href: '/dashboard',    icon: 'home',         key: 'tab_home' },
+  { href: '/transactions', icon: 'transactions', key: 'nav_transactions' },
+  { href: '/insights',     icon: 'ai',           key: 'tab_ai' },
+  { href: '/goals',        icon: 'savings',      key: 'tab_goals' },
+  { href: '/profile',      icon: 'profile',      key: 'nav_profile' },
 ]
 
 // Business navigation — disabled until business mode is re-enabled
@@ -87,7 +88,7 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
               <span className={isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500'}>
                 {Icons[item.icon]?.(isActive)}
               </span>
-              <span className="truncate flex-1">{item.label}</span>
+              <span className="truncate flex-1">{t(item.key)}</span>
               {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white/70 shrink-0" />}
             </a>
           )
@@ -102,18 +103,18 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
             {Icons.bell()}
             {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{unreadCount > 9 ? '9+' : unreadCount}</span>}
           </span>
-          <span>Notifications</span>
+          <span>{t('nav_notifications')}</span>
           {unreadCount > 0 && <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadCount}</span>}
         </button>
         <button onClick={toggleDark}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition">
           <span className="text-gray-400 dark:text-gray-500">{dark ? Icons.sun() : Icons.moon()}</span>
-          <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>
+          <span>{dark ? t('nav_light') : t('nav_dark')}</span>
         </button>
         <button onClick={onLogout}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
           <span>{Icons.logout()}</span>
-          <span>Logout</span>
+          <span>{t('nav_logout')}</span>
         </button>
       </div>
     </div>
@@ -156,7 +157,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const sidebarProps = { user, current, dark, toggleDark, onBellClick, unreadCount, onLogout: handleLogout }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden" dir={isRTL() ? 'rtl' : 'ltr'}>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/60 shrink-0 h-screen sticky top-0">
         <SidebarContent {...sidebarProps} />
@@ -208,7 +209,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
                   <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
                     {Icons[item.icon]?.(isActive)}
                   </span>
-                  <span className="text-[10px] font-medium">{item.label}</span>
+                  <span className="text-[10px] font-medium">{t(item.key)}</span>
                 </button>
               )
             }
@@ -219,7 +220,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
                 <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
                   {Icons[item.icon]?.(isActive)}
                 </span>
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[10px] font-medium">{t(item.key)}</span>
               </a>
             )
           })}

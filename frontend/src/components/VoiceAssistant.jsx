@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import API from '../utils/api'
+import { t } from '../i18n'
 
 const LANG_LABELS = {
   'en-US': 'English', 'en-GB': 'English (UK)',
@@ -20,7 +21,7 @@ export default function VoiceAssistant({ onClose }) {
   const recognitionRef = useRef(null)
   const transcriptRef = useRef('')
   const micLang = localStorage.getItem('spendly_lang_mic') || 'en-US'
-  const responseLang = localStorage.getItem('spendly_lang_response') || 'en-US'
+  const responseLang = localStorage.getItem('spendly_lang_app') || localStorage.getItem('spendly_lang_response') || 'en-US'
 
   const executeIntent = useCallback(async (result) => {
     const { intent, data, navigate_to, response } = result
@@ -37,7 +38,7 @@ export default function VoiceAssistant({ onClose }) {
 
     try {
       if (intent === 'navigate' && navigate_to) {
-        setActionLabel('Navigating...')
+        setActionLabel(t('navigating'))
         setTimeout(() => { window.location.href = navigate_to }, 1200)
 
       } else if (intent === 'add_expense' && data) {
@@ -80,7 +81,7 @@ export default function VoiceAssistant({ onClose }) {
       await executeIntent(data)
     } catch (e) {
       console.error('AI error:', e)
-      setAiResponse('Something went wrong. Please try again.')
+      setAiResponse(t('server_error'))
       setStatus('error')
     }
   }, [responseLang, executeIntent])
@@ -88,7 +89,7 @@ export default function VoiceAssistant({ onClose }) {
   const startListening = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
-      setAiResponse('Voice input is not supported in this browser. Try Chrome or Safari.')
+      setAiResponse(t('voice_not_supported'))
       setStatus('error')
       return
     }
@@ -207,7 +208,7 @@ export default function VoiceAssistant({ onClose }) {
           </div>
 
           <p className="text-white font-semibold text-sm">
-            {isListening ? 'Listening...' : isProcessing ? 'Processing...' : isDone ? 'Tap to speak again' : 'Tap mic to speak'}
+            {isListening ? t('listening') : isProcessing ? t('processing') : isDone ? t('tap_again') : t('tap_to_speak')}
           </p>
         </div>
 
@@ -215,7 +216,7 @@ export default function VoiceAssistant({ onClose }) {
         <div className="px-6 py-5 space-y-4 min-h-[140px]">
           {transcript ? (
             <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl px-4 py-3">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">You said</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">{t('you_said')}</p>
               <p className="text-sm text-gray-800 dark:text-white leading-relaxed">{transcript}</p>
             </div>
           ) : status === 'idle' ? (
@@ -230,7 +231,7 @@ export default function VoiceAssistant({ onClose }) {
 
           {aiResponse ? (
             <div className="bg-violet-50 dark:bg-violet-900/20 rounded-2xl px-4 py-3">
-              <p className="text-[10px] font-semibold text-violet-400 uppercase mb-1">Spendly AI</p>
+              <p className="text-[10px] font-semibold text-violet-400 uppercase mb-1">{t('spendly_ai')}</p>
               <p className="text-sm text-violet-800 dark:text-violet-200 leading-relaxed">{aiResponse}</p>
             </div>
           ) : null}
@@ -246,7 +247,7 @@ export default function VoiceAssistant({ onClose }) {
         {/* Footer hint */}
         <div className="px-6 pb-5 text-center">
           <p className="text-[10px] text-gray-300 dark:text-gray-600">
-            Double-tap the AI tab anytime to open · Change language in Profile
+            {t('voice_hint')}
           </p>
         </div>
       </div>

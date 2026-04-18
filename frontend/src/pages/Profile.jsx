@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
+import { t } from '../i18n'
 
 const CURRENCIES = ['USD','EUR','GBP','LBP','AED','SAR','CAD','AUD']
 const CURRENCY_SYMBOLS = { USD:'$',EUR:'€',GBP:'£',LBP:'L£',AED:'AED',SAR:'SAR',CAD:'C$',AUD:'A$' }
@@ -60,7 +61,7 @@ export default function Profile() {
   })
   const [prefsSaved, setPrefsSaved] = useState(false)
   const [micLang, setMicLang] = useState(() => localStorage.getItem('spendly_lang_mic') || 'en-US')
-  const [responseLang, setResponseLang] = useState(() => localStorage.getItem('spendly_lang_response') || 'en-US')
+  const [appLang, setAppLang] = useState(() => localStorage.getItem('spendly_lang_app') || localStorage.getItem('spendly_lang_response') || 'en-US')
 
   // Business mode disabled — business_name field removed
   // const [form, setForm] = useState({ name: '', email: '', currency: 'USD', business_name: '' })
@@ -79,8 +80,8 @@ export default function Profile() {
       const updated = { ...user, ...form }
       localStorage.setItem('user', JSON.stringify(updated))
       setUser(updated)
-      showToast('Profile updated!')
-    } catch { showToast('Error saving profile', 'error') }
+      showToast(t('save_changes') + ' ✓')
+    } catch { showToast(t('server_error'), 'error') }
     setSaving(false)
   }
 
@@ -90,8 +91,8 @@ export default function Profile() {
     try {
       await API.put('/profile/password', { current_password: pwForm.current, new_password: pwForm.newPw })
       setPwForm({ current: '', newPw: '', confirm: '' })
-      showToast('Password changed!')
-    } catch (e) { showToast(e.response?.data?.message || 'Error changing password', 'error') }
+      showToast(t('change_password') + ' ✓')
+    } catch (e) { showToast(e.response?.data?.message || t('server_error'), 'error') }
   }
 
   const handleDeleteAccount = async () => {
@@ -101,8 +102,10 @@ export default function Profile() {
       await API.delete('/profile')
       localStorage.clear()
       window.location.href = '/register'
-    } catch { showToast('Error deleting account', 'error') }
+    } catch { showToast(t('server_error'), 'error') }
   }
+
+  const FREQ_KEYS = { Monthly: 'monthly_freq', 'Bi-weekly': 'biweekly_freq', Weekly: 'weekly_freq', Irregular: 'irregular_freq' }
 
   if (!user) return null
 
@@ -120,7 +123,7 @@ export default function Profile() {
           <p className="text-gray-400 text-sm">{user?.email}</p>
           <div className="flex items-center gap-2 mt-2">
             <span className="text-xs px-3 py-1 rounded-full font-semibold bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400">
-              Personal
+              {t('personal')}
             </span>
             <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-3 py-1 rounded-full font-semibold">
               {CURRENCY_SYMBOLS[user?.currency] || '$'} {user?.currency || 'USD'}
@@ -128,30 +131,21 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Business stats — disabled until business mode is re-enabled */}
-        {/*
-        {isBusiness && (
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            ...
-          </div>
-        )}
-        */}
-
         {/* Tab bar */}
         <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-6">
           {[
-            { key: 'profile',  label: 'Profile' },
-            { key: 'prefs',    label: 'Preferences' },
-            { key: 'security', label: 'Security' },
+            { key: 'profile',  label: t('profile') },
+            { key: 'prefs',    label: t('preferences') },
+            { key: 'security', label: t('security') },
             { key: 'danger',   label: '⚠️' },
-          ].map(t => (
-            <button key={t.key} onClick={() => setActiveTab(t.key)}
+          ].map(tab => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
               className={`flex-1 py-2 rounded-xl text-xs font-semibold transition ${
-                activeTab === t.key
+                activeTab === tab.key
                   ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600 dark:text-violet-400'
                   : 'text-gray-500 dark:text-gray-400'
               }`}>
-              {t.label}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -160,36 +154,22 @@ export default function Profile() {
         {activeTab === 'profile' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Full Name</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">{t('full_name')}</label>
               <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={cls} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Email</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">{t('email')}</label>
               <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={cls} />
             </div>
-
-            {/* Business name field — disabled until business mode is re-enabled */}
-            {/*
-            {isBusiness && (
-              <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">
-                  {user?.business_type === 'restaurant' ? 'Restaurant Name' : 'Business Name'}
-                </label>
-                <input type="text" ... />
-              </div>
-            )}
-            */}
-
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Currency</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">{t('currency')}</label>
               <select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} className={cls}>
                 {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c]} {c}</option>)}
               </select>
             </div>
-
             <button onClick={handleSave} disabled={saving}
               className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? t('saving') : t('save_changes')}
             </button>
           </div>
         )}
@@ -198,7 +178,7 @@ export default function Profile() {
         {activeTab === 'prefs' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-5">
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Income Frequency</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">{t('income_frequency')}</label>
               <div className="grid grid-cols-2 gap-2">
                 {INCOME_FREQS.map(f => (
                   <button key={f} type="button"
@@ -208,14 +188,14 @@ export default function Profile() {
                         ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
                         : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'
                     }`}>
-                    {f}
+                    {t(FREQ_KEYS[f] || f)}
                   </button>
                 ))}
               </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">
-                Monthly Savings Target <span className="text-gray-400 font-normal">(% of income)</span>
+                {t('savings_target')} <span className="text-gray-400 font-normal">{t('savings_target_hint')}</span>
               </label>
               <div className="flex items-center gap-3">
                 <input type="range" min="0" max="80" step="5"
@@ -226,42 +206,42 @@ export default function Profile() {
                   {prefs.savingsTarget ?? 20}%
                 </span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Industry recommendation: 20% (the 50/30/20 rule)</p>
+              <p className="text-xs text-gray-400 mt-1">{t('savings_rec')}</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">
-                Mic Language <span className="text-gray-400 font-normal">(language you speak)</span>
+                {t('app_language')} <span className="text-gray-400 font-normal">{t('app_lang_hint')}</span>
+              </label>
+              <select value={appLang} onChange={e => setAppLang(e.target.value)} className={cls}>
+                {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">
+                {t('mic_language')} <span className="text-gray-400 font-normal">{t('mic_lang_hint')}</span>
               </label>
               <select value={micLang} onChange={e => setMicLang(e.target.value)} className={cls}>
                 {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">
-                AI Response Language <span className="text-gray-400 font-normal">(language AI replies in)</span>
-              </label>
-              <select value={responseLang} onChange={e => setResponseLang(e.target.value)} className={cls}>
-                {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Currency Note</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">{t('currency_note')}</label>
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-4 py-3">
                 <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-                  ⚠️ Changing currency only changes the <strong>display symbol</strong>. Amounts are stored as entered. If you log expenses in multiple currencies (e.g. USD and AED), totals will be inaccurate — log everything in one currency.
+                  ⚠️ {t('currency_warning')}
                 </p>
               </div>
             </div>
             <button
               onClick={() => {
                 localStorage.setItem('spendly_prefs', JSON.stringify(prefs))
+                localStorage.setItem('spendly_lang_app', appLang)
                 localStorage.setItem('spendly_lang_mic', micLang)
-                localStorage.setItem('spendly_lang_response', responseLang)
                 setPrefsSaved(true)
-                setTimeout(() => setPrefsSaved(false), 2000)
+                setTimeout(() => { setPrefsSaved(false); window.location.reload() }, 1200)
               }}
               className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition">
-              {prefsSaved ? '✅ Saved!' : 'Save Preferences'}
+              {prefsSaved ? t('saved_label') : t('save_preferences')}
             </button>
           </div>
         )}
@@ -269,25 +249,25 @@ export default function Profile() {
         {/* Security tab */}
         {activeTab === 'security' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
-            <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Change Password</h3>
+            <h3 className="font-semibold text-gray-800 dark:text-white text-sm">{t('change_password')}</h3>
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Current Password</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">{t('current_password')}</label>
               <input type="password" placeholder="••••••••" value={pwForm.current}
                 onChange={e => setPwForm({ ...pwForm, current: e.target.value })} className={cls} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">New Password</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">{t('new_password')}</label>
               <input type="password" placeholder="••••••••" value={pwForm.newPw}
                 onChange={e => setPwForm({ ...pwForm, newPw: e.target.value })} className={cls} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Confirm New Password</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">{t('confirm_password')}</label>
               <input type="password" placeholder="••••••••" value={pwForm.confirm}
                 onChange={e => setPwForm({ ...pwForm, confirm: e.target.value })} className={cls} />
             </div>
             <button onClick={handleChangePassword} disabled={!pwForm.current || !pwForm.newPw || !pwForm.confirm}
               className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
-              Change Password
+              {t('change_password')}
             </button>
           </div>
         )}
@@ -295,27 +275,19 @@ export default function Profile() {
         {/* Danger zone tab */}
         {activeTab === 'danger' && (
           <div className="space-y-4">
-            {/* Account type section — business toggle disabled */}
-            {/*
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
-              <h3 className="font-semibold text-gray-800 dark:text-white text-sm mb-1">Account Type</h3>
-              <p className="text-xs text-gray-400 mb-3">Business / Personal toggle coming soon.</p>
-            </div>
-            */}
-
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
-              <h3 className="font-semibold text-gray-800 dark:text-white text-sm mb-1">Your Plan</h3>
+              <h3 className="font-semibold text-gray-800 dark:text-white text-sm mb-1">{t('your_plan')}</h3>
               <div className="rounded-xl p-3 text-xs bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400">
-                Personal plan — includes Expense Tracking, Budgets, Savings Goals, AI Insights, Receipt Scanner & more.
+                {t('personal_plan')}
               </div>
             </div>
 
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5">
-              <h3 className="font-semibold text-red-600 text-sm mb-1">Delete Account</h3>
-              <p className="text-xs text-red-400 mb-4">This will permanently delete all your data. This cannot be undone.</p>
+              <h3 className="font-semibold text-red-600 text-sm mb-1">{t('delete_account')}</h3>
+              <p className="text-xs text-red-400 mb-4">{t('delete_warning')}</p>
               <button onClick={handleDeleteAccount}
                 className="w-full bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition text-sm">
-                Delete My Account
+                {t('delete_account')}
               </button>
             </div>
           </div>
