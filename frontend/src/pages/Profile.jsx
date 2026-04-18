@@ -4,6 +4,7 @@ import API from '../utils/api'
 
 const CURRENCIES = ['USD','EUR','GBP','LBP','AED','SAR','CAD','AUD']
 const CURRENCY_SYMBOLS = { USD:'$',EUR:'€',GBP:'£',LBP:'L£',AED:'AED',SAR:'SAR',CAD:'C$',AUD:'A$' }
+const INCOME_FREQS = ['Monthly','Bi-weekly','Weekly','Irregular']
 
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t) }, [onClose])
@@ -29,6 +30,10 @@ export default function Profile() {
   const [saving, setSaving]       = useState(false)
   const [toast, setToast]         = useState(null)
   const [activeTab, setActiveTab] = useState('profile')
+  const [prefs, setPrefs]         = useState(() => {
+    try { return JSON.parse(localStorage.getItem('spendly_prefs') || '{}') } catch { return {} }
+  })
+  const [prefsSaved, setPrefsSaved] = useState(false)
 
   // Business mode disabled — business_name field removed
   // const [form, setForm] = useState({ name: '', email: '', currency: 'USD', business_name: '' })
@@ -109,8 +114,9 @@ export default function Profile() {
         <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-6">
           {[
             { key: 'profile',  label: 'Profile' },
+            { key: 'prefs',    label: 'Preferences' },
             { key: 'security', label: 'Security' },
-            { key: 'danger',   label: 'Danger Zone' },
+            { key: 'danger',   label: '⚠️' },
           ].map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
               className={`flex-1 py-2 rounded-xl text-xs font-semibold transition ${
@@ -157,6 +163,60 @@ export default function Profile() {
             <button onClick={handleSave} disabled={saving}
               className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
               {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
+
+        {/* Preferences tab */}
+        {activeTab === 'prefs' && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-5">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Income Frequency</label>
+              <div className="grid grid-cols-2 gap-2">
+                {INCOME_FREQS.map(f => (
+                  <button key={f} type="button"
+                    onClick={() => setPrefs(p => ({ ...p, incomeFreq: f }))}
+                    className={`py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
+                      (prefs.incomeFreq || 'Monthly') === f
+                        ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+                    }`}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">
+                Monthly Savings Target <span className="text-gray-400 font-normal">(% of income)</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <input type="range" min="0" max="80" step="5"
+                  value={prefs.savingsTarget ?? 20}
+                  onChange={e => setPrefs(p => ({ ...p, savingsTarget: parseInt(e.target.value) }))}
+                  className="flex-1 accent-violet-600" />
+                <span className="text-lg font-bold text-violet-600 w-12 text-right tabular-nums">
+                  {prefs.savingsTarget ?? 20}%
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Industry recommendation: 20% (the 50/30/20 rule)</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Currency Note</label>
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-4 py-3">
+                <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                  ⚠️ Changing currency only changes the <strong>display symbol</strong>. Amounts are stored as entered. If you log expenses in multiple currencies (e.g. USD and AED), totals will be inaccurate — log everything in one currency.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.setItem('spendly_prefs', JSON.stringify(prefs))
+                setPrefsSaved(true)
+                setTimeout(() => setPrefsSaved(false), 2000)
+              }}
+              className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition">
+              {prefsSaved ? '✅ Saved!' : 'Save Preferences'}
             </button>
           </div>
         )}

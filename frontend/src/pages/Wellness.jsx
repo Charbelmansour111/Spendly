@@ -209,23 +209,36 @@ export default function Wellness() {
             <ScoreRing score={data?.score || 0} ready={!!data && (data.score > 0 || data.totalIncome > 0)} />
             <div className="flex-1 w-full">
               <h2 className="text-xl font-bold mb-1">Financial Health Score</h2>
-              <p className="text-violet-200 text-sm mb-4">{monthName}</p>
-              <div className="space-y-2">
+              <p className="text-violet-200 text-sm mb-4">{monthName} · Max 100 pts</p>
+              <div className="space-y-2.5">
                 {data?.breakdown?.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <span className="text-lg">{item.achieved ? '✅' : '❌'}</span>
+                  <div key={i} className="flex items-start gap-3">
+                    <span className="text-lg mt-0.5">{item.achieved ? '✅' : '❌'}</span>
                     <div className="flex-1">
                       <div className="flex justify-between text-sm mb-1">
-                        <span>{item.label}</span>
-                        <span className="font-bold">{item.points}/{item.max}</span>
+                        <div>
+                          <span className="font-medium">{item.label}</span>
+                          <span className="text-white/50 text-xs ml-2">({item.max} pts)</span>
+                        </div>
+                        <span className="font-bold tabular-nums">{item.points}/{item.max}</span>
                       </div>
                       <div className="h-1.5 bg-white/20 rounded-full">
                         <div className="h-1.5 bg-white rounded-full transition-all duration-700"
                           style={{ width: `${(item.points / item.max) * 100}%` }} />
                       </div>
+                      {!item.achieved && item.tip && (
+                        <p className="text-white/60 text-xs mt-1">💡 {item.tip}</p>
+                      )}
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/20 grid grid-cols-2 gap-2 text-xs text-white/70">
+                <span>📥 Income tracked → 20 pts</span>
+                <span>✅ Under all budgets → 25 pts</span>
+                <span>💰 Positive balance → up to 25 pts</span>
+                <span>🏦 Savings goals set → 15 pts</span>
+                <span>📊 10+ transactions → 15 pts</span>
               </div>
             </div>
           </div>

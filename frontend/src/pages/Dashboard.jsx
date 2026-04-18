@@ -68,16 +68,36 @@ function ConfirmModal({ message, onConfirm, onCancel, confirmText = 'Delete' }) 
   )
 }
 
+const BRAND_LOGOS = {
+  "Netflix":       "https://logo.clearbit.com/netflix.com",
+  "Spotify":       "https://logo.clearbit.com/spotify.com",
+  "Disney+":       "https://logo.clearbit.com/disneyplus.com",
+  "HBO Max":       "https://logo.clearbit.com/hbo.com",
+  "Amazon Prime":  "https://logo.clearbit.com/amazon.com",
+  "Apple TV+":     "https://logo.clearbit.com/apple.com",
+  "YouTube":       "https://logo.clearbit.com/youtube.com",
+  "Crunchyroll":   "https://logo.clearbit.com/crunchyroll.com",
+  "McDonald's":    "https://logo.clearbit.com/mcdonalds.com",
+  "KFC":           "https://logo.clearbit.com/kfc.com",
+  "Starbucks":     "https://logo.clearbit.com/starbucks.com",
+  "Pizza Hut":     "https://logo.clearbit.com/pizzahut.com",
+  "Burger King":   "https://logo.clearbit.com/burgerking.com",
+  "Uber":          "https://logo.clearbit.com/uber.com",
+  "Shell":         "https://logo.clearbit.com/shell.com",
+  "Amazon":        "https://logo.clearbit.com/amazon.com",
+  "IKEA":          "https://logo.clearbit.com/ikea.com",
+}
+
 const SUBCATEGORIES = {
   Food: [
     { label: "McDonald's", emoji: '🍔' }, { label: 'KFC', emoji: '🍗' },
-    { label: 'Starbucks', emoji: '☕' }, { label: 'Pizza', emoji: '🍕' },
+    { label: 'Starbucks', emoji: '☕' }, { label: 'Pizza Hut', emoji: '🍕' },
     { label: 'Groceries', emoji: '🛒' }, { label: 'Restaurant', emoji: '🍽️' },
-    { label: 'Delivery', emoji: '📦' }, { label: 'Burger King', emoji: '🍔' },
+    { label: 'Delivery', emoji: '🛵' }, { label: 'Burger King', emoji: '🍔' },
   ],
   Transport: [
     { label: 'Uber', emoji: '🚗' }, { label: 'Taxi', emoji: '🚕' },
-    { label: 'Gas', emoji: '⛽' }, { label: 'Metro', emoji: '🚇' },
+    { label: 'Shell', emoji: '⛽' }, { label: 'Metro', emoji: '🚇' },
     { label: 'Bus', emoji: '🚌' }, { label: 'Parking', emoji: '🅿️' },
     { label: 'Flight', emoji: '✈️' }, { label: 'Bike', emoji: '🚲' },
   ],
@@ -87,11 +107,17 @@ const SUBCATEGORIES = {
     { label: 'IKEA', emoji: '🛋️' }, { label: 'Pharmacy', emoji: '💊' },
     { label: 'Books', emoji: '📚' }, { label: 'Sports', emoji: '🏋️' },
   ],
-  Entertainment: [
+  Subscriptions: [
     { label: 'Netflix', emoji: '🎬' }, { label: 'Spotify', emoji: '🎵' },
-    { label: 'Disney+', emoji: '🏰' }, { label: 'HBO', emoji: '🎭' },
-    { label: 'Cinema', emoji: '🎥' }, { label: 'Games', emoji: '🎮' },
+    { label: 'Disney+', emoji: '🏰' }, { label: 'HBO Max', emoji: '🎭' },
+    { label: 'Amazon Prime', emoji: '📦' }, { label: 'Apple TV+', emoji: '🍎' },
+    { label: 'YouTube', emoji: '▶️' }, { label: 'Crunchyroll', emoji: '🎌' },
+  ],
+  Entertainment: [
+    { label: 'Cinema', emoji: '🎥' }, { label: 'Gaming', emoji: '🎮' },
     { label: 'Bar', emoji: '🍺' }, { label: 'Concert', emoji: '🎤' },
+    { label: 'Club', emoji: '🎉' }, { label: 'Arcade', emoji: '🕹️' },
+    { label: 'Live Show', emoji: '🎭' }, { label: 'Bowling', emoji: '🎳' },
   ],
   Other: [
     { label: 'Healthcare', emoji: '🏥' }, { label: 'Education', emoji: '🎓' },
@@ -101,21 +127,71 @@ const SUBCATEGORIES = {
   ],
 }
 
+const CATEGORY_HINTS = {
+  Food:          ['starbucks','mcdonald','kfc','pizza','burger','grocery','restaurant','food','coffee','lunch','dinner','breakfast','cafe','sushi','taco','domino','subway','delivery','eat','shawarma'],
+  Transport:     ['uber','taxi','lyft','careem','gas','shell','petrol','metro','bus','parking','flight','airline','fuel','train','toll','bolt'],
+  Shopping:      ['amazon','clothing','h&m','zara','ikea','pharmacy','book','sport','apple','samsung','laptop','phone','mall','store','shop','clothes','h&m'],
+  Subscriptions: ['netflix','spotify','disney','hbo','youtube','apple tv','crunchyroll','prime video','subscription','plan','monthly fee'],
+  Entertainment: ['cinema','movie','bar','club','concert','gaming','game','arcade','bowling','show','theatre','party','nightclub'],
+  Other:         ['healthcare','hospital','doctor','gym','insurance','rent','utilities','electric','water','internet','charity','donation','tax'],
+}
+
+function suggestCategory(desc) {
+  if (!desc || desc.length < 3) return null
+  const lower = desc.toLowerCase()
+  for (const [cat, words] of Object.entries(CATEGORY_HINTS)) {
+    if (words.some(w => lower.includes(w))) return cat
+  }
+  return null
+}
+
+function SubTile({ sub, selected, onClick }) {
+  const logo = BRAND_LOGOS[sub.label]
+  const [imgOk, setImgOk] = useState(true)
+  return (
+    <button type="button" onClick={onClick}
+      className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border-2 transition ${
+        selected ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-100 dark:border-gray-700 hover:border-violet-300 bg-gray-50 dark:bg-gray-700/50'
+      }`}>
+      {logo && imgOk
+        ? <img src={logo} alt={sub.label} className="w-7 h-7 rounded-md object-contain" onError={() => setImgOk(false)} />
+        : <span className="text-xl">{sub.emoji}</span>
+      }
+      <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 leading-tight text-center">{sub.label}</span>
+    </button>
+  )
+}
+
+const EXP_CATS = [
+  { key: 'Food', icon: '🍔' }, { key: 'Transport', icon: '🚗' },
+  { key: 'Shopping', icon: '🛍️' }, { key: 'Subscriptions', icon: '📱' },
+  { key: 'Entertainment', icon: '🎬' }, { key: 'Other', icon: '📦' },
+]
+
 function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
   const [form, setForm] = useState({
     amount: '', category: 'Food', description: '',
     date: new Date().toISOString().split('T')[0], is_recurring: false
   })
   const [selectedSub, setSelectedSub] = useState(null)
+  const [suggestion, setSuggestion] = useState(null)
 
   const handleCategoryChange = (cat) => {
     setForm(f => ({ ...f, category: cat }))
     setSelectedSub(null)
+    setSuggestion(null)
   }
 
   const handleSubSelect = (sub) => {
     setSelectedSub(sub.label)
     setForm(f => ({ ...f, description: sub.label }))
+    setSuggestion(null)
+  }
+
+  const handleDescChange = (val) => {
+    setForm(f => ({ ...f, description: val }))
+    const cat = suggestCategory(val)
+    setSuggestion(cat && cat !== form.category ? cat : null)
   }
 
   const subs = SUBCATEGORIES[form.category] || []
@@ -140,38 +216,48 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
               className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
           </div>
 
+          {/* Description first — triggers AI category suggest */}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Description (optional)</label>
+            <input type="text" placeholder="What was this for?" value={form.description}
+              onChange={e => handleDescChange(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+            {suggestion && (
+              <div className="mt-1.5 flex items-center gap-2 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 rounded-xl px-3 py-2">
+                <span className="text-xs text-violet-700 dark:text-violet-300">🤖 Looks like <strong>{suggestion}</strong>?</span>
+                <button type="button" onClick={() => handleCategoryChange(suggestion)}
+                  className="ml-auto text-xs bg-violet-600 text-white px-3 py-1 rounded-lg font-semibold hover:bg-violet-700 transition">
+                  Use it
+                </button>
+                <button type="button" onClick={() => setSuggestion(null)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
+              </div>
+            )}
+          </div>
+
           {/* Category selector */}
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Category</label>
             <div className="grid grid-cols-3 gap-2">
-              {['Food','Transport','Shopping','Entertainment','Other'].map(cat => (
-                <button key={cat} type="button" onClick={() => handleCategoryChange(cat)}
+              {EXP_CATS.map(({ key, icon }) => (
+                <button key={key} type="button" onClick={() => handleCategoryChange(key)}
                   className={`py-2 px-2 rounded-xl text-xs font-semibold border-2 transition ${
-                    form.category === cat
+                    form.category === key
                       ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
                       : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-violet-300'
                   }`}>
-                  {cat === 'Food' ? '🍔' : cat === 'Transport' ? '🚗' : cat === 'Shopping' ? '🛍️' : cat === 'Entertainment' ? '🎬' : '📦'} {cat}
+                  {icon} {key}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Subcategory tiles */}
+          {/* Subcategory tiles with real logos */}
           {subs.length > 0 && (
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Quick-fill</label>
               <div className="grid grid-cols-4 gap-2">
                 {subs.map(sub => (
-                  <button key={sub.label} type="button" onClick={() => handleSubSelect(sub)}
-                    className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border-2 transition ${
-                      selectedSub === sub.label
-                        ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30'
-                        : 'border-gray-100 dark:border-gray-700 hover:border-violet-300 bg-gray-50 dark:bg-gray-700/50'
-                    }`}>
-                    <span className="text-xl">{sub.emoji}</span>
-                    <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 leading-tight text-center">{sub.label}</span>
-                  </button>
+                  <SubTile key={sub.label} sub={sub} selected={selectedSub === sub.label} onClick={() => handleSubSelect(sub)} />
                 ))}
               </div>
             </div>
@@ -181,12 +267,6 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Date</label>
             <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
               className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Description (optional)</label>
-            <input type="text" placeholder="What was this for?" value={form.description}
-              onChange={e => setForm({ ...form, description: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="w-4 h-4 accent-violet-600" />
@@ -597,6 +677,24 @@ export default function Dashboard() {
                     <p className="text-violet-200 text-xs">
                       {balance >= 0 ? savingsRate + '% saved this month' : 'Spending over income'}
                     </p>
+                    {/* Spending forecast */}
+                    {isCurrentMonth && total > 0 && (() => {
+                      const dayOfMonth = today.getDate()
+                      const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+                      const projected = (total / dayOfMonth) * daysInMonth
+                      const diff = projected - totalIncome
+                      return (
+                        <div className="mt-3 bg-white/10 rounded-xl px-3 py-2 text-xs">
+                          <span className="text-violet-200">📈 On pace to spend </span>
+                          <span className="font-bold text-white">{fmt(projected, currencySymbol)}</span>
+                          <span className="text-violet-200"> by month-end — </span>
+                          {diff > 0
+                            ? <span className="font-bold text-red-300">overspend by {fmt(diff, currencySymbol)}</span>
+                            : <span className="font-bold text-green-300">surplus of {fmt(Math.abs(diff), currencySymbol)}</span>
+                          }
+                        </div>
+                      )
+                    })()}
                   </div>
                   <div className="relative grid grid-cols-3 gap-2 mt-4">
                     <button onClick={() => setModalData({ label: 'Income — ' + monthName, value: fmt(totalIncome, currencySymbol), sub: incomeList.length + ' source(s)' })}

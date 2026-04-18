@@ -3,8 +3,8 @@ import Layout from '../components/Layout'
 import API from '../utils/api'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
-const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Entertainment', 'Other']
-const CAT_ICONS = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Other: '📦' }
+const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Subscriptions', 'Entertainment', 'Other']
+const CAT_ICONS = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
 const PERIODS = [{ value: 'monthly', label: 'Monthly' }, { value: 'weekly', label: 'Weekly' }]
 
 function Toast({ message, type, onClose }) {
@@ -120,6 +120,14 @@ export default function Budgets() {
       })
     }
     return filtered.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+  }
+
+  const getLastMonthSpent = (category) => {
+    const prevMonth = today.getMonth() === 0 ? 11 : today.getMonth() - 1
+    const prevYear  = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear()
+    return expenses
+      .filter(e => { const d = new Date(e.date); return d.getMonth() === prevMonth && d.getFullYear() === prevYear && e.category === category })
+      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
   }
 
   const handleSubmit = async (e) => {
@@ -279,6 +287,8 @@ export default function Budgets() {
               const isWarning = b.pct >= 85 && !isOver
               const remaining = b.limit - b.spent
               const periodLabel = b.period === 'weekly' ? 'This week' : monthName
+              const lastMonthSpent = b.period === 'monthly' ? getLastMonthSpent(b.category) : null
+              const lastMonthRollover = lastMonthSpent !== null ? b.limit - lastMonthSpent : null
 
               return (
                 <div key={b.id} className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border-l-4 ${
@@ -327,6 +337,13 @@ export default function Budgets() {
                         : `${currencySymbol}${remaining.toFixed(2)} left`}
                     </span>
                   </div>
+                  {lastMonthRollover !== null && (
+                    <p className={`text-xs mt-1.5 ${lastMonthRollover >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                      {lastMonthRollover >= 0
+                        ? `↩ Last month: ${currencySymbol}${lastMonthRollover.toFixed(2)} unspent`
+                        : `↩ Last month: ${currencySymbol}${Math.abs(lastMonthRollover).toFixed(2)} over budget`}
+                    </p>
+                  )}
 
                   {/* AI advice button when over budget */}
                   {isOver && (
