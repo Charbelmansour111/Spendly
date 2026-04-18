@@ -89,46 +89,97 @@ export default function Wellness() {
 
   const fetchData = useCallback(async () => {
     try {
-      // Fetch financials directly from working endpoints (same as dashboard)
-      const [expRes, incRes, wellRes] = await Promise.allSettled([
+      const [expRes, incRes, budRes, savRes, wellRes] = await Promise.allSettled([
         API.get('/expenses'),
         API.get(`/income?month=${currentMonth}&year=${currentYear}`),
+        API.get('/budgets'),
+        API.get('/savings'),
         API.get('/wellness'),
       ])
 
-      // Compute financials from direct endpoints
-      if (expRes.status === 'fulfilled' && incRes.status === 'fulfilled') {
-        const allExpenses = expRes.value.data || []
-        const monthExpenses = allExpenses.filter(e => {
-          const d = new Date(e.date)
-          return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear
-        })
-        const totalSpent = monthExpenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0)
-        const totalIncome = (incRes.value.data || []).reduce((s, i) => s + parseFloat(i.amount || 0), 0)
-        const balance = totalIncome - totalSpent
+      const allExpenses = expRes.status === 'fulfilled' ? (expRes.value.data || []) : []
+      const incomeList  = incRes.status  === 'fulfilled' ? (incRes.value.data  || []) : []
+      const budgetList  = budRes.status  === 'fulfilled' ? (budRes.value.data  || []) : []
+      const savingsList = savRes.status  === 'fulfilled' ? (savRes.value.data  || []) : []
 
-        // Streak: consecutive days with at least one expense
-        const dateset = new Set(allExpenses.map(e => e.date?.split('T')[0]).filter(Boolean))
-        let streak = 0
-        const check = new Date()
-        for (let i = 0; i < 60; i++) {
-          const ds = check.toISOString().split('T')[0]
-          if (dateset.has(ds)) { streak++; check.setDate(check.getDate() - 1) }
-          else { if (i > 0) break; check.setDate(check.getDate() - 1) }
-        }
+      // Month expenses
+      const monthExpenses = allExpenses.filter(e => {
+        const d = new Date(e.date)
+        return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear
+      })
+      const totalSpent  = monthExpenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0)
+      const totalIncome = incomeList.reduce((s, i) => s + parseFloat(i.amount || 0), 0)
+      const balance     = totalIncome - totalSpent
 
-        setFinancials({ totalIncome, totalSpent, balance, streak })
+      // Streak
+      const dateset = new Set(allExpenses.map(e => e.date?.split('T')[0]).filter(Boolean))
+      let streak = 0
+      const checkDate = new Date()
+      for (let i = 0; i < 60; i++) {
+        const ds = checkDate.toISOString().split('T')[0]
+        if (dateset.has(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1) }
+        else { if (i > 0) break; checkDate.setDate(checkDate.getDate() - 1) }
       }
 
-      // Wellness score/breakdown/achievements from wellness endpoint
-      if (wellRes.status === 'fulfilled') {
-        setData(wellRes.value.data)
-        setNote(wellRes.value.data.note?.content || '')
-        if (wellRes.value.data.mood?.mood) setSelectedMood(wellRes.value.data.mood.mood)
+      // Category totals for budget check
+      const catTotals = monthExpenses.reduce((acc, e) => {
+        acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount || 0)
+        return acc
+      }, {})
+      const overBudgetCount = budgetList.filter(b => (catTotals[b.category] || 0) > parseFloat(b.amount)).length
+
+      // Compute score + breakdown locally (same logic as backend)
+      let score = 0
+      const breakdown = []
+
+      if (totalIncome > 0) {
+        score += 20
+        breakdown.push({ label: 'Income Tracked', points: 20, max: 20, achieved: true, reason: `You logged ${currencySymbol}${totalIncome.toFixed(2)} income this month.` })
+      } else {
+        breakdown.push({ label: 'Income Tracked', points: 0, max: 20, achieved: false, tip: 'Add your income to unlock 20 pts', reason: 'No income logged yet this month.' })
       }
+
+      if (budgetList.length > 0 && overBudgetCount === 0) {
+        score += 25
+        breakdown.push({ label: 'Under Budget', points: 25, max: 25, achieved: true, reason: `All ${budgetList.length} budget${budgetList.length > 1 ? 's' : ''} are under limit.` })
+      } else if (budgetList.length === 0) {
+        breakdown.push({ label: 'Under Budget', points: 0, max: 25, achieved: false, tip: 'Set budget limits to unlock 25 pts', reason: 'No budgets set yet.' })
+      } else {
+        breakdown.push({ label: 'Under Budget', points: 0, max: 25, achieved: false, tip: `Over budget in ${overBudgetCount} categor${overBudgetCount > 1 ? 'ies' : 'y'}`, reason: `You exceeded ${overBudgetCount} budget limit${overBudgetCount > 1 ? 's' : ''} this month.` })
+      }
+
+      if (totalIncome > 0 && balance > 0) {
+        const rate = (balance / totalIncome) * 100
+        const pts = rate >= 20 ? 25 : rate >= 10 ? 15 : 10
+        score += pts
+        breakdown.push({ label: 'Positive Balance', points: pts, max: 25, achieved: true, reason: `Saving ${rate.toFixed(0)}% of income (${pts === 25 ? 'max pts!' : `aim for 20%+ for full 25 pts`}).` })
+      } else {
+        breakdown.push({ label: 'Positive Balance', points: 0, max: 25, achieved: false, tip: 'Spend less than you earn for up to 25 pts', reason: totalIncome === 0 ? 'Log income to calculate balance.' : 'Spending exceeds income this month.' })
+      }
+
+      const wellData = wellRes.status === 'fulfilled' ? wellRes.value.data : null
+      if (savingsList.length > 0) {
+        score += 15
+        breakdown.push({ label: 'Savings Goals', points: 15, max: 15, achieved: true, reason: `${savingsList.length} savings goal${savingsList.length > 1 ? 's' : ''} active.` })
+      } else {
+        breakdown.push({ label: 'Savings Goals', points: 0, max: 15, achieved: false, tip: 'Create a savings goal to unlock 15 pts', reason: 'No savings goals created yet.' })
+      }
+
+      const txnPts = Math.min(Math.floor((monthExpenses.length / 10) * 15), 15)
+      score += txnPts
+      if (monthExpenses.length >= 10) {
+        breakdown.push({ label: 'Consistent Tracking', points: 15, max: 15, achieved: true, reason: `${monthExpenses.length} transactions logged this month.` })
+      } else {
+        breakdown.push({ label: 'Consistent Tracking', points: txnPts, max: 15, achieved: false, tip: `Log ${10 - monthExpenses.length} more transactions for full 15 pts`, reason: `Only ${monthExpenses.length} of 10 needed transactions logged.` })
+      }
+
+      setFinancials({ totalIncome, totalSpent, balance, streak })
+      setData({ ...wellData, score, breakdown, budgetList, monthExpenseCount: monthExpenses.length })
+      if (wellData?.note?.content) setNote(wellData.note.content)
+      if (wellData?.mood?.mood) setSelectedMood(wellData.mood.mood)
     } catch (e) { console.log('Error fetching wellness', e) }
     setLoading(false)
-  }, [currentMonth, currentYear])
+  }, [currentMonth, currentYear, currencySymbol])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -170,12 +221,33 @@ export default function Wellness() {
     setMoodResponseLoading(false)
   }
 
-  // Computed stats
+  // Computed stats — all from locally fetched data, not from wellness endpoint
   const { totalIncome, totalSpent, balance, streak } = financials
   const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100) : null
-  const dailyBurn = totalSpent > 0 && dayOfMonth > 0 ? (totalSpent / dayOfMonth) : null
-  const budgetUnder = data?.breakdown?.find(b => b.label === 'Under Budget')
-  const budgetsOk = budgetUnder?.achieved
+  const dailyBurn   = totalSpent > 0 && dayOfMonth > 0 ? (totalSpent / dayOfMonth) : null
+  const budgetItem  = data?.breakdown?.find(b => b.label === 'Under Budget')
+  const budgetsOk   = budgetItem?.achieved
+  const hasBudgets  = data?.budgetList?.length > 0
+  const trackItem   = data?.breakdown?.find(b => b.label === 'Consistent Tracking')
+  const trackPct    = trackItem ? Math.round((trackItem.points / trackItem.max) * 100) : 0
+  const txnCount    = data?.monthExpenseCount ?? 0
+
+  // Achievements computed locally from direct data
+  const achievements = (() => {
+    if (!data) return []
+    const list = []
+    if (txnCount >= 1)        list.push({ icon: '🎯', title: 'First Step',        desc: 'Added your first expense' })
+    if (txnCount >= 50)       list.push({ icon: '📊', title: 'Data Master',       desc: '50+ expenses tracked' })
+    if (hasBudgets)           list.push({ icon: '⚡', title: 'Budget Setter',     desc: 'Created your first budget' })
+    if (data?.breakdown?.find(b => b.label === 'Savings Goals')?.achieved)
+                              list.push({ icon: '🏦', title: 'Saver',             desc: 'Active savings goal set' })
+    if (totalIncome > 0)      list.push({ icon: '💰', title: 'Income Tracker',    desc: 'Tracking your income' })
+    if ((data?.score || 0) >= 80) list.push({ icon: '🏆', title: 'Finance Pro',   desc: 'Health score above 80!' })
+    if ((data?.score || 0) === 100) list.push({ icon: '💎', title: 'Perfect Score', desc: 'Achieved 100/100!' })
+    if (streak >= 7)          list.push({ icon: '🔥', title: 'On Fire',           desc: '7-day tracking streak!' })
+    if (savingsRate !== null && savingsRate >= 20) list.push({ icon: '🌟', title: 'Smart Saver', desc: 'Saving 20%+ of income!' })
+    return list
+  })()
 
   const getPersonality = () => {
     if (totalSpent === 0) return { label: 'Just Getting Started', emoji: '🌱', color: 'from-gray-500 to-gray-600', desc: 'Start logging expenses to unlock your financial identity.' }
@@ -321,13 +393,13 @@ export default function Wellness() {
           {/* Budget Health */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Budget Health</p>
-            {data?.breakdown ? (
+            {hasBudgets ? (
               <>
                 <p className={`text-2xl font-bold ${budgetsOk ? 'text-emerald-600' : 'text-red-500'}`}>
                   {budgetsOk ? '✓ Good' : '✗ Over'}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {budgetsOk ? 'Under all budgets' : 'Exceeded a budget limit'}
+                  {budgetsOk ? 'Under all budgets' : budgetItem?.tip || 'Exceeded a limit'}
                 </p>
               </>
             ) : (
@@ -338,16 +410,12 @@ export default function Wellness() {
           {/* Tracking Consistency */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Tracking</p>
-            {data?.breakdown ? (() => {
-              const item = data.breakdown.find(b => b.label === 'Consistent Tracking')
-              const pct = item ? Math.round((item.points / item.max) * 100) : 0
-              return (
-                <>
-                  <p className={`text-2xl font-bold ${pct >= 100 ? 'text-emerald-600' : pct >= 50 ? 'text-yellow-500' : 'text-gray-500'}`}>{pct}%</p>
-                  <p className="text-xs text-gray-400 mt-1">Consistency score</p>
-                </>
-              )
-            })() : <p className="text-sm text-gray-400 mt-1">No data yet</p>}
+            {txnCount > 0 ? (
+              <>
+                <p className={`text-2xl font-bold ${trackPct >= 100 ? 'text-emerald-600' : trackPct >= 50 ? 'text-yellow-500' : 'text-gray-500'}`}>{trackPct}%</p>
+                <p className="text-xs text-gray-400 mt-1">{txnCount} / 10 transactions this month</p>
+              </>
+            ) : <p className="text-sm text-gray-400 mt-1">No transactions yet</p>}
           </div>
         </div>
 
@@ -367,9 +435,9 @@ export default function Wellness() {
           <h3 className="text-base font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
             <span className="text-xl">🏅</span> Achievements
           </h3>
-          {data?.achievements?.length > 0 ? (
+          {achievements.length > 0 ? (
             <div className="grid grid-cols-2 gap-2.5">
-              {data.achievements.map((a, i) => (
+              {achievements.map((a, i) => (
                 <div key={i} className="flex items-center gap-3 bg-violet-50 dark:bg-violet-900/20 rounded-2xl p-3">
                   <span className="text-2xl">{a.icon}</span>
                   <div>
@@ -387,11 +455,12 @@ export default function Wellness() {
           )}
           {data?.breakdown?.filter(b => !b.achieved && b.tip).length > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-              <p className="text-xs font-bold text-gray-500 mb-2">Next to unlock:</p>
-              <div className="space-y-1">
-                {data.breakdown.filter(b => !b.achieved && b.tip).slice(0, 2).map((b, i) => (
-                  <p key={i} className="text-xs text-gray-400 flex items-center gap-1.5">
-                    <span className="text-violet-400">→</span>{b.tip}
+              <p className="text-xs font-bold text-gray-500 mb-2">To improve your score:</p>
+              <div className="space-y-1.5">
+                {data.breakdown.filter(b => !b.achieved).map((b, i) => (
+                  <p key={i} className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-1.5">
+                    <span className="text-violet-400 shrink-0 mt-0.5">→</span>
+                    <span><span className="font-semibold text-gray-600 dark:text-gray-300">{b.label}:</span> {b.reason}</span>
                   </p>
                 ))}
               </div>
