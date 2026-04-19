@@ -610,7 +610,7 @@ export default function Dashboard() {
 
   // Net worth data
   const [debts, setDebts]         = useState([])
-  const [subs, setSubs]           = useState([])
+  const [subs]                    = useState([])
   const [allTimeIncome, setAllTimeIncome] = useState([])
   const [showNWDetails, setShowNWDetails] = useState(false)
   const touchStartX = useRef(null)
@@ -661,7 +661,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!localStorage.getItem('token')) return
     API.get('/debts').then(r => setDebts(r.data || [])).catch(() => {})
-    API.get('/subscriptions').then(r => setSubs(r.data || [])).catch(() => {})
+    API.get('/subscriptions').catch(() => {})
     API.get('/income').then(r => setAllTimeIncome(r.data || [])).catch(() => {})
   }, [])
 
@@ -1059,6 +1059,40 @@ export default function Dashboard() {
         </div>
         {/* ── End Carousel ─────────────────────────────────── */}
 
+        {/* Spending Forecast */}
+        {isCurrentMonth && total > 0 && (() => {
+          const dayOfMonth = today.getDate()
+          const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+          const daysLeft = daysInMonth - dayOfMonth
+          const projected = (total / dayOfMonth) * daysInMonth
+          const diff = projected - totalIncome
+          const pct = Math.min((total / Math.max(projected, 1)) * 100, 100)
+          const isOver = diff > 0
+          return (
+            <div className="mb-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-white">📈 Spending Forecast</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{daysLeft} day{daysLeft !== 1 ? 's' : ''} left in {monthName}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-lg font-bold tabular-nums ${isOver ? 'text-red-500' : 'text-green-600'}`}>{fmt(projected, currencySymbol)}</p>
+                  <p className="text-xs text-gray-400">projected</p>
+                </div>
+              </div>
+              <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 mb-3">
+                <div className={`h-2 rounded-full transition-all duration-500 ${isOver ? 'bg-red-400' : 'bg-violet-500'}`} style={{ width: `${pct}%` }} />
+              </div>
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>Spent: <span className="font-semibold text-gray-700 dark:text-gray-300">{fmt(total, currencySymbol)}</span></span>
+                <span className={`font-semibold ${isOver ? 'text-red-500' : 'text-green-600'}`}>
+                  {isOver ? `↑ ${fmt(diff, currencySymbol)} over income` : `✓ ${fmt(Math.abs(diff), currencySymbol)} surplus`}
+                </span>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Budget Alerts */}
         {(() => {
           const alerts = budgets.map(b => {
@@ -1133,31 +1167,46 @@ export default function Dashboard() {
         )}
 
         {/* Upcoming Bills */}
+        {/* Bills Due Soon (from Budgets → Bills tab) */}
         {(() => {
-          const upcoming = subs.filter(s => {
-            if (!s.next_billing_date) return false
-            const days = Math.ceil((new Date(s.next_billing_date) - new Date()) / (1000 * 60 * 60 * 24))
-            return days >= 0 && days <= 7
-          }).sort((a, b) => new Date(a.next_billing_date) - new Date(b.next_billing_date))
+          const allBills = (() => { try { return JSON.parse(localStorage.getItem('spendly_bills') || '[]') } catch { return [] } })()
+          const pKey = `spendly_paid_bills_${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`
+          const paid = (() => { try { return JSON.parse(localStorage.getItem(pKey) || '[]') } catch { return [] } })()
+          const calcDays = (dueDay) => {
+            const now = new Date()
+            const thisMonthDue = new Date(now.getFullYear(), now.getMonth(), dueDay)
+            if (thisMonthDue >= now) return Math.ceil((thisMonthDue - now) / 864e5)
+            return Math.ceil((new Date(now.getFullYear(), now.getMonth() + 1, dueDay) - now) / 864e5)
+          }
+          const upcoming = allBills
+            .filter(b => !paid.includes(b.id))
+            .map(b => ({ ...b, days: calcDays(parseInt(b.dueDay)) }))
+            .filter(b => b.days <= 7)
+            .sort((a, b) => a.days - b.days)
           if (!upcoming.length) return null
           return (
             <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-4 mb-4">
-              <h3 className="font-semibold text-amber-800 dark:text-amber-400 text-sm mb-3">⏰ Bills Due This Week</h3>
-              <div className="space-y-2">
-                {upcoming.map(s => {
-                  const days = Math.ceil((new Date(s.next_billing_date) - new Date()) / (1000 * 60 * 60 * 24))
-                  return (
-                    <div key={s.id} className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm font-medium text-gray-800 dark:text-white">{s.name}</p>
-                        <p className={`text-xs font-semibold ${days === 0 ? 'text-red-500' : 'text-amber-600 dark:text-amber-400'}`}>
-                          {days === 0 ? 'Due today' : `In ${days} day${days > 1 ? 's' : ''}`}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-amber-800 dark:text-amber-400 text-sm">📅 Bills Due Soon</h3>
+                <a href="/budgets" className="text-xs text-amber-600 dark:text-amber-400 font-semibold hover:underline">Manage →</a>
+              </div>
+              <div className="space-y-2.5">
+                {upcoming.map(b => (
+                  <div key={b.id} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-lg shrink-0">{b.emoji || '📅'}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{b.name}</p>
+                        <p className={`text-xs font-semibold ${b.days === 0 ? 'text-red-500' : 'text-amber-600 dark:text-amber-400'}`}>
+                          {b.days === 0 ? '⚠️ Due today' : `In ${b.days} day${b.days !== 1 ? 's' : ''}`}
                         </p>
                       </div>
-                      <p className="font-bold text-gray-800 dark:text-white text-sm tabular-nums">{currencySymbol}{safeNum(s.amount).toFixed(2)}</p>
                     </div>
-                  )
-                })}
+                    <p className="font-bold text-gray-800 dark:text-white text-sm tabular-nums shrink-0">
+                      {currencySymbol}{parseFloat(b.amount || 0).toFixed(2)}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
           )

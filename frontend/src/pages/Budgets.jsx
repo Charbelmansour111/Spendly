@@ -90,6 +90,14 @@ export default function Budgets() {
     return CURRENCY_SYMBOLS[stored] || '$'
   })
 
+  // Bills tab
+  const [activeTab, setActiveTab]     = useState('budgets')
+  const [showBillForm, setShowBillForm] = useState(false)
+  const [billForm, setBillForm]        = useState({ name: '', amount: '', dueDay: '', emoji: '🏠' })
+  const [billSaving, setBillSaving]    = useState(false)
+  const BILLS_KEY = 'spendly_bills'
+  const [bills, setBillsState]         = useState(() => { try { return JSON.parse(localStorage.getItem('spendly_bills') || '[]') } catch { return [] } })
+
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
   const showToast = useCallback((message, type = 'success') => setToast({ message, type }), [])
@@ -147,6 +155,61 @@ export default function Budgets() {
     setFormAiLoading(false)
   }
 
+  // ── Bill helpers ────────────────────────────────────────
+  const paidKey = `spendly_paid_bills_${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`
+  const paidBills = (() => { try { return JSON.parse(localStorage.getItem(paidKey) || '[]') } catch { return [] } })()
+
+  const saveBills = (updated) => {
+    setBillsState(updated)
+    localStorage.setItem(BILLS_KEY, JSON.stringify(updated))
+  }
+
+  const daysUntilDue = (dueDay) => {
+    const now = new Date()
+    const thisMonthDue = new Date(now.getFullYear(), now.getMonth(), dueDay)
+    if (thisMonthDue >= now) return Math.ceil((thisMonthDue - now) / 864e5)
+    return Math.ceil((new Date(now.getFullYear(), now.getMonth() + 1, dueDay) - now) / 864e5)
+  }
+
+  const markPaid = (id) => {
+    const updated = [...paidBills, id]
+    localStorage.setItem(paidKey, JSON.stringify(updated))
+    setBillsState([...bills]) // force re-render
+  }
+
+  const unmarkPaid = (id) => {
+    const updated = paidBills.filter(p => p !== id)
+    localStorage.setItem(paidKey, JSON.stringify(updated))
+    setBillsState([...bills])
+  }
+
+  const handleAddBill = (e) => {
+    e.preventDefault()
+    if (billSaving) return
+    setBillSaving(true)
+    const newBill = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      name: billForm.name.trim(),
+      amount: billForm.amount,
+      dueDay: parseInt(billForm.dueDay),
+      emoji: billForm.emoji,
+    }
+    saveBills([...bills, newBill])
+    setBillForm({ name: '', amount: '', dueDay: '', emoji: '🏠' })
+    setShowBillForm(false)
+    showToast('📅 Bill added!')
+    setBillSaving(false)
+  }
+
+  const handleDeleteBill = (id) => {
+    if (!window.confirm('Remove this bill?')) return
+    saveBills(bills.filter(b => b.id !== id))
+    showToast('Removed')
+  }
+
+  const upcomingBillCount = bills.filter(b => !paidBills.includes(b.id) && daysUntilDue(b.dueDay) <= 7).length
+  const BILL_EMOJIS = ['🏠', '🚗', '💡', '💧', '📱', '🌐', '💳', '🏥', '🎓', '🎵', '🍕', '🛒']
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (saving) return
@@ -200,9 +263,23 @@ export default function Budgets() {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Budgets</h1>
-          <p className="text-gray-400 text-sm mt-0.5">{monthName} · Set spending limits per category</p>
+          <p className="text-gray-400 text-sm mt-0.5">{monthName} · Spending limits & bill reminders</p>
         </div>
 
+        {/* Tab switcher */}
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-2xl mb-6">
+          <button onClick={() => setActiveTab('budgets')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${activeTab === 'budgets' ? 'bg-white dark:bg-gray-800 text-violet-600 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+            🎯 Spending Budgets
+          </button>
+          <button onClick={() => setActiveTab('bills')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1.5 ${activeTab === 'bills' ? 'bg-white dark:bg-gray-800 text-violet-600 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+            📅 Bills
+            {upcomingBillCount > 0 && <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">{upcomingBillCount}</span>}
+          </button>
+        </div>
+
+        {activeTab === 'budgets' && <>
         {/* Summary Cards */}
         {numModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setNumModal(null)}>
@@ -419,6 +496,127 @@ export default function Budgets() {
             })}
           </div>
         )}
+        </> /* end budgets tab */}
+
+        {/* ── BILLS TAB ─────────────────────────────────────── */}
+        {activeTab === 'bills' && (
+          <div>
+            {/* Explanation */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 rounded-2xl p-5 mb-5 flex gap-3">
+              <span className="text-2xl shrink-0">📅</span>
+              <div>
+                <p className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Track your fixed monthly bills</p>
+                <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
+                  Add recurring payments like rent, utilities, or phone bills with their due date.
+                  Bills due within 7 days will show up as a reminder on your <strong>Dashboard</strong> automatically.
+                  This is separate from savings goals and debt — it's just so you're never caught off guard. 😊
+                </p>
+              </div>
+            </div>
+
+            {/* Summary + Add button */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                  {bills.length} bill{bills.length !== 1 ? 's' : ''} ·{' '}
+                  <span className="text-violet-600">{currencySymbol}{bills.reduce((s, b) => s + parseFloat(b.amount || 0), 0).toFixed(2)}/mo</span>
+                </p>
+              </div>
+              <button onClick={() => setShowBillForm(v => !v)}
+                className="bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700 transition">
+                {showBillForm ? '✕ Cancel' : '+ Add Bill'}
+              </button>
+            </div>
+
+            {/* Add bill form */}
+            {showBillForm && (
+              <form onSubmit={handleAddBill} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4 border border-violet-100 dark:border-violet-800/40">
+                <p className="text-sm font-semibold text-gray-800 dark:text-white mb-4">New bill</p>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="col-span-2">
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Bill name</label>
+                    <input type="text" placeholder="e.g. Rent, Electricity, Phone"
+                      value={billForm.name} onChange={e => setBillForm({ ...billForm, name: e.target.value })}
+                      required className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Amount ({currencySymbol})</label>
+                    <input type="number" placeholder="e.g. 800" min="0.01" step="0.01"
+                      value={billForm.amount} onChange={e => setBillForm({ ...billForm, amount: e.target.value })}
+                      required className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Due day of month</label>
+                    <input type="number" placeholder="1–28" min="1" max="28"
+                      value={billForm.dueDay} onChange={e => setBillForm({ ...billForm, dueDay: e.target.value })}
+                      required className={inputCls} />
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">Pick an icon</label>
+                  <div className="flex flex-wrap gap-2">
+                    {BILL_EMOJIS.map(em => (
+                      <button key={em} type="button" onClick={() => setBillForm({ ...billForm, emoji: em })}
+                        className={`w-9 h-9 rounded-xl text-lg flex items-center justify-center transition ${billForm.emoji === em ? 'bg-violet-100 dark:bg-violet-900/40 ring-2 ring-violet-500' : 'bg-gray-100 dark:bg-gray-700 hover:bg-violet-50 dark:hover:bg-violet-900/20'}`}>
+                        {em}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button type="submit" disabled={billSaving}
+                  className="w-full bg-violet-600 text-white py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition text-sm disabled:opacity-60">
+                  {billSaving ? 'Saving…' : '📅 Save Bill'}
+                </button>
+              </form>
+            )}
+
+            {/* Bills list */}
+            {bills.length === 0 ? (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-12 text-center">
+                <p className="text-5xl mb-3">📭</p>
+                <p className="font-semibold text-gray-700 dark:text-gray-200 mb-1">No bills yet</p>
+                <p className="text-gray-400 text-sm">Add a bill above and it'll show as a reminder on your Dashboard when it's due soon.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {[...bills]
+                  .map(b => ({ ...b, days: daysUntilDue(b.dueDay), isPaid: paidBills.includes(b.id) }))
+                  .sort((a, b) => a.days - b.days)
+                  .map(b => {
+                    const isDueSoon = b.days <= 7 && !b.isPaid
+                    const isOverdue = b.days === 0 && !b.isPaid
+                    return (
+                      <div key={b.id} className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 flex items-center gap-4 border-l-4 ${b.isPaid ? 'border-green-400 opacity-70' : isDueSoon ? 'border-amber-400' : 'border-gray-200 dark:border-gray-700'}`}>
+                        <div className="w-11 h-11 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center text-xl shrink-0">
+                          {b.emoji || '📅'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-semibold text-sm ${b.isPaid ? 'line-through text-gray-400' : 'text-gray-800 dark:text-white'}`}>{b.name}</p>
+                          <p className={`text-xs font-medium mt-0.5 ${b.isPaid ? 'text-green-500' : isOverdue ? 'text-red-500' : isDueSoon ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'}`}>
+                            {b.isPaid ? '✅ Paid this month' : isOverdue ? '⚠️ Due today' : `Due in ${b.days} day${b.days !== 1 ? 's' : ''} (day ${b.dueDay})`}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-bold text-gray-800 dark:text-white tabular-nums text-sm">{currencySymbol}{parseFloat(b.amount || 0).toFixed(2)}</p>
+                        </div>
+                        <div className="flex flex-col gap-1.5 shrink-0">
+                          <button onClick={() => b.isPaid ? unmarkPaid(b.id) : markPaid(b.id)}
+                            className={`text-xs px-2.5 py-1.5 rounded-lg font-semibold transition ${b.isPaid ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200'}`}>
+                            {b.isPaid ? 'Undo' : 'Paid'}
+                          </button>
+                          <button onClick={() => handleDeleteBill(b.id)}
+                            className="text-xs px-2.5 py-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </Layout>
   )

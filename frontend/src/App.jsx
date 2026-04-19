@@ -45,6 +45,7 @@ import Reports from './pages/Reports'
 import Insights from './pages/Insights'
 import Wellness from './pages/Wellness'
 import Transactions from './pages/Transactions'
+import Subscriptions from './pages/Subscriptions'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 
@@ -70,7 +71,7 @@ function App() {
         <Route path="/goals"                 element={<Goals />} />
         <Route path="/savings"               element={<Navigate to="/goals" replace />} />
         <Route path="/debts"                 element={<Navigate to="/goals" replace />} />
-        <Route path="/subscriptions"         element={<Navigate to="/dashboard" replace />} />
+        <Route path="/subscriptions"          element={<Subscriptions />} />
         <Route path="/reports"               element={<Reports />} />
         <Route path="/insights"              element={<Insights />} />
         <Route path="/wellness"              element={<Wellness />} />

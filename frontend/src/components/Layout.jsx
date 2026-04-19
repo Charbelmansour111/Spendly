@@ -23,14 +23,15 @@ const Icons = {
 }
 
 const NAV_ITEMS = [
-  { key: 'nav_dashboard',    icon: 'home',         href: '/dashboard' },
-  { key: 'nav_transactions', icon: 'transactions', href: '/transactions' },
-  { key: 'nav_budgets',      icon: 'budget',       href: '/budgets' },
-  { key: 'nav_goals',        icon: 'savings',      href: '/goals' },
-  { key: 'nav_reports',      icon: 'reports',      href: '/reports' },
-  { key: 'nav_ai',           icon: 'ai',           href: '/insights' },
-  { key: 'nav_wellness',     icon: 'wellness',     href: '/wellness' },
-  { key: 'nav_profile',      icon: 'profile',      href: '/profile' },
+  { key: 'nav_dashboard',       icon: 'home',         href: '/dashboard' },
+  { key: 'nav_transactions',    icon: 'transactions', href: '/transactions' },
+  { key: 'nav_budgets',         icon: 'budget',       href: '/budgets' },
+  { key: 'nav_goals',           icon: 'savings',      href: '/goals' },
+  { key: 'nav_subscriptions',   icon: 'subs',         href: '/subscriptions' },
+  { key: 'nav_reports',         icon: 'reports',      href: '/reports' },
+  { key: 'nav_ai',              icon: 'ai',           href: '/insights' },
+  { key: 'nav_wellness',        icon: 'wellness',     href: '/wellness' },
+  { key: 'nav_profile',         icon: 'profile',      href: '/profile' },
 ]
 
 const TAB_ITEMS = [
