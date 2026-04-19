@@ -76,6 +76,9 @@ export default function Profile() {
   const [appLang, setAppLang]     = useState(() => localStorage.getItem('spendly_lang_app') || localStorage.getItem('spendly_lang_response') || 'en-US')
   const [photo, setPhoto]         = useState(() => localStorage.getItem('spendly_profile_photo') || '')
   const fileInputRef              = useRef(null)
+  const [supportForm, setSupportForm] = useState({ subject: 'General question', message: '' })
+  const [supportSending, setSupportSending] = useState(false)
+  const [supportSent, setSupportSent] = useState(false)
 
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700/60 text-gray-900 dark:text-white text-sm transition"
   const showToast = (msg, type = 'success') => setToast({ message: msg, type })
@@ -135,6 +138,7 @@ export default function Profile() {
     { key: 'prefs',    label: 'Preferences',  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
     { key: 'security', label: 'Security',     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
     { key: 'account',  label: 'Account',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> },
+    { key: 'support',  label: 'Support',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
   ]
 
   return (
@@ -400,6 +404,70 @@ export default function Profile() {
                 {t('delete_account')}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Support tab */}
+        {activeTab === 'support' && (
+          <div className="space-y-4">
+            {supportSent ? (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 flex flex-col items-center text-center gap-3">
+                <div className="w-14 h-14 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <p className="text-base font-bold text-gray-800 dark:text-white">Message sent!</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">We'll get back to you as soon as possible.</p>
+                <button onClick={() => { setSupportSent(false); setSupportForm({ subject: 'General question', message: '' }) }}
+                  className="mt-2 text-violet-600 text-sm font-semibold hover:underline">
+                  Send another message
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Contact Support</p>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Have a question, found a bug, or want to suggest a feature? We'd love to hear from you.
+                </p>
+                <Field label="Subject">
+                  <select value={supportForm.subject} onChange={e => setSupportForm(f => ({ ...f, subject: e.target.value }))} className={cls}>
+                    {['General question', 'Bug report', 'Feature idea', 'Account issue', 'Other'].map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Message">
+                  <textarea rows={5} placeholder="Describe your issue or idea in detail..."
+                    value={supportForm.message}
+                    onChange={e => setSupportForm(f => ({ ...f, message: e.target.value }))}
+                    className={cls + ' resize-none'} />
+                </Field>
+                <button
+                  disabled={supportSending || supportForm.message.trim().length < 10}
+                  onClick={async () => {
+                    setSupportSending(true)
+                    try {
+                      await API.post('/support/ticket', { subject: supportForm.subject, message: supportForm.message, user_email: user.email })
+                      setSupportSent(true)
+                    } catch {
+                      window.open(`mailto:charbel.mansourb@gmail.com?subject=${encodeURIComponent('[Spendly] ' + supportForm.subject)}&body=${encodeURIComponent(supportForm.message)}`)
+                      setSupportSent(true)
+                    }
+                    setSupportSending(false)
+                  }}
+                  className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                  {supportSending
+                    ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Sending…</>
+                    : 'Send Message'}
+                </button>
+                <p className="text-xs text-center text-gray-400">
+                  You can also email us directly at{' '}
+                  <a href="mailto:charbel.mansourb@gmail.com" className="text-violet-500 hover:underline">charbel.mansourb@gmail.com</a>
+                </p>
+              </div>
+            )}
           </div>
         )}
 
