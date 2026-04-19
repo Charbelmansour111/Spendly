@@ -346,6 +346,37 @@ export default function Reports() {
               </div>
             )}
 
+            {/* AI Report Summary */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800 dark:text-white">🤖 AI Report Summary</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Honest analysis of your {monthName} finances</p>
+                </div>
+                {!aiSummary && !aiLoading && (
+                  <button onClick={requestAI} disabled={loading}
+                    className="bg-violet-600 text-white text-xs font-semibold px-4 py-2 rounded-xl hover:bg-violet-700 transition disabled:opacity-50">
+                    Analyze
+                  </button>
+                )}
+                {aiSummary && (
+                  <button onClick={() => { setAiSummary(''); aiRequested.current = false }}
+                    className="text-xs text-violet-600 font-semibold hover:underline">Refresh</button>
+                )}
+              </div>
+              {aiLoading && (
+                <div className="space-y-2.5">
+                  {[1, 2, 3, 4].map(i => <div key={i} className="h-4 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${60 + i * 10}%` }} />)}
+                </div>
+              )}
+              {aiSummary && !aiLoading && (
+                <div className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{renderMarkdown(aiSummary)}</div>
+              )}
+              {!aiSummary && !aiLoading && (
+                <p className="text-sm text-gray-400">Tap Analyze for a data-driven breakdown of your month.</p>
+              )}
+            </div>
+
             {/* Daily spending chart */}
             {dailyData.length > 0 && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
@@ -488,37 +519,6 @@ export default function Reports() {
                 </div>
               </div>
             )}
-
-            {/* AI Report Summary */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-800 dark:text-white">🤖 AI Report Summary</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">Honest analysis of your {monthName} finances</p>
-                </div>
-                {!aiSummary && !aiLoading && (
-                  <button onClick={requestAI} disabled={loading}
-                    className="bg-violet-600 text-white text-xs font-semibold px-4 py-2 rounded-xl hover:bg-violet-700 transition disabled:opacity-50">
-                    Analyze
-                  </button>
-                )}
-                {aiSummary && (
-                  <button onClick={() => { setAiSummary(''); aiRequested.current = false }}
-                    className="text-xs text-violet-600 font-semibold hover:underline">Refresh</button>
-                )}
-              </div>
-              {aiLoading && (
-                <div className="space-y-2.5">
-                  {[1, 2, 3, 4].map(i => <div key={i} className="h-4 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${60 + i * 10}%` }} />)}
-                </div>
-              )}
-              {aiSummary && !aiLoading && (
-                <div className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{renderMarkdown(aiSummary)}</div>
-              )}
-              {!aiSummary && !aiLoading && (
-                <p className="text-sm text-gray-400">Tap Analyze for a data-driven breakdown of your month.</p>
-              )}
-            </div>
 
           </div>
         )}
