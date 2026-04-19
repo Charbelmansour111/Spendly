@@ -7,20 +7,85 @@ const ChevronDown = () => (
   </svg>
 )
 
+const IOS_STEPS = [
+  { icon: '🧭', text: 'Open this page in Safari (not Chrome or Firefox)' },
+  { icon: '📤', text: 'Tap the Share icon at the bottom of the screen (box with arrow pointing up)' },
+  { icon: '📲', text: 'Scroll down and tap "Add to Home Screen"' },
+  { icon: '✅', text: 'Tap "Add" in the top-right corner to confirm' },
+  { icon: '🎉', text: 'Spendly now appears on your home screen like a native app!' },
+]
+
+const ANDROID_STEPS = [
+  { icon: '🌐', text: 'Open this page in Chrome (the default Android browser)' },
+  { icon: '⋮', text: 'Tap the three-dot menu (⋮) in the top-right corner' },
+  { icon: '📲', text: 'Tap "Add to Home screen" or "Install app"' },
+  { icon: '✅', text: 'Tap "Install" or "Add" to confirm' },
+  { icon: '🎉', text: 'Spendly is installed — find it on your home screen!' },
+]
+
+function InstallModal({ platform, onClose }) {
+  const steps = platform === 'ios' ? IOS_STEPS : ANDROID_STEPS
+  const title = platform === 'ios' ? 'Install on iPhone / iPad' : 'Install on Android'
+  const emoji = platform === 'ios' ? '🍎' : '🤖'
+  const color = platform === 'ios' ? 'from-gray-700 to-gray-900' : 'from-green-600 to-teal-700'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className={`bg-linear-to-br ${color} px-6 pt-8 pb-6 text-white`}>
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-2xl">{emoji}</span>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition text-white/80 hover:text-white">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <h2 className="text-xl font-bold mb-1">{title}</h2>
+          <p className="text-white/75 text-sm">Follow these steps to install Spendly as an app on your device.</p>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          {steps.map((s, i) => (
+            <div key={i} className="flex items-start gap-4">
+              <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-violet-700 dark:text-violet-300">{i + 1}</span>
+              </div>
+              <div className="flex items-start gap-2.5 pt-1">
+                <span className="text-base leading-none mt-0.5">{s.icon}</span>
+                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{s.text}</p>
+              </div>
+            </div>
+          ))}
+          <div className="pt-2">
+            <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/40 rounded-xl px-4 py-3">
+              <p className="text-xs text-violet-700 dark:text-violet-300 leading-relaxed">
+                <span className="font-bold">Note: </span>
+                {platform === 'ios'
+                  ? 'This only works in Safari. If you\'re using Chrome on iOS, copy the URL and open it in Safari first.'
+                  : 'If you don\'t see "Install app", your browser may show "Add to Home screen" instead — both work the same way.'}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm transition mt-2">
+            Got it!
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Landing() {
   const [dark, toggleDark] = useDarkMode()
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstall, setShowInstall] = useState(false)
   const [openFeature, setOpenFeature] = useState(null)
+  const [installModal, setInstallModal] = useState(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) window.location.href = '/dashboard'
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault()
-      setDeferredPrompt(e)
-      setShowInstall(true)
-    })
+    const handler = (e) => { e.preventDefault(); setDeferredPrompt(e); setShowInstall(true) }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
   const handleInstall = async () => {
@@ -48,7 +113,7 @@ function Landing() {
       bg: 'bg-violet-100 dark:bg-violet-900/30', color: 'text-violet-600 dark:text-violet-400',
       title: 'AI-Powered Insights',
       desc: 'Chat with your personal AI finance advisor to uncover spending patterns and get tailored tips.',
-      detail: 'Have a real conversation about your finances. Our intelligent advisor analyzes your actual transactions and delivers answers that are specific to you — not generic advice from a template.',
+      detail: 'Have a real conversation about your finances. Our intelligent advisor analyzes your actual transactions and delivers answers specific to you — not generic advice from a template.',
       bullets: ['Knows your real spending data', 'Ask anything, anytime', 'Personalized action items'],
       cta: 'Try AI Insights',
     },
@@ -66,7 +131,7 @@ function Landing() {
       bg: 'bg-amber-100 dark:bg-amber-900/30', color: 'text-amber-600 dark:text-amber-400',
       title: 'Budget Goals',
       desc: 'Set monthly limits per category and receive real-time alerts before you overspend.',
-      detail: 'Set the limits and we handle the rest. Define monthly budgets per spending category and receive a real-time alert the moment you\'re approaching your limit — before the damage is done.',
+      detail: 'Set the limits and we handle the rest. Define monthly budgets per spending category and get a real-time alert the moment you\'re approaching your limit — before the damage is done.',
       bullets: ['Per-category monthly limits', 'Real-time alert notifications', 'Visual progress tracking'],
       cta: 'Set your first budget',
     },
@@ -84,17 +149,20 @@ function Landing() {
       bg: 'bg-pink-100 dark:bg-pink-900/30', color: 'text-pink-600 dark:text-pink-400',
       title: 'Wellness Score',
       desc: 'Get a financial wellness score based on your habits, with actionable tips to improve.',
-      detail: 'Knowing the score is the first step to changing it. Spendly calculates a 0–100 financial wellness score based on your saving habits and spending discipline — then hands you a clear plan to improve.',
+      detail: 'Knowing the score is the first step to changing it. Spendly calculates a 0–100 financial wellness score based on your saving habits and spending discipline — then gives you a clear improvement plan.',
       bullets: ['0–100 financial health score', 'Personalized improvement tips', 'Track progress over time'],
       cta: 'Check your score',
     },
   ]
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950 overflow-x-hidden">
+
+      {/* Install modal */}
+      {installModal && <InstallModal platform={installModal} onClose={() => setInstallModal(null)} />}
 
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/60">
+      <nav className="sticky top-0 z-40 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/60">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <a href="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-sm">
@@ -128,35 +196,107 @@ function Landing() {
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-linear-to-b from-violet-50/70 via-white to-white dark:from-violet-950/20 dark:via-gray-950 dark:to-gray-950 pointer-events-none" />
+        {/* Background blobs */}
+        <div className="absolute inset-0 bg-linear-to-b from-violet-50/80 via-white to-white dark:from-violet-950/25 dark:via-gray-950 dark:to-gray-950 pointer-events-none" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-150 h-150 bg-violet-400/10 dark:bg-violet-500/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative max-w-3xl mx-auto px-6 pt-24 pb-20 text-center">
-          <div className="inline-flex items-center gap-2 bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-800/60 text-violet-700 dark:text-violet-400 text-xs font-semibold px-4 py-2 rounded-full mb-8 uppercase tracking-widest">
-            <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse" />
-            Personal Finance, Simplified
+        <div className="absolute top-20 right-0 w-72 h-72 bg-pink-300/10 dark:bg-pink-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-32 left-0 w-56 h-56 bg-sky-300/10 dark:bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative max-w-6xl mx-auto px-6 pt-20 pb-20 flex flex-col lg:flex-row items-center gap-16">
+          {/* Left: copy */}
+          <div className="flex-1 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-800/60 text-violet-700 dark:text-violet-400 text-xs font-semibold px-4 py-2 rounded-full mb-8 uppercase tracking-widest">
+              <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse" />
+              Personal Finance, Simplified
+            </div>
+            <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 dark:text-white leading-[1.1] mb-6 tracking-tight">
+              Your money,<br />
+              <span className="text-violet-600 dark:text-violet-400">under control.</span>
+            </h1>
+            <p className="text-lg text-gray-500 dark:text-gray-400 mb-10 max-w-lg mx-auto lg:mx-0 leading-relaxed">
+              Track expenses, set budgets, scan receipts, and get AI-powered insights — all in one clean, free app.
+            </p>
+            <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
+              <a href="/register" className="px-7 py-3.5 bg-violet-600 text-white font-semibold rounded-xl hover:bg-violet-700 active:scale-95 transition shadow-lg shadow-violet-200 dark:shadow-violet-900/30 text-base">
+                Start for free →
+              </a>
+              <a href="/login" className="px-7 py-3.5 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition border border-gray-200 dark:border-gray-700 text-base">
+                Sign in
+              </a>
+              {showInstall && (
+                <button onClick={handleInstall} className="px-7 py-3.5 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition border border-gray-200 dark:border-gray-700 text-base flex items-center gap-2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Install App
+                </button>
+              )}
+            </div>
           </div>
-          <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 dark:text-white leading-[1.1] mb-6 tracking-tight">
-            Your money,<br />
-            <span className="text-violet-600 dark:text-violet-400">under control.</span>
-          </h1>
-          <p className="text-lg text-gray-500 dark:text-gray-400 mb-10 max-w-xl mx-auto leading-relaxed">
-            Track expenses, set budgets, scan receipts, and get AI-powered insights — all in one clean, intuitive app.
-          </p>
-          <div className="flex flex-wrap gap-3 justify-center">
-            <a href="/register" className="px-7 py-3.5 bg-violet-600 text-white font-semibold rounded-xl hover:bg-violet-700 active:scale-95 transition shadow-lg shadow-violet-200 dark:shadow-violet-900/30 text-base">
-              Start for free →
-            </a>
-            <a href="/login" className="px-7 py-3.5 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition border border-gray-200 dark:border-gray-700 text-base">
-              Sign in
-            </a>
-            {showInstall && (
-              <button onClick={handleInstall} className="px-7 py-3.5 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition border border-gray-200 dark:border-gray-700 text-base flex items-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Install App
-              </button>
-            )}
+
+          {/* Right: floating app preview cards */}
+          <div className="flex-1 relative w-full max-w-sm mx-auto lg:mx-0 hidden sm:block" style={{ minHeight: 340 }}>
+            {/* Main card */}
+            <div className="absolute inset-x-4 top-0 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl shadow-violet-100 dark:shadow-violet-950/40 p-5 border border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">Monthly Balance</p>
+                  <p className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">$2,840<span className="text-sm text-gray-400 font-normal">.00</span></p>
+                </div>
+                <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center shadow-md shadow-violet-200 dark:shadow-violet-900/50">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                </div>
+              </div>
+              {/* Mini bar chart */}
+              <div className="flex items-end gap-1.5 h-14 mb-4">
+                {[40, 65, 50, 80, 55, 90, 60, 75, 45, 85, 70, 95].map((h, i) => (
+                  <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: i === 11 ? '#7c3aed' : i % 3 === 0 ? '#ddd6fe' : '#ede9fe', opacity: i < 10 ? 0.7 : 1 }} />
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1 bg-green-50 dark:bg-green-900/20 rounded-xl p-2.5 text-center">
+                  <p className="text-[10px] text-gray-400 mb-0.5">Income</p>
+                  <p className="text-sm font-bold text-green-600">+$5,200</p>
+                </div>
+                <div className="flex-1 bg-red-50 dark:bg-red-900/20 rounded-xl p-2.5 text-center">
+                  <p className="text-[10px] text-gray-400 mb-0.5">Spent</p>
+                  <p className="text-sm font-bold text-red-500">-$2,360</p>
+                </div>
+                <div className="flex-1 bg-violet-50 dark:bg-violet-900/20 rounded-xl p-2.5 text-center">
+                  <p className="text-[10px] text-gray-400 mb-0.5">Saved</p>
+                  <p className="text-sm font-bold text-violet-600">45%</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Floating AI badge */}
+            <div className="absolute -right-2 top-36 bg-violet-600 text-white px-3 py-2 rounded-2xl shadow-xl shadow-violet-200 dark:shadow-violet-950/50 text-xs font-semibold flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+              AI Insight ready
+            </div>
+
+            {/* Floating budget pill */}
+            <div className="absolute -left-3 bottom-8 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-lg px-3.5 py-2.5 flex items-center gap-2.5">
+              <div className="w-7 h-7 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center text-sm">🎯</div>
+              <div>
+                <p className="text-[10px] text-gray-400 font-medium">Dining budget</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="w-20 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-500 rounded-full" style={{ width: '72%' }} />
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-600">72%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Wellness badge */}
+            <div className="absolute right-6 bottom-0 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-lg px-3.5 py-2.5 flex items-center gap-2">
+              <span className="text-lg">💚</span>
+              <div>
+                <p className="text-[10px] text-gray-400">Wellness Score</p>
+                <p className="text-sm font-bold text-teal-600">78 / 100</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -165,7 +305,7 @@ function Landing() {
       <section className="border-y border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40">
         <div className="max-w-4xl mx-auto px-6 py-10 grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
           {[
-            { value: 'Free', label: 'Forever plan' },
+            { value: '100%', label: 'Free forever' },
             { value: '8', label: 'Currencies' },
             { value: 'AI', label: 'Powered insights' },
             { value: 'PWA', label: 'Works offline' },
@@ -178,14 +318,44 @@ function Landing() {
         </div>
       </section>
 
-      {/* Features — click any card to learn more */}
-      <section className="max-w-5xl mx-auto px-6 py-24">
-        <div className="text-center mb-16">
+      {/* ── HOW IT WORKS ──────────────────────────────────────── */}
+      <section className="max-w-4xl mx-auto px-6 py-20">
+        <div className="text-center mb-14">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3 tracking-tight">
+            Up and running in 3 steps
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+            No setup, no spreadsheets. Just create your account and start tracking.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 relative">
+          {/* Connector line on desktop */}
+          <div className="hidden sm:block absolute top-10 left-[calc(16.67%+1rem)] right-[calc(16.67%+1rem)] h-px border-t-2 border-dashed border-violet-200 dark:border-violet-800/50" />
+          {[
+            { step: '01', icon: '✍️', title: 'Create your account', desc: 'Sign up free — no credit card, no commitment. Takes under 30 seconds.' },
+            { step: '02', icon: '📲', title: 'Log your first transaction', desc: 'Type it in, speak it, or scan a receipt. Your financial picture builds instantly.' },
+            { step: '03', icon: '🤖', title: 'Get AI-powered insights', desc: 'Ask your AI advisor anything about your spending and watch your habits improve.' },
+          ].map((s, i) => (
+            <div key={i} className="relative flex flex-col items-center text-center bg-white dark:bg-gray-900 rounded-2xl p-7 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition">
+              <div className="w-14 h-14 bg-violet-50 dark:bg-violet-900/30 rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-sm">
+                {s.icon}
+              </div>
+              <span className="absolute top-5 left-5 text-xs font-bold text-violet-300 dark:text-violet-700">{s.step}</span>
+              <h3 className="font-semibold text-gray-900 dark:text-white text-base mb-2">{s.title}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── FEATURES ──────────────────────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-6 pb-24">
+        <div className="text-center mb-14">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
             Everything you need to manage your money
           </h2>
           <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto leading-relaxed">
-            Powerful tools with a clean, intuitive interface. Click any feature to learn more.
+            Powerful tools with a clean, intuitive interface. <span className="font-medium text-violet-600 dark:text-violet-400">Tap any feature</span> to learn more.
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -201,7 +371,6 @@ function Landing() {
                     : 'border-gray-100 dark:border-gray-800 hover:border-violet-200 dark:hover:border-violet-800/60 hover:shadow-lg hover:shadow-violet-50 dark:hover:shadow-violet-950/20'
                 }`}
               >
-                {/* Card header */}
                 <div className="flex items-start justify-between gap-3">
                   <div className={`w-11 h-11 ${f.bg} ${f.color} rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 ${isOpen ? 'scale-110' : 'group-hover:scale-105'}`}>
                     {f.icon}
@@ -213,7 +382,6 @@ function Landing() {
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white mt-4 mb-2">{f.title}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
 
-                {/* Expanded panel */}
                 {isOpen && (
                   <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-700/60" onClick={e => e.stopPropagation()}>
                     <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{f.detail}</p>
@@ -225,10 +393,7 @@ function Landing() {
                         </li>
                       ))}
                     </ul>
-                    <a
-                      href="/register"
-                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition"
-                    >
+                    <a href="/register" className="inline-flex items-center gap-1.5 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition">
                       {f.cta} →
                     </a>
                   </div>
@@ -239,39 +404,87 @@ function Landing() {
         </div>
       </section>
 
-      {/* iOS Install */}
+      {/* ── INSTALL ON MOBILE ─────────────────────────────────── */}
       <section className="max-w-4xl mx-auto px-6 pb-24">
-        <div className="bg-gray-50 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 rounded-2xl p-8">
-          <div className="flex items-start gap-4">
-            <div className="w-11 h-11 bg-gray-200 dark:bg-gray-700 rounded-xl flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-400">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <div className="bg-gray-50 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 rounded-3xl p-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-violet-100 dark:bg-violet-900/40 rounded-2xl mb-4">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-violet-600 dark:text-violet-400">
                 <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="2"/>
               </svg>
             </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Install on iPhone / iPad</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Add Spendly to your home screen for a full native app experience.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {['Open this page in Safari', 'Tap the Share button (box with arrow)', 'Select "Add to Home Screen"', 'Tap "Add" to confirm'].map((step, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                    <span className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-400 flex items-center justify-center text-xs font-bold shrink-0">{i + 1}</span>
-                    <span>{step}</span>
-                  </div>
-                ))}
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Install Spendly on your phone</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+              Add Spendly to your home screen for a full native app experience — works completely offline too.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => setInstallModal('ios')}
+              className="flex items-center justify-center gap-3 px-6 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-md transition group"
+            >
+              <div className="w-10 h-10 bg-gray-900 dark:bg-white rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" className="dark:stroke-gray-900" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"/>
+                  <path d="M15.5 8.5c-.828-1.06-2.1-1.75-3.5-1.75-2.485 0-4.5 2.015-4.5 4.5s2.015 4.5 4.5 4.5c1.4 0 2.672-.69 3.5-1.75"/>
+                </svg>
               </div>
-            </div>
+              <div className="text-left">
+                <p className="text-xs text-gray-400 font-medium">Install on</p>
+                <p className="font-semibold text-gray-900 dark:text-white text-sm">iPhone / iPad</p>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 dark:text-gray-600 ml-auto">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+
+            <button
+              onClick={() => setInstallModal('android')}
+              className="flex items-center justify-center gap-3 px-6 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-md transition group"
+            >
+              <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white" strokeWidth="0">
+                  <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4483.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4483.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.0292l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.2439 13.8533 7.8508 12 7.8508s-3.5902.3931-5.1367 1.0873L4.841 5.4361a.4159.4159 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3435-4.1021-2.6892-7.5743-6.1185-9.4488"/>
+                </svg>
+              </div>
+              <div className="text-left">
+                <p className="text-xs text-gray-400 font-medium">Install on</p>
+                <p className="font-semibold text-gray-900 dark:text-white text-sm">Android</p>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 dark:text-gray-600 ml-auto">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+
+            {showInstall && (
+              <button
+                onClick={handleInstall}
+                className="flex items-center justify-center gap-3 px-6 py-4 bg-violet-600 hover:bg-violet-700 rounded-2xl transition group"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <div className="text-left">
+                  <p className="text-xs text-white/60 font-medium">One-click</p>
+                  <p className="font-semibold text-white text-sm">Install Now</p>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
+      {/* ── CTA ───────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-violet-600 dark:bg-violet-700 py-24 px-6">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.1),transparent_60%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.12),transparent_60%)] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-violet-500/30 rounded-full blur-3xl pointer-events-none" />
         <div className="relative max-w-2xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-white/15 text-white text-xs font-semibold px-4 py-2 rounded-full mb-6 uppercase tracking-widest">
+            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+            Free · No credit card
+          </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">
             Ready to take control of your finances?
           </h2>
-          <p className="text-violet-100 mb-10 text-lg">Join Spendly today — completely free, no credit card required.</p>
+          <p className="text-violet-100 mb-10 text-lg max-w-md mx-auto leading-relaxed">Join Spendly today — completely free, forever. No credit card required.</p>
           <div className="flex flex-wrap gap-3 justify-center">
             <a href="/register" className="px-8 py-3.5 bg-white text-violet-700 font-semibold rounded-xl hover:bg-violet-50 active:scale-95 transition shadow-lg text-base">
               Create your free account →
@@ -286,7 +499,7 @@ function Landing() {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* ── FOOTER ────────────────────────────────────────────── */}
       <footer className="bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
