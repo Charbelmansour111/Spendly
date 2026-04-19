@@ -601,7 +601,10 @@ export default function Dashboard() {
   const [editingExpense, setEditing]  = useState(null)
   const [editForm, setEditForm]       = useState({ amount: '', category: 'Food', description: '', date: '', is_recurring: false })
   const [showNotifs, setShowNotifs]   = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('spendly_onboarded'))
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
+    return !localStorage.getItem(`spendly_onboarded_${uid}`)
+  })
 
   // Carousel + news state
   const [carouselPanel, setCarousel]  = useState(0)
@@ -842,7 +845,7 @@ export default function Dashboard() {
     <Layout unreadCount={unread} onBellClick={() => { setShowNotifs(v => !v); if (!showNotifs) markRead() }}>
       {toast    && <Toast {...toast} onClose={() => setToast(null)} />}
       {confirm  && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
-      {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('spendly_onboarded', '1'); setShowOnboarding(false) }} />}
+      {showOnboarding && <Onboarding onDone={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.setItem(`spendly_onboarded_${uid}`, '1'); setShowOnboarding(false) }} />}
       {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
       {showAddExp   && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} />}
       {showAddInc   && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}

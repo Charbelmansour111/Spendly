@@ -388,7 +388,7 @@ export default function Profile() {
               <p className="text-xs text-gray-400 mb-4 leading-relaxed">
                 Replay the interactive tour to rediscover features, tips, and the voice assistant.
               </p>
-              <button onClick={() => { localStorage.removeItem('spendly_onboarded'); window.location.href = '/dashboard' }}
+              <button onClick={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.removeItem(`spendly_onboarded_${uid}`); window.location.href = '/dashboard' }}
                 className="w-full flex items-center justify-center gap-2 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/40 text-violet-700 dark:text-violet-300 py-3 rounded-xl font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/40 transition text-sm">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 Replay Tutorial
