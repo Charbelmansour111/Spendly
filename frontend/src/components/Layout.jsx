@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useDarkMode } from '../hooks/useDarkMode'
 import VoiceAssistant from './VoiceAssistant'
+import TourBanner from './TourBanner'
 import { t, isRTL } from '../i18n'
 
 const Icons = {
@@ -229,6 +230,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       </nav>
 
       {showVoice && <VoiceAssistant onClose={() => setShowVoice(false)} />}
+      <TourBanner />
     </div>
   )
 }
