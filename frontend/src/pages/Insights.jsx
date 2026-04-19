@@ -65,7 +65,10 @@ export default function Insights() {
   const [currencySymbol] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
   const [modalData, setModalData] = useState(null)
   const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('spendly_insights_tts') === 'true')
-  const messagesEndRef = useRef(null)
+  const [listening, setListening]   = useState(false)
+  const messagesEndRef  = useRef(null)
+  const recognitionRef  = useRef(null)
+  const micLang = localStorage.getItem('spendly_lang_mic') || 'en-US'
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -116,6 +119,27 @@ export default function Insights() {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
+
+  const startMic = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) { setMessages(m => [...m, { role: 'assistant', content: "Speech recognition isn't supported in this browser. Try Chrome." }]); return }
+    window.speechSynthesis?.cancel()
+    const rec = new SR()
+    rec.lang = micLang
+    rec.interimResults = false
+    rec.maxAlternatives = 1
+    recognitionRef.current = rec
+    rec.onstart  = () => setListening(true)
+    rec.onend    = () => setListening(false)
+    rec.onerror  = () => setListening(false)
+    rec.onresult = (e) => {
+      const text = e.results[0][0].transcript.trim()
+      if (text) sendMessage(text)
+    }
+    rec.start()
+  }
+
+  const stopMic = () => { recognitionRef.current?.stop(); setListening(false) }
 
   const monthExpenses = expenses.filter(e => {
     const d = new Date(e.date)
@@ -232,9 +256,32 @@ export default function Insights() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask anything about your finances..."
+                placeholder={listening ? 'Listening…' : 'Ask anything about your finances...'}
                 className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
               />
+              <button
+                onClick={listening ? stopMic : startMic}
+                disabled={loading}
+                title={listening ? 'Stop listening' : 'Speak your question'}
+                className={`px-3 py-2.5 rounded-xl transition flex items-center justify-center ${
+                  listening
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-violet-100 hover:text-violet-600'
+                }`}>
+                {listening ? (
+                  <span className="flex gap-0.5 items-end">
+                    {[4,7,5].map((h, i) => (
+                      <span key={i} className="w-0.5 bg-white rounded-full animate-pulse" style={{ height: `${h}px`, animationDelay: `${i*0.12}s` }} />
+                    ))}
+                  </span>
+                ) : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                  </svg>
+                )}
+              </button>
               <button
                 onClick={() => sendMessage()}
                 disabled={loading || !input.trim()}
