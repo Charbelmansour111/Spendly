@@ -357,19 +357,25 @@ export default function Subscriptions() {
             </div>
 
             {/* Savings tip */}
-            {subs.length >= 3 && (
-              <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/40 rounded-2xl p-4 flex items-start gap-3">
-                <span className="text-xl shrink-0">💰</span>
-                <div>
-                  <p className="text-sm font-semibold text-green-800 dark:text-green-400 mb-0.5">Potential savings</p>
-                  <p className="text-xs text-green-700 dark:text-green-300 leading-relaxed">
-                    Cutting your 2 cheapest subscriptions would save{' '}
-                    <strong>{sym}{([...subs].sort((a, b) => toMonthly(a.amount, a.billing_cycle) - toMonthly(b.amount, b.billing_cycle)).slice(0, 2).reduce((s, x) => s + toMonthly(x.amount, x.billing_cycle) * 12, 0).toFixed(0)}/year</strong>.
-                    Run the AI audit above to see which ones are worth cutting.
-                  </p>
+            {subs.length >= 3 && (() => {
+              const cheapestTwo = [...subs]
+                .sort((a, b) => toMonthly(a.amount, a.billing_cycle) - toMonthly(b.amount, b.billing_cycle))
+                .slice(0, 2)
+              const savingsPerYear = cheapestTwo.reduce((s, x) => s + toMonthly(x.amount, x.billing_cycle) * 12, 0).toFixed(0)
+              return (
+                <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/40 rounded-2xl p-4 flex items-start gap-3">
+                  <span className="text-xl shrink-0">💰</span>
+                  <div>
+                    <p className="text-sm font-semibold text-green-800 dark:text-green-400 mb-0.5">Potential savings</p>
+                    <p className="text-xs text-green-700 dark:text-green-300 leading-relaxed">
+                      Cutting your 2 cheapest subscriptions would save{' '}
+                      <strong>{sym}{savingsPerYear}/year</strong>.{' '}
+                      Run the AI audit above to see which ones are worth cutting.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
           </div>
         )}
