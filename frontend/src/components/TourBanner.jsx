@@ -15,10 +15,10 @@ export const TOUR_STEPS = [
   {
     page: '/transactions',
     emoji: '💸',
-    title: 'Log an Expense',
-    desc: 'Every expense and income entry lives here. Tap + to add your first expense — or use the mic to speak it.',
-    action: '👆 Tap the purple + button to add an expense now.',
-    voice: "This is Transactions. Tap the plus button to log an expense. Or tap the purple mic button and say something like: spent 15 dollars on lunch — it logs it instantly.",
+    title: 'Your Transaction History',
+    desc: 'Every expense and income entry lives here. Browse, filter by category or date, edit any entry, mark as recurring, and export as CSV.',
+    action: '💡 To add expenses, use the + button or Smart Log mic on the Dashboard.',
+    voice: "This is Transactions — your full financial history. Every expense and income entry shows up here. You can filter by category or date, edit any entry, mark something as recurring, and export everything as a CSV. To log a new expense, head back to the Dashboard and use the plus button or the Smart Log mic button.",
   },
   {
     page: '/budgets',
