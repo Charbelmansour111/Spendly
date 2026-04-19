@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import API from '../utils/api'
 
 /* ─── Tour content ─────────────────────────────────────────────────────── */
 const STEPS = [
@@ -117,20 +118,72 @@ function speak(text) {
 /* ─── Component ─────────────────────────────────────────────────────────── */
 export default function Onboarding({ onDone }) {
   // -1 = welcome screen, 0+ = tour steps
-  const [step, setStep]   = useState(-1)
-  const [voice, setVoice] = useState(() => localStorage.getItem('spendly_tour_voice') === 'on')
+  const [step, setStep]         = useState(-1)
+  const [voice, setVoice]       = useState(() => localStorage.getItem('spendly_tour_voice') === 'on')
   const [speaking, setSpeaking] = useState(false)
+  const [listening, setListening]   = useState(false)
+  const [userQ, setUserQ]           = useState('')
+  const [aiAnswer, setAiAnswer]     = useState('')
+  const [aiAnswering, setAiAnswering] = useState(false)
+  const recognitionRef = useRef(null)
+  const micLang = localStorage.getItem('spendly_lang_mic') || 'en-US'
 
   const current = step >= 0 ? STEPS[step] : null
   const isLast  = step === STEPS.length - 1
 
   /* speak on step change */
   useEffect(() => {
+    setUserQ(''); setAiAnswer('')
     if (step < 0 || !voice) { window.speechSynthesis?.cancel(); setSpeaking(false); return }
     setSpeaking(true)
     const timer = setTimeout(() => speak(current.voice || `${current.title}. ${current.desc}`), 150)
     return () => { clearTimeout(timer); window.speechSynthesis?.cancel(); setSpeaking(false) }
   }, [step, voice])
+
+  /* ── Ask AI via mic ── */
+  const startListening = useCallback(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) { setAiAnswer("Speech recognition isn't supported in this browser. Try Chrome."); return }
+    window.speechSynthesis?.cancel()
+    const rec = new SR()
+    rec.lang = micLang
+    rec.interimResults = false
+    rec.maxAlternatives = 1
+    recognitionRef.current = rec
+
+    rec.onstart  = () => setListening(true)
+    rec.onend    = () => setListening(false)
+    rec.onerror  = () => setListening(false)
+
+    rec.onresult = async (e) => {
+      const question = e.results[0][0].transcript.trim()
+      if (!question) return
+      setUserQ(question)
+      setAiAnswering(true)
+      try {
+        const context = current ? `The user is currently on step "${current.title}" of the Spendly onboarding tour. ` : ''
+        const res = await API.post('/insights/chat', {
+          message: context + question,
+          mode: 'friendly',
+        })
+        const answer = res.data.reply || "I'm not sure about that — try asking again!"
+        setAiAnswer(answer)
+        if (voice) {
+          const plain = answer.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/^[-•]\s+/gm, '')
+          speak(plain)
+        }
+      } catch {
+        setAiAnswer("Couldn't reach the AI right now. Try again in a moment.")
+      }
+      setAiAnswering(false)
+    }
+    rec.start()
+  }, [micLang, voice, current])
+
+  const stopListening = useCallback(() => {
+    recognitionRef.current?.stop()
+    setListening(false)
+  }, [])
 
   const finish = useCallback(() => {
     window.speechSynthesis?.cancel()
@@ -301,6 +354,73 @@ export default function Onboarding({ onDone }) {
               />
             ))}
           </div>
+
+          {/* Ask AI section */}
+          <div className="mt-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+            {/* Q&A display */}
+            {(userQ || aiAnswering) && (
+              <div className="mb-3 space-y-2">
+                {userQ && (
+                  <div className="flex justify-end">
+                    <div className="bg-violet-600 text-white text-xs rounded-2xl rounded-br-sm px-3 py-2 max-w-[85%] leading-relaxed">
+                      {userQ}
+                    </div>
+                  </div>
+                )}
+                {aiAnswering && (
+                  <div className="flex gap-2 items-start">
+                    <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5"><circle cx="12" cy="12" r="9"/><path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4"/><circle cx="12" cy="12" r="1.5" fill="#7C3AED"/></svg>
+                    </div>
+                    <div className="flex gap-1 items-center h-6">
+                      {[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
+                    </div>
+                  </div>
+                )}
+                {aiAnswer && !aiAnswering && (
+                  <div className="flex gap-2 items-start">
+                    <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5"><circle cx="12" cy="12" r="9"/><path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4"/><circle cx="12" cy="12" r="1.5" fill="#7C3AED"/></svg>
+                    </div>
+                    <div className="bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-200 text-xs rounded-2xl rounded-bl-sm px-3 py-2 max-w-[85%] leading-relaxed">
+                      {aiAnswer}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mic button */}
+            <button
+              onClick={listening ? stopListening : startListening}
+              disabled={aiAnswering}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition ${
+                listening
+                  ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 text-red-600 dark:text-red-400'
+                  : 'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-violet-300 hover:text-violet-600 dark:hover:text-violet-400'
+              } disabled:opacity-50`}>
+              {listening ? (
+                <>
+                  <span className="flex gap-0.5 items-end">
+                    {[4,7,5,8,4].map((h, i) => (
+                      <span key={i} className="w-0.5 bg-red-500 rounded-full animate-pulse" style={{ height: `${h}px`, animationDelay: `${i*0.1}s` }} />
+                    ))}
+                  </span>
+                  Listening… tap to stop
+                </>
+              ) : (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                  </svg>
+                  Ask the AI anything
+                </>
+              )}
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
