@@ -63,6 +63,12 @@ function EditSheet({ expense, sym, onSave, onClose }) {
     date: expense.date?.split('T')[0] || '',
     is_recurring: expense.is_recurring || false,
   })
+  const [saving, setSaving] = useState(false)
+  const handleSave = async () => {
+    if (saving) return
+    setSaving(true)
+    try { await onSave(form) } finally { setSaving(false) }
+  }
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
@@ -97,9 +103,9 @@ function EditSheet({ expense, sym, onSave, onClose }) {
             <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="accent-violet-600 w-4 h-4" />
             <span className="text-sm text-gray-600 dark:text-gray-300">Recurring monthly</span>
           </label>
-          <button onClick={() => onSave(form)} disabled={!form.amount || !form.date}
+          <button onClick={handleSave} disabled={saving || !form.amount || !form.date}
             className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
-            Save Changes
+            {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </div>
@@ -134,6 +140,7 @@ export default function Transactions() {
   const [confirm, setConfirm]   = useState(null)
   const [editing, setEditing]   = useState(null)
   const [numModal, setNumModal] = useState(null)
+  const [showRecurring, setShowRecurring] = useState(false)
 
   // Filters
   const [search, setSearch]       = useState('')
@@ -215,6 +222,12 @@ export default function Transactions() {
   const totalExpenses  = filteredExpenses.reduce((s, e) => s + safeNum(e.amount), 0)
   const totalIncome    = filteredIncome.reduce((s, i) => s + safeNum(i.amount), 0)
   const net            = totalIncome - totalExpenses
+
+  // Recurring
+  const recurringExpenses     = expenses.filter(e => e.is_recurring)
+  const recurringIncome       = income.filter(i => i.is_recurring)
+  const recurringExpenseTotal = recurringExpenses.reduce((s, e) => s + safeNum(e.amount), 0)
+  const recurringIncomeTotal  = recurringIncome.reduce((s, i) => s + safeNum(i.amount), 0)
 
   // Category breakdown for the active tab
   const expenseByCat = filteredExpenses.reduce((acc, e) => {
@@ -451,6 +464,54 @@ export default function Transactions() {
             <p className="text-xs text-gray-400 mt-0.5">{net >= 0 ? 'surplus' : 'deficit'}</p>
           </button>
         </div>
+
+        {/* Recurring Commitments */}
+        {(recurringExpenses.length > 0 || recurringIncome.length > 0) && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-5 border border-purple-100 dark:border-purple-900/40">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/40 rounded-xl flex items-center justify-center text-base">↻</div>
+                <div>
+                  <p className="text-sm font-bold text-gray-800 dark:text-white">Recurring Commitments</p>
+                  <p className="text-xs text-gray-400">{recurringExpenses.length + recurringIncome.length} item{recurringExpenses.length + recurringIncome.length !== 1 ? 's' : ''} per month</p>
+                </div>
+              </div>
+              <button onClick={() => setShowRecurring(v => !v)} className="text-xs text-violet-600 dark:text-violet-400 font-semibold hover:underline">
+                {showRecurring ? 'Hide' : 'Details'}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
+                <p className="text-xs text-gray-400 mb-1">Monthly Out</p>
+                <p className="text-sm font-bold text-red-500 tabular-nums">-{fmtMoney(recurringExpenseTotal, sym)}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{recurringExpenses.length} expense{recurringExpenses.length !== 1 ? 's' : ''}</p>
+              </div>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3">
+                <p className="text-xs text-gray-400 mb-1">Monthly In</p>
+                <p className="text-sm font-bold text-green-600 tabular-nums">+{fmtMoney(recurringIncomeTotal, sym)}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{recurringIncome.length} income{recurringIncome.length !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+            {showRecurring && (
+              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 space-y-2">
+                {recurringExpenses.map(e => (
+                  <div key={e.id} className="flex items-center gap-2.5">
+                    <span className="text-base w-6 text-center shrink-0">{CAT_ICONS[e.category] || '📦'}</span>
+                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-200 truncate">{e.description || e.category}</span>
+                    <span className="text-xs font-semibold text-red-500 tabular-nums shrink-0">-{sym}{safeNum(e.amount).toFixed(2)}/mo</span>
+                  </div>
+                ))}
+                {recurringIncome.map(i => (
+                  <div key={i.id} className="flex items-center gap-2.5">
+                    <span className="text-base w-6 text-center shrink-0">💵</span>
+                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-200 truncate">{i.description || i.source || 'Income'}</span>
+                    <span className="text-xs font-semibold text-green-600 tabular-nums shrink-0">+{sym}{safeNum(i.amount).toFixed(2)}/mo</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tab bar */}
         <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5">

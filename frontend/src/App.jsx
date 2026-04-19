@@ -1,4 +1,36 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+
+const PAGE_TITLES = {
+  '/': 'Spendly',
+  '/login': 'Login — Spendly',
+  '/register': 'Sign Up — Spendly',
+  '/verify-email': 'Verify Email — Spendly',
+  '/forgot-password': 'Forgot Password — Spendly',
+  '/account-type': 'Account Type — Spendly',
+  '/terms': 'Terms of Service — Spendly',
+  '/privacy': 'Privacy Policy — Spendly',
+  '/dashboard': 'Dashboard — Spendly',
+  '/transactions': 'Transactions — Spendly',
+  '/budgets': 'Budgets — Spendly',
+  '/goals': 'Goals — Spendly',
+  '/reports': 'Reports — Spendly',
+  '/insights': 'Insights — Spendly',
+  '/wellness': 'Wellness — Spendly',
+  '/profile': 'Profile — Spendly',
+}
+
+function RouteTitle() {
+  const { pathname } = useLocation()
+  useEffect(() => { document.title = PAGE_TITLES[pathname] || 'Spendly' }, [pathname])
+  return null
+}
+
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -19,6 +51,8 @@ import Privacy from './pages/Privacy'
 function App() {
   return (
     <BrowserRouter>
+      <RouteTitle />
+      <ScrollToTop />
       <Routes>
         <Route path="/"                      element={<Landing />} />
         <Route path="/login"                 element={<Login />} />

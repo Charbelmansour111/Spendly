@@ -4,7 +4,11 @@ import { useDarkMode } from '../hooks/useDarkMode'
 
 function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
-  const [error, setError] = useState('')
+  const [error, setError] = useState(() => {
+    const msg = localStorage.getItem('spendly_session_msg')
+    if (msg) { localStorage.removeItem('spendly_session_msg'); return msg }
+    return ''
+  })
   const [dark, toggleDark] = useDarkMode()
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })

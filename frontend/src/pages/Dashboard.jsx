@@ -1059,6 +1059,47 @@ export default function Dashboard() {
         </div>
         {/* ── End Carousel ─────────────────────────────────── */}
 
+        {/* Budget Alerts */}
+        {(() => {
+          const alerts = budgets.map(b => {
+            const spent = monthExpenses.filter(e => e.category === b.category).reduce((s, e) => s + safeNum(e.amount), 0)
+            const limit = safeNum(b.amount)
+            const pct   = limit > 0 ? (spent / limit) * 100 : 0
+            return { ...b, spent, pct }
+          }).filter(b => b.pct >= 80).sort((a, b) => b.pct - a.pct)
+          if (alerts.length === 0) return null
+          return (
+            <div className="mb-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden border border-orange-100 dark:border-orange-900/30">
+              <div className="flex items-center gap-2.5 px-4 pt-4 pb-2">
+                <div className="w-7 h-7 bg-orange-100 dark:bg-orange-900/40 rounded-xl flex items-center justify-center text-sm shrink-0">⚠️</div>
+                <div>
+                  <p className="text-sm font-bold text-gray-800 dark:text-white">Budget Alerts</p>
+                  <p className="text-xs text-gray-400">{alerts.length} budget{alerts.length !== 1 ? 's' : ''} near or over limit</p>
+                </div>
+              </div>
+              <div className="px-4 pb-4 space-y-3 mt-1">
+                {alerts.map(b => (
+                  <div key={b.id}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{b.category}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 tabular-nums">{fmt(b.spent, currencySymbol)} / {fmt(b.amount, currencySymbol)}</span>
+                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${b.pct >= 100 ? 'bg-red-100 text-red-600 dark:bg-red-900/40' : 'bg-orange-100 text-orange-600 dark:bg-orange-900/40'}`}>
+                          {Math.round(b.pct)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                      <div className={`h-1.5 rounded-full transition-all ${b.pct >= 100 ? 'bg-red-500' : 'bg-orange-400'}`}
+                        style={{ width: `${Math.min(b.pct, 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Quick Actions */}
         {isCurrentMonth && (
           <div className="space-y-3 mb-5">

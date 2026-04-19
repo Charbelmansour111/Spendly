@@ -13,13 +13,13 @@ API.interceptors.request.use((config) => {
   return config
 })
 
-// Auto-logout if token is expired (403)
 API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      localStorage.setItem('spendly_session_msg', 'Your session expired. Please log in again.')
       window.location.href = '/login'
     }
     return Promise.reject(error)

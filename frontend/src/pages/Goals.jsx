@@ -99,6 +99,7 @@ export default function Goals() {
   const [aiModal, setAiModal] = useState(null)
   const [toast, setToast]     = useState(null)
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving]   = useState(false)
   const [sym] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
@@ -122,6 +123,8 @@ export default function Goals() {
 
   const handleSavingSubmit = async (e) => {
     e.preventDefault()
+    if (saving) return
+    setSaving(true)
     try {
       await API.post('/savings', {
         name: savingForm.name,
@@ -135,10 +138,13 @@ export default function Goals() {
       fetchAll()
       showToast('🎯 Savings goal created!')
     } catch { showToast('Error creating goal', 'error') }
+    finally { setSaving(false) }
   }
 
   const handleDebtSubmit = async (e) => {
     e.preventDefault()
+    if (saving) return
+    setSaving(true)
     try {
       await API.post('/debts', {
         name: debtForm.name,
@@ -152,11 +158,14 @@ export default function Goals() {
       fetchAll()
       showToast('💳 Debt added!')
     } catch { showToast('Error adding debt', 'error') }
+    finally { setSaving(false) }
   }
 
   const handleAddFunds = async (goal) => {
     const amount = parseFloat(addFundsAmount)
     if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return }
+    if (saving) return
+    setSaving(true)
     const newSaved = safeNum(goal.saved_amount) + amount
     const target   = safeNum(goal.target_amount)
     try {
@@ -171,11 +180,14 @@ export default function Goals() {
         })
       }
     } catch { showToast('Error adding funds', 'error') }
+    finally { setSaving(false) }
   }
 
   const handlePayment = async (debt) => {
     const amount = parseFloat(paymentAmount)
     if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return }
+    if (saving) return
+    setSaving(true)
     const newRemaining = Math.max(safeNum(debt.remaining_amount) - amount, 0)
     try {
       await API.patch(`/debts/${debt.id}`, { remaining_amount: newRemaining })
@@ -189,6 +201,7 @@ export default function Goals() {
         })
       }
     } catch { showToast('Error recording payment', 'error') }
+    finally { setSaving(false) }
   }
 
   const handleDeleteGoal = async (id) => {
@@ -319,8 +332,8 @@ export default function Goals() {
                       onChange={e => setSavingForm({ ...savingForm, deadline: e.target.value })} className={inputCls} />
                   </div>
                 </div>
-                <button type="submit" className="w-full bg-violet-600 text-white py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition text-sm">
-                  Create Savings Goal
+                <button type="submit" disabled={saving} className="w-full bg-violet-600 text-white py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition text-sm disabled:opacity-60">
+                  {saving ? 'Saving…' : 'Create Savings Goal'}
                 </button>
               </form>
             ) : (
@@ -347,8 +360,8 @@ export default function Goals() {
                       onChange={e => setDebtForm({ ...debtForm, monthly_payment: e.target.value })} min="0" step="0.01" className={inputCls} />
                   </div>
                 </div>
-                <button type="submit" className="w-full bg-violet-600 text-white py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition text-sm">
-                  Add Debt
+                <button type="submit" disabled={saving} className="w-full bg-violet-600 text-white py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition text-sm disabled:opacity-60">
+                  {saving ? 'Saving…' : 'Add Debt'}
                 </button>
               </form>
             )}
@@ -423,7 +436,7 @@ export default function Goals() {
                               <input type="number" placeholder={`Amount (${sym})`} value={addFundsAmount}
                                 onChange={e => setAddFundsAmount(e.target.value)} min="0.01" step="0.01"
                                 className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
-                              <button onClick={() => handleAddFunds(goal)} className="bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700 transition">Add</button>
+                              <button onClick={() => handleAddFunds(goal)} disabled={saving} className="bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700 transition disabled:opacity-60">{saving ? '…' : 'Add'}</button>
                               <button onClick={() => { setAddFundsId(null); setAddFundsAmount('') }} className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200 px-3 py-2 rounded-xl text-sm">✕</button>
                             </div>
                           ) : (
@@ -517,7 +530,7 @@ export default function Goals() {
                               <input type="number" placeholder={`Payment (${sym})`} value={paymentAmount}
                                 onChange={e => setPaymentAmount(e.target.value)} min="0.01" step="0.01"
                                 className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
-                              <button onClick={() => handlePayment(debt)} className="bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700 transition">Pay</button>
+                              <button onClick={() => handlePayment(debt)} disabled={saving} className="bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700 transition disabled:opacity-60">{saving ? '…' : 'Pay'}</button>
                               <button onClick={() => { setPaymentId(null); setPaymentAmount('') }} className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200 px-3 py-2 rounded-xl text-sm">✕</button>
                             </div>
                           ) : (

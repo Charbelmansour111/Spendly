@@ -57,6 +57,7 @@ export default function Reports() {
   const [selectedYear, setSelectedYear] = useState(today.getFullYear())
   const [sym] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
   const [user] = useState(() => { try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} } })
+  const [activeTab, setActiveTab] = useState('analytics')
   const aiRequested = useRef(false)
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
@@ -216,6 +217,137 @@ export default function Reports() {
           </div>
           <button onClick={nextMonth} disabled={isCurrentMonth} className={`w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center transition text-lg font-bold ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-violet-50 hover:text-violet-600'}`}>&rsaquo;</button>
         </div>
+
+        {/* Tab bar */}
+        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-6">
+          {[{ key: 'analytics', label: '📊 Analytics' }, { key: 'recap', label: '🗓️ Monthly Recap' }].map(t => (
+            <button key={t.key} onClick={() => setActiveTab(t.key)}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition ${activeTab === t.key ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600 dark:text-violet-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'recap' && (() => {
+          const rate = parseFloat(savingsRate)
+          const score = rate >= 20 ? { grade: 'A', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-900/20', label: 'Excellent' }
+            : rate >= 10 ? { grade: 'B', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', label: 'Good' }
+            : rate >= 0  ? { grade: 'C', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20', label: 'Average' }
+            : { grade: 'F', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20', label: 'Over Budget' }
+          const topCat    = categoryData[0]
+          const bestCat   = categoryData.reduce((best, c) => {
+            const prev = prevCategoryData[c.name] || 0
+            const diff = prev > 0 ? c.value - prev : 0
+            return (!best || diff < (prevCategoryData[best.name] ? best.value - prevCategoryData[best.name] : 0)) ? c : best
+          }, null)
+          const worstCat  = categoryData.reduce((worst, c) => {
+            const prev = prevCategoryData[c.name] || 0
+            const diff = prev > 0 ? c.value - prev : 0
+            return (!worst || diff > (prevCategoryData[worst.name] ? worst.value - prevCategoryData[worst.name] : 0)) ? c : worst
+          }, null)
+          return (
+            <div className="space-y-4">
+              {/* Hero score card */}
+              <div className="bg-linear-to-br from-violet-600 to-indigo-700 rounded-2xl p-6 text-white">
+                <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mb-3">{monthName} Summary</p>
+                <div className="flex items-center gap-5">
+                  <div className={`w-16 h-16 rounded-2xl ${score.bg} flex items-center justify-center shrink-0`}>
+                    <span className={`text-3xl font-black ${score.color}`}>{score.grade}</span>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{score.label}</p>
+                    <p className="text-white/70 text-sm mt-0.5">{rate >= 0 ? `Saved ${savingsRate}% of income` : `Spent ${fmt(Math.abs(balance), sym)} over income`}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3 mt-5">
+                  {[
+                    { label: 'Income',  val: fmt(totalIncome, sym), color: 'text-green-300' },
+                    { label: 'Spent',   val: fmt(total, sym),        color: 'text-red-300' },
+                    { label: 'Saved',   val: (balance >= 0 ? '+' : '') + fmt(balance, sym), color: balance >= 0 ? 'text-white' : 'text-red-300' },
+                  ].map(s => (
+                    <div key={s.label} className="bg-white/10 rounded-xl p-3 text-center">
+                      <p className="text-white/60 text-xs mb-1">{s.label}</p>
+                      <p className={`text-sm font-bold tabular-nums ${s.color}`}>{s.val}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Highlights */}
+              <div className="grid grid-cols-1 gap-3">
+                {topCat && (
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 flex items-center gap-4">
+                    <div className="w-10 h-10 bg-violet-100 dark:bg-violet-900/30 rounded-xl flex items-center justify-center text-xl shrink-0">🏆</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400 font-medium">Top Spending Category</p>
+                      <p className="text-sm font-bold text-gray-800 dark:text-white">{topCat.name}</p>
+                    </div>
+                    <p className="text-sm font-bold text-violet-600 tabular-nums shrink-0">{fmt(topCat.value, sym)}</p>
+                  </div>
+                )}
+
+                {spendingChange !== null && (
+                  <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 flex items-center gap-4`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${parseInt(spendingChange) <= 0 ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                      {parseInt(spendingChange) <= 0 ? '📉' : '📈'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400 font-medium">vs {prevMonthName.split(' ')[0]}</p>
+                      <p className="text-sm font-bold text-gray-800 dark:text-white">
+                        {parseInt(spendingChange) <= 0 ? `Spent ${Math.abs(spendingChange)}% less` : `Spent ${spendingChange}% more`}
+                      </p>
+                    </div>
+                    <span className={`text-sm font-bold tabular-nums shrink-0 ${parseInt(spendingChange) <= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {parseInt(spendingChange) > 0 ? '+' : ''}{spendingChange}%
+                    </span>
+                  </div>
+                )}
+
+                {worstCat && prevCategoryData[worstCat.name] > 0 && worstCat.value > prevCategoryData[worstCat.name] && (
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 flex items-center gap-4">
+                    <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center text-xl shrink-0">⚠️</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400 font-medium">Most Overspent vs Last Month</p>
+                      <p className="text-sm font-bold text-gray-800 dark:text-white">{worstCat.name}</p>
+                    </div>
+                    <p className="text-sm font-bold text-red-500 tabular-nums shrink-0">
+                      +{fmt(worstCat.value - (prevCategoryData[worstCat.name] || 0), sym)}
+                    </p>
+                  </div>
+                )}
+
+                {bestCat && prevCategoryData[bestCat.name] > 0 && bestCat.value < prevCategoryData[bestCat.name] && (
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 flex items-center gap-4">
+                    <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center text-xl shrink-0">✅</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400 font-medium">Most Improved vs Last Month</p>
+                      <p className="text-sm font-bold text-gray-800 dark:text-white">{bestCat.name}</p>
+                    </div>
+                    <p className="text-sm font-bold text-green-500 tabular-nums shrink-0">
+                      -{fmt(prevCategoryData[bestCat.name] - bestCat.value, sym)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Next month goal */}
+              {totalIncome > 0 && (
+                <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/40 rounded-2xl p-4">
+                  <p className="text-xs font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wide mb-1">Next Month Goal</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-200">
+                    {rate >= 20
+                      ? `Keep it up! Aim to maintain your ${savingsRate}% savings rate or go higher.`
+                      : rate >= 0
+                      ? `Try to reach a 20% savings rate — that means saving at least ${fmt(totalIncome * 0.2, sym)} next month.`
+                      : `Focus on getting back to break-even. Try to cut ${fmt(Math.abs(balance), sym)} in spending next month.`}
+                  </p>
+                </div>
+              )}
+            </div>
+          )
+        })()}
+
+        {activeTab === 'analytics' && <div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -412,6 +544,7 @@ export default function Reports() {
             </div>
           )}
         </div>
+        </div>}
       </div>
     </Layout>
   )

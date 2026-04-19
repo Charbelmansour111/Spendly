@@ -130,6 +130,12 @@ export default function Profile() {
   if (!user) return null
 
   const initials = user?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?'
+  const TABS = [
+    { key: 'profile',  label: 'Profile',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> },
+    { key: 'prefs',    label: 'Preferences',  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
+    { key: 'security', label: 'Security',     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
+    { key: 'account',  label: 'Account',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> },
+  ]
 
   return (
     <Layout>
@@ -137,177 +143,258 @@ export default function Profile() {
       <div className="max-w-lg mx-auto px-4 py-6">
 
         {/* Hero header */}
-        <div className="relative bg-linear-to-br from-violet-600 to-indigo-700 rounded-3xl p-6 mb-6 text-white overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-10 translate-x-10" />
-          <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-6 -translate-x-6" />
-          <div className="relative flex items-center gap-5">
-            {/* Avatar with upload overlay */}
-            <div className="relative shrink-0">
-              <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg ring-4 ring-white/20">
-                {photo ? (
-                  <img src={photo} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-white/20 flex items-center justify-center text-2xl font-bold text-white">
-                    {initials}
-                  </div>
-                )}
+        <div className="relative bg-linear-to-br from-violet-600 to-indigo-700 rounded-3xl overflow-hidden mb-5">
+          {/* Decorative circles */}
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full" />
+          <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-white/5 rounded-full" />
+          <div className="absolute top-1/2 right-16 w-12 h-12 bg-white/5 rounded-full" />
+
+          <div className="relative p-6">
+            <div className="flex items-center gap-4">
+              {/* Avatar */}
+              <div className="relative shrink-0">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-xl ring-4 ring-white/25">
+                  {photo
+                    ? <img src={photo} alt="Profile" className="w-full h-full object-cover" />
+                    : <div className="w-full h-full bg-white/20 flex items-center justify-center text-2xl font-black text-white">{initials}</div>
+                  }
+                </div>
+                <button onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-1.5 -right-1.5 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                </button>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
               </div>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-1.5 -right-1.5 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-              </button>
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl font-bold text-white leading-tight truncate">{user?.name}</h1>
+                <p className="text-white/65 text-sm truncate mt-0.5">{user?.email}</p>
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <span className="inline-flex items-center gap-1 text-xs bg-white/15 hover:bg-white/20 transition px-2.5 py-1 rounded-full font-semibold text-white">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    Personal Plan
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs bg-white/15 hover:bg-white/20 transition px-2.5 py-1 rounded-full font-semibold text-white">
+                    {CURRENCY_SYMBOLS[user?.currency] || '$'} {user?.currency || 'USD'}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold leading-tight truncate">{user?.name}</h1>
-              <p className="text-white/70 text-sm truncate">{user?.email}</p>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="text-xs bg-white/20 px-3 py-1 rounded-full font-semibold">{t('personal')}</span>
-                <span className="text-xs bg-white/20 px-3 py-1 rounded-full font-semibold">
-                  {CURRENCY_SYMBOLS[user?.currency] || '$'} {user?.currency || 'USD'}
-                </span>
-              </div>
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-2 mt-5 pt-5 border-t border-white/15">
+              {[
+                { label: 'Currency', val: user?.currency || 'USD' },
+                { label: 'Savings Target', val: (prefs.savingsTarget ?? 20) + '%' },
+                { label: 'Language', val: (appLang || 'en-US').split('-')[0].toUpperCase() },
+              ].map(s => (
+                <div key={s.label} className="text-center">
+                  <p className="text-white font-bold text-sm">{s.val}</p>
+                  <p className="text-white/50 text-xs mt-0.5">{s.label}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
         {/* Tab bar */}
-        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5">
-          {[
-            { key: 'profile',  label: t('profile'),     icon: '👤' },
-            { key: 'prefs',    label: t('preferences'), icon: '⚙️' },
-            { key: 'security', label: t('security'),    icon: '🔒' },
-            { key: 'danger',   label: '⚠️',             icon: null },
-          ].map(tab => (
+        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5 gap-1">
+          {TABS.map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
                 activeTab === tab.key
                   ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600 dark:text-violet-400'
                   : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
               }`}>
-              <span>{tab.icon || tab.label}</span>
-              {tab.icon && <span className="hidden sm:inline">{tab.label}</span>}
+              {tab.icon}
+              <span className="hidden sm:inline">{tab.label}</span>
             </button>
           ))}
         </div>
 
         {/* Profile tab */}
         {activeTab === 'profile' && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
-            <Field label={t('full_name')}>
-              <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={cls} />
-            </Field>
-            <Field label={t('email')}>
-              <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={cls} />
-            </Field>
-            <Field label={t('currency')}>
-              <select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} className={cls}>
-                {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c]} {c}</option>)}
-              </select>
-            </Field>
-            <button onClick={handleSave} disabled={saving}
-              className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 active:scale-95 transition disabled:opacity-50">
-              {saving ? t('saving') : t('save_changes')}
-            </button>
+          <div className="space-y-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Personal Information</p>
+              </div>
+              <Field label={t('full_name')}>
+                <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={cls} />
+              </Field>
+              <Field label={t('email')}>
+                <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={cls} />
+              </Field>
+              <Field label={t('currency')}>
+                <select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} className={cls}>
+                  {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c]} {c}</option>)}
+                </select>
+              </Field>
+              <button onClick={handleSave} disabled={saving}
+                className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 active:scale-95 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                {saving
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t('saving')}</>
+                  : t('save_changes')}
+              </button>
+            </div>
           </div>
         )}
 
         {/* Preferences tab */}
         {activeTab === 'prefs' && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-5">
-            <Field label={t('income_frequency')}>
-              <div className="grid grid-cols-2 gap-2">
-                {INCOME_FREQS.map(f => (
-                  <button key={f} type="button" onClick={() => setPrefs(p => ({ ...p, incomeFreq: f }))}
-                    className={`py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
-                      (prefs.incomeFreq || 'Monthly') === f
-                        ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                        : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300'
-                    }`}>
-                    {t(FREQ_KEYS[f] || f)}
-                  </button>
-                ))}
+          <div className="space-y-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-5">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">App Preferences</p>
               </div>
-            </Field>
 
-            <Field label={t('savings_target')} hint={t('savings_target_hint')}>
-              <div className="flex items-center gap-3 mt-1">
-                <input type="range" min="0" max="80" step="5"
-                  value={prefs.savingsTarget ?? 20}
-                  onChange={e => setPrefs(p => ({ ...p, savingsTarget: parseInt(e.target.value) }))}
-                  className="flex-1 accent-violet-600" />
-                <span className="text-lg font-bold text-violet-600 w-12 text-right tabular-nums">{prefs.savingsTarget ?? 20}%</span>
+              <Field label={t('income_frequency')}>
+                <div className="grid grid-cols-2 gap-2">
+                  {INCOME_FREQS.map(f => (
+                    <button key={f} type="button" onClick={() => setPrefs(p => ({ ...p, incomeFreq: f }))}
+                      className={`py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
+                        (prefs.incomeFreq || 'Monthly') === f
+                          ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                          : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300'
+                      }`}>
+                      {t(FREQ_KEYS[f] || f)}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              <Field label={t('savings_target')} hint={t('savings_target_hint')}>
+                <div className="flex items-center gap-3 mt-1">
+                  <input type="range" min="0" max="80" step="5"
+                    value={prefs.savingsTarget ?? 20}
+                    onChange={e => setPrefs(p => ({ ...p, savingsTarget: parseInt(e.target.value) }))}
+                    className="flex-1 accent-violet-600" />
+                  <span className="text-lg font-bold text-violet-600 w-12 text-right tabular-nums">{prefs.savingsTarget ?? 20}%</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">{t('savings_rec')}</p>
+              </Field>
+
+              <Field label={t('app_language')} hint={t('app_lang_hint')}>
+                <select value={appLang} onChange={e => setAppLang(e.target.value)} className={cls}>
+                  {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+                </select>
+              </Field>
+
+              <Field label={t('mic_language')} hint={t('mic_lang_hint')}>
+                <select value={micLang} onChange={e => setMicLang(e.target.value)} className={cls}>
+                  {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+                </select>
+              </Field>
+
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-4 py-3">
+                <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">⚠️ {t('currency_warning')}</p>
               </div>
-              <p className="text-xs text-gray-400 mt-1">{t('savings_rec')}</p>
-            </Field>
 
-            <Field label={t('app_language')} hint={t('app_lang_hint')}>
-              <select value={appLang} onChange={e => setAppLang(e.target.value)} className={cls}>
-                {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-              </select>
-            </Field>
-
-            <Field label={t('mic_language')} hint={t('mic_lang_hint')}>
-              <select value={micLang} onChange={e => setMicLang(e.target.value)} className={cls}>
-                {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-              </select>
-            </Field>
-
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-4 py-3">
-              <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">⚠️ {t('currency_warning')}</p>
+              <button onClick={() => {
+                localStorage.setItem('spendly_prefs', JSON.stringify(prefs))
+                localStorage.setItem('spendly_lang_app', appLang)
+                localStorage.setItem('spendly_lang_mic', micLang)
+                setPrefsSaved(true)
+                setTimeout(() => { setPrefsSaved(false); window.location.reload() }, 1200)
+              }}
+                className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 active:scale-95 transition">
+                {prefsSaved ? '✓ ' + t('saved_label') : t('save_preferences')}
+              </button>
             </div>
-
-            <button onClick={() => {
-              localStorage.setItem('spendly_prefs', JSON.stringify(prefs))
-              localStorage.setItem('spendly_lang_app', appLang)
-              localStorage.setItem('spendly_lang_mic', micLang)
-              setPrefsSaved(true)
-              setTimeout(() => { setPrefsSaved(false); window.location.reload() }, 1200)
-            }}
-              className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 active:scale-95 transition">
-              {prefsSaved ? t('saved_label') : t('save_preferences')}
-            </button>
           </div>
         )}
 
         {/* Security tab */}
         {activeTab === 'security' && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
-            <p className="text-sm font-bold text-gray-700 dark:text-gray-200">{t('change_password')}</p>
-            <Field label={t('current_password')}>
-              <input type="password" placeholder="••••••••" value={pwForm.current}
-                onChange={e => setPwForm({ ...pwForm, current: e.target.value })} className={cls} />
-            </Field>
-            <Field label={t('new_password')}>
-              <input type="password" placeholder="••••••••" value={pwForm.newPw}
-                onChange={e => setPwForm({ ...pwForm, newPw: e.target.value })} className={cls} />
-            </Field>
-            <Field label={t('confirm_password')}>
-              <input type="password" placeholder="••••••••" value={pwForm.confirm}
-                onChange={e => setPwForm({ ...pwForm, confirm: e.target.value })} className={cls} />
-            </Field>
-            <button onClick={handleChangePassword} disabled={!pwForm.current || !pwForm.newPw || !pwForm.confirm}
-              className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
-              {t('change_password')}
-            </button>
+          <div className="space-y-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Change Password</p>
+              </div>
+              <Field label={t('current_password')}>
+                <input type="password" placeholder="••••••••" value={pwForm.current}
+                  onChange={e => setPwForm({ ...pwForm, current: e.target.value })} className={cls} />
+              </Field>
+              <Field label={t('new_password')}>
+                <input type="password" placeholder="••••••••" value={pwForm.newPw}
+                  onChange={e => setPwForm({ ...pwForm, newPw: e.target.value })} className={cls} />
+                {pwForm.newPw.length > 0 && (
+                  <div className="flex items-center gap-2 mt-1.5">
+                    {[1,2,3,4].map(i => (
+                      <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${
+                        pwForm.newPw.length >= i * 3
+                          ? i <= 1 ? 'bg-red-400' : i <= 2 ? 'bg-orange-400' : i <= 3 ? 'bg-yellow-400' : 'bg-green-500'
+                          : 'bg-gray-200 dark:bg-gray-700'
+                      }`} />
+                    ))}
+                    <span className="text-xs text-gray-400 shrink-0">
+                      {pwForm.newPw.length < 4 ? 'Weak' : pwForm.newPw.length < 7 ? 'Fair' : pwForm.newPw.length < 10 ? 'Good' : 'Strong'}
+                    </span>
+                  </div>
+                )}
+              </Field>
+              <Field label={t('confirm_password')}>
+                <input type="password" placeholder="••••••••" value={pwForm.confirm}
+                  onChange={e => setPwForm({ ...pwForm, confirm: e.target.value })} className={cls} />
+                {pwForm.confirm.length > 0 && pwForm.newPw !== pwForm.confirm && (
+                  <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+                )}
+              </Field>
+              <button onClick={handleChangePassword}
+                disabled={!pwForm.current || !pwForm.newPw || !pwForm.confirm || pwForm.newPw !== pwForm.confirm}
+                className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
+                {t('change_password')}
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Danger zone */}
-        {activeTab === 'danger' && (
+        {/* Account tab */}
+        {activeTab === 'account' && (
           <div className="space-y-4">
+            {/* Plan card */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
-              <p className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">{t('your_plan')}</p>
-              <div className="rounded-xl p-3 text-xs bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400">{t('personal_plan')}</div>
+              <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">{t('your_plan')}</p>
+              </div>
+              <div className="flex items-center gap-4 p-4 bg-linear-to-br from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 rounded-xl border border-violet-200 dark:border-violet-800/40">
+                <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center shrink-0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-violet-700 dark:text-violet-300">Personal Plan</p>
+                  <p className="text-xs text-violet-500 dark:text-violet-400 mt-0.5">{t('personal_plan')}</p>
+                </div>
+              </div>
             </div>
+
+            {/* Sign out */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
+              <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Session</p>
+              </div>
+              <button onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login' }}
+                className="w-full flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 py-3 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sign Out
+              </button>
+            </div>
+
+            {/* Danger zone */}
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5">
-              <p className="text-sm font-bold text-red-600 mb-1">{t('delete_account')}</p>
-              <p className="text-xs text-red-400 mb-4">{t('delete_warning')}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <p className="text-sm font-bold text-red-600">{t('delete_account')}</p>
+              </div>
+              <p className="text-xs text-red-400 mb-4 leading-relaxed">{t('delete_warning')}</p>
               <button onClick={handleDeleteAccount}
                 className="w-full bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition text-sm">
                 {t('delete_account')}

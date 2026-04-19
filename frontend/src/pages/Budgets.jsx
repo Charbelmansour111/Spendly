@@ -77,6 +77,7 @@ export default function Budgets() {
   const [expenses, setExpenses] = useState([])
   const [form, setForm] = useState({ category: 'Food', period: 'monthly', name: '', amount: '' })
   const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [filterStatus, setFilterStatus] = useState('All')
   const [aiModal, setAiModal] = useState(null)
   const [toast, setToast] = useState(null)
@@ -148,6 +149,8 @@ export default function Budgets() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (saving) return
+    setSaving(true)
     try {
       await API.post('/budgets', form)
       setForm({ category: 'Food', period: 'monthly', name: '', amount: '' })
@@ -156,6 +159,7 @@ export default function Budgets() {
       fetchAll()
       showToast('🎯 Budget set!')
     } catch { showToast('Error saving budget', 'error') }
+    finally { setSaving(false) }
   }
 
   const handleDelete = async (id) => {
@@ -294,8 +298,8 @@ export default function Budgets() {
                     className={inputCls} />
                 </div>
               </div>
-              <button type="submit" className="w-full bg-violet-600 text-white py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition text-sm">
-                Save Budget
+              <button type="submit" disabled={saving} className="w-full bg-violet-600 text-white py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition text-sm disabled:opacity-60">
+                {saving ? 'Saving…' : 'Save Budget'}
               </button>
               <p className="text-xs text-gray-400 text-center mt-2">
                 ⚡ Warning at 85% · 🤖 AI advice when you hit 100%

@@ -62,6 +62,7 @@ export default function Wellness() {
   const [moodResponseLoading, setMoodResponseLoading] = useState(false)
   const [selectedMood, setSelectedMood] = useState(null)
   const [showGame, setShowGame] = useState(false)
+  const [numModal, setNumModal] = useState(null)
   const [highScore] = useState(() => parseInt(localStorage.getItem('moneyDefenderHS') || '0'))
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
@@ -343,18 +344,30 @@ export default function Wellness() {
         </div>
 
         {/* Stats Row */}
+        {numModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setNumModal(null)}>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 text-center w-full max-w-xs" onClick={e => e.stopPropagation()}>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{numModal.label}</p>
+              <p className="text-4xl font-bold text-violet-600 tabular-nums break-all leading-tight">{numModal.value}</p>
+              {numModal.sub && <p className="text-sm text-gray-400 mt-2">{numModal.sub}</p>}
+              <button onClick={() => setNumModal(null)} className="mt-6 w-full bg-violet-600 text-white py-3 rounded-2xl font-bold hover:bg-violet-700 transition">Done</button>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Income', value: `${currencySymbol}${totalIncome.toFixed(2)}`, color: 'text-emerald-600', icon: '📥' },
-            { label: 'Spent', value: `${currencySymbol}${totalSpent.toFixed(2)}`, color: 'text-red-500', icon: '💸' },
-            { label: 'Balance', value: `${balance >= 0 ? '+' : ''}${currencySymbol}${Math.abs(balance).toFixed(2)}`, color: balance >= 0 ? 'text-violet-600' : 'text-red-500', icon: '💰' },
-            { label: 'Streak', value: `${streak}d 🔥`, color: 'text-orange-500', icon: '📅' },
+            { label: 'Income',  value: `${currencySymbol}${totalIncome.toFixed(2)}`,                          sub: monthName, color: 'text-emerald-600', icon: '📥' },
+            { label: 'Spent',   value: `${currencySymbol}${totalSpent.toFixed(2)}`,                           sub: monthName, color: 'text-red-500',     icon: '💸' },
+            { label: 'Balance', value: `${balance >= 0 ? '+' : ''}${currencySymbol}${Math.abs(balance).toFixed(2)}`, sub: balance >= 0 ? 'surplus' : 'deficit', color: balance >= 0 ? 'text-violet-600' : 'text-red-500', icon: '💰' },
+            { label: 'Streak',  value: `${streak} days`,                                                      sub: 'tracking streak', color: 'text-orange-500', icon: '🔥' },
           ].map((s, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center">
+            <button key={i} onClick={() => setNumModal({ label: s.label, value: s.value, sub: s.sub })}
+              className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center active:scale-95 transition-transform">
               <p className="text-lg mb-1">{s.icon}</p>
-              <p className={`text-base font-bold ${s.color} leading-tight`}>{s.value}</p>
+              <p className={`text-base font-bold ${s.color} leading-tight truncate`}>{s.value}</p>
               <p className="text-[10px] text-gray-400 mt-0.5 font-medium uppercase tracking-wide">{s.label}</p>
-            </div>
+            </button>
           ))}
         </div>
 
