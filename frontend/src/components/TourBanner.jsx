@@ -9,7 +9,7 @@ export const TOUR_STEPS = [
     title: 'Your Dashboard',
     desc: 'This is your financial home screen — balance, spending vs income, spending forecast, upcoming bills, and budget alerts all in one place.',
     action: '👀 Scroll down to explore your overview.',
-    voice: "This is your Dashboard — your financial home screen. You can see your balance, monthly spending, income, a spending forecast, upcoming bills, and budget alerts, all updating in real time.",
+    voice: "Welcome to Spendly! This is your Dashboard — your financial home screen. You can see your balance, monthly spending, income, a spending forecast, upcoming bills, and budget alerts, all updating in real time.",
   },
   {
     page: '/transactions',
