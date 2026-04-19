@@ -379,6 +379,22 @@ export default function Profile() {
               </div>
             </div>
 
+            {/* Tutorial */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
+              <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">App Tutorial</p>
+              </div>
+              <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+                Replay the interactive tour to rediscover features, tips, and the voice assistant.
+              </p>
+              <button onClick={() => { localStorage.removeItem('spendly_onboarded'); window.location.href = '/dashboard' }}
+                className="w-full flex items-center justify-center gap-2 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/40 text-violet-700 dark:text-violet-300 py-3 rounded-xl font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/40 transition text-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Replay Tutorial
+              </button>
+            </div>
+
             {/* Sign out */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
               <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
