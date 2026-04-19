@@ -47,7 +47,13 @@ const TAB_ITEMS = [
 // const BUSINESS_NAV = [...]
 // const BUSINESS_TABS = [...]
 
-function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCount, onLogout }) {
+const ADVISOR_NAV = [
+  { key: 'Advisor Dashboard', icon: 'home',    href: '/advisor/dashboard' },
+  { key: 'Find Advisors',     icon: 'profile', href: '/advisors' },
+  { key: 'Profile',           icon: 'profile', href: '/profile' },
+]
+
+function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCount, onLogout, navItems }) {
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
@@ -78,7 +84,7 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const isActive = current === item.href
           return (
             <a key={item.href} href={item.href}
@@ -147,6 +153,8 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
 
   // Business mode disabled — always use personal nav
   // const isBusiness = user?.account_type === 'business'
+  const isAdvisor = user?.account_subtype === 'advisor_approved'
+  const activeNavItems = isAdvisor ? ADVISOR_NAV : NAV_ITEMS
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
@@ -156,7 +164,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
     }
   }
 
-  const sidebarProps = { user, current, dark, toggleDark, onBellClick, unreadCount, onLogout: handleLogout }
+  const sidebarProps = { user, current, dark, toggleDark, onBellClick, unreadCount, onLogout: handleLogout, navItems: activeNavItems }
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden" dir={isRTL() ? 'rtl' : 'ltr'}>

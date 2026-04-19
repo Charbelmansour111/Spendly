@@ -18,6 +18,10 @@ const PAGE_TITLES = {
   '/insights': 'Insights — Spendly',
   '/wellness': 'Wellness — Spendly',
   '/profile': 'Profile — Spendly',
+  '/advisor/apply':     'Apply as Advisor — Spendly',
+  '/advisor/dashboard': 'Advisor Dashboard — Spendly',
+  '/advisors':          'Find an Advisor — Spendly',
+  '/admin/advisors':    'Admin — Spendly',
 }
 
 function RouteTitle() {
@@ -48,6 +52,10 @@ import Transactions from './pages/Transactions'
 import Subscriptions from './pages/Subscriptions'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
+import AdvisorApply from './pages/AdvisorApply'
+import AdvisorDashboard from './pages/AdvisorDashboard'
+import AdvisorDirectory from './pages/AdvisorDirectory'
+import AdminAdvisors from './pages/AdminAdvisors'
 
 function App() {
   return (
@@ -80,6 +88,12 @@ function App() {
         <Route path="/business"              element={<Navigate to="/dashboard" replace />} />
         <Route path="/business/*"            element={<Navigate to="/dashboard" replace />} />
         <Route path="/alerts"                element={<Navigate to="/budgets" replace />} />
+
+        {/* Advisor */}
+        <Route path="/advisor/apply"         element={<AdvisorApply />} />
+        <Route path="/advisor/dashboard"     element={<AdvisorDashboard />} />
+        <Route path="/advisors"              element={<AdvisorDirectory />} />
+        <Route path="/admin/advisors"        element={<AdminAdvisors />} />
       </Routes>
     </BrowserRouter>
   )

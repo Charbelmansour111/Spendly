@@ -43,6 +43,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/debts', debtsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/advisor', require('./routes/advisor'));
 
 app.get('/', (req, res) => {
   res.json({ message: 'Spendly API is running' });
