@@ -44,6 +44,7 @@ app.use('/api/debts', debtsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/advisor', require('./routes/advisor'));
+app.use('/api/support', require('./routes/support'));
 
 app.get('/', (req, res) => {
   res.json({ message: 'Spendly API is running' });

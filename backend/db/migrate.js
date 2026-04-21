@@ -99,6 +99,18 @@ async function migrate() {
     // Add account_subtype to users
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_subtype VARCHAR(20) DEFAULT 'personal'`);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        user_email VARCHAR(255),
+        subject VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'open',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
     console.log('DB migration complete');
   } catch (e) {
     console.error('DB migration error:', e.message);
