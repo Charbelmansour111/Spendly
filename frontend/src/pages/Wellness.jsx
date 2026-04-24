@@ -357,16 +357,16 @@ export default function Wellness() {
         )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Income',  value: `${currencySymbol}${totalIncome.toFixed(2)}`,                          sub: monthName, color: 'text-emerald-600', icon: '📥' },
-            { label: 'Spent',   value: `${currencySymbol}${totalSpent.toFixed(2)}`,                           sub: monthName, color: 'text-red-500',     icon: '💸' },
-            { label: 'Balance', value: `${balance >= 0 ? '+' : ''}${currencySymbol}${Math.abs(balance).toFixed(2)}`, sub: balance >= 0 ? 'surplus' : 'deficit', color: balance >= 0 ? 'text-violet-600' : 'text-red-500', icon: '💰' },
-            { label: 'Streak',  value: `${streak} days`,                                                      sub: 'tracking streak', color: 'text-orange-500', icon: '🔥' },
+            { label: 'Income',  value: `${currencySymbol}${totalIncome.toFixed(2)}`,                          sub: monthName, textColor: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30', icon: '📥' },
+            { label: 'Spent',   value: `${currencySymbol}${totalSpent.toFixed(2)}`,                           sub: monthName, textColor: 'text-red-600 dark:text-red-400',     bg: 'bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30',     icon: '💸' },
+            { label: 'Balance', value: `${balance >= 0 ? '+' : ''}${currencySymbol}${Math.abs(balance).toFixed(2)}`, sub: balance >= 0 ? 'surplus' : 'deficit', textColor: balance >= 0 ? 'text-violet-700 dark:text-violet-400' : 'text-red-600 dark:text-red-400', bg: balance >= 0 ? 'bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/30' : 'bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30', icon: '💰' },
+            { label: 'Streak',  value: `${streak} days`,                                                      sub: 'tracking streak', textColor: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/30', icon: '🔥' },
           ].map((s, i) => (
             <button key={i} onClick={() => setNumModal({ label: s.label, value: s.value, sub: s.sub })}
-              className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center active:scale-95 transition-transform">
-              <p className="text-lg mb-1">{s.icon}</p>
-              <p className={`text-base font-bold ${s.color} leading-tight truncate`}>{s.value}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5 font-medium uppercase tracking-wide">{s.label}</p>
+              className={`${s.bg} rounded-2xl p-4 text-left active:scale-95 transition-transform`}>
+              <p className="text-lg mb-2">{s.icon}</p>
+              <p className={`text-base font-bold ${s.textColor} leading-tight truncate`}>{s.value}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{s.label}</p>
             </button>
           ))}
         </div>

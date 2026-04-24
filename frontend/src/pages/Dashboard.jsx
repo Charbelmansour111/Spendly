@@ -934,21 +934,31 @@ export default function Dashboard() {
                     <p className="text-violet-200 text-xs">
                       {balance >= 0 ? savingsRate + '% saved this month' : 'Spending over income'}
                     </p>
-                    {/* Spending forecast */}
+                    {/* Spending forecast inline */}
                     {isCurrentMonth && total > 0 && (() => {
                       const dayOfMonth = today.getDate()
                       const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+                      const daysLeft = daysInMonth - dayOfMonth
                       const projected = (total / dayOfMonth) * daysInMonth
                       const diff = projected - totalIncome
+                      const pct = Math.min((total / Math.max(projected, 1)) * 100, 100)
                       return (
-                        <div className="mt-3 bg-white/10 rounded-xl px-3 py-2 text-xs">
-                          <span className="text-violet-200">📈 On pace to spend </span>
-                          <span className="font-bold text-white">{fmt(projected, currencySymbol)}</span>
-                          <span className="text-violet-200"> by month-end — </span>
-                          {diff > 0
-                            ? <span className="font-bold text-red-300">overspend by {fmt(diff, currencySymbol)}</span>
-                            : <span className="font-bold text-green-300">surplus of {fmt(Math.abs(diff), currencySymbol)}</span>
-                          }
+                        <div className="mt-3 bg-white/10 rounded-2xl px-4 py-3 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-white text-xs font-semibold">Month-End Estimate</p>
+                              <p className="text-violet-300 text-[10px] mt-0.5">Based on your daily pace · {daysLeft}d left</p>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-base font-bold tabular-nums ${diff > 0 ? 'text-red-300' : 'text-green-300'}`}>{fmt(projected, currencySymbol)}</p>
+                              <p className={`text-[10px] font-medium ${diff > 0 ? 'text-red-300' : 'text-green-300'}`}>
+                                {diff > 0 ? `↑ ${fmt(diff, currencySymbol)} over` : `✓ ${fmt(Math.abs(diff), currencySymbol)} surplus`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="w-full bg-white/20 rounded-full h-1.5">
+                            <div className={`h-1.5 rounded-full transition-all duration-500 ${diff > 0 ? 'bg-red-400' : 'bg-green-400'}`} style={{ width: `${pct}%` }} />
+                          </div>
                         </div>
                       )
                     })()}
@@ -1062,39 +1072,6 @@ export default function Dashboard() {
         </div>
         {/* ── End Carousel ─────────────────────────────────── */}
 
-        {/* Spending Forecast */}
-        {isCurrentMonth && total > 0 && (() => {
-          const dayOfMonth = today.getDate()
-          const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
-          const daysLeft = daysInMonth - dayOfMonth
-          const projected = (total / dayOfMonth) * daysInMonth
-          const diff = projected - totalIncome
-          const pct = Math.min((total / Math.max(projected, 1)) * 100, 100)
-          const isOver = diff > 0
-          return (
-            <div className="mb-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800 dark:text-white">📈 Spending Forecast</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{daysLeft} day{daysLeft !== 1 ? 's' : ''} left in {monthName}</p>
-                </div>
-                <div className="text-right">
-                  <p className={`text-lg font-bold tabular-nums ${isOver ? 'text-red-500' : 'text-green-600'}`}>{fmt(projected, currencySymbol)}</p>
-                  <p className="text-xs text-gray-400">projected</p>
-                </div>
-              </div>
-              <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 mb-3">
-                <div className={`h-2 rounded-full transition-all duration-500 ${isOver ? 'bg-red-400' : 'bg-violet-500'}`} style={{ width: `${pct}%` }} />
-              </div>
-              <div className="flex justify-between text-xs text-gray-400">
-                <span>Spent: <span className="font-semibold text-gray-700 dark:text-gray-300">{fmt(total, currencySymbol)}</span></span>
-                <span className={`font-semibold ${isOver ? 'text-red-500' : 'text-green-600'}`}>
-                  {isOver ? `↑ ${fmt(diff, currencySymbol)} over income` : `✓ ${fmt(Math.abs(diff), currencySymbol)} surplus`}
-                </span>
-              </div>
-            </div>
-          )
-        })()}
 
         {/* Budget Alerts */}
         {(() => {

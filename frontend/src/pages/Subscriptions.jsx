@@ -190,20 +190,23 @@ export default function Subscriptions() {
           <div className="space-y-5">
 
             {/* Summary strip */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center">
-                <p className="text-xs text-gray-400 mb-1">Monthly</p>
-                <p className="text-lg font-bold text-violet-600 tabular-nums">{sym}{monthlyTotal.toFixed(2)}</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/30 rounded-2xl p-3 sm:p-4">
+                <p className="text-base mb-1">📅</p>
+                <p className="text-sm sm:text-lg font-bold text-violet-700 dark:text-violet-300 tabular-nums">{sym}{monthlyTotal.toFixed(2)}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">Per month</p>
               </div>
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-center">
-                <p className="text-xs text-gray-400 mb-1">Per year</p>
-                <p className="text-lg font-bold text-gray-800 dark:text-white tabular-nums">{sym}{yearlyTotal.toFixed(0)}</p>
+              <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700 rounded-2xl p-3 sm:p-4">
+                <p className="text-base mb-1">🗓️</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-800 dark:text-white tabular-nums">{sym}{yearlyTotal.toFixed(0)}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">Per year</p>
               </div>
-              <div className={`rounded-2xl p-4 shadow-sm text-center ${pctOfIncome > 20 ? 'bg-red-50 dark:bg-red-900/20' : pctOfIncome > 10 ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
-                <p className="text-xs text-gray-400 mb-1">% of income</p>
-                <p className={`text-lg font-bold tabular-nums ${pctOfIncome > 20 ? 'text-red-500' : pctOfIncome > 10 ? 'text-amber-600' : 'text-green-600'}`}>
+              <div className={`rounded-2xl p-3 sm:p-4 border ${pctOfIncome > 20 ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30' : pctOfIncome > 10 ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/30' : 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800/30'}`}>
+                <p className="text-base mb-1">{pctOfIncome > 20 ? '⚠️' : pctOfIncome > 10 ? '📊' : '✅'}</p>
+                <p className={`text-sm sm:text-lg font-bold tabular-nums ${pctOfIncome > 20 ? 'text-red-600 dark:text-red-400' : pctOfIncome > 10 ? 'text-amber-600 dark:text-amber-400' : 'text-green-700 dark:text-green-400'}`}>
                   {monthlyIncome > 0 ? `${pctOfIncome.toFixed(1)}%` : '—'}
                 </p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">of income</p>
               </div>
             </div>
 

@@ -295,15 +295,16 @@ export default function Budgets() {
         {budgets.length > 0 && (
           <div className="grid grid-cols-3 gap-2 mb-6">
             {[
-              { label: 'Total Budget', value: `${currencySymbol}${totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'text-violet-600' },
-              { label: 'Total Spent',  value: `${currencySymbol}${totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: totalSpent > totalBudget ? 'text-red-500' : 'text-green-600', sub: totalBudget > 0 ? `${((totalSpent/totalBudget)*100).toFixed(0)}% used` : '0% used' },
-              { label: 'Over Budget',  value: String(overCount), color: overCount > 0 ? 'text-red-500' : 'text-green-600', sub: overCount === 0 ? '✅ All clear' : `${overCount} over` },
+              { label: 'Total Budget', value: `${currencySymbol}${totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, textColor: 'text-violet-700 dark:text-violet-300', bg: 'bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/30', icon: '📊' },
+              { label: 'Total Spent',  value: `${currencySymbol}${totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: totalBudget > 0 ? `${((totalSpent/totalBudget)*100).toFixed(0)}% used` : '0% used', textColor: totalSpent > totalBudget ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400', bg: totalSpent > totalBudget ? 'bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30' : 'bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/30', icon: totalSpent > totalBudget ? '💸' : '✅' },
+              { label: 'Over Limit',   value: String(overCount), sub: overCount === 0 ? 'All under budget' : `${overCount} exceeded`, textColor: overCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400', bg: overCount > 0 ? 'bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30' : 'bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/30', icon: overCount > 0 ? '⚠️' : '🎯' },
             ].map((card, i) => (
               <button key={i} onClick={() => setNumModal({ label: card.label, value: card.value, sub: card.sub })}
-                className="bg-white dark:bg-gray-800 rounded-2xl p-3 sm:p-4 shadow-sm min-w-0 text-left active:scale-95 transition-transform">
-                <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">{card.label}</p>
-                <p className={`text-sm sm:text-lg font-bold tabular-nums truncate ${card.color}`}>{card.value}</p>
-                {card.sub && <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{card.sub}</p>}
+                className={`${card.bg} rounded-2xl p-3 sm:p-4 min-w-0 text-left active:scale-95 transition-transform`}>
+                <p className="text-base mb-1">{card.icon}</p>
+                <p className={`text-sm sm:text-lg font-bold tabular-nums truncate ${card.textColor}`}>{card.value}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{card.label}</p>
+                {card.sub && <p className={`text-[10px] sm:text-xs mt-0.5 truncate ${card.textColor} opacity-70`}>{card.sub}</p>}
               </button>
             ))}
           </div>
