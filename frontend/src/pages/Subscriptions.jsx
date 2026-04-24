@@ -189,24 +189,33 @@ export default function Subscriptions() {
         ) : (
           <div className="space-y-5">
 
-            {/* Summary strip */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/30 rounded-2xl p-3 sm:p-4">
-                <p className="text-base mb-1">📅</p>
-                <p className="text-sm sm:text-lg font-bold text-violet-700 dark:text-violet-300 tabular-nums">{sym}{monthlyTotal.toFixed(2)}</p>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">Per month</p>
+            {/* Overview */}
+            <div className="bg-linear-to-br from-violet-600 via-violet-700 to-purple-800 rounded-3xl p-6 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-10 pointer-events-none">
+                <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white" />
+                <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white" />
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700 rounded-2xl p-3 sm:p-4">
-                <p className="text-base mb-1">🗓️</p>
-                <p className="text-sm sm:text-lg font-bold text-gray-800 dark:text-white tabular-nums">{sym}{yearlyTotal.toFixed(0)}</p>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">Per year</p>
+              <div className="relative">
+                <p className="text-violet-200 text-xs font-medium mb-1">Subscriptions Overview</p>
+                <p className="text-4xl font-bold text-white tabular-nums mb-1">{sym}{monthlyTotal.toFixed(2)}</p>
+                <p className="text-violet-200 text-xs">{subs.length} active subscription{subs.length !== 1 ? 's' : ''} per month</p>
               </div>
-              <div className={`rounded-2xl p-3 sm:p-4 border ${pctOfIncome > 20 ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30' : pctOfIncome > 10 ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/30' : 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800/30'}`}>
-                <p className="text-base mb-1">{pctOfIncome > 20 ? '⚠️' : pctOfIncome > 10 ? '📊' : '✅'}</p>
-                <p className={`text-sm sm:text-lg font-bold tabular-nums ${pctOfIncome > 20 ? 'text-red-600 dark:text-red-400' : pctOfIncome > 10 ? 'text-amber-600 dark:text-amber-400' : 'text-green-700 dark:text-green-400'}`}>
-                  {monthlyIncome > 0 ? `${pctOfIncome.toFixed(1)}%` : '—'}
-                </p>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">of income</p>
+              <div className="relative grid grid-cols-3 gap-2 mt-4">
+                <div className="bg-white/15 rounded-2xl px-3 py-3">
+                  <p className="text-violet-200 text-xs mb-0.5">Per Year</p>
+                  <p className="text-white font-bold text-sm tabular-nums">{sym}{yearlyTotal.toFixed(0)}</p>
+                  <p className="text-white/50 text-[10px]">annually</p>
+                </div>
+                <div className="bg-white/15 rounded-2xl px-3 py-3">
+                  <p className={`text-xs mb-0.5 ${pctOfIncome > 20 ? 'text-red-300' : pctOfIncome > 10 ? 'text-amber-300' : 'text-green-300'}`}>% of Income</p>
+                  <p className="text-white font-bold text-sm tabular-nums">{monthlyIncome > 0 ? pctOfIncome.toFixed(1) + '%' : '—'}</p>
+                  <p className="text-white/50 text-[10px]">{pctOfIncome > 20 ? 'high' : pctOfIncome > 10 ? 'moderate' : 'healthy'}</p>
+                </div>
+                <div className="bg-white/15 rounded-2xl px-3 py-3">
+                  <p className="text-violet-200 text-xs mb-0.5">Active</p>
+                  <p className="text-white font-bold text-sm tabular-nums">{subs.length}</p>
+                  <p className="text-white/50 text-[10px]">subscriptions</p>
+                </div>
               </div>
             </div>
 

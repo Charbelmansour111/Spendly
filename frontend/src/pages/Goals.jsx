@@ -239,26 +239,39 @@ export default function Goals() {
           <p className="text-gray-400 text-sm mt-0.5">Savings goals and debts in one place</p>
         </div>
 
-        {/* Progress Overview */}
+        {/* Overview */}
         {numModal && <NumberModal {...numModal} onClose={() => setNumModal(null)} />}
         {(goals.length > 0 || debts.length > 0) && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            {[
-              { label: 'Active Goals', value: String(activeGoals.length),             sub: `${completedGoals.length} completed`, color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/20', emoji: '🎯' },
-              { label: 'Total Saved',  value: `${sym}${totalSaved.toFixed(2)}`,       sub: `across ${goals.length} goal${goals.length !== 1 ? 's' : ''}`, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20', emoji: '💰' },
-              { label: 'Active Debts', value: String(activeDebts.length),             sub: `${paidOffDebts.length} paid off`, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20', emoji: '💳' },
-              { label: 'Still Owed',   value: `${sym}${totalDebtLeft.toFixed(2)}`,    sub: 'total remaining', color: totalDebtLeft > 0 ? 'text-orange-500' : 'text-green-600', bg: 'bg-orange-50 dark:bg-orange-900/20', emoji: '📉' },
-            ].map((s, i) => (
-              <button key={i} onClick={() => setNumModal({ label: s.label, value: s.value, sub: s.sub })}
-                className={`${s.bg} rounded-2xl p-4 text-left active:scale-95 transition-transform`}>
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-base">{s.emoji}</span>
-                  <p className="text-xs text-gray-400 truncate">{s.label}</p>
-                </div>
-                <p className={`text-lg font-bold tabular-nums truncate ${s.color}`}>{s.value}</p>
-                <p className="text-xs text-gray-400 mt-0.5 truncate">{s.sub}</p>
+          <div className="bg-linear-to-br from-violet-600 via-violet-700 to-purple-800 rounded-3xl p-6 mb-6 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10 pointer-events-none">
+              <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white" />
+              <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white" />
+            </div>
+            <div className="relative">
+              <p className="text-violet-200 text-xs font-medium mb-1">Goals & Debts Overview</p>
+              <p className="text-4xl font-bold text-white tabular-nums mb-1">{sym}{totalSaved.toFixed(2)}</p>
+              <p className="text-violet-200 text-xs">saved across {goals.length} goal{goals.length !== 1 ? 's' : ''}</p>
+            </div>
+            <div className="relative grid grid-cols-3 gap-2 mt-4">
+              <button onClick={() => setNumModal({ label: 'Active Goals', value: String(activeGoals.length), sub: completedGoals.length + ' completed' })}
+                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
+                <p className="text-violet-200 text-xs mb-0.5">Active Goals</p>
+                <p className="text-white font-bold text-sm tabular-nums">{activeGoals.length}</p>
+                <p className="text-white/50 text-[10px]">{completedGoals.length} completed</p>
               </button>
-            ))}
+              <button onClick={() => setNumModal({ label: 'Active Debts', value: String(activeDebts.length), sub: paidOffDebts.length + ' paid off' })}
+                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
+                <p className="text-red-300 text-xs mb-0.5">Active Debts</p>
+                <p className="text-white font-bold text-sm tabular-nums">{activeDebts.length}</p>
+                <p className="text-white/50 text-[10px]">{paidOffDebts.length} paid off</p>
+              </button>
+              <button onClick={() => setNumModal({ label: 'Still Owed', value: sym + totalDebtLeft.toFixed(2), sub: 'total remaining' })}
+                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
+                <p className={`text-xs mb-0.5 ${totalDebtLeft > 0 ? 'text-red-300' : 'text-green-300'}`}>Still Owed</p>
+                <p className="text-white font-bold text-sm tabular-nums truncate">{sym}{totalDebtLeft.toFixed(2)}</p>
+                <p className="text-white/50 text-[10px]">remaining</p>
+              </button>
+            </div>
           </div>
         )}
 

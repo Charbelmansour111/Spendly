@@ -293,20 +293,38 @@ export default function Budgets() {
           </div>
         )}
         {budgets.length > 0 && (
-          <div className="grid grid-cols-3 gap-2 mb-6">
-            {[
-              { label: 'Total Budget', value: `${currencySymbol}${totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, textColor: 'text-violet-700 dark:text-violet-300', bg: 'bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/30', icon: '📊' },
-              { label: 'Total Spent',  value: `${currencySymbol}${totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: totalBudget > 0 ? `${((totalSpent/totalBudget)*100).toFixed(0)}% used` : '0% used', textColor: totalSpent > totalBudget ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400', bg: totalSpent > totalBudget ? 'bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30' : 'bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/30', icon: totalSpent > totalBudget ? '💸' : '✅' },
-              { label: 'Over Limit',   value: String(overCount), sub: overCount === 0 ? 'All under budget' : `${overCount} exceeded`, textColor: overCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400', bg: overCount > 0 ? 'bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30' : 'bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/30', icon: overCount > 0 ? '⚠️' : '🎯' },
-            ].map((card, i) => (
-              <button key={i} onClick={() => setNumModal({ label: card.label, value: card.value, sub: card.sub })}
-                className={`${card.bg} rounded-2xl p-3 sm:p-4 min-w-0 text-left active:scale-95 transition-transform`}>
-                <p className="text-base mb-1">{card.icon}</p>
-                <p className={`text-sm sm:text-lg font-bold tabular-nums truncate ${card.textColor}`}>{card.value}</p>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{card.label}</p>
-                {card.sub && <p className={`text-[10px] sm:text-xs mt-0.5 truncate ${card.textColor} opacity-70`}>{card.sub}</p>}
+          <div className="bg-linear-to-br from-violet-600 via-violet-700 to-purple-800 rounded-3xl p-6 mb-6 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10 pointer-events-none">
+              <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white" />
+              <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white" />
+            </div>
+            <div className="relative">
+              <p className="text-violet-200 text-xs font-medium mb-1">{monthName} · Budget Overview</p>
+              <p className={`text-4xl font-bold tabular-nums mb-1 ${totalSpent > totalBudget ? 'text-red-200' : 'text-white'}`}>
+                {currencySymbol}{Math.max(totalBudget - totalSpent, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-violet-200 text-xs">{totalSpent > totalBudget ? 'over budget this month' : 'remaining this month'}</p>
+            </div>
+            <div className="relative grid grid-cols-3 gap-2 mt-4">
+              <button onClick={() => setNumModal({ label: 'Total Budget', value: currencySymbol + totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
+                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
+                <p className="text-violet-200 text-xs mb-0.5">Budget</p>
+                <p className="text-white font-bold text-sm tabular-nums truncate">{currencySymbol}{totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-white/50 text-[10px]">{budgets.length} categor{budgets.length !== 1 ? 'ies' : 'y'}</p>
               </button>
-            ))}
+              <button onClick={() => setNumModal({ label: 'Total Spent', value: currencySymbol + totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), sub: totalBudget > 0 ? ((totalSpent/totalBudget)*100).toFixed(0) + '% used' : '' })}
+                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
+                <p className="text-red-300 text-xs mb-0.5">Spent</p>
+                <p className="text-white font-bold text-sm tabular-nums truncate">{currencySymbol}{totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-white/50 text-[10px]">{totalBudget > 0 ? ((totalSpent/totalBudget)*100).toFixed(0) + '% used' : '0% used'}</p>
+              </button>
+              <button onClick={() => setNumModal({ label: 'Over Limit', value: String(overCount), sub: overCount === 0 ? 'All clear' : overCount + ' exceeded' })}
+                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
+                <p className={`text-xs mb-0.5 ${overCount > 0 ? 'text-red-300' : 'text-green-300'}`}>Over Limit</p>
+                <p className="text-white font-bold text-sm tabular-nums">{overCount}</p>
+                <p className="text-white/50 text-[10px]">{overCount === 0 ? 'all good ✓' : 'exceeded'}</p>
+              </button>
+            </div>
           </div>
         )}
 
