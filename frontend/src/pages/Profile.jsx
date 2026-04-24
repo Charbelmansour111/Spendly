@@ -189,7 +189,7 @@ export default function Profile() {
             </div>
 
             {/* Stats row */}
-            <div className="grid grid-cols-3 gap-2 mt-5 pt-5 border-t border-white/15">
+            <div className="flex justify-around mt-5 pt-5 border-t border-white/15">
               {[
                 { label: 'Currency', val: user?.currency || 'USD' },
                 { label: 'Savings Target', val: (prefs.savingsTarget ?? 20) + '%' },

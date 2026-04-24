@@ -455,7 +455,7 @@ export default function Wellness() {
                   <span className="text-2xl">{a.icon}</span>
                   <div>
                     <p className="text-xs font-bold text-gray-800 dark:text-white">{a.title}</p>
-                    <p className="text-[10px] text-gray-400 leading-snug">{a.desc}</p>
+                    <p className="text-xs text-gray-400 leading-snug">{a.desc}</p>
                   </div>
                 </div>
               ))}

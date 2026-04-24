@@ -303,7 +303,7 @@ function Landing() {
 
       {/* Stats strip */}
       <section className="border-y border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40">
-        <div className="max-w-4xl mx-auto px-6 py-10 grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
+        <div className="max-w-4xl mx-auto px-6 py-10 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 text-center">
           {[
             { value: '100%', label: 'Free forever' },
             { value: '8', label: 'Currencies' },

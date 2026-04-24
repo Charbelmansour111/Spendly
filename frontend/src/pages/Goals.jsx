@@ -300,12 +300,12 @@ export default function Goals() {
                 {/* Goal type picker */}
                 <div>
                   <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">What are you saving for?</label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-4 gap-1.5">
                     {GOAL_TYPES.map(t => (
                       <button key={t.key} type="button" onClick={() => setSavingForm(f => ({ ...f, goal_type: t.key }))}
                         className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border-2 transition ${savingForm.goal_type === t.key ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 hover:border-violet-300'}`}>
-                        <span className="text-xl">{t.emoji}</span>
-                        <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 leading-tight text-center">{t.label}</span>
+                        <span className="text-lg sm:text-xl">{t.emoji}</span>
+                        <span className="text-[9px] sm:text-[10px] font-medium text-gray-600 dark:text-gray-300 leading-tight text-center">{t.label}</span>
                       </button>
                     ))}
                   </div>

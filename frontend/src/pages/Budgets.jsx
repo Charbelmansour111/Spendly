@@ -14,7 +14,7 @@ function Toast({ message, type, onClose }) {
       type === 'error' ? 'bg-red-500' : 'bg-green-500'
     }`}>
       <span className="flex-1 min-w-0">{message}</span>
-      <button onClick={onClose} className="flex-shrink-0 hover:opacity-70">✕</button>
+      <button onClick={onClose} className="shrink-0 hover:opacity-70">✕</button>
     </div>
   )
 }
@@ -293,17 +293,17 @@ export default function Budgets() {
           </div>
         )}
         {budgets.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-3 gap-2 mb-6">
             {[
               { label: 'Total Budget', value: `${currencySymbol}${totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: 'text-violet-600' },
               { label: 'Total Spent',  value: `${currencySymbol}${totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: totalSpent > totalBudget ? 'text-red-500' : 'text-green-600', sub: totalBudget > 0 ? `${((totalSpent/totalBudget)*100).toFixed(0)}% used` : '0% used' },
               { label: 'Over Budget',  value: String(overCount), color: overCount > 0 ? 'text-red-500' : 'text-green-600', sub: overCount === 0 ? '✅ All clear' : `${overCount} over` },
             ].map((card, i) => (
               <button key={i} onClick={() => setNumModal({ label: card.label, value: card.value, sub: card.sub })}
-                className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm min-w-0 text-left active:scale-95 transition-transform">
-                <p className="text-xs text-gray-400 mb-1 truncate">{card.label}</p>
-                <p className={`text-lg font-bold tabular-nums truncate ${card.color}`}>{card.value}</p>
-                {card.sub && <p className="text-xs text-gray-400 mt-0.5 truncate">{card.sub}</p>}
+                className="bg-white dark:bg-gray-800 rounded-2xl p-3 sm:p-4 shadow-sm min-w-0 text-left active:scale-95 transition-transform">
+                <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">{card.label}</p>
+                <p className={`text-sm sm:text-lg font-bold tabular-nums truncate ${card.color}`}>{card.value}</p>
+                {card.sub && <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{card.sub}</p>}
               </button>
             ))}
           </div>
@@ -330,7 +330,7 @@ export default function Budgets() {
             </div>
             <div className="flex-1" />
             <button onClick={() => setShowForm(v => !v)}
-              className="flex-shrink-0 bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700 transition">
+              className="shrink-0 bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700 transition">
               {showForm ? '✕ Cancel' : '+ Set Budget'}
             </button>
           </div>
@@ -416,14 +416,14 @@ export default function Budgets() {
                   isOver ? 'border-red-500' : isWarning ? 'border-orange-400' : 'border-green-500'
                 }`}>
                   <div className="flex items-start gap-3 mb-3 min-w-0">
-                    <span className="text-2xl flex-shrink-0">{CAT_ICONS[b.category] || '📦'}</span>
+                    <span className="text-2xl shrink-0">{CAT_ICONS[b.category] || '📦'}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-gray-800 dark:text-white">
                           {b.name ? b.name : b.category}
                         </h3>
                         {b.name && <span className="text-xs text-gray-400">({b.category})</span>}
-                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold shrink-0 ${
                           isOver ? 'bg-red-100 text-red-600' : isWarning ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
                         }`}>
                           {isOver ? '🔴 Over' : isWarning ? '🟠 Warning' : '✅ On Track'}
@@ -431,7 +431,7 @@ export default function Budgets() {
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">{periodLabel} · {b.period}</p>
                     </div>
-                    <button onClick={() => handleDelete(b.id)} className="flex-shrink-0 text-gray-300 hover:text-red-400 transition p-1">
+                    <button onClick={() => handleDelete(b.id)} className="shrink-0 text-gray-300 hover:text-red-400 transition p-1">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
                       </svg>
@@ -450,9 +450,9 @@ export default function Budgets() {
                       <span className={`font-bold tabular-nums truncate ${isOver ? 'text-red-500' : 'text-gray-800 dark:text-white'}`}>
                         {currencySymbol}{b.spent.toFixed(2)}
                       </span>
-                      <span className="text-gray-400 text-xs flex-shrink-0">of {currencySymbol}{b.limit.toFixed(2)}</span>
+                      <span className="text-gray-400 text-xs shrink-0">of {currencySymbol}{b.limit.toFixed(2)}</span>
                     </div>
-                    <span className={`text-xs font-semibold flex-shrink-0 ${isOver ? 'text-red-500' : isWarning ? 'text-orange-500' : 'text-green-600'}`}>
+                    <span className={`text-xs font-semibold shrink-0 ${isOver ? 'text-red-500' : isWarning ? 'text-orange-500' : 'text-green-600'}`}>
                       {isOver
                         ? `${currencySymbol}${Math.abs(remaining).toFixed(2)} over`
                         : `${currencySymbol}${remaining.toFixed(2)} left`}

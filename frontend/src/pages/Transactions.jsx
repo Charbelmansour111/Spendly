@@ -442,26 +442,26 @@ export default function Transactions() {
 
         {/* Summary Strip */}
         {numModal && <NumberModal {...numModal} onClose={() => setNumModal(null)} />}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-3 gap-2 mb-5">
           <button onClick={() => setNumModal({ label: 'Total Income', value: '+' + fmtMoney(totalIncome, sym), sub: filteredIncome.length + ' entries' })}
-            className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-4 text-center active:scale-95 transition-transform">
-            <p className="text-xs text-gray-400 mb-1">Total Income</p>
-            <p className="text-base font-bold text-green-600 tabular-nums truncate">+{fmtMoney(totalIncome, sym)}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{filteredIncome.length} entr{filteredIncome.length !== 1 ? 'ies' : 'y'}</p>
+            className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-3 sm:p-4 text-center active:scale-95 transition-transform">
+            <p className="text-[10px] sm:text-xs text-gray-400 mb-1">Total Income</p>
+            <p className="text-sm sm:text-base font-bold text-green-600 tabular-nums truncate">+{fmtMoney(totalIncome, sym)}</p>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">{filteredIncome.length} entr{filteredIncome.length !== 1 ? 'ies' : 'y'}</p>
           </button>
           <button onClick={() => setNumModal({ label: 'Total Spent', value: '-' + fmtMoney(totalExpenses, sym), sub: filteredExpenses.length + ' expenses' })}
-            className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-4 text-center active:scale-95 transition-transform">
-            <p className="text-xs text-gray-400 mb-1">Total Spent</p>
-            <p className="text-base font-bold text-red-500 tabular-nums truncate">-{fmtMoney(totalExpenses, sym)}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}</p>
+            className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-3 sm:p-4 text-center active:scale-95 transition-transform">
+            <p className="text-[10px] sm:text-xs text-gray-400 mb-1">Total Spent</p>
+            <p className="text-sm sm:text-base font-bold text-red-500 tabular-nums truncate">-{fmtMoney(totalExpenses, sym)}</p>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">{filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}</p>
           </button>
           <button onClick={() => setNumModal({ label: 'Balance', value: (net >= 0 ? '+' : '') + fmtMoney(net, sym), sub: net >= 0 ? 'surplus' : 'deficit' })}
-            className={`rounded-2xl p-4 text-center active:scale-95 transition-transform ${net >= 0 ? 'bg-violet-50 dark:bg-violet-900/20' : 'bg-orange-50 dark:bg-orange-900/20'}`}>
-            <p className="text-xs text-gray-400 mb-1">Balance</p>
-            <p className={`text-base font-bold tabular-nums truncate ${net >= 0 ? 'text-violet-600' : 'text-orange-500'}`}>
+            className={`rounded-2xl p-3 sm:p-4 text-center active:scale-95 transition-transform ${net >= 0 ? 'bg-violet-50 dark:bg-violet-900/20' : 'bg-orange-50 dark:bg-orange-900/20'}`}>
+            <p className="text-[10px] sm:text-xs text-gray-400 mb-1">Balance</p>
+            <p className={`text-sm sm:text-base font-bold tabular-nums truncate ${net >= 0 ? 'text-violet-600' : 'text-orange-500'}`}>
               {net >= 0 ? '+' : ''}{fmtMoney(net, sym)}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">{net >= 0 ? 'surplus' : 'deficit'}</p>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">{net >= 0 ? 'surplus' : 'deficit'}</p>
           </button>
         </div>
 

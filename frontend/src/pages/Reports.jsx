@@ -382,10 +382,10 @@ export default function Reports() {
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
                 <SectionHeader icon="📅" title="Daily Spending" subtitle={`Every day you spent money in ${monthName}`} />
                 <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={dailyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                  <BarChart data={dailyData} margin={{ top: 0, right: 4, left: -28, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                     <XAxis dataKey="day" tick={{ fontSize: 9 }} stroke="#9CA3AF" />
-                    <YAxis tick={{ fontSize: 9 }} stroke="#9CA3AF" />
+                    <YAxis tick={{ fontSize: 9 }} stroke="#9CA3AF" width={40} />
                     <Tooltip formatter={v => fmt(v, sym)} labelFormatter={l => `Day ${l}`} />
                     <Bar dataKey="amount" fill="#7C3AED" radius={[3, 3, 0, 0]} name="Spent" />
                   </BarChart>
@@ -428,10 +428,10 @@ export default function Reports() {
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
                 <SectionHeader icon="💵" title="Income by Source" subtitle={`${income.length} income entr${income.length !== 1 ? 'ies' : 'y'} this month`} />
                 <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={incomeBySource} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+                  <BarChart data={incomeBySource} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                     <XAxis type="number" tick={{ fontSize: 10 }} stroke="#9CA3AF" />
-                    <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} stroke="#9CA3AF" width={70} />
+                    <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} stroke="#9CA3AF" width={60} />
                     <Tooltip formatter={v => fmt(v, sym)} />
                     <Bar dataKey="value" fill="#10B981" radius={[0, 4, 4, 0]} name="Income" />
                   </BarChart>
@@ -444,7 +444,7 @@ export default function Reports() {
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
                 <SectionHeader icon="📈" title="6-Month Income vs Spending" subtitle="How your cash flow evolved" />
                 <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={trendChartData} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+                  <LineChart data={trendChartData} margin={{ top: 0, right: 4, left: -28, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="#9CA3AF" />
                     <YAxis tick={{ fontSize: 10 }} stroke="#9CA3AF" />
