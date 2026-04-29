@@ -52,10 +52,11 @@ import Transactions from './pages/Transactions'
 import Subscriptions from './pages/Subscriptions'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
-import AdvisorApply from './pages/AdvisorApply'
-import AdvisorDashboard from './pages/AdvisorDashboard'
-import AdvisorDirectory from './pages/AdvisorDirectory'
-import AdminAdvisors from './pages/AdminAdvisors'
+// Advisor feature disabled — re-enable when ready
+// import AdvisorApply from './pages/AdvisorApply'
+// import AdvisorDashboard from './pages/AdvisorDashboard'
+// import AdvisorDirectory from './pages/AdvisorDirectory'
+// import AdminAdvisors from './pages/AdminAdvisors'
 
 function App() {
   return (
@@ -89,11 +90,11 @@ function App() {
         <Route path="/business/*"            element={<Navigate to="/dashboard" replace />} />
         <Route path="/alerts"                element={<Navigate to="/budgets" replace />} />
 
-        {/* Advisor */}
-        <Route path="/advisor/apply"         element={<AdvisorApply />} />
-        <Route path="/advisor/dashboard"     element={<AdvisorDashboard />} />
-        <Route path="/advisors"              element={<AdvisorDirectory />} />
-        <Route path="/admin/advisors"        element={<AdminAdvisors />} />
+        {/* Advisor — disabled, redirect to dashboard */}
+        <Route path="/advisor/apply"         element={<Navigate to="/dashboard" replace />} />
+        <Route path="/advisor/dashboard"     element={<Navigate to="/dashboard" replace />} />
+        <Route path="/advisors"              element={<Navigate to="/dashboard" replace />} />
+        <Route path="/admin/advisors"        element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   )

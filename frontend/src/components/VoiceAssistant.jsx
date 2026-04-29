@@ -18,19 +18,16 @@ const NAV_LABELS = {
   '/reports': 'Reports', '/insights': 'AI Insights',
 }
 
-const ACTION_NAV = {
-  add_expense: '/transactions', add_income: '/transactions',
-  set_budget: '/budgets', add_goal: '/goals', add_debt: '/goals',
-}
-
 export default function VoiceAssistant({ onClose }) {
   const [status, setStatus] = useState('idle')
   const [conversation, setConversation] = useState([])
   const [actionBanner, setActionBanner] = useState(null)
   const [inputHint, setInputHint] = useState('')
+  const [textInput, setTextInput] = useState('')
 
   const micLang = localStorage.getItem('spendly_lang_mic') || 'en-US'
   const responseLang = localStorage.getItem('spendly_lang_app') || localStorage.getItem('spendly_lang_response') || 'en-US'
+  const isRTL = micLang.startsWith('ar') || responseLang.startsWith('ar')
 
   const recognitionRef = useRef(null)
   const transcriptRef = useRef('')
@@ -54,7 +51,7 @@ export default function VoiceAssistant({ onClose }) {
   }, [])
 
   const executeIntent = useCallback(async (result, userText) => {
-    const { intent, data, navigate_to, response, question, partial_intent, partial_data } = result
+    const { intent, data, navigate_to, response, question } = result
 
     if (intent === 'need_more_info') {
       const q = response || question || ''
@@ -63,13 +60,23 @@ export default function VoiceAssistant({ onClose }) {
         { role: 'user', content: userText },
         { role: 'assistant', content: q }
       )
-      speak(q, () => setTimeout(() => startListeningRef.current?.(), 400))
-      setStatus('listening')
       setInputHint(q)
+      setStatus('idle') // show idle — mic will auto-start after speaking
+
+      // Speak question then start listening. Fallback timer handles broken onEnd.
+      let started = false
+      const doStart = () => {
+        if (started) return
+        started = true
+        setTimeout(() => startListeningRef.current?.(), 400)
+      }
+      speak(q, doStart)
+      // Estimate speech duration as fallback if onEnd never fires
+      const fallbackMs = Math.min(q.length * 90 + 1500, 6000)
+      setTimeout(doStart, fallbackMs)
       return
     }
 
-    // Regular intent — show AI response
     if (response) {
       addMessage('ai', response)
       speak(response)
@@ -88,18 +95,21 @@ export default function VoiceAssistant({ onClose }) {
         const label = `${data.description || 'Expense'} — ${data.amount}`
         setActionBanner({ state: 'done', text: label, nav: '/transactions' })
         historyRef.current = []
+        setInputHint('')
         setTimeout(() => { window.location.href = '/transactions' }, 2500)
 
       } else if (intent === 'add_income' && data) {
         await API.post('/income', data)
         setActionBanner({ state: 'done', text: `Income logged — ${data.amount}`, nav: '/transactions' })
         historyRef.current = []
+        setInputHint('')
         setTimeout(() => { window.location.href = '/transactions' }, 2500)
 
       } else if (intent === 'set_budget' && data) {
         await API.post('/budgets', data)
         setActionBanner({ state: 'done', text: `${data.category} budget → ${data.amount}`, nav: '/budgets' })
         historyRef.current = []
+        setInputHint('')
         setTimeout(() => { window.location.href = '/budgets' }, 2500)
 
       } else if (intent === 'add_goal' && data) {
@@ -112,6 +122,7 @@ export default function VoiceAssistant({ onClose }) {
         }
         setActionBanner({ state: 'done', text: `Goal created: ${data.name}`, nav: '/goals' })
         historyRef.current = []
+        setInputHint('')
         setTimeout(() => { window.location.href = '/goals' }, 2500)
 
       } else {
@@ -129,6 +140,7 @@ export default function VoiceAssistant({ onClose }) {
     if (!text.trim()) return
     setStatus('processing')
     setInputHint('')
+    setTextInput('')
     addMessage('user', text)
     const historySnapshot = [...historyRef.current]
 
@@ -154,6 +166,9 @@ export default function VoiceAssistant({ onClose }) {
       return
     }
 
+    // Abort any existing recognition before starting a new one
+    try { recognitionRef.current?.abort() } catch { /* noop */ }
+
     const recognition = new SpeechRecognition()
     recognition.lang = micLang
     recognition.interimResults = true
@@ -170,7 +185,7 @@ export default function VoiceAssistant({ onClose }) {
       const captured = transcriptRef.current
       transcriptRef.current = ''
       if (captured) sendToAI(captured)
-      else { setStatus('idle') }
+      else setStatus('idle')
     }
     recognition.onerror = (e) => {
       if (e.error !== 'no-speech') {
@@ -198,18 +213,30 @@ export default function VoiceAssistant({ onClose }) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stopListening = () => recognitionRef.current?.stop()
+
   const reset = () => {
     historyRef.current = []
     setConversation([])
     setActionBanner(null)
     setInputHint('')
+    setTextInput('')
     setStatus('idle')
     setTimeout(() => startListening(), 200)
+  }
+
+  const handleTextSubmit = (e) => {
+    e.preventDefault()
+    const txt = textInput.trim()
+    if (!txt || status === 'processing') return
+    // Stop mic if active, then send
+    try { recognitionRef.current?.abort() } catch { /* noop */ }
+    sendToAI(txt)
   }
 
   const isListening = status === 'listening'
   const isProcessing = status === 'processing'
   const isDone = status === 'done' || status === 'error'
+  const awaitingFollowUp = !!inputHint && !isProcessing && !isDone
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-end sm:justify-center bg-black/75 backdrop-blur-sm px-4 pb-4 sm:pb-0"
@@ -268,19 +295,19 @@ export default function VoiceAssistant({ onClose }) {
                 )}
               </button>
             </div>
-            <p className="text-white text-xs font-semibold mt-2 min-h-[16px]">
-              {isListening ? t('listening') : isProcessing ? t('processing') : isDone ? t('tap_again') : t('tap_to_speak')}
+            <p className="text-white text-xs font-semibold mt-2 min-h-4">
+              {isListening ? t('listening') : isProcessing ? t('processing') : isDone ? t('tap_again') : awaitingFollowUp ? t('tap_to_speak') : t('tap_to_speak')}
             </p>
-            {inputHint && (
-              <p className="text-white/70 text-[10px] text-center mt-1 max-w-[220px] leading-relaxed">
-                ↑ {inputHint}
+            {inputHint && !isProcessing && (
+              <p className="text-white/80 text-[11px] text-center mt-1 max-w-55 leading-relaxed bg-white/10 px-3 py-1.5 rounded-full" dir={isRTL ? 'rtl' : 'ltr'}>
+                {inputHint}
               </p>
             )}
           </div>
         </div>
 
         {/* Conversation */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-[100px]">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-25" dir={isRTL ? 'rtl' : 'ltr'}>
           {conversation.length === 0 && status === 'idle' && (
             <div className="text-center pt-2 space-y-2">
               <p className="text-xs text-gray-400 font-medium">{t('try_saying')}</p>
@@ -328,6 +355,26 @@ export default function VoiceAssistant({ onClose }) {
           )}
           <div ref={convEndRef} />
         </div>
+
+        {/* Text input — shown when AI is awaiting a follow-up answer */}
+        {awaitingFollowUp && (
+          <form onSubmit={handleTextSubmit}
+            className="px-4 pb-3 pt-2 shrink-0 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+            <input
+              type="text"
+              value={textInput}
+              onChange={e => setTextInput(e.target.value)}
+              placeholder="Type your answer…"
+              dir={isRTL ? 'rtl' : 'ltr'}
+              autoFocus
+              className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:border-violet-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            />
+            <button type="submit" disabled={!textInput.trim()}
+              className="bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40 hover:bg-violet-700 transition">
+              ↑
+            </button>
+          </form>
+        )}
 
         {/* Footer */}
         <div className="px-4 pb-4 pt-2 shrink-0 text-center border-t border-gray-100 dark:border-gray-800">

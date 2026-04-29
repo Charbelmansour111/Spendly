@@ -605,6 +605,9 @@ export default function Dashboard() {
     const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
     return !localStorage.getItem(`spendly_onboarded_${uid}`)
   })
+  const [dismissedGoals, setDismissedGoals] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('spendly_dismissed_goals') || '[]') } catch { return [] }
+  })
 
   // Carousel + news state
   const [carouselPanel, setCarousel]  = useState(0)
@@ -1346,28 +1349,44 @@ export default function Dashboard() {
         </div>
 
         {/* Savings Goals Preview */}
-        {savingsGoals.length > 0 && (
+        {savingsGoals.filter(g => !dismissedGoals.includes(g.id)).length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Savings Goals</h3>
-              <a href="/savings" className="text-violet-600 text-xs font-semibold hover:underline">View all</a>
+              <a href="/goals" className="text-violet-600 text-xs font-semibold hover:underline">View all</a>
             </div>
             <div className="space-y-3">
-              {savingsGoals.slice(0, 3).map((g, i) => {
+              {savingsGoals.filter(g => !dismissedGoals.includes(g.id)).slice(0, 3).map((g, i) => {
                 const saved  = safeNum(g.saved_amount)
                 const target = safeNum(g.target_amount)
                 const pct    = target > 0 ? Math.min((saved / target) * 100, 100) : 0
+                const isComplete = pct >= 100
                 return (
                   <div key={g.id}>
                     <div className="flex justify-between items-center mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{['🏖️','🚗','🏠','💻','✈️'][i % 5]}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base shrink-0">{['🏖️','🚗','🏠','💻','✈️'][i % 5]}</span>
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate max-w-32">{g.name}</span>
+                        {isComplete && <span className="text-[10px] bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Done!</span>}
                       </div>
-                      <span className="text-xs text-gray-500 tabular-nums">{Math.round(pct)}%</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-gray-500 tabular-nums">{Math.round(pct)}%</span>
+                        {isComplete && (
+                          <button
+                            onClick={() => {
+                              const updated = [...dismissedGoals, g.id]
+                              setDismissedGoals(updated)
+                              localStorage.setItem('spendly_dismissed_goals', JSON.stringify(updated))
+                            }}
+                            title="Remove from dashboard"
+                            className="text-gray-300 hover:text-red-400 dark:text-gray-600 dark:hover:text-red-500 transition p-0.5 rounded">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
-                      <div className={`h-2 rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : 'bg-violet-500'}`}
+                      <div className={`h-2 rounded-full transition-all ${isComplete ? 'bg-green-500' : 'bg-violet-500'}`}
                         style={{ width: pct + '%' }} />
                     </div>
                     <div className="flex justify-between mt-0.5">

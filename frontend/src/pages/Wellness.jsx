@@ -299,7 +299,7 @@ export default function Wellness() {
         </div>
 
         {/* Health Score Card */}
-        <div className="bg-linear-to-br from-violet-600 to-indigo-700 rounded-3xl p-6 text-white overflow-hidden relative">
+        <div className="bg-linear-to-br from-rose-500 to-pink-700 rounded-3xl p-6 text-white overflow-hidden relative">
           <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-12 translate-x-12" />
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8" />
           <div className="relative flex flex-col md:flex-row items-center gap-6">
@@ -355,39 +355,34 @@ export default function Wellness() {
             </div>
           </div>
         )}
-        <div className="bg-linear-to-br from-violet-600 via-violet-700 to-purple-800 rounded-3xl p-6 relative overflow-hidden">
+        <div className="bg-linear-to-br from-rose-400 to-pink-600 rounded-2xl px-5 py-4 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white" />
-            <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white" />
+            <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
+            <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
           </div>
-          <div className="relative">
-            <p className="text-violet-200 text-xs font-medium mb-1">{monthName} · Financial Wellness</p>
-            <p className="text-4xl font-bold text-white tabular-nums mb-1">
-              {data?.score ?? '—'}<span className="text-violet-300 text-lg font-medium"> / 100</span>
-            </p>
-            <p className="text-violet-200 text-xs">
-              {!data ? 'Tap Calculate to see your score' : data.score >= 80 ? 'Excellent financial health' : data.score >= 60 ? 'Good — room to improve' : data.score >= 40 ? 'Fair — focus on key areas' : 'Work in progress'}
-            </p>
+          <div className="relative mb-3">
+            <p className="text-white font-bold text-base">My Wellness</p>
+            <p className="text-white/70 text-xs">{monthName} · {!data ? 'Calculate your score above' : data.score >= 80 ? 'Excellent health 🌟' : data.score >= 60 ? 'Good — keep going' : 'Work in progress'}</p>
           </div>
-          <div className="relative grid grid-cols-4 gap-2 mt-4">
+          <div className="relative grid grid-cols-4 gap-2">
             <button onClick={() => setNumModal({ label: 'Income', value: currencySymbol + totalIncome.toFixed(2), sub: monthName })}
-              className="bg-white/15 rounded-2xl px-2 py-3 text-left active:scale-95 transition-transform">
-              <p className="text-green-300 text-xs mb-0.5">Income</p>
-              <p className="text-white font-bold text-xs tabular-nums truncate">{currencySymbol}{totalIncome.toFixed(2)}</p>
+              className="bg-white/20 rounded-xl px-2 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-white/70 text-[10px] mb-0.5">Income</p>
+              <p className="text-white font-bold text-xs tabular-nums truncate">{currencySymbol}{totalIncome.toFixed(0)}</p>
             </button>
             <button onClick={() => setNumModal({ label: 'Spent', value: currencySymbol + totalSpent.toFixed(2), sub: monthName })}
-              className="bg-white/15 rounded-2xl px-2 py-3 text-left active:scale-95 transition-transform">
-              <p className="text-red-300 text-xs mb-0.5">Spent</p>
-              <p className="text-white font-bold text-xs tabular-nums truncate">{currencySymbol}{totalSpent.toFixed(2)}</p>
+              className="bg-white/20 rounded-xl px-2 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-white/70 text-[10px] mb-0.5">Spent</p>
+              <p className="text-white font-bold text-xs tabular-nums truncate">{currencySymbol}{totalSpent.toFixed(0)}</p>
             </button>
             <button onClick={() => setNumModal({ label: 'Balance', value: (balance >= 0 ? '+' : '') + currencySymbol + Math.abs(balance).toFixed(2), sub: balance >= 0 ? 'surplus' : 'deficit' })}
-              className="bg-white/15 rounded-2xl px-2 py-3 text-left active:scale-95 transition-transform">
-              <p className={`text-xs mb-0.5 ${balance >= 0 ? 'text-green-300' : 'text-red-300'}`}>Balance</p>
-              <p className="text-white font-bold text-xs tabular-nums truncate">{balance >= 0 ? '+' : '-'}{currencySymbol}{Math.abs(balance).toFixed(2)}</p>
+              className="bg-white/20 rounded-xl px-2 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-white/70 text-[10px] mb-0.5">Balance</p>
+              <p className="text-white font-bold text-xs tabular-nums truncate">{balance >= 0 ? '+' : '-'}{currencySymbol}{Math.abs(balance).toFixed(0)}</p>
             </button>
             <button onClick={() => setNumModal({ label: 'Tracking Streak', value: streak + ' days', sub: 'consecutive tracking' })}
-              className="bg-white/15 rounded-2xl px-2 py-3 text-left active:scale-95 transition-transform">
-              <p className="text-orange-300 text-xs mb-0.5">Streak</p>
+              className="bg-white/20 rounded-xl px-2 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-white/70 text-[10px] mb-0.5">Streak</p>
               <p className="text-white font-bold text-xs tabular-nums">{streak}d</p>
             </button>
           </div>

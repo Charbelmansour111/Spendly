@@ -47,11 +47,8 @@ const TAB_ITEMS = [
 // const BUSINESS_NAV = [...]
 // const BUSINESS_TABS = [...]
 
-const ADVISOR_NAV = [
-  { key: 'Advisor Dashboard', icon: 'home',    href: '/advisor/dashboard' },
-  { key: 'Find Advisors',     icon: 'profile', href: '/advisors' },
-  { key: 'Profile',           icon: 'profile', href: '/profile' },
-]
+// Advisor nav disabled
+// const ADVISOR_NAV = [...]
 
 function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCount, onLogout, navItems }) {
   return (
@@ -151,10 +148,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
     }
   }
 
-  // Business mode disabled — always use personal nav
-  // const isBusiness = user?.account_type === 'business'
-  const isAdvisor = user?.account_subtype === 'advisor_approved'
-  const activeNavItems = isAdvisor ? ADVISOR_NAV : NAV_ITEMS
+  const activeNavItems = NAV_ITEMS
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {

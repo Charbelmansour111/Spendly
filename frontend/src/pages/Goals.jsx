@@ -242,32 +242,31 @@ export default function Goals() {
         {/* Overview */}
         {numModal && <NumberModal {...numModal} onClose={() => setNumModal(null)} />}
         {(goals.length > 0 || debts.length > 0) && (
-          <div className="bg-linear-to-br from-violet-600 via-violet-700 to-purple-800 rounded-3xl p-6 mb-6 relative overflow-hidden">
+          <div className="bg-linear-to-br from-emerald-400 to-teal-600 rounded-2xl px-5 py-4 mb-6 relative overflow-hidden">
             <div className="absolute inset-0 opacity-10 pointer-events-none">
-              <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white" />
-              <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white" />
+              <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
+              <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
             </div>
-            <div className="relative">
-              <p className="text-violet-200 text-xs font-medium mb-1">Goals & Debts Overview</p>
-              <p className="text-4xl font-bold text-white tabular-nums mb-1">{sym}{totalSaved.toFixed(2)}</p>
-              <p className="text-violet-200 text-xs">saved across {goals.length} goal{goals.length !== 1 ? 's' : ''}</p>
+            <div className="relative mb-3">
+              <p className="text-white font-bold text-base">Goals & Debts</p>
+              <p className="text-white/70 text-xs">{sym}{totalSaved.toFixed(0)} saved · {goals.length} goal{goals.length !== 1 ? 's' : ''}</p>
             </div>
-            <div className="relative grid grid-cols-3 gap-2 mt-4">
+            <div className="relative grid grid-cols-3 gap-2">
               <button onClick={() => setNumModal({ label: 'Active Goals', value: String(activeGoals.length), sub: completedGoals.length + ' completed' })}
-                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
-                <p className="text-violet-200 text-xs mb-0.5">Active Goals</p>
+                className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+                <p className="text-white/70 text-[10px] mb-0.5">Active Goals</p>
                 <p className="text-white font-bold text-sm tabular-nums">{activeGoals.length}</p>
                 <p className="text-white/50 text-[10px]">{completedGoals.length} completed</p>
               </button>
               <button onClick={() => setNumModal({ label: 'Active Debts', value: String(activeDebts.length), sub: paidOffDebts.length + ' paid off' })}
-                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
-                <p className="text-red-300 text-xs mb-0.5">Active Debts</p>
+                className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+                <p className="text-white/70 text-[10px] mb-0.5">Active Debts</p>
                 <p className="text-white font-bold text-sm tabular-nums">{activeDebts.length}</p>
                 <p className="text-white/50 text-[10px]">{paidOffDebts.length} paid off</p>
               </button>
               <button onClick={() => setNumModal({ label: 'Still Owed', value: sym + totalDebtLeft.toFixed(2), sub: 'total remaining' })}
-                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
-                <p className={`text-xs mb-0.5 ${totalDebtLeft > 0 ? 'text-red-300' : 'text-green-300'}`}>Still Owed</p>
+                className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+                <p className="text-white/70 text-[10px] mb-0.5">Still Owed</p>
                 <p className="text-white font-bold text-sm tabular-nums truncate">{sym}{totalDebtLeft.toFixed(2)}</p>
                 <p className="text-white/50 text-[10px]">remaining</p>
               </button>

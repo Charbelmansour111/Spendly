@@ -544,8 +544,8 @@ export default function Reports() {
             <div className="space-y-5">
 
               {/* Hero score */}
-              <div className="bg-linear-to-br from-violet-600 to-indigo-700 rounded-2xl p-6 text-white">
-                <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mb-3">{monthName} Summary</p>
+              <div className="bg-linear-to-br from-purple-500 to-indigo-700 rounded-2xl px-5 py-4 text-white">
+                <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mb-2">{monthName} Summary</p>
                 <div className="flex items-center gap-5">
                   <div className={`w-16 h-16 rounded-2xl ${score.bg} flex items-center justify-center shrink-0`}>
                     <span className={`text-3xl font-black ${score.color}`}>{score.grade}</span>

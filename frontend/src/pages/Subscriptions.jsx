@@ -190,29 +190,28 @@ export default function Subscriptions() {
           <div className="space-y-5">
 
             {/* Overview */}
-            <div className="bg-linear-to-br from-violet-600 via-violet-700 to-purple-800 rounded-3xl p-6 relative overflow-hidden">
+            <div className="bg-linear-to-br from-fuchsia-500 to-pink-600 rounded-2xl px-5 py-4 relative overflow-hidden">
               <div className="absolute inset-0 opacity-10 pointer-events-none">
-                <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white" />
-                <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white" />
+                <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
+                <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
               </div>
-              <div className="relative">
-                <p className="text-violet-200 text-xs font-medium mb-1">Subscriptions Overview</p>
-                <p className="text-4xl font-bold text-white tabular-nums mb-1">{sym}{monthlyTotal.toFixed(2)}</p>
-                <p className="text-violet-200 text-xs">{subs.length} active subscription{subs.length !== 1 ? 's' : ''} per month</p>
+              <div className="relative mb-3">
+                <p className="text-white font-bold text-base">Subscriptions</p>
+                <p className="text-white/70 text-xs">{subs.length} active · {sym}{monthlyTotal.toFixed(2)}/mo</p>
               </div>
-              <div className="relative grid grid-cols-3 gap-2 mt-4">
-                <div className="bg-white/15 rounded-2xl px-3 py-3">
-                  <p className="text-violet-200 text-xs mb-0.5">Per Year</p>
+              <div className="relative grid grid-cols-3 gap-2">
+                <div className="bg-white/20 rounded-xl px-3 py-2.5">
+                  <p className="text-white/70 text-[10px] mb-0.5">Per Year</p>
                   <p className="text-white font-bold text-sm tabular-nums">{sym}{yearlyTotal.toFixed(0)}</p>
                   <p className="text-white/50 text-[10px]">annually</p>
                 </div>
-                <div className="bg-white/15 rounded-2xl px-3 py-3">
-                  <p className={`text-xs mb-0.5 ${pctOfIncome > 20 ? 'text-red-300' : pctOfIncome > 10 ? 'text-amber-300' : 'text-green-300'}`}>% of Income</p>
+                <div className="bg-white/20 rounded-xl px-3 py-2.5">
+                  <p className="text-white/70 text-[10px] mb-0.5">% of Income</p>
                   <p className="text-white font-bold text-sm tabular-nums">{monthlyIncome > 0 ? pctOfIncome.toFixed(1) + '%' : '—'}</p>
                   <p className="text-white/50 text-[10px]">{pctOfIncome > 20 ? 'high' : pctOfIncome > 10 ? 'moderate' : 'healthy'}</p>
                 </div>
-                <div className="bg-white/15 rounded-2xl px-3 py-3">
-                  <p className="text-violet-200 text-xs mb-0.5">Active</p>
+                <div className="bg-white/20 rounded-xl px-3 py-2.5">
+                  <p className="text-white/70 text-[10px] mb-0.5">Active</p>
                   <p className="text-white font-bold text-sm tabular-nums">{subs.length}</p>
                   <p className="text-white/50 text-[10px]">subscriptions</p>
                 </div>

@@ -442,34 +442,31 @@ export default function Transactions() {
 
         {/* Overview */}
         {numModal && <NumberModal {...numModal} onClose={() => setNumModal(null)} />}
-        <div className="bg-linear-to-br from-violet-600 via-violet-700 to-purple-800 rounded-3xl p-6 mb-5 relative overflow-hidden">
+        <div className="bg-linear-to-br from-sky-400 to-blue-600 rounded-2xl px-5 py-4 mb-5 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white" />
-            <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white" />
+            <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
+            <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
           </div>
-          <div className="relative">
-            <p className="text-violet-200 text-xs font-medium mb-1">Net Balance</p>
-            <p className={`text-4xl font-bold tabular-nums mb-1 ${net < 0 ? 'text-red-200' : 'text-white'}`}>
-              {net >= 0 ? '+' : '-'}{fmtMoney(Math.abs(net), sym)}
-            </p>
-            <p className="text-violet-200 text-xs">{net >= 0 ? 'surplus this period' : 'deficit this period'}</p>
+          <div className="relative mb-3">
+            <p className="text-white font-bold text-base">Transactions</p>
+            <p className="text-white/70 text-xs">{net >= 0 ? `+${fmtMoney(net, sym)} surplus` : `-${fmtMoney(Math.abs(net), sym)} deficit`} this period</p>
           </div>
-          <div className="relative grid grid-cols-3 gap-2 mt-4">
+          <div className="relative grid grid-cols-3 gap-2">
             <button onClick={() => setNumModal({ label: 'Total Income', value: '+' + fmtMoney(totalIncome, sym), sub: filteredIncome.length + ' entries' })}
-              className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
-              <p className="text-green-300 text-xs mb-0.5">Income</p>
+              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-white/70 text-[10px] mb-0.5">Income</p>
               <p className="text-white font-bold text-sm tabular-nums truncate">+{fmtMoney(totalIncome, sym)}</p>
               <p className="text-white/50 text-[10px]">{filteredIncome.length} entr{filteredIncome.length !== 1 ? 'ies' : 'y'}</p>
             </button>
             <button onClick={() => setNumModal({ label: 'Total Spent', value: '-' + fmtMoney(totalExpenses, sym), sub: filteredExpenses.length + ' expenses' })}
-              className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
-              <p className="text-red-300 text-xs mb-0.5">Spent</p>
+              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-white/70 text-[10px] mb-0.5">Spent</p>
               <p className="text-white font-bold text-sm tabular-nums truncate">-{fmtMoney(totalExpenses, sym)}</p>
               <p className="text-white/50 text-[10px]">{filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}</p>
             </button>
             <button onClick={() => setNumModal({ label: 'Entries', value: String(filteredIncome.length + filteredExpenses.length), sub: 'total transactions' })}
-              className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
-              <p className="text-violet-200 text-xs mb-0.5">Entries</p>
+              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-white/70 text-[10px] mb-0.5">Entries</p>
               <p className="text-white font-bold text-sm tabular-nums">{filteredIncome.length + filteredExpenses.length}</p>
               <p className="text-white/50 text-[10px]">total</p>
             </button>

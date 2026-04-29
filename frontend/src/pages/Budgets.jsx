@@ -293,34 +293,31 @@ export default function Budgets() {
           </div>
         )}
         {budgets.length > 0 && (
-          <div className="bg-linear-to-br from-violet-600 via-violet-700 to-purple-800 rounded-3xl p-6 mb-6 relative overflow-hidden">
+          <div className="bg-linear-to-br from-amber-400 to-orange-500 rounded-2xl px-5 py-4 mb-6 relative overflow-hidden">
             <div className="absolute inset-0 opacity-10 pointer-events-none">
-              <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white" />
-              <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white" />
+              <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
+              <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
             </div>
-            <div className="relative">
-              <p className="text-violet-200 text-xs font-medium mb-1">{monthName} · Budget Overview</p>
-              <p className={`text-4xl font-bold tabular-nums mb-1 ${totalSpent > totalBudget ? 'text-red-200' : 'text-white'}`}>
-                {currencySymbol}{Math.max(totalBudget - totalSpent, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-              <p className="text-violet-200 text-xs">{totalSpent > totalBudget ? 'over budget this month' : 'remaining this month'}</p>
+            <div className="relative mb-3">
+              <p className="text-white font-bold text-base">Budgets</p>
+              <p className="text-white/70 text-xs">{monthName} · {totalSpent > totalBudget ? '⚠️ over budget' : `${currencySymbol}${(totalBudget - totalSpent).toFixed(0)} remaining`}</p>
             </div>
-            <div className="relative grid grid-cols-3 gap-2 mt-4">
+            <div className="relative grid grid-cols-3 gap-2">
               <button onClick={() => setNumModal({ label: 'Total Budget', value: currencySymbol + totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
-                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
-                <p className="text-violet-200 text-xs mb-0.5">Budget</p>
+                className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+                <p className="text-white/70 text-[10px] mb-0.5">Budget</p>
                 <p className="text-white font-bold text-sm tabular-nums truncate">{currencySymbol}{totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 <p className="text-white/50 text-[10px]">{budgets.length} categor{budgets.length !== 1 ? 'ies' : 'y'}</p>
               </button>
               <button onClick={() => setNumModal({ label: 'Total Spent', value: currencySymbol + totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), sub: totalBudget > 0 ? ((totalSpent/totalBudget)*100).toFixed(0) + '% used' : '' })}
-                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
-                <p className="text-red-300 text-xs mb-0.5">Spent</p>
+                className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+                <p className="text-white/70 text-[10px] mb-0.5">Spent</p>
                 <p className="text-white font-bold text-sm tabular-nums truncate">{currencySymbol}{totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 <p className="text-white/50 text-[10px]">{totalBudget > 0 ? ((totalSpent/totalBudget)*100).toFixed(0) + '% used' : '0% used'}</p>
               </button>
               <button onClick={() => setNumModal({ label: 'Over Limit', value: String(overCount), sub: overCount === 0 ? 'All clear' : overCount + ' exceeded' })}
-                className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
-                <p className={`text-xs mb-0.5 ${overCount > 0 ? 'text-red-300' : 'text-green-300'}`}>Over Limit</p>
+                className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+                <p className="text-white/70 text-[10px] mb-0.5">Over Limit</p>
                 <p className="text-white font-bold text-sm tabular-nums">{overCount}</p>
                 <p className="text-white/50 text-[10px]">{overCount === 0 ? 'all good ✓' : 'exceeded'}</p>
               </button>
