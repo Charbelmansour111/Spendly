@@ -242,7 +242,7 @@ export default function Goals() {
         {/* Overview */}
         {numModal && <NumberModal {...numModal} onClose={() => setNumModal(null)} />}
         {(goals.length > 0 || debts.length > 0) && (
-          <div className="bg-linear-to-br from-emerald-400 to-teal-600 rounded-2xl px-5 py-4 mb-6 relative overflow-hidden">
+          <div className="bg-linear-to-br from-red-500 to-rose-700 rounded-2xl px-5 py-4 mb-6 relative overflow-hidden">
             <div className="absolute inset-0 opacity-10 pointer-events-none">
               <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
               <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />

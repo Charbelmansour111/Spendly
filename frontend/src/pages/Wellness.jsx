@@ -299,7 +299,7 @@ export default function Wellness() {
         </div>
 
         {/* Health Score Card */}
-        <div className="bg-linear-to-br from-rose-500 to-pink-700 rounded-3xl p-6 text-white overflow-hidden relative">
+        <div className="bg-linear-to-br from-emerald-500 to-green-700 rounded-3xl p-6 text-white overflow-hidden relative">
           <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-12 translate-x-12" />
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8" />
           <div className="relative flex flex-col md:flex-row items-center gap-6">
@@ -318,7 +318,7 @@ export default function Wellness() {
             </div>
             <div className="flex-1 w-full">
               <h2 className="text-lg font-bold mb-1">Financial Health Score</h2>
-              <p className="text-violet-200 text-xs mb-4">Based on your {monthName} activity</p>
+              <p className="text-green-200 text-xs mb-4">Based on your {monthName} activity</p>
               <div className="space-y-2.5">
                 {data?.breakdown?.map((item, i) => (
                   <div key={i} className="flex items-start gap-3">

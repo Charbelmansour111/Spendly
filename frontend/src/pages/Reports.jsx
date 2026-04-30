@@ -304,23 +304,29 @@ export default function Reports() {
         {activeTab === 'analytics' && (
           <div className="space-y-5">
 
-            {/* Summary Cards */}
+            {/* Summary Cards — bubble style */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { label: 'Income',       value: fmt(totalIncome, sym), color: 'text-green-600',  change: incomeChange,   positiveGood: true },
-                { label: 'Spent',        value: fmt(total, sym),       color: 'text-red-500',    change: spendingChange, positiveGood: false },
-                { label: 'Balance',      value: (balance >= 0 ? '+' : '') + fmt(balance, sym),   color: balance >= 0 ? 'text-violet-600' : 'text-red-500', change: null },
-                { label: 'Savings Rate', value: savingsRate + '%',     color: parseFloat(savingsRate) >= 20 ? 'text-green-600' : 'text-orange-500', change: null },
+                { label: 'Income',       value: fmt(totalIncome, sym), bg: 'bg-emerald-500', icon: '💰', change: incomeChange,   positiveGood: true },
+                { label: 'Spent',        value: fmt(total, sym),       bg: 'bg-red-500',     icon: '💸', change: spendingChange, positiveGood: false },
+                { label: 'Balance',      value: (balance >= 0 ? '+' : '') + fmt(balance, sym), bg: balance >= 0 ? 'bg-violet-600' : 'bg-orange-500', icon: balance >= 0 ? '📈' : '📉', change: null },
+                { label: 'Savings Rate', value: savingsRate + '%',     bg: parseFloat(savingsRate) >= 20 ? 'bg-teal-500' : 'bg-amber-500', icon: '🎯', change: null },
               ].map((s, i) => (
                 <button key={i} onClick={() => setModalData({ label: s.label + ' — ' + monthName, value: s.value })}
-                  className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm text-left min-w-0 active:scale-95 transition-transform">
-                  <p className="text-xs text-gray-400 mb-1">{s.label}</p>
-                  <p className={`text-base font-bold tabular-nums truncate ${s.color}`}>{s.value}</p>
-                  {s.change !== null && (
-                    <p className={`text-xs mt-0.5 font-semibold ${(s.positiveGood ? s.change > 0 : s.change < 0) ? 'text-green-500' : 'text-red-500'}`}>
-                      {s.change > 0 ? '▲' : '▼'} {Math.abs(s.change)}% vs {prevMonthName.split(' ')[0]}
-                    </p>
-                  )}
+                  className="relative overflow-hidden rounded-3xl p-4 shadow-sm text-left min-w-0 active:scale-95 transition-transform group">
+                  <div className={`absolute inset-0 ${s.bg} opacity-90`} />
+                  <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10" />
+                  <div className="absolute -bottom-3 -left-3 w-12 h-12 rounded-full bg-white/10" />
+                  <div className="relative">
+                    <span className="text-2xl block mb-2">{s.icon}</span>
+                    <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wide">{s.label}</p>
+                    <p className="text-white font-black text-base tabular-nums truncate mt-0.5 leading-tight">{s.value}</p>
+                    {s.change !== null && (
+                      <p className={`text-xs mt-1.5 font-bold px-2 py-0.5 rounded-full inline-block ${(s.positiveGood ? s.change > 0 : s.change < 0) ? 'bg-white/25 text-white' : 'bg-black/20 text-white/80'}`}>
+                        {s.change > 0 ? '▲' : '▼'} {Math.abs(s.change)}%
+                      </p>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
@@ -544,7 +550,7 @@ export default function Reports() {
             <div className="space-y-5">
 
               {/* Hero score */}
-              <div className="bg-linear-to-br from-purple-500 to-indigo-700 rounded-2xl px-5 py-4 text-white">
+              <div className="bg-linear-to-br from-slate-700 to-slate-900 rounded-2xl px-5 py-4 text-white">
                 <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mb-2">{monthName} Summary</p>
                 <div className="flex items-center gap-5">
                   <div className={`w-16 h-16 rounded-2xl ${score.bg} flex items-center justify-center shrink-0`}>

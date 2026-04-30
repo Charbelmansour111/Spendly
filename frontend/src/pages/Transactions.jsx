@@ -475,45 +475,49 @@ export default function Transactions() {
 
         {/* Recurring Commitments */}
         {(recurringExpenses.length > 0 || recurringIncome.length > 0) && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-5 border border-purple-100 dark:border-purple-900/40">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/40 rounded-xl flex items-center justify-center text-base">↻</div>
-                <div>
-                  <p className="text-sm font-bold text-gray-800 dark:text-white">Recurring Commitments</p>
-                  <p className="text-xs text-gray-400">{recurringExpenses.length + recurringIncome.length} item{recurringExpenses.length + recurringIncome.length !== 1 ? 's' : ''} per month</p>
-                </div>
+          <div className="bg-linear-to-br from-sky-500 to-blue-700 rounded-2xl px-5 py-4 mb-5 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10 pointer-events-none">
+              <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
+              <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
+            </div>
+            <div className="relative flex items-center justify-between mb-3">
+              <div>
+                <p className="text-white font-bold text-base flex items-center gap-2">
+                  <span className="text-lg">↻</span> Recurring Commitments
+                </p>
+                <p className="text-white/70 text-xs mt-0.5">{recurringExpenses.length + recurringIncome.length} item{recurringExpenses.length + recurringIncome.length !== 1 ? 's' : ''} per month</p>
               </div>
-              <button onClick={() => setShowRecurring(v => !v)} className="text-xs text-violet-600 dark:text-violet-400 font-semibold hover:underline">
+              <button onClick={() => setShowRecurring(v => !v)}
+                className="text-xs bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1.5 rounded-full transition">
                 {showRecurring ? 'Hide' : 'Details'}
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
-                <p className="text-xs text-gray-400 mb-1">Monthly Out</p>
-                <p className="text-sm font-bold text-red-500 tabular-nums">-{fmtMoney(recurringExpenseTotal, sym)}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{recurringExpenses.length} expense{recurringExpenses.length !== 1 ? 's' : ''}</p>
+            <div className="relative grid grid-cols-2 gap-2">
+              <div className="bg-white/15 rounded-xl px-3 py-2.5">
+                <p className="text-white/70 text-[10px] mb-0.5">Monthly Out</p>
+                <p className="text-white font-bold text-sm tabular-nums">-{fmtMoney(recurringExpenseTotal, sym)}</p>
+                <p className="text-white/50 text-[10px]">{recurringExpenses.length} expense{recurringExpenses.length !== 1 ? 's' : ''}</p>
               </div>
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3">
-                <p className="text-xs text-gray-400 mb-1">Monthly In</p>
-                <p className="text-sm font-bold text-green-600 tabular-nums">+{fmtMoney(recurringIncomeTotal, sym)}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{recurringIncome.length} income{recurringIncome.length !== 1 ? 's' : ''}</p>
+              <div className="bg-white/15 rounded-xl px-3 py-2.5">
+                <p className="text-white/70 text-[10px] mb-0.5">Monthly In</p>
+                <p className="text-white font-bold text-sm tabular-nums">+{fmtMoney(recurringIncomeTotal, sym)}</p>
+                <p className="text-white/50 text-[10px]">{recurringIncome.length} income{recurringIncome.length !== 1 ? 's' : ''}</p>
               </div>
             </div>
             {showRecurring && (
-              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 space-y-2">
+              <div className="relative mt-3 pt-3 border-t border-white/20 space-y-2">
                 {recurringExpenses.map(e => (
                   <div key={e.id} className="flex items-center gap-2.5">
                     <span className="text-base w-6 text-center shrink-0">{CAT_ICONS[e.category] || '📦'}</span>
-                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-200 truncate">{e.description || e.category}</span>
-                    <span className="text-xs font-semibold text-red-500 tabular-nums shrink-0">-{sym}{safeNum(e.amount).toFixed(2)}/mo</span>
+                    <span className="flex-1 text-sm text-white/90 truncate">{e.description || e.category}</span>
+                    <span className="text-xs font-semibold text-white/80 tabular-nums shrink-0">-{sym}{safeNum(e.amount).toFixed(2)}/mo</span>
                   </div>
                 ))}
                 {recurringIncome.map(i => (
                   <div key={i.id} className="flex items-center gap-2.5">
                     <span className="text-base w-6 text-center shrink-0">💵</span>
-                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-200 truncate">{i.description || i.source || 'Income'}</span>
-                    <span className="text-xs font-semibold text-green-600 tabular-nums shrink-0">+{sym}{safeNum(i.amount).toFixed(2)}/mo</span>
+                    <span className="flex-1 text-sm text-white/90 truncate">{i.description || i.source || 'Income'}</span>
+                    <span className="text-xs font-semibold text-white/80 tabular-nums shrink-0">+{sym}{safeNum(i.amount).toFixed(2)}/mo</span>
                   </div>
                 ))}
               </div>
