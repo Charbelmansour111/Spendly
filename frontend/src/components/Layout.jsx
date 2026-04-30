@@ -161,7 +161,14 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const sidebarProps = { user, current, dark, toggleDark, onBellClick, unreadCount, onLogout: handleLogout, navItems: activeNavItems }
 
   return (
-    <div className="flex h-screen bg-[#EDF0F7] dark:bg-gray-900 overflow-hidden" dir={isRTL() ? 'rtl' : 'ltr'}>
+    <div className="flex h-screen bg-[#EDF0F7] dark:bg-[#0f1117] overflow-hidden relative" dir={isRTL() ? 'rtl' : 'ltr'}>
+      {/* Ambient background blobs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-40 -left-40 w-125 h-125 rounded-full bg-blue-300/25 dark:bg-blue-600/10 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-125 h-125 rounded-full bg-violet-300/20 dark:bg-violet-700/10 blur-3xl" />
+        <div className="absolute top-1/3 right-1/4 w-72 h-72 rounded-full bg-indigo-200/20 dark:bg-indigo-600/8 blur-2xl" />
+        <div className="absolute bottom-1/3 left-1/3 w-64 h-64 rounded-full bg-sky-200/15 dark:bg-sky-700/8 blur-2xl" />
+      </div>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/60 shrink-0 h-screen sticky top-0">
         <SidebarContent {...sidebarProps} />
