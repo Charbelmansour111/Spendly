@@ -181,31 +181,32 @@ export default function Insights() {
         </div>
 
         {/* Overview Card */}
-        <div className="bg-white dark:bg-gray-800 border border-blue-100 dark:border-blue-900/40 rounded-2xl px-5 py-4 mb-4 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 dark:bg-blue-900/20 rounded-full -translate-y-16 translate-x-16 pointer-events-none" />
+        <div className="bg-linear-to-br from-slate-100 to-blue-100 dark:from-slate-800 dark:to-blue-950 rounded-2xl px-5 py-4 mb-4 relative overflow-hidden shadow-sm">
+          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-blue-200/40 dark:bg-blue-900/30 pointer-events-none" />
+          <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-slate-200/40 dark:bg-slate-700/30 pointer-events-none" />
           <div className="relative flex items-center justify-between mb-3">
             <div>
-              <p className="text-gray-800 dark:text-white font-bold text-base flex items-center gap-2">
-                <span className="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xs">✦</span>
-                AI Insights
-              </p>
-              <p className="text-gray-400 text-xs mt-0.5">{MONTH_NAME} · {monthExpenses.length} transactions analyzed</p>
+              <p className="text-gray-800 dark:text-white font-bold text-base">AI Insights</p>
+              <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5">{MONTH_NAME} · {monthExpenses.length} transactions analyzed</p>
+            </div>
+            <div className="w-8 h-8 bg-blue-500/20 dark:bg-blue-400/20 rounded-xl flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4"/><circle cx="12" cy="12" r="1.5" fill="#3B82F6"/></svg>
             </div>
           </div>
           <div className="relative grid grid-cols-3 gap-2">
             <button onClick={() => setModalData({ label: 'Spent — ' + MONTH_NAME, value: spentStr, sub: monthExpenses.length + ' transactions' })}
-              className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-blue-400 text-[10px] font-semibold mb-0.5">Spent</p>
+              className="bg-white/70 dark:bg-white/10 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-slate-400 dark:text-slate-400 text-[10px] font-semibold mb-0.5">Spent</p>
               <p className="text-red-500 font-bold text-xs tabular-nums truncate">{spentStr}</p>
             </button>
             <button onClick={() => setModalData({ label: 'Income — ' + MONTH_NAME, value: incomeStr, sub: savedPct })}
-              className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-blue-400 text-[10px] font-semibold mb-0.5">Income</p>
-              <p className="text-green-600 font-bold text-xs tabular-nums truncate">{incomeStr}</p>
+              className="bg-white/70 dark:bg-white/10 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-slate-400 dark:text-slate-400 text-[10px] font-semibold mb-0.5">Income</p>
+              <p className="text-emerald-600 dark:text-emerald-400 font-bold text-xs tabular-nums truncate">{incomeStr}</p>
             </button>
             <button onClick={() => topCategory && setModalData({ label: 'Top Spending Category', value: topCatStr, sub: topCatAmt + ' this month' })}
-              className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-blue-400 text-[10px] font-semibold mb-0.5">Top</p>
+              className="bg-white/70 dark:bg-white/10 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-slate-400 dark:text-slate-400 text-[10px] font-semibold mb-0.5">Top</p>
               <p className="text-blue-600 dark:text-blue-400 font-bold text-xs tabular-nums truncate">{topCatStr}</p>
             </button>
           </div>
