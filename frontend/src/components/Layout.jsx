@@ -50,6 +50,99 @@ const TAB_ITEMS = [
 // Advisor nav disabled
 // const ADVISOR_NAV = [...]
 
+function MarbleBackground({ dark }) {
+  const base = dark
+    ? 'linear-gradient(135deg,#1a1030 0%,#120c24 50%,#0e0820 100%)'
+    : 'linear-gradient(135deg,#f7f3ff 0%,#ede6ff 50%,#e5daff 100%)'
+
+  const pR = dark ? '0.55 0.42 0.65 0.75 0.60 0.42 0.55' : '0.36 0.27 0.45 0.55 0.40 0.30 0.45'
+  const pG = dark ? '0.14 0.12 0.16 0.14 0.15 0.12 0.14' : '0.07 0.08 0.07 0.12 0.08 0.07 0.08'
+  const pB = dark ? '0.98 0.90 1.00 0.92 0.98 0.88 0.98' : '0.90 0.84 0.97 0.80 0.93 0.86 0.90'
+  const pA = '0.0 0.08 0.60 1.0 0.60 0.08 0.0'
+
+  const bR = dark ? '0.32 0.44 0.55 0.44 0.32' : '0.25 0.33 0.42 0.50 0.33'
+  const bG = dark ? '0.12 0.15 0.18 0.15 0.12' : '0.08 0.10 0.12 0.10 0.08'
+  const bB = dark ? '1.00 0.88 1.00 0.88 1.00' : '0.88 0.78 0.96 0.84 0.88'
+  const bA = '0.0 0.06 0.45 0.95 0.45 0.06 0.0'
+
+  const glow = dark
+    ? 'radial-gradient(ellipse at 28% 38%,rgba(139,92,246,0.30) 0%,transparent 55%),radial-gradient(ellipse at 72% 68%,rgba(99,102,241,0.22) 0%,transparent 52%)'
+    : 'radial-gradient(ellipse at 28% 38%,rgba(167,139,250,0.22) 0%,transparent 55%),radial-gradient(ellipse at 72% 68%,rgba(99,102,241,0.16) 0%,transparent 52%)'
+
+  return (
+    <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+      <style>{`
+        @keyframes tglow{
+          0%,100%{opacity:.65}
+          16%{opacity:1}
+          18%{opacity:.55}
+          20%{opacity:1}
+          58%{opacity:.80}
+          79%{opacity:1}
+          81%{opacity:.45}
+          83%{opacity:.95}
+        }
+      `}</style>
+
+      {/* base */}
+      <div className="absolute inset-0" style={{ background: base }} />
+
+      {/* SVG marble veins */}
+      <svg xmlns="http://www.w3.org/2000/svg"
+        style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}
+        preserveAspectRatio="xMidYMid slice">
+        <defs>
+          {/* Primary purple vein */}
+          <filter id="pv" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.009 0.004" numOctaves="4" seed="4">
+              <animate attributeName="baseFrequency" dur="40s" repeatCount="indefinite"
+                values="0.009 0.004;0.013 0.007;0.008 0.003;0.011 0.005;0.009 0.004"
+                calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" />
+            </feTurbulence>
+            <feComponentTransfer>
+              <feFuncR type="table" tableValues={pR} />
+              <feFuncG type="table" tableValues={pG} />
+              <feFuncB type="table" tableValues={pB} />
+              <feFuncA type="table" tableValues={pA} />
+            </feComponentTransfer>
+          </filter>
+          {/* Secondary blue-purple vein */}
+          <filter id="bv" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015 0.008" numOctaves="4" seed="11">
+              <animate attributeName="baseFrequency" dur="27s" repeatCount="indefinite"
+                values="0.015 0.008;0.019 0.011;0.012 0.006;0.016 0.009;0.015 0.008"
+                calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" />
+            </feTurbulence>
+            <feComponentTransfer>
+              <feFuncR type="table" tableValues={bR} />
+              <feFuncG type="table" tableValues={bG} />
+              <feFuncB type="table" tableValues={bB} />
+              <feFuncA type="table" tableValues={bA} />
+            </feComponentTransfer>
+          </filter>
+        </defs>
+
+        {/* Purple veins — shimmer between 45 % and 75 % opacity */}
+        <rect width="100%" height="100%" filter="url(#pv)">
+          <animate attributeName="opacity" dur="9s" repeatCount="indefinite"
+            values="0.48;0.72;0.52;0.78;0.48"
+            calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" />
+        </rect>
+
+        {/* Blue-purple veins — offset shimmer */}
+        <rect width="100%" height="100%" filter="url(#bv)">
+          <animate attributeName="opacity" dur="14s" repeatCount="indefinite"
+            values="0.32;0.58;0.28;0.62;0.32"
+            calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" />
+        </rect>
+      </svg>
+
+      {/* Thunder glow — flashes like lightning through marble */}
+      <div style={{ position:'absolute', inset:0, background:glow, animation:'tglow 9s ease-in-out infinite' }} />
+    </div>
+  )
+}
+
 function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCount, onLogout, navItems }) {
   return (
     <div className="flex flex-col h-full">
@@ -161,14 +254,8 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const sidebarProps = { user, current, dark, toggleDark, onBellClick, unreadCount, onLogout: handleLogout, navItems: activeNavItems }
 
   return (
-    <div className="flex h-screen bg-[#EDF0F7] dark:bg-[#0f1117] overflow-hidden relative" dir={isRTL() ? 'rtl' : 'ltr'}>
-      {/* Ambient background blobs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-40 -left-40 w-125 h-125 rounded-full bg-blue-300/25 dark:bg-blue-600/10 blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-125 h-125 rounded-full bg-violet-300/20 dark:bg-violet-700/10 blur-3xl" />
-        <div className="absolute top-1/3 right-1/4 w-72 h-72 rounded-full bg-indigo-200/20 dark:bg-indigo-600/8 blur-2xl" />
-        <div className="absolute bottom-1/3 left-1/3 w-64 h-64 rounded-full bg-sky-200/15 dark:bg-sky-700/8 blur-2xl" />
-      </div>
+    <div className="flex h-screen bg-[#f7f3ff] dark:bg-[#0f0820] overflow-hidden relative" dir={isRTL() ? 'rtl' : 'ltr'}>
+      <MarbleBackground dark={dark} />
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/60 shrink-0 h-screen sticky top-0">
         <SidebarContent {...sidebarProps} />
