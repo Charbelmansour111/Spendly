@@ -43,7 +43,7 @@ function renderMarkdown(text) {
   )
 }
 
-function HeatmapCalendar({ year, month, monthExpenses, sym, fmt, monthName }) {
+function HeatmapCalendar({ year, month, monthExpenses, monthIncome, sym, fmt, monthName }) {
   const [selectedDay, setSelectedDay] = useState(null)
   const today = new Date()
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month
@@ -68,7 +68,10 @@ function HeatmapCalendar({ year, month, monthExpenses, sym, fmt, monthName }) {
   }
 
   const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
-  const dayTxns = selectedDay ? monthExpenses.filter(e => new Date(e.date).getDate() === selectedDay) : []
+
+  const dayExpenses = selectedDay ? monthExpenses.filter(e => new Date(e.date).getDate() === selectedDay) : []
+  const dayIncome   = selectedDay ? (monthIncome || []).filter(i => new Date(i.created_at).getDate() === selectedDay) : []
+  const hasActivity = dayExpenses.length > 0 || dayIncome.length > 0
 
   return (
     <div>
@@ -113,32 +116,64 @@ function HeatmapCalendar({ year, month, monthExpenses, sym, fmt, monthName }) {
         <span className="text-[10px] text-gray-400">High</span>
       </div>
 
-      {/* Tap-to-expand day detail */}
+      {/* Day detail panel */}
       {selectedDay && (
         <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-bold text-gray-700 dark:text-gray-200">
-              {monthName} {selectedDay}
-            </p>
-            <p className="text-xs text-gray-400">{dayTxns.length} transaction{dayTxns.length !== 1 ? 's' : ''} · {fmt(spendMap[selectedDay] || 0, sym)}</p>
-          </div>
-          {dayTxns.length === 0
-            ? <p className="text-sm text-gray-400 text-center py-3">No spending this day</p>
-            : <div className="space-y-2">
-                {dayTxns.map(e => (
-                  <div key={e.id} className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-violet-100 dark:bg-violet-900/40 rounded-xl flex items-center justify-center text-sm shrink-0">
-                      {CAT_ICONS[e.category] || '📦'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{e.description || e.category}</p>
-                      <p className="text-[10px] text-gray-400">{e.category}</p>
-                    </div>
-                    <p className="text-xs font-bold text-gray-900 dark:text-white tabular-nums shrink-0">{fmt(e.amount, sym)}</p>
+          <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-3">{monthName} {selectedDay}</p>
+
+          {!hasActivity ? (
+            <div className="text-center py-5">
+              <p className="text-2xl mb-1">📭</p>
+              <p className="text-sm text-gray-400">No transactions that day</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Expenses */}
+              {dayExpenses.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-red-400 uppercase tracking-wide mb-2">
+                    Spending · {fmt(dayExpenses.reduce((s,e) => s + safeNum(e.amount), 0), sym)}
+                  </p>
+                  <div className="space-y-2">
+                    {dayExpenses.map(e => (
+                      <div key={e.id} className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-red-50 dark:bg-red-900/30 rounded-xl flex items-center justify-center text-sm shrink-0">
+                          {CAT_ICONS[e.category] || '📦'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{e.description || e.category}</p>
+                          <p className="text-[10px] text-gray-400">{e.category}</p>
+                        </div>
+                        <p className="text-xs font-bold text-red-500 tabular-nums shrink-0">-{fmt(e.amount, sym)}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-          }
+                </div>
+              )}
+
+              {/* Income */}
+              {dayIncome.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide mb-2">
+                    Income · {fmt(dayIncome.reduce((s,i) => s + safeNum(i.amount), 0), sym)}
+                  </p>
+                  <div className="space-y-2">
+                    {dayIncome.map(inc => (
+                      <div key={inc.id} className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-sm shrink-0">
+                          💰
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{inc.source || 'Income'}</p>
+                        </div>
+                        <p className="text-xs font-bold text-emerald-500 tabular-nums shrink-0">+{fmt(inc.amount, sym)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -492,6 +527,7 @@ export default function Reports() {
                 year={selectedYear}
                 month={selectedMonth}
                 monthExpenses={monthExpenses}
+                monthIncome={income}
                 sym={sym}
                 fmt={fmt}
                 monthName={monthName}
