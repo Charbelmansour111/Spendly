@@ -221,7 +221,7 @@ export default function Insights() {
                   }`}>
                     {msg.role === 'user' ? 'U' : 'AI'}
                   </div>
-                  <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                  <div dir="auto" className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                     msg.role === 'user'
                       ? 'bg-violet-600 text-white rounded-tr-sm'
                       : 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm'
