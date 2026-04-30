@@ -175,4 +175,70 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+router.post('/monthly-wrap', authenticateToken, async (req, res) => {
+  try {
+    const { month, year } = req.body;
+    const m = parseInt(month) || new Date().getMonth() + 1;
+    const y = parseInt(year)  || new Date().getFullYear();
+
+    const expenses = await pool.query(
+      `SELECT * FROM expenses WHERE user_id=$1 AND EXTRACT(MONTH FROM date)=$2 AND EXTRACT(YEAR FROM date)=$3 ORDER BY amount DESC`,
+      [req.userId, m, y]
+    );
+    const income = await pool.query(
+      `SELECT * FROM income WHERE user_id=$1 AND EXTRACT(MONTH FROM created_at)=$2 AND EXTRACT(YEAR FROM created_at)=$3`,
+      [req.userId, m, y]
+    );
+
+    if (expenses.rows.length === 0) return res.json({ slides: null });
+
+    const total     = expenses.rows.reduce((s, e) => s + parseFloat(e.amount), 0);
+    const totalInc  = income.rows.reduce((s, i) => s + parseFloat(i.amount), 0);
+    const saved     = totalInc - total;
+    const txCount   = expenses.rows.length;
+    const biggest   = expenses.rows[0];
+    const catTotals = expenses.rows.reduce((acc, e) => { acc[e.category] = (acc[e.category]||0) + parseFloat(e.amount); return acc }, {});
+    const topCat    = Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0];
+    const monthName = new Date(y, m-1, 1).toLocaleString('en-US', { month: 'long' });
+    const catList   = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`${c}: $${a.toFixed(0)}`).join(', ');
+
+    const prompt = `You are writing a funny, warm, Spotify-Wrapped-style monthly financial summary for a personal finance app.
+Be playful, use light humor, never harsh. Mix relatable finance jokes with genuine encouragement.
+
+User's ${monthName} ${y} data:
+- Total spent: $${total.toFixed(2)} | Income: $${totalInc.toFixed(2)} | ${saved >= 0 ? 'Saved' : 'Overspent'}: $${Math.abs(saved).toFixed(2)}
+- Transactions: ${txCount} | Top category: ${topCat?.[0]} ($${topCat?.[1]?.toFixed(2)})
+- Biggest single expense: "${biggest?.description || biggest?.category}" — $${parseFloat(biggest?.amount).toFixed(2)}
+- Category breakdown: ${catList}
+
+Write EXACTLY 6 short funny/cute lines, one per slide. Return ONLY a JSON array of 6 strings, no extra text:
+["slide1 text", "slide2 text", "slide3 text", "slide4 text", "slide5 text", "slide6 text"]
+
+Slide topics (in order):
+1. Warm funny opener about their total spending this month (use the real number)
+2. Roast/celebrate their top spending category with a witty take
+3. React to their biggest purchase with mock drama
+4. Comment on their ${txCount} transactions — compare to something funny
+5. ${saved >= 0 ? `Celebrate their $${saved.toFixed(2)} savings — be encouraging and playful` : `Console them about overspending $${Math.abs(saved).toFixed(2)} — be funny not harsh, give one tiny tip`}
+6. A funny, punchy, actionable financial tip for next month (make it feel personal, not generic)`;
+
+    const aiReply = await callAI([{ role: 'user', content: prompt }]);
+    const lines   = JSON.parse(aiReply.trim().replace(/```json|```/g,'').trim());
+
+    res.json({
+      slides: lines,
+      stats: {
+        month: monthName, year: y, total, totalInc, saved, txCount,
+        topCat: topCat?.[0], topCatAmt: topCat?.[1],
+        biggestDesc: biggest?.description || biggest?.category,
+        biggestAmt: parseFloat(biggest?.amount),
+        catTotals,
+      }
+    });
+  } catch (e) {
+    console.error('Monthly wrap error:', e);
+    res.status(500).json({ message: 'Error generating wrap' });
+  }
+});
+
 module.exports = router;

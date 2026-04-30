@@ -5,6 +5,7 @@ import ReceiptScanner from '../components/ReceiptScanner'
 import { DashboardSkeleton } from '../components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Onboarding from '../components/Onboarding'
+import MonthlyWrap from '../components/MonthlyWrap'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
@@ -698,6 +699,13 @@ export default function Dashboard() {
     try { return JSON.parse(localStorage.getItem('spendly_dismissed_goals') || '[]') } catch { return [] }
   })
 
+  // Monthly Wrap
+  const [showWrap, setShowWrap] = useState(false)
+  const _now = new Date()
+  const wrapKey = `spendly_wrap_watched_${_now.getFullYear()}-${_now.getMonth() + 1}`
+  const _lastDay = new Date(_now.getFullYear(), _now.getMonth() + 1, 0).getDate()
+  const showWrapBanner = _now.getDate() >= _lastDay - 2 && !localStorage.getItem(wrapKey)
+
   // Carousel + news state
   const [carouselPanel, setCarousel]  = useState(0)
   const [news, setNews]               = useState([])
@@ -961,6 +969,7 @@ export default function Dashboard() {
       {showAddExp   && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} />}
       {showAddInc   && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}
       {showQuickLog && <QuickLogSheet onClose={() => setShowQuickLog(false)} onSaved={fetchExpenses} currencySymbol={currencySymbol} />}
+      {showWrap && <MonthlyWrap onClose={() => { localStorage.setItem(wrapKey, '1'); setShowWrap(false) }} />}
 
       {/* AI Behavior Alert */}
       {behaviorAlert && (
@@ -1289,6 +1298,21 @@ export default function Dashboard() {
             </div>
           )
         })()}
+
+        {/* Monthly Wrap Banner — last 3 days of month, disappears after watching */}
+        {showWrapBanner && (
+          <button onClick={() => setShowWrap(true)}
+            className="w-full mb-4 relative overflow-hidden rounded-2xl bg-linear-to-r from-violet-600 via-indigo-600 to-violet-700 p-4 flex items-center gap-4 active:scale-95 transition-transform shadow-lg">
+            <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full" />
+            <div className="absolute -bottom-4 right-16 w-16 h-16 bg-white/5 rounded-full" />
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl shrink-0 relative">🎊</div>
+            <div className="text-left flex-1 min-w-0 relative">
+              <p className="text-white font-black text-sm leading-tight">{new Date().toLocaleString('en-US',{month:'long'})} Wrapped is here!</p>
+              <p className="text-white/70 text-xs mt-0.5 leading-tight">Your monthly highlights, reviewed by AI ✨</p>
+            </div>
+            <span className="text-white/60 text-lg relative">→</span>
+          </button>
+        )}
 
         {/* Quick Actions */}
         {isCurrentMonth && (
