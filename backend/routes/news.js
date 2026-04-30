@@ -1,32 +1,73 @@
 const express = require('express');
 const router = express.Router();
 const authenticateToken = require('../middleware/auth');
+const Parser = require('rss-parser');
+
+const parser = new Parser({
+  timeout: 8000,
+  headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Spendly/1.0)' },
+  customFields: { item: ['media:thumbnail', 'media:content', 'enclosure'] }
+});
+
+const FEEDS = [
+  { url: 'https://feeds.bbci.co.uk/news/business/rss.xml',           source: 'BBC Business' },
+  { url: 'https://www.cnbc.com/id/10000664/device/rss/rss.html',     source: 'CNBC Finance' },
+  { url: 'https://feeds.marketwatch.com/marketwatch/topstories/',    source: 'MarketWatch' },
+  { url: 'https://www.investing.com/rss/news.rss',                   source: 'Investing.com' },
+  { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml',           source: 'WSJ Markets' },
+];
+
+function getImage(item) {
+  return (
+    item['media:content']?.$.url ||
+    item['media:thumbnail']?.$.url ||
+    item.enclosure?.url ||
+    item['content:encoded']?.match(/src="([^"]+\.(jpg|jpeg|png|webp)[^"]*)"/i)?.[1] ||
+    null
+  )
+}
+
+let cache = { articles: [], ts: 0 }
+const CACHE_TTL = 15 * 60 * 1000 // 15 min
 
 router.get('/', authenticateToken, async (req, res) => {
-  const apiKey = process.env.NEWS_API_KEY;
-  if (!apiKey) return res.json([]);
-
   try {
-    const [bizResponse, worldResponse] = await Promise.allSettled([
-      fetch(`https://newsapi.org/v2/top-headlines?category=business&language=en&pageSize=12&apiKey=${apiKey}`).then(r => r.json()),
-      fetch(`https://newsapi.org/v2/top-headlines?category=general&language=en&pageSize=6&apiKey=${apiKey}`).then(r => r.json()),
-    ]);
+    if (Date.now() - cache.ts < CACHE_TTL && cache.articles.length > 0) {
+      return res.json(cache.articles)
+    }
 
-    const seen = new Set();
-    const clean = (articles) => (articles || []).filter(a => {
-      if (!a.urlToImage || !a.url || a.title === '[Removed]' || seen.has(a.url)) return false;
-      seen.add(a.url);
-      return true;
-    });
+    const results = await Promise.allSettled(
+      FEEDS.map(({ url, source }) =>
+        parser.parseURL(url).then(feed =>
+          feed.items.slice(0, 5).map(item => ({
+            title:       item.title?.trim(),
+            url:         item.link || item.guid,
+            urlToImage:  getImage(item),
+            description: item.contentSnippet?.slice(0, 200) || item.summary?.slice(0, 200) || '',
+            publishedAt: item.pubDate || item.isoDate || new Date().toISOString(),
+            source:      { name: source },
+          }))
+        )
+      )
+    )
 
-    // 75% financial: take up to 11 business + 4 general = 15 total
-    const biz   = bizResponse.status   === 'fulfilled' ? clean(bizResponse.value.articles).slice(0, 11)   : [];
-    const world = worldResponse.status === 'fulfilled' ? clean(worldResponse.value.articles).slice(0, 4) : [];
-    const filtered = [...biz, ...world].slice(0, 15);
+    const seen = new Set()
+    const articles = results
+      .filter(r => r.status === 'fulfilled')
+      .flatMap(r => r.value)
+      .filter(a => {
+        if (!a.title || !a.url || seen.has(a.url)) return false
+        seen.add(a.url)
+        return true
+      })
+      .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
+      .slice(0, 20)
 
-    res.json(filtered);
-  } catch {
-    res.json([]);
+    cache = { articles, ts: Date.now() }
+    res.json(articles)
+  } catch (e) {
+    console.error('News error:', e.message)
+    res.json(cache.articles.length ? cache.articles : [])
   }
 });
 
