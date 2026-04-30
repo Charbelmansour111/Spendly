@@ -85,6 +85,8 @@ export default function Budgets() {
   const [formAiLoading, setFormAiLoading] = useState(false)
   const [numModal, setNumModal] = useState(null)
   const [formAiSuggestion, setFormAiSuggestion] = useState('')
+  const [suggestModal, setSuggestModal] = useState(null) // { suggestions: [...] }
+  const [suggestLoading, setSuggestLoading] = useState(false)
   const [currencySymbol] = useState(() => {
     const stored = localStorage.getItem('currency') || 'USD'
     return CURRENCY_SYMBOLS[stored] || '$'
@@ -258,6 +260,67 @@ export default function Budgets() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {aiModal && <AiModal budget={aiModal.budget} spent={aiModal.spent} symbol={currencySymbol} onClose={() => setAiModal(null)} />}
 
+      {/* AI Budget Suggest Modal */}
+      {suggestModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-white dark:bg-gray-900 w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+            <div className="bg-linear-to-br from-violet-600 to-purple-700 px-6 pt-6 pb-5 text-white shrink-0">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full">✨ AI Suggestions</span>
+                <button onClick={() => setSuggestModal(null)} className="text-white/70 hover:text-white text-xl leading-none">✕</button>
+              </div>
+              <p className="font-bold text-lg mt-2">Smart Budget Suggestions</p>
+              <p className="text-white/70 text-xs mt-0.5">Based on your last 3 months of spending</p>
+            </div>
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
+              {suggestModal.suggestions.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">Not enough spending history yet. Add some expenses first!</p>
+              ) : suggestModal.suggestions.map((s, i) => (
+                <div key={i} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 rounded-2xl px-4 py-3.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{s.category}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 leading-snug">{s.reasoning}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-base font-black text-violet-600 dark:text-violet-400 tabular-nums">{currencySymbol}{parseFloat(s.suggested_amount).toFixed(0)}</p>
+                    <p className="text-[10px] text-gray-400">/ month</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await API.post('/budgets', { category: s.category, amount: s.suggested_amount, period: 'monthly' })
+                        showToast(`${s.category} budget set to ${currencySymbol}${parseFloat(s.suggested_amount).toFixed(0)}`)
+                        fetchAll()
+                      } catch { showToast('Failed to apply', 'error') }
+                    }}
+                    className="shrink-0 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition">
+                    Apply
+                  </button>
+                </div>
+              ))}
+            </div>
+            {suggestModal.suggestions.length > 0 && (
+              <div className="px-5 pb-5 pt-2 shrink-0 border-t border-gray-100 dark:border-gray-800">
+                <button
+                  onClick={async () => {
+                    try {
+                      await Promise.all(suggestModal.suggestions.map(s =>
+                        API.post('/budgets', { category: s.category, amount: s.suggested_amount, period: 'monthly' })
+                      ))
+                      showToast('All budgets applied!')
+                      fetchAll()
+                      setSuggestModal(null)
+                    } catch { showToast('Failed to apply all', 'error') }
+                  }}
+                  className="w-full py-3.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-2xl text-sm transition">
+                  Apply All Suggestions
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      }}
+
       <div className="max-w-4xl mx-auto px-4 py-6">
 
         {/* Header */}
@@ -345,6 +408,22 @@ export default function Budgets() {
               ))}
             </div>
             <div className="flex-1" />
+            <button
+              onClick={async () => {
+                setSuggestLoading(true)
+                try {
+                  const r = await API.post('/budgets/suggest')
+                  setSuggestModal({ suggestions: r.data.suggestions || [] })
+                } catch { showToast('Failed to generate suggestions', 'error') }
+                finally { setSuggestLoading(false) }
+              }}
+              disabled={suggestLoading}
+              className="shrink-0 flex items-center gap-1.5 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-700 px-3.5 py-2 rounded-xl text-sm font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/50 transition disabled:opacity-50">
+              {suggestLoading
+                ? <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".3"/><path d="M21 12a9 9 0 00-9-9"/></svg>
+                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>}
+              AI Suggest
+            </button>
             <button onClick={() => setShowForm(v => !v)}
               className="shrink-0 bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700 transition">
               {showForm ? '✕ Cancel' : '+ Set Budget'}

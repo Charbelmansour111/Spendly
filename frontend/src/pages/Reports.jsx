@@ -43,6 +43,108 @@ function renderMarkdown(text) {
   )
 }
 
+function HeatmapCalendar({ year, month, monthExpenses, sym, fmt, monthName }) {
+  const [selectedDay, setSelectedDay] = useState(null)
+  const today = new Date()
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const firstDow = new Date(year, month, 1).getDay()
+
+  const spendMap = {}
+  monthExpenses.forEach(e => {
+    const d = new Date(e.date).getDate()
+    spendMap[d] = (spendMap[d] || 0) + safeNum(e.amount)
+  })
+  const maxSpend = Math.max(...Object.values(spendMap), 1)
+
+  const intensity = (day) => {
+    const s = spendMap[day] || 0
+    if (s === 0) return 'bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-600'
+    const r = s / maxSpend
+    if (r < 0.25) return 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300'
+    if (r < 0.5)  return 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300'
+    if (r < 0.75) return 'bg-orange-200 dark:bg-orange-800/60 text-orange-800 dark:text-orange-300'
+    return 'bg-red-300 dark:bg-red-700/60 text-red-900 dark:text-red-200'
+  }
+
+  const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+  const dayTxns = selectedDay ? monthExpenses.filter(e => new Date(e.date).getDate() === selectedDay) : []
+
+  return (
+    <div>
+      <div className="grid grid-cols-7 mb-1.5">
+        {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+          <div key={d} className="text-center text-[10px] font-semibold text-gray-400 py-0.5">{d}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((day, i) => {
+          if (!day) return <div key={`b${i}`} />
+          const isFuture = isCurrentMonth && day > today.getDate()
+          const isToday  = isCurrentMonth && day === today.getDate()
+          const isSelected = selectedDay === day
+          const spend = spendMap[day] || 0
+          return (
+            <button key={day}
+              onClick={() => !isFuture && setSelectedDay(isSelected ? null : day)}
+              className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-px transition-all select-none
+                ${intensity(day)}
+                ${isFuture ? 'opacity-25 cursor-default' : 'cursor-pointer active:scale-95'}
+                ${isToday ? 'ring-2 ring-violet-500 ring-offset-1 dark:ring-offset-gray-800' : ''}
+                ${isSelected ? 'ring-2 ring-violet-600 scale-105' : ''}
+              `}>
+              <span className="text-[10px] font-bold leading-none">{day}</span>
+              {spend > 0 && (
+                <span className="text-[8px] font-semibold leading-none tabular-nums opacity-80">
+                  {sym}{spend >= 1000 ? (spend / 1000).toFixed(1) + 'k' : Math.round(spend)}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-2 mt-3">
+        <span className="text-[10px] text-gray-400">None</span>
+        {['bg-emerald-200','bg-amber-200','bg-orange-300','bg-red-400'].map((c,i) => (
+          <div key={i} className={`w-5 h-5 rounded-md ${c}`} />
+        ))}
+        <span className="text-[10px] text-gray-400">High</span>
+      </div>
+
+      {/* Tap-to-expand day detail */}
+      {selectedDay && (
+        <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold text-gray-700 dark:text-gray-200">
+              {monthName} {selectedDay}
+            </p>
+            <p className="text-xs text-gray-400">{dayTxns.length} transaction{dayTxns.length !== 1 ? 's' : ''} · {fmt(spendMap[selectedDay] || 0, sym)}</p>
+          </div>
+          {dayTxns.length === 0
+            ? <p className="text-sm text-gray-400 text-center py-3">No spending this day</p>
+            : <div className="space-y-2">
+                {dayTxns.map(e => (
+                  <div key={e.id} className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-violet-100 dark:bg-violet-900/40 rounded-xl flex items-center justify-center text-sm shrink-0">
+                      {CAT_ICONS[e.category] || '📦'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{e.description || e.category}</p>
+                      <p className="text-[10px] text-gray-400">{e.category}</p>
+                    </div>
+                    <p className="text-xs font-bold text-gray-900 dark:text-white tabular-nums shrink-0">{fmt(e.amount, sym)}</p>
+                  </div>
+                ))}
+              </div>
+          }
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SectionHeader({ icon, title, subtitle }) {
   return (
     <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
@@ -383,21 +485,18 @@ export default function Reports() {
               )}
             </div>
 
-            {/* Daily spending chart */}
-            {dailyData.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
-                <SectionHeader icon="📅" title="Daily Spending" subtitle={`Every day you spent money in ${monthName}`} />
-                <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={dailyData} margin={{ top: 0, right: 4, left: -28, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                    <XAxis dataKey="day" tick={{ fontSize: 9 }} stroke="#9CA3AF" />
-                    <YAxis tick={{ fontSize: 9 }} stroke="#9CA3AF" width={40} />
-                    <Tooltip formatter={v => fmt(v, sym)} labelFormatter={l => `Day ${l}`} />
-                    <Bar dataKey="amount" fill="#7C3AED" radius={[3, 3, 0, 0]} name="Spent" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+            {/* Spending Heatmap Calendar */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+              <SectionHeader icon="📅" title="Spending Calendar" subtitle={`Tap any day to see transactions · ${monthName}`} />
+              <HeatmapCalendar
+                year={selectedYear}
+                month={selectedMonth}
+                monthExpenses={monthExpenses}
+                sym={sym}
+                fmt={fmt}
+                monthName={monthName}
+              />
+            </div>
 
             {/* Pie + Weekly side by side */}
             {categoryData.length > 0 && (
