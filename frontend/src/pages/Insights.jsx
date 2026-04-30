@@ -5,23 +5,18 @@ import API from '../utils/api'
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 
 function renderMarkdown(text) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>
-    return <span key={i}>{part}</span>
+  return text.split('\n').map((line, li) => {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>
+      return <span key={i}>{part}</span>
+    })
+    const isBullet = line.trimStart().startsWith('•') || line.trimStart().startsWith('-')
+    return (
+      <span key={li} className={`block ${isBullet ? 'pl-1 mt-1' : li > 0 ? 'mt-2' : ''}`}>
+        {parts}
+      </span>
+    )
   })
-}
-
-// Tappable number stat card — tap to see full value in modal
-function StatCard({ label, value, sub, color, onClick }) {
-  return (
-    <button onClick={onClick}
-      className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-sm text-center flex-1 min-w-0 active:scale-95 transition-transform">
-      <p className="text-xs text-gray-400 mb-1 truncate">{label}</p>
-      <p className={`text-base font-bold tabular-nums truncate ${color}`} title={value}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-0.5 truncate">{sub}</p>}
-    </button>
-  )
 }
 
 // Full number modal
@@ -185,29 +180,33 @@ export default function Insights() {
           </button>
         </div>
 
-        {/* Quick Stats — tappable */}
-        <div className="flex gap-3 mb-4">
-          <StatCard
-            label="Spent"
-            value={spentStr}
-            sub={MONTH_NAME}
-            color="text-red-500"
-            onClick={() => setModalData({ label: 'Spent — ' + MONTH_NAME, value: spentStr, sub: monthExpenses.length + ' transactions' })}
-          />
-          <StatCard
-            label="Income"
-            value={incomeStr}
-            sub={savedPct}
-            color="text-green-600"
-            onClick={() => setModalData({ label: 'Income — ' + MONTH_NAME, value: incomeStr, sub: savedPct })}
-          />
-          <StatCard
-            label="Top Category"
-            value={topCatStr}
-            sub={topCatAmt}
-            color="text-violet-600"
-            onClick={() => topCategory && setModalData({ label: 'Top Spending Category', value: topCatStr, sub: topCatAmt + ' this month' })}
-          />
+        {/* Overview Card */}
+        <div className="bg-linear-to-br from-violet-500 to-fuchsia-600 rounded-2xl px-5 py-4 mb-4 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
+            <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
+          </div>
+          <div className="relative mb-3">
+            <p className="text-white font-bold text-base">AI Insights</p>
+            <p className="text-white/70 text-xs">{MONTH_NAME} · {monthExpenses.length} transactions analyzed</p>
+          </div>
+          <div className="relative grid grid-cols-3 gap-2">
+            <button onClick={() => setModalData({ label: 'Spent — ' + MONTH_NAME, value: spentStr, sub: monthExpenses.length + ' transactions' })}
+              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-white/70 text-[10px] mb-0.5">Spent</p>
+              <p className="text-white font-bold text-xs tabular-nums truncate">{spentStr}</p>
+            </button>
+            <button onClick={() => setModalData({ label: 'Income — ' + MONTH_NAME, value: incomeStr, sub: savedPct })}
+              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-white/70 text-[10px] mb-0.5">Income</p>
+              <p className="text-white font-bold text-xs tabular-nums truncate">{incomeStr}</p>
+            </button>
+            <button onClick={() => topCategory && setModalData({ label: 'Top Spending Category', value: topCatStr, sub: topCatAmt + ' this month' })}
+              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-white/70 text-[10px] mb-0.5">Top</p>
+              <p className="text-white font-bold text-xs tabular-nums truncate">{topCatStr}</p>
+            </button>
+          </div>
         </div>
 
         {/* Chat Box */}

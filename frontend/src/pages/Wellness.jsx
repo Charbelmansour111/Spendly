@@ -355,7 +355,7 @@ export default function Wellness() {
             </div>
           </div>
         )}
-        <div className="bg-linear-to-br from-rose-400 to-pink-600 rounded-2xl px-5 py-4 relative overflow-hidden">
+        <div className="bg-linear-to-br from-teal-500 to-emerald-600 rounded-2xl px-5 py-4 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 pointer-events-none">
             <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
             <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />

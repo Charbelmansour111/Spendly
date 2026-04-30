@@ -13,19 +13,28 @@ router.post('/command', authenticateToken, async (req, res) => {
     const year = now.getFullYear();
     const today = now.toISOString().split('T')[0];
 
-    const [expResult, incResult, budResult, userResult] = await Promise.all([
+    const [expResult, incResult, budResult, userResult, catResult] = await Promise.all([
       pool.query('SELECT COALESCE(SUM(amount),0) as total FROM expenses WHERE user_id=$1 AND EXTRACT(MONTH FROM date)=$2 AND EXTRACT(YEAR FROM date)=$3', [req.userId, month, year]),
       pool.query('SELECT COALESCE(SUM(amount),0) as total FROM income WHERE user_id=$1 AND month=$2 AND year=$3', [req.userId, month, year]),
       pool.query('SELECT category, amount FROM budgets WHERE user_id=$1', [req.userId]),
-      pool.query('SELECT name, currency FROM users WHERE id=$1', [req.userId])
+      pool.query('SELECT name, currency FROM users WHERE id=$1', [req.userId]),
+      pool.query('SELECT category, COALESCE(SUM(amount),0) as spent FROM expenses WHERE user_id=$1 AND EXTRACT(MONTH FROM date)=$2 AND EXTRACT(YEAR FROM date)=$3 GROUP BY category', [req.userId, month, year])
     ]);
 
     const totalSpent = parseFloat(expResult.rows[0].total);
     const totalIncome = parseFloat(incResult.rows[0].total);
     const currency = userResult.rows[0]?.currency || 'USD';
     const userName = userResult.rows[0]?.name || 'User';
+    const catSpent = {};
+    catResult.rows.forEach(r => { catSpent[r.category] = parseFloat(r.spent) });
     const budgetSummary = budResult.rows.length
-      ? budResult.rows.map(b => `${b.category}: ${currency} ${b.amount}`).join(', ')
+      ? budResult.rows.map(b => {
+          const spent = catSpent[b.category] || 0;
+          const limit = parseFloat(b.amount);
+          const pct = limit > 0 ? ((spent / limit) * 100).toFixed(0) : 0;
+          const status = spent > limit ? 'OVER BUDGET' : spent / limit >= 0.8 ? 'near limit' : 'under budget';
+          return `${b.category}: spent ${currency} ${spent.toFixed(2)} of ${currency} ${limit.toFixed(2)} limit (${pct}%) — ${status}`;
+        }).join('\n')
       : 'none set';
     const monthName = now.toLocaleString('default', { month: 'long' });
     const isFollowUp = history.length > 0;
@@ -34,7 +43,8 @@ router.post('/command', authenticateToken, async (req, res) => {
 
 User: ${userName} | Currency: ${currency} | Today: ${today}
 ${monthName} ${year}: Spent ${currency} ${totalSpent.toFixed(2)} | Income ${currency} ${totalIncome.toFixed(2)} | Balance ${currency} ${(totalIncome - totalSpent).toFixed(2)}
-Budgets: ${budgetSummary}
+Budget status (ALL categories — advise on all of them, not just exceeded ones):
+${budgetSummary}
 ${isFollowUp ? `\nThis is a FOLLOW-UP turn. Use the conversation history to understand what fields were already collected and what the user is now answering.` : ''}
 
 Return ONLY a valid JSON object. No markdown, no explanation.

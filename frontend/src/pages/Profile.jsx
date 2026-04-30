@@ -147,7 +147,7 @@ export default function Profile() {
       <div className="max-w-lg mx-auto px-4 py-6">
 
         {/* Hero header */}
-        <div className="relative bg-linear-to-br from-violet-600 to-indigo-700 rounded-3xl overflow-hidden mb-5">
+        <div className="relative bg-linear-to-br from-gray-600 to-gray-800 rounded-3xl overflow-hidden mb-5">
           {/* Decorative circles */}
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full" />
           <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-white/5 rounded-full" />
@@ -165,7 +165,7 @@ export default function Profile() {
                 </div>
                 <button onClick={() => fileInputRef.current?.click()}
                   className="absolute -bottom-1.5 -right-1.5 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4B5563" strokeWidth="2.5" strokeLinecap="round">
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                     <circle cx="12" cy="13" r="4"/>
                   </svg>
