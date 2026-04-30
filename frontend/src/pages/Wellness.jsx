@@ -64,6 +64,7 @@ export default function Wellness() {
   const [showGame, setShowGame] = useState(false)
   const [numModal, setNumModal] = useState(null)
   const [highScore] = useState(() => parseInt(localStorage.getItem('moneyDefenderHS') || '0'))
+  const [tmAmount, setTmAmount] = useState('')
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
   const dayOfMonth = today.getDate()
@@ -583,6 +584,81 @@ export default function Wellness() {
             </>
           )}
         </div>
+
+        {/* 🕰️ Time Machine */}
+        {(() => {
+          const CPI_NOW = 320
+          const ERA = [
+            { year: 1960, label: "The '60s", emoji: '🎷', cpi: 29.6,  invest: 68,  color: 'from-amber-400 to-orange-500' },
+            { year: 1970, label: "The '70s", emoji: '🕺', cpi: 38.8,  invest: 38,  color: 'from-orange-400 to-red-500' },
+            { year: 1980, label: "The '80s", emoji: '🎸', cpi: 82.4,  invest: 28,  color: 'from-pink-400 to-rose-500' },
+            { year: 1990, label: "The '90s", emoji: '📺', cpi: 130.7, invest: 14,  color: 'from-violet-400 to-purple-500' },
+            { year: 2000, label: "Y2K",      emoji: '💿', cpi: 172.2, invest: 5.2, color: 'from-blue-400 to-indigo-500' },
+            { year: 2010, label: "The '10s", emoji: '📱', cpi: 218.1, invest: 3.8, color: 'from-teal-400 to-cyan-500' },
+          ]
+          const amount = parseFloat(tmAmount) || Math.round((financials.totalSpent || 100) / 10) * 10 || 100
+          return (
+            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5 overflow-hidden relative">
+              <div className="absolute -top-6 -right-6 w-28 h-28 bg-amber-100 dark:bg-amber-900/20 rounded-full opacity-60" />
+              <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-violet-100 dark:bg-violet-900/20 rounded-full opacity-60" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xl">🕰️</span>
+                  <h3 className="text-base font-bold text-gray-800 dark:text-white">Time Machine</h3>
+                </div>
+                <p className="text-xs text-gray-400 mb-4">What would your money have been worth — or grown to — in another era?</p>
+
+                {/* Amount input */}
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="text-sm font-bold text-gray-500 dark:text-gray-400 shrink-0">If I spend</span>
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-semibold">{currencySymbol}</span>
+                    <input
+                      type="number" min="1" step="1"
+                      value={tmAmount}
+                      onChange={e => setTmAmount(e.target.value)}
+                      placeholder={String(amount)}
+                      className="w-full pl-7 pr-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-bold text-gray-800 dark:text-white bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-gray-500 dark:text-gray-400 shrink-0">today…</span>
+                </div>
+
+                {/* Era cards */}
+                <div className="space-y-2.5">
+                  {ERA.map(({ year, label, emoji, cpi, invest, color }) => {
+                    const pastPrice   = amount * (cpi / CPI_NOW)
+                    const investValue = amount * invest
+                    return (
+                      <div key={year} className={`bg-linear-to-r ${color} rounded-2xl p-0.5`}>
+                        <div className="bg-white dark:bg-gray-800 rounded-[14px] px-4 py-3 flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${color} flex items-center justify-center text-lg shrink-0 shadow-sm`}>
+                            {emoji}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-500 dark:text-gray-400">{label} · {year}</p>
+                            <p className="text-sm font-black text-gray-800 dark:text-white">
+                              would've cost <span className="text-violet-600 dark:text-violet-400">{currencySymbol}{pastPrice.toFixed(2)}</span>
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[10px] text-gray-400 leading-tight">Invested instead</p>
+                            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                              {currencySymbol}{investValue >= 10000
+                                ? (investValue / 1000).toFixed(1) + 'k'
+                                : investValue.toFixed(0)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-3 text-center">Based on US CPI data · S&P 500 avg returns · For fun, not financial advice</p>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Notes */}
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
