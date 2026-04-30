@@ -20,6 +20,7 @@ const newsRoutes = require('./routes/news');
 const debtsRoutes = require('./routes/debts');
 const subscriptionsRoutes = require('./routes/subscriptions');
 const aiRoutes = require('./routes/ai');
+const networthRoutes = require('./routes/networth');
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/debts', debtsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/networth', networthRoutes);
 app.use('/api/advisor', require('./routes/advisor'));
 app.use('/api/support', require('./routes/support'));
 

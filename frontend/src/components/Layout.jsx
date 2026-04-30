@@ -18,6 +18,7 @@ const Icons = {
   sun: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="1.8"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   debt: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.1:0}/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2M12 12v4M10 14h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   subs: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.1:0}/><path d="M9 7h6M9 11h6M9 15h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
+  networth: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.12:0}/><polyline points="17 13.5 21 11.5 21 18.5 12 22.5 3 18.5 3 11.5 7 13.5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.08:0}/></svg>),
   logout: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>),
   hamburger: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   close: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { key: 'nav_reports',         icon: 'reports',      href: '/reports' },
   { key: 'nav_ai',              icon: 'ai',           href: '/insights' },
   { key: 'nav_wellness',        icon: 'wellness',     href: '/wellness' },
+  { key: 'nav_networth',        icon: 'networth',     href: '/net-worth' },
   { key: 'nav_profile',         icon: 'profile',      href: '/profile' },
 ]
 

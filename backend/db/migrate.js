@@ -111,6 +111,32 @@ async function migrate() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS net_worth_items (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL DEFAULT 'Other',
+        amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+        type VARCHAR(10) NOT NULL CHECK (type IN ('asset','liability')),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS net_worth_snapshots (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        total_assets DECIMAL(12,2) NOT NULL DEFAULT 0,
+        total_liabilities DECIMAL(12,2) NOT NULL DEFAULT 0,
+        net_worth DECIMAL(12,2) NOT NULL DEFAULT 0,
+        snapshot_date DATE NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, snapshot_date)
+      )
+    `);
+
     console.log('DB migration complete');
   } catch (e) {
     console.error('DB migration error:', e.message);
