@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 import { t } from '../i18n'
+import { requestNotificationPermission, isNotificationsEnabled, disableNotifications, scheduleReminders } from '../utils/notifications'
 
 const CURRENCIES = ['USD','EUR','GBP','LBP','AED','SAR','CAD','AUD']
 const CURRENCY_SYMBOLS = { USD:'$',EUR:'€',GBP:'£',LBP:'L£',AED:'AED',SAR:'SAR',CAD:'C$',AUD:'A$' }
@@ -79,6 +80,7 @@ export default function Profile() {
   const [supportForm, setSupportForm] = useState({ subject: 'General question', message: '' })
   const [supportSending, setSupportSending] = useState(false)
   const [supportSent, setSupportSent] = useState(false)
+  const [notifEnabled, setNotifEnabled] = useState(() => isNotificationsEnabled())
 
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700/60 text-gray-900 dark:text-white text-sm transition"
   const showToast = (msg, type = 'success') => setToast({ message: msg, type })
@@ -294,6 +296,29 @@ export default function Profile() {
                   {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
                 </select>
               </Field>
+
+              {/* Expense reminder notifications */}
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">🔔 Expense Reminders</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Get nudged to log your spending every ~8 hours</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (notifEnabled) {
+                      disableNotifications()
+                      setNotifEnabled(false)
+                    } else {
+                      const granted = await requestNotificationPermission()
+                      setNotifEnabled(granted)
+                      if (granted) scheduleReminders()
+                    }
+                  }}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifEnabled ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
 
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-4 py-3">
                 <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">⚠️ {t('currency_warning')}</p>

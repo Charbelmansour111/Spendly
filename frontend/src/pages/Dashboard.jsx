@@ -91,27 +91,27 @@ const BRAND_LOGOS = {
 const SUBCATEGORIES = {
   Food: [
     { label: "McDonald's", emoji: '🍔' }, { label: 'KFC', emoji: '🍗' },
-    { label: 'Starbucks', emoji: '☕' }, { label: 'Pizza Hut', emoji: '🍕' },
+    { label: 'Pizza Hut', emoji: '🍕' }, { label: 'Burger King', emoji: '🍔' },
     { label: 'Groceries', emoji: '🛒' }, { label: 'Restaurant', emoji: '🍽️' },
-    { label: 'Delivery', emoji: '🛵' }, { label: 'Burger King', emoji: '🍔' },
+    { label: 'Delivery', emoji: '🛵' }, { label: 'Shawarma', emoji: '🌯' },
+  ],
+  Coffee: [
+    { label: 'Starbucks', emoji: '☕' }, { label: 'Costa Coffee', emoji: '☕' },
+    { label: 'Dunkin', emoji: '🍩' }, { label: 'Tim Hortons', emoji: '☕' },
+    { label: 'Cafe Lattè', emoji: '☕' }, { label: 'Espresso', emoji: '☕' },
+    { label: 'Tea', emoji: '🍵' }, { label: 'Juice Bar', emoji: '🧃' },
   ],
   Transport: [
     { label: 'Uber', emoji: '🚗' }, { label: 'Taxi', emoji: '🚕' },
     { label: 'Shell', emoji: '⛽' }, { label: 'Metro', emoji: '🚇' },
     { label: 'Bus', emoji: '🚌' }, { label: 'Parking', emoji: '🅿️' },
-    { label: 'Flight', emoji: '✈️' }, { label: 'Bike', emoji: '🚲' },
+    { label: 'Careem', emoji: '🚗' }, { label: 'Bike Rental', emoji: '🚲' },
   ],
   Shopping: [
     { label: 'Amazon', emoji: '📦' }, { label: 'Clothing', emoji: '👕' },
     { label: 'Electronics', emoji: '💻' }, { label: 'Beauty', emoji: '💄' },
-    { label: 'IKEA', emoji: '🛋️' }, { label: 'Pharmacy', emoji: '💊' },
-    { label: 'Books', emoji: '📚' }, { label: 'Sports', emoji: '🏋️' },
-  ],
-  Subscriptions: [
-    { label: 'Netflix', emoji: '🎬' }, { label: 'Spotify', emoji: '🎵' },
-    { label: 'Disney+', emoji: '🏰' }, { label: 'HBO Max', emoji: '🎭' },
-    { label: 'Amazon Prime', emoji: '📦' }, { label: 'Apple TV+', emoji: '🍎' },
-    { label: 'YouTube', emoji: '▶️' }, { label: 'Crunchyroll', emoji: '🎌' },
+    { label: 'IKEA', emoji: '🛋️' }, { label: 'Books', emoji: '📚' },
+    { label: 'Shoes', emoji: '👟' }, { label: 'Accessories', emoji: '👜' },
   ],
   Entertainment: [
     { label: 'Cinema', emoji: '🎥' }, { label: 'Gaming', emoji: '🎮' },
@@ -119,21 +119,70 @@ const SUBCATEGORIES = {
     { label: 'Club', emoji: '🎉' }, { label: 'Arcade', emoji: '🕹️' },
     { label: 'Live Show', emoji: '🎭' }, { label: 'Bowling', emoji: '🎳' },
   ],
+  Health: [
+    { label: 'Doctor', emoji: '🩺' }, { label: 'Hospital', emoji: '🏥' },
+    { label: 'Pharmacy', emoji: '💊' }, { label: 'Dentist', emoji: '🦷' },
+    { label: 'Lab Tests', emoji: '🧪' }, { label: 'Eye Care', emoji: '👁️' },
+    { label: 'Therapy', emoji: '🧠' }, { label: 'Insurance', emoji: '🛡️' },
+  ],
+  Fitness: [
+    { label: 'Gym', emoji: '🏋️' }, { label: 'Yoga', emoji: '🧘' },
+    { label: 'Swimming', emoji: '🏊' }, { label: 'Running Gear', emoji: '👟' },
+    { label: 'Supplements', emoji: '💪' }, { label: 'Sports Club', emoji: '⚽' },
+    { label: 'Cycling', emoji: '🚴' }, { label: 'Personal Trainer', emoji: '🏅' },
+  ],
+  Education: [
+    { label: 'Tuition', emoji: '🎓' }, { label: 'Online Course', emoji: '💻' },
+    { label: 'Books', emoji: '📚' }, { label: 'School Supplies', emoji: '✏️' },
+    { label: 'Language Class', emoji: '🗣️' }, { label: 'Certification', emoji: '📜' },
+    { label: 'Workshop', emoji: '🛠️' }, { label: 'Tutoring', emoji: '📖' },
+  ],
+  Bills: [
+    { label: 'Rent', emoji: '🏠' }, { label: 'Electricity', emoji: '💡' },
+    { label: 'Water', emoji: '💧' }, { label: 'Internet', emoji: '📶' },
+    { label: 'Phone', emoji: '📱' }, { label: 'Gas', emoji: '🔥' },
+    { label: 'Cable TV', emoji: '📺' }, { label: 'Loan Payment', emoji: '🏦' },
+  ],
+  Travel: [
+    { label: 'Flight', emoji: '✈️' }, { label: 'Hotel', emoji: '🏨' },
+    { label: 'Airbnb', emoji: '🏡' }, { label: 'Car Rental', emoji: '🚗' },
+    { label: 'Travel Insurance', emoji: '🛡️' }, { label: 'Tour', emoji: '🗺️' },
+    { label: 'Visa', emoji: '📋' }, { label: 'Baggage', emoji: '🧳' },
+  ],
+  Gifts: [
+    { label: 'Birthday Gift', emoji: '🎂' }, { label: 'Wedding Gift', emoji: '💍' },
+    { label: 'Flowers', emoji: '💐' }, { label: 'Charity', emoji: '❤️' },
+    { label: 'Donation', emoji: '🤲' }, { label: 'Baby Shower', emoji: '👶' },
+    { label: 'Anniversary', emoji: '🥂' }, { label: 'Holiday Gift', emoji: '🎁' },
+  ],
+  Subscriptions: [
+    { label: 'Netflix', emoji: '🎬' }, { label: 'Spotify', emoji: '🎵' },
+    { label: 'Disney+', emoji: '🏰' }, { label: 'HBO Max', emoji: '🎭' },
+    { label: 'Amazon Prime', emoji: '📦' }, { label: 'Apple TV+', emoji: '🍎' },
+    { label: 'YouTube', emoji: '▶️' }, { label: 'Crunchyroll', emoji: '🎌' },
+  ],
   Other: [
-    { label: 'Healthcare', emoji: '🏥' }, { label: 'Education', emoji: '🎓' },
-    { label: 'Gifts', emoji: '🎁' }, { label: 'Insurance', emoji: '🛡️' },
-    { label: 'Gym', emoji: '🏋️' }, { label: 'Charity', emoji: '❤️' },
-    { label: 'Rent', emoji: '🏠' }, { label: 'Utilities', emoji: '💡' },
+    { label: 'Personal Care', emoji: '💆' }, { label: 'Haircut', emoji: '💈' },
+    { label: 'Laundry', emoji: '👔' }, { label: 'Pet Care', emoji: '🐾' },
+    { label: 'Home Repair', emoji: '🔧' }, { label: 'Parking Fine', emoji: '🚨' },
+    { label: 'Tax', emoji: '📋' }, { label: 'Miscellaneous', emoji: '📦' },
   ],
 }
 
 const CATEGORY_HINTS = {
-  Food:          ['starbucks','mcdonald','kfc','pizza','burger','grocery','restaurant','food','coffee','lunch','dinner','breakfast','cafe','sushi','taco','domino','subway','delivery','eat','shawarma'],
-  Transport:     ['uber','taxi','lyft','careem','gas','shell','petrol','metro','bus','parking','flight','airline','fuel','train','toll','bolt'],
-  Shopping:      ['amazon','clothing','h&m','zara','ikea','pharmacy','book','sport','apple','samsung','laptop','phone','mall','store','shop','clothes','h&m'],
-  Subscriptions: ['netflix','spotify','disney','hbo','youtube','apple tv','crunchyroll','prime video','subscription','plan','monthly fee'],
-  Entertainment: ['cinema','movie','bar','club','concert','gaming','game','arcade','bowling','show','theatre','party','nightclub'],
-  Other:         ['healthcare','hospital','doctor','gym','insurance','rent','utilities','electric','water','internet','charity','donation','tax'],
+  Food:          ['mcdonald','kfc','pizza','burger','grocery','restaurant','food','lunch','dinner','breakfast','sushi','taco','domino','subway','delivery','eat','shawarma','groceries'],
+  Coffee:        ['starbucks','coffee','cafe','espresso','latte','cappuccino','dunkin','costa','tea','juice','smoothie','drink','beverage'],
+  Transport:     ['uber','taxi','lyft','careem','gas','shell','petrol','metro','bus','parking','airline','fuel','train','toll','bolt','transit','carpool'],
+  Shopping:      ['amazon','clothing','h&m','zara','ikea','book','sport','samsung','laptop','phone','mall','store','shop','clothes','fashion','shoes'],
+  Subscriptions: ['netflix','spotify','disney','hbo','youtube','apple tv','crunchyroll','prime video','subscription','plan','monthly fee','streaming'],
+  Entertainment: ['cinema','movie','bar','club','concert','gaming','game','arcade','bowling','show','theatre','party','nightclub','festival'],
+  Health:        ['hospital','doctor','pharmacy','dentist','clinic','medicine','lab','xray','therapy','prescription','medical','health','eye'],
+  Fitness:       ['gym','yoga','crossfit','swimming','supplement','protein','trainer','fitness','sport club','pilates','cycling','workout'],
+  Education:     ['tuition','course','school','university','certificate','book','class','lesson','workshop','tutorial','learning','study'],
+  Bills:         ['rent','electricity','water','internet','phone bill','gas bill','cable','loan','mortgage','utility','utilities','bill'],
+  Travel:        ['flight','hotel','airbnb','booking','visa','tour','baggage','resort','cruise','travel','trip','vacation','holiday'],
+  Gifts:         ['gift','present','flowers','charity','donation','birthday','wedding','anniversary','baby shower'],
+  Other:         ['haircut','barber','laundry','pet','repair','fine','tax','insurance','miscellaneous'],
 }
 
 function suggestCategory(desc) {
@@ -163,15 +212,20 @@ function SubTile({ sub, selected, onClick }) {
 }
 
 const EXP_CATS = [
-  { key: 'Food', icon: '🍔' }, { key: 'Transport', icon: '🚗' },
-  { key: 'Shopping', icon: '🛍️' }, { key: 'Subscriptions', icon: '📱' },
-  { key: 'Entertainment', icon: '🎬' }, { key: 'Other', icon: '📦' },
+  { key: 'Food', icon: '🍔' }, { key: 'Coffee', icon: '☕' },
+  { key: 'Transport', icon: '🚗' }, { key: 'Shopping', icon: '🛍️' },
+  { key: 'Entertainment', icon: '🎬' }, { key: 'Health', icon: '🏥' },
+  { key: 'Fitness', icon: '🏋️' }, { key: 'Education', icon: '🎓' },
+  { key: 'Bills', icon: '💡' }, { key: 'Travel', icon: '✈️' },
+  { key: 'Gifts', icon: '🎁' }, { key: 'Subscriptions', icon: '📱' },
+  { key: 'Other', icon: '📦' },
 ]
 
 function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
   const [form, setForm] = useState({
     amount: '', category: 'Food', description: '',
-    date: new Date().toISOString().split('T')[0], is_recurring: false, recurring_frequency: 'monthly'
+    date: new Date().toISOString().split('T')[0], is_recurring: false, recurring_frequency: 'monthly',
+    payment_method: 'Card', notes: ''
   })
   const [selectedSub, setSelectedSub] = useState(null)
   const [suggestion, setSuggestion] = useState(null)
@@ -206,7 +260,7 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-        <ReceiptScanner onScanComplete={data => setForm(f => ({ ...f, amount: data.amount, description: data.description }))} />
+        <ReceiptScanner onScanComplete={data => setForm(f => ({ ...f, amount: data.amount, description: data.description, category: data.category || f.category, date: data.date || f.date }))} />
         <div className="space-y-3 mt-3">
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Amount ({currencySymbol})</label>
@@ -237,13 +291,13 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
           {/* Category selector */}
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Category</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="flex flex-wrap gap-2">
               {EXP_CATS.map(({ key, icon }) => (
                 <button key={key} type="button" onClick={() => handleCategoryChange(key)}
-                  className={`py-2 px-2 rounded-xl text-xs font-semibold border-2 transition ${
+                  className={`py-1.5 px-3 rounded-full text-xs font-semibold border-2 transition ${
                     form.category === key
-                      ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-violet-300'
+                      ? 'border-violet-500 bg-violet-600 text-white'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-violet-300 bg-white dark:bg-gray-700/50'
                   }`}>
                   {icon} {key}
                 </button>
@@ -280,6 +334,23 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
               <option value="monthly">Monthly</option>
             </select>
           )}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Paid with</label>
+            <div className="flex gap-2">
+              {['Card', 'Cash', 'Mobile Pay', 'Bank Transfer'].map(m => (
+                <button key={m} type="button" onClick={() => setForm(f => ({ ...f, payment_method: m }))}
+                  className={`flex-1 py-2 rounded-xl text-xs font-semibold border-2 transition ${form.payment_method === m ? 'border-violet-500 bg-violet-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700/50 hover:border-violet-300'}`}>
+                  {m === 'Card' ? '💳' : m === 'Cash' ? '💵' : m === 'Mobile Pay' ? '📱' : '🏦'} {m}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Notes <span className="font-normal">(optional)</span></label>
+            <input type="text" placeholder="Any extra details…" value={form.notes}
+              onChange={e => setForm({ ...form, notes: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+          </div>
           <button onClick={() => onSave(form)}
             disabled={!form.amount || !form.date}
             className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50 mt-1">
@@ -341,7 +412,7 @@ function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
   )
 }
 
-const CAT_ICONS_MAP = { Food:'🍔', Transport:'🚗', Shopping:'🛍️', Subscriptions:'📱', Entertainment:'🎬', Other:'📦' }
+const CAT_ICONS_MAP = { Food:'🍔', Coffee:'☕', Transport:'🚗', Shopping:'🛍️', Entertainment:'🎬', Health:'🏥', Fitness:'🏋️', Education:'🎓', Bills:'💡', Travel:'✈️', Gifts:'🎁', Subscriptions:'📱', Other:'📦' }
 const EXAMPLE_PROMPTS = [
   "Starbucks $6 this morning, Uber $22 to the mall, KFC lunch $11",
   "Netflix monthly $15, groceries at Carrefour $85, parking $4",

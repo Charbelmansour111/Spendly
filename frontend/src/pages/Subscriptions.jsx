@@ -3,12 +3,50 @@ import Layout from '../components/Layout'
 import API from '../utils/api'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
-const CAT_ICONS = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
+const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦' }
 const CAT_COLORS = {
-  Subscriptions: 'bg-violet-500', Entertainment: 'bg-green-500',
-  Shopping: 'bg-pink-500', Food: 'bg-orange-500', Transport: 'bg-blue-500', Other: 'bg-gray-400',
+  Subscriptions: 'bg-violet-500', Entertainment: 'bg-green-500', Shopping: 'bg-pink-500',
+  Food: 'bg-orange-500', Coffee: 'bg-amber-700', Transport: 'bg-blue-500', Health: 'bg-red-500',
+  Fitness: 'bg-yellow-500', Education: 'bg-indigo-500', Bills: 'bg-sky-500',
+  Travel: 'bg-teal-500', Gifts: 'bg-fuchsia-500', Other: 'bg-gray-400',
 }
-const CATEGORIES = ['Subscriptions', 'Entertainment', 'Food', 'Shopping', 'Transport', 'Other']
+const CATEGORIES = ['Subscriptions', 'Entertainment', 'Food', 'Coffee', 'Shopping', 'Transport', 'Health', 'Fitness', 'Education', 'Bills', 'Travel', 'Gifts', 'Other']
+
+function getLogoUrl(name) {
+  const n = (name || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const map = {
+    netflix: 'netflix.com', spotify: 'spotify.com', amazon: 'amazon.com', amazonprime: 'amazon.com',
+    prime: 'amazon.com', primevideo: 'primevideo.com', youtube: 'youtube.com', youtubepremium: 'youtube.com',
+    apple: 'apple.com', appletv: 'apple.com', applemusic: 'apple.com', icloud: 'icloud.com',
+    disney: 'disneyplus.com', disneyplus: 'disneyplus.com', hbo: 'hbomax.com', hbomax: 'hbomax.com',
+    max: 'max.com', hulu: 'hulu.com', twitch: 'twitch.tv', crunchyroll: 'crunchyroll.com',
+    paramount: 'paramountplus.com', paramountplus: 'paramountplus.com', peacock: 'peacocktv.com',
+    dropbox: 'dropbox.com', google: 'google.com', googleone: 'one.google.com', googledrive: 'google.com',
+    microsoft: 'microsoft.com', office: 'microsoft.com', office365: 'microsoft.com',
+    xbox: 'xbox.com', playstation: 'playstation.com', psn: 'playstation.com', steam: 'steampowered.com',
+    canva: 'canva.com', figma: 'figma.com', notion: 'notion.so', slack: 'slack.com', zoom: 'zoom.us',
+    linkedin: 'linkedin.com', twitter: 'twitter.com', x: 'x.com', instagram: 'instagram.com',
+    duolingo: 'duolingo.com', audible: 'audible.com', github: 'github.com', gitlab: 'gitlab.com',
+    adobe: 'adobe.com', adobecc: 'adobe.com', photoshop: 'adobe.com', grammarly: 'grammarly.com',
+    chatgpt: 'openai.com', openai: 'openai.com', nordvpn: 'nordvpn.com', expressvpn: 'expressvpn.com',
+    starbucks: 'starbucks.com', uber: 'uber.com', lyft: 'lyft.com', doordash: 'doordash.com',
+    showtime: 'showtime.com', deezer: 'deezer.com', tidal: 'tidal.com',
+  }
+  for (const [key, domain] of Object.entries(map)) {
+    if (n.includes(key)) return `https://logo.clearbit.com/${domain}`
+  }
+  return null
+}
+
+function SubLogo({ name, category }) {
+  const [ok, setOk] = useState(true)
+  const url = getLogoUrl(name)
+  if (url && ok) return (
+    <img src={url} alt={name} className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 shadow-sm shrink-0"
+      onError={() => setOk(false)} />
+  )
+  return <span className="text-2xl shrink-0">{CAT_ICONS[category] || '📱'}</span>
+}
 const CYCLES = ['monthly', 'yearly', 'weekly']
 
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
@@ -312,12 +350,8 @@ export default function Subscriptions() {
                   return (
                     <div key={sub.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
                       <div className="flex items-center gap-4 p-4">
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 ${
-                          sub.category === 'Subscriptions' ? 'bg-violet-100 dark:bg-violet-900/30' :
-                          sub.category === 'Entertainment' ? 'bg-green-100 dark:bg-green-900/30' :
-                          'bg-gray-100 dark:bg-gray-700'
-                        }`}>
-                          {CAT_ICONS[sub.category] || '📦'}
+                        <div className="w-11 h-11 flex items-center justify-center shrink-0">
+                          <SubLogo name={sub.name} category={sub.category} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-gray-800 dark:text-white text-sm truncate">{sub.name}</p>

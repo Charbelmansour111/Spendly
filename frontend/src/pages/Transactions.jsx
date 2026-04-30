@@ -3,10 +3,10 @@ import Layout from '../components/Layout'
 import API from '../utils/api'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
-const CAT_ICONS = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦', Salary: '💼', Freelance: '💻', Business: '🏪', Investment: '📈' }
-const CAT_COLORS = { Food: '#F97316', Transport: '#3B82F6', Shopping: '#EC4899', Subscriptions: '#8B5CF6', Entertainment: '#10B981', Other: '#6B7280' }
+const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦', Salary: '💼', Freelance: '💻', Business: '🏪', Investment: '📈' }
+const CAT_COLORS = { Food: '#F97316', Coffee: '#92400E', Transport: '#3B82F6', Shopping: '#EC4899', Entertainment: '#10B981', Health: '#EF4444', Fitness: '#F59E0B', Education: '#6366F1', Bills: '#0EA5E9', Travel: '#14B8A6', Gifts: '#E879F9', Subscriptions: '#8B5CF6', Other: '#6B7280' }
 const INCOME_SOURCES = ['Salary', 'Freelance', 'Business', 'Investment', 'Other']
-const EXPENSE_CATS = ['Food', 'Transport', 'Shopping', 'Subscriptions', 'Entertainment', 'Other']
+const EXPENSE_CATS = ['Food', 'Coffee', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Fitness', 'Education', 'Bills', 'Travel', 'Gifts', 'Subscriptions', 'Other']
 
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 function fmtMoney(amount, symbol) {

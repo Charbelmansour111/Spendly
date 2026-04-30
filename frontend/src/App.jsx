@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
+import { scheduleReminders } from './utils/notifications'
 
 const PAGE_TITLES = {
   '/': 'Spendly',
@@ -60,6 +61,10 @@ import Privacy from './pages/Privacy'
 // import AdminAdvisors from './pages/AdminAdvisors'
 
 function App() {
+  useEffect(() => {
+    if (localStorage.getItem('token')) scheduleReminders()
+  }, [])
+
   return (
     <BrowserRouter>
       <RouteTitle />
