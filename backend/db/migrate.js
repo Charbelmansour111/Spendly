@@ -98,6 +98,8 @@ async function migrate() {
 
     // Add account_subtype to users
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_subtype VARCHAR(20) DEFAULT 'personal'`);
+    await pool.query(`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS recurring_frequency VARCHAR(10) DEFAULT 'monthly'`);
+    await pool.query(`ALTER TABLE income ADD COLUMN IF NOT EXISTS recurring_frequency VARCHAR(10) DEFAULT 'monthly'`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS support_tickets (

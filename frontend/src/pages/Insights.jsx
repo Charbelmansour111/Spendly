@@ -181,7 +181,7 @@ export default function Insights() {
         </div>
 
         {/* Overview Card */}
-        <div className="bg-linear-to-br from-gray-600 to-gray-800 dark:from-gray-700 dark:to-gray-900 rounded-3xl px-5 py-5 mb-4 relative overflow-hidden">
+        <div className="bg-linear-to-br from-gray-400 to-gray-600 dark:from-gray-600 dark:to-gray-800 rounded-3xl px-5 py-5 mb-4 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 pointer-events-none">
             <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white" />
             <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white" />

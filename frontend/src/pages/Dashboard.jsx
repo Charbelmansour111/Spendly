@@ -171,7 +171,7 @@ const EXP_CATS = [
 function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
   const [form, setForm] = useState({
     amount: '', category: 'Food', description: '',
-    date: new Date().toISOString().split('T')[0], is_recurring: false
+    date: new Date().toISOString().split('T')[0], is_recurring: false, recurring_frequency: 'monthly'
   })
   const [selectedSub, setSelectedSub] = useState(null)
   const [suggestion, setSuggestion] = useState(null)
@@ -270,8 +270,16 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="w-4 h-4 accent-violet-600" />
-            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring monthly</span>
+            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
           </label>
+          {form.is_recurring && (
+            <select value={form.recurring_frequency} onChange={e => setForm({ ...form, recurring_frequency: e.target.value })}
+              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          )}
           <button onClick={() => onSave(form)}
             disabled={!form.amount || !form.date}
             className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50 mt-1">
@@ -284,7 +292,7 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
 }
 
 function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
-  const [form, setForm] = useState({ amount: '', source: 'Salary', is_recurring: false })
+  const [form, setForm] = useState({ amount: '', source: 'Salary', is_recurring: false, recurring_frequency: 'monthly' })
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -312,8 +320,16 @@ function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="w-4 h-4 accent-green-600" />
-            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring monthly</span>
+            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
           </label>
+          {form.is_recurring && (
+            <select value={form.recurring_frequency} onChange={e => setForm({ ...form, recurring_frequency: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          )}
           <button onClick={() => onSave(form)}
             disabled={!form.amount}
             className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-green-700 transition disabled:opacity-50">
@@ -601,6 +617,8 @@ export default function Dashboard() {
   const [editingExpense, setEditing]  = useState(null)
   const [editForm, setEditForm]       = useState({ amount: '', category: 'Food', description: '', date: '', is_recurring: false })
   const [showNotifs, setShowNotifs]   = useState(false)
+  const [behaviorAlert, setBehaviorAlert] = useState(null)
+  const [monthlyCheckModal, setMonthlyCheckModal] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => {
     const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
     return !localStorage.getItem(`spendly_onboarded_${uid}`)
@@ -661,6 +679,18 @@ export default function Dashboard() {
   useEffect(() => {
     if (!localStorage.getItem('token')) return
     API.get('/news').then(r => setNews(r.data || [])).catch(() => { /* noop */ }).finally(() => setNewsLoading(false))
+  }, [])
+
+  // Monthly recurring confirmation check
+  useEffect(() => {
+    if (!localStorage.getItem('token')) return
+    const key = 'spendly_month_confirmed'
+    const now = new Date()
+    const currentKey = `${now.getFullYear()}-${now.getMonth() + 1}`
+    if (localStorage.getItem(key) !== currentKey) {
+      const timer = setTimeout(() => setMonthlyCheckModal(true), 2000)
+      return () => clearTimeout(timer)
+    }
   }, [])
 
   // Fetch debts + subscriptions + all-time income for net worth
@@ -795,6 +825,10 @@ export default function Dashboard() {
       } else {
         showToast('Expense added!')
       }
+      // Behavior analysis (fire and forget, show alert if bad)
+      API.post('/insights/analyze-expense', { amount: form.amount, category: form.category, description: form.description })
+        .then(r => { if (r.data.isBad) setBehaviorAlert(r.data.message) })
+        .catch(() => {})
     } catch { showToast('Error adding expense', 'error') }
   }
 
@@ -844,6 +878,9 @@ export default function Dashboard() {
   const inputCls = "w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
   const PANEL_LABELS = ['Overview', 'World News', 'Your Tips']
 
+  const recurringExpensesList = expenses.filter(e => e.is_recurring)
+  const recurringIncomeList   = incomeList.filter(i => i.is_recurring)
+
   return (
     <Layout unreadCount={unread} onBellClick={() => { setShowNotifs(v => !v); if (!showNotifs) markRead() }}>
       {toast    && <Toast {...toast} onClose={() => setToast(null)} />}
@@ -853,6 +890,71 @@ export default function Dashboard() {
       {showAddExp   && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} />}
       {showAddInc   && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}
       {showQuickLog && <QuickLogSheet onClose={() => setShowQuickLog(false)} onSaved={fetchExpenses} currencySymbol={currencySymbol} />}
+
+      {/* AI Behavior Alert */}
+      {behaviorAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setBehaviorAlert(null)} />
+          <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-6 w-full max-w-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/40 rounded-2xl flex items-center justify-center text-xl">💬</div>
+              <div>
+                <p className="font-bold text-gray-800 dark:text-white text-sm">AI Notice</p>
+                <p className="text-gray-400 text-xs">About your last transaction</p>
+              </div>
+            </div>
+            <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-5">{behaviorAlert}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setBehaviorAlert(null)} className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-3 rounded-2xl font-semibold text-sm">Got it</button>
+              <button onClick={() => { setBehaviorAlert(null); window.location.href = '/insights' }}
+                className="flex-1 bg-violet-600 text-white py-3 rounded-2xl font-semibold text-sm hover:bg-violet-700 transition">Chat with AI</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Monthly Recurring Check Modal */}
+      {monthlyCheckModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-6 w-full max-w-sm max-h-[80vh] flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-violet-100 dark:bg-violet-900/40 rounded-2xl flex items-center justify-center text-xl">📋</div>
+              <div>
+                <p className="font-bold text-gray-800 dark:text-white">Monthly Check-in</p>
+                <p className="text-gray-400 text-xs">{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
+              </div>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">Here are your scheduled recurring transactions. Make sure everything still looks right:</p>
+            <div className="overflow-y-auto flex-1 space-y-2 mb-4">
+              {recurringExpensesList.length === 0 && recurringIncomeList.length === 0 && (
+                <p className="text-gray-400 text-sm text-center py-4">No recurring transactions set up yet.</p>
+              )}
+              {recurringExpensesList.map(e => (
+                <div key={e.id} className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2.5">
+                  <span className="text-base shrink-0">{CAT_ICONS_MAP[e.category] || '📦'}</span>
+                  <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">{e.description || e.category}</span>
+                  <span className="text-xs font-bold text-red-500 shrink-0">-{currencySymbol}{parseFloat(e.amount).toFixed(2)}/{(e.recurring_frequency || 'monthly').replace('monthly','mo').replace('weekly','wk').replace('daily','day')}</span>
+                </div>
+              ))}
+              {recurringIncomeList.map(i => (
+                <div key={i.id} className="flex items-center gap-3 bg-green-50 dark:bg-green-900/20 rounded-xl px-3 py-2.5">
+                  <span className="text-base shrink-0">💵</span>
+                  <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">{i.source || 'Income'}</span>
+                  <span className="text-xs font-bold text-green-500 shrink-0">+{currencySymbol}{parseFloat(i.amount).toFixed(2)}/mo</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => {
+              const now = new Date()
+              localStorage.setItem('spendly_month_confirmed', `${now.getFullYear()}-${now.getMonth() + 1}`)
+              setMonthlyCheckModal(false)
+            }} className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition">
+              Looks good ✓
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Notifications panel */}
       {showNotifs && (

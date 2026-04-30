@@ -12,18 +12,19 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { amount, category, description, date, is_recurring, expense_scope, linked_date } = req.body;
+    const { amount, category, description, date, is_recurring, expense_scope, linked_date, recurring_frequency } = req.body;
     if (!amount || !date) return res.status(400).json({ message: 'Amount and date required' });
     const result = await pool.query(
-      `INSERT INTO expenses (user_id, amount, category, description, date, is_recurring, expense_scope, linked_date)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      `INSERT INTO expenses (user_id, amount, category, description, date, is_recurring, expense_scope, linked_date, recurring_frequency)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        RETURNING *`,
       [
         req.userId, amount, category || 'Other',
         description || null, date,
         is_recurring || false,
         expense_scope || 'monthly',
-        linked_date || null
+        linked_date || null,
+        recurring_frequency || 'monthly'
       ]
     );
     res.status(201).json(result.rows[0]);
@@ -35,11 +36,11 @@ router.post('/', authenticateToken, async (req, res) => {
 
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    const { amount, category, description, date, is_recurring } = req.body;
+    const { amount, category, description, date, is_recurring, recurring_frequency } = req.body;
     if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ message: 'Amount must be greater than 0' });
     const updated = await pool.query(
-      'UPDATE expenses SET amount=$1, category=$2, description=$3, date=$4, is_recurring=$5 WHERE id=$6 AND user_id=$7 RETURNING *',
-      [amount, category, description, date, is_recurring || false, req.params.id, req.userId]
+      'UPDATE expenses SET amount=$1, category=$2, description=$3, date=$4, is_recurring=$5, recurring_frequency=$6 WHERE id=$7 AND user_id=$8 RETURNING *',
+      [amount, category, description, date, is_recurring || false, recurring_frequency || 'monthly', req.params.id, req.userId]
     );
     res.json(updated.rows[0]);
   } catch { res.status(500).json({ message: 'Server error' }) }

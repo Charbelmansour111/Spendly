@@ -18,14 +18,14 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { amount, source, month, year } = req.body;
+    const { amount, source, month, year, is_recurring, recurring_frequency } = req.body;
     const result = await pool.query(
-      `INSERT INTO income (user_id, amount, source, month, year)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO income (user_id, amount, source, month, year, is_recurring, recurring_frequency)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (user_id, month, year, source)
-       DO UPDATE SET amount = EXCLUDED.amount
+       DO UPDATE SET amount = EXCLUDED.amount, is_recurring = EXCLUDED.is_recurring, recurring_frequency = EXCLUDED.recurring_frequency
        RETURNING *`,
-      [req.userId, amount, source, month, year]
+      [req.userId, amount, source, month, year, is_recurring || false, recurring_frequency || 'monthly']
     );
     res.status(201).json(result.rows[0]);
   } catch (e) {

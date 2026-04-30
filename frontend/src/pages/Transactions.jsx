@@ -62,6 +62,7 @@ function EditSheet({ expense, sym, onSave, onClose }) {
     description: expense.description || '',
     date: expense.date?.split('T')[0] || '',
     is_recurring: expense.is_recurring || false,
+    recurring_frequency: expense.recurring_frequency || 'monthly',
   })
   const [saving, setSaving] = useState(false)
   const handleSave = async () => {
@@ -101,8 +102,15 @@ function EditSheet({ expense, sym, onSave, onClose }) {
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="accent-violet-600 w-4 h-4" />
-            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring monthly</span>
+            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
           </label>
+          {form.is_recurring && (
+            <select value={form.recurring_frequency} onChange={e => setForm({ ...form, recurring_frequency: e.target.value })} className={cls}>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          )}
           <button onClick={handleSave} disabled={saving || !form.amount || !form.date}
             className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
             {saving ? 'Saving…' : 'Save Changes'}
@@ -475,49 +483,45 @@ export default function Transactions() {
 
         {/* Recurring Commitments */}
         {(recurringExpenses.length > 0 || recurringIncome.length > 0) && (
-          <div className="bg-linear-to-br from-sky-500 to-blue-700 rounded-2xl px-5 py-4 mb-5 relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10 pointer-events-none">
-              <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
-              <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
-            </div>
-            <div className="relative flex items-center justify-between mb-3">
+          <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-5 py-4 mb-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-white font-bold text-base flex items-center gap-2">
-                  <span className="text-lg">↻</span> Recurring Commitments
+                <p className="text-gray-800 dark:text-white font-bold text-base flex items-center gap-2">
+                  <span className="text-sky-500 text-lg">↻</span> Recurring Commitments
                 </p>
-                <p className="text-white/70 text-xs mt-0.5">{recurringExpenses.length + recurringIncome.length} item{recurringExpenses.length + recurringIncome.length !== 1 ? 's' : ''} per month</p>
+                <p className="text-gray-400 text-xs mt-0.5">{recurringExpenses.length + recurringIncome.length} item{recurringExpenses.length + recurringIncome.length !== 1 ? 's' : ''} scheduled</p>
               </div>
               <button onClick={() => setShowRecurring(v => !v)}
-                className="text-xs bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1.5 rounded-full transition">
+                className="text-xs bg-sky-50 dark:bg-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-600 dark:text-sky-400 font-semibold px-3 py-1.5 rounded-full transition">
                 {showRecurring ? 'Hide' : 'Details'}
               </button>
             </div>
-            <div className="relative grid grid-cols-2 gap-2">
-              <div className="bg-white/15 rounded-xl px-3 py-2.5">
-                <p className="text-white/70 text-[10px] mb-0.5">Monthly Out</p>
-                <p className="text-white font-bold text-sm tabular-nums">-{fmtMoney(recurringExpenseTotal, sym)}</p>
-                <p className="text-white/50 text-[10px]">{recurringExpenses.length} expense{recurringExpenses.length !== 1 ? 's' : ''}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2.5">
+                <p className="text-red-400 text-[10px] mb-0.5">Monthly Out</p>
+                <p className="text-red-600 dark:text-red-400 font-bold text-sm tabular-nums">-{fmtMoney(recurringExpenseTotal, sym)}</p>
+                <p className="text-gray-400 text-[10px]">{recurringExpenses.length} expense{recurringExpenses.length !== 1 ? 's' : ''}</p>
               </div>
-              <div className="bg-white/15 rounded-xl px-3 py-2.5">
-                <p className="text-white/70 text-[10px] mb-0.5">Monthly In</p>
-                <p className="text-white font-bold text-sm tabular-nums">+{fmtMoney(recurringIncomeTotal, sym)}</p>
-                <p className="text-white/50 text-[10px]">{recurringIncome.length} income{recurringIncome.length !== 1 ? 's' : ''}</p>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-3 py-2.5">
+                <p className="text-green-500 text-[10px] mb-0.5">Monthly In</p>
+                <p className="text-green-600 dark:text-green-400 font-bold text-sm tabular-nums">+{fmtMoney(recurringIncomeTotal, sym)}</p>
+                <p className="text-gray-400 text-[10px]">{recurringIncome.length} income{recurringIncome.length !== 1 ? 's' : ''}</p>
               </div>
             </div>
             {showRecurring && (
-              <div className="relative mt-3 pt-3 border-t border-white/20 space-y-2">
+              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 space-y-2">
                 {recurringExpenses.map(e => (
                   <div key={e.id} className="flex items-center gap-2.5">
                     <span className="text-base w-6 text-center shrink-0">{CAT_ICONS[e.category] || '📦'}</span>
-                    <span className="flex-1 text-sm text-white/90 truncate">{e.description || e.category}</span>
-                    <span className="text-xs font-semibold text-white/80 tabular-nums shrink-0">-{sym}{safeNum(e.amount).toFixed(2)}/mo</span>
+                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">{e.description || e.category}</span>
+                    <span className="text-xs font-semibold text-red-500 tabular-nums shrink-0">-{sym}{safeNum(e.amount).toFixed(2)}/{(e.recurring_frequency || 'mo').replace('monthly','mo').replace('weekly','wk').replace('daily','day')}</span>
                   </div>
                 ))}
                 {recurringIncome.map(i => (
                   <div key={i.id} className="flex items-center gap-2.5">
                     <span className="text-base w-6 text-center shrink-0">💵</span>
-                    <span className="flex-1 text-sm text-white/90 truncate">{i.description || i.source || 'Income'}</span>
-                    <span className="text-xs font-semibold text-white/80 tabular-nums shrink-0">+{sym}{safeNum(i.amount).toFixed(2)}/mo</span>
+                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">{i.description || i.source || 'Income'}</span>
+                    <span className="text-xs font-semibold text-green-500 tabular-nums shrink-0">+{sym}{safeNum(i.amount).toFixed(2)}/{(i.recurring_frequency || 'mo').replace('monthly','mo').replace('weekly','wk').replace('daily','day')}</span>
                   </div>
                 ))}
               </div>

@@ -87,6 +87,51 @@ router.post('/chat', authenticateToken, async (req, res) => {
   }
 });
 
+router.post('/analyze-expense', authenticateToken, async (req, res) => {
+  try {
+    const { amount, category, description } = req.body;
+    const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 50', [req.userId]);
+    const income = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20', [req.userId]);
+    const budgets = await pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]);
+    const total = expenses.rows.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    const totalIncome = income.rows.reduce((sum, i) => sum + parseFloat(i.amount), 0);
+    const categoryTotals = expenses.rows.reduce((acc, e) => {
+      acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount);
+      return acc;
+    }, {});
+    const categoryBreakdown = Object.entries(categoryTotals)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, amt]) => `${cat}: $${amt.toFixed(2)}`)
+      .join(', ');
+    const budgetSummary = budgets.rows.map(b => `${b.category}: $${b.amount}`).join(', ') || 'None set';
+    const messages = [
+      {
+        role: 'system',
+        content: `You are a financial advisor. The user just logged a new expense. Evaluate if this purchase is financially unwise for this user.
+
+User's financial context:
+- Monthly Income: $${totalIncome.toFixed(2)} | Total Spending: $${total.toFixed(2)} | Remaining: $${(totalIncome - total).toFixed(2)}
+- Spending by category: ${categoryBreakdown || 'None yet'}
+- Budget limits: ${budgetSummary}
+
+New transaction: ${description || category} — $${parseFloat(amount || 0).toFixed(2)} (${category})
+
+Rules:
+- If the expense seems FINE (within budget, reasonable for their income), respond ONLY with the word: OK
+- If the expense is financially problematic (over budget, too high relative to income, or excessive pattern), give a SHORT honest message (1-2 sentences). Be warm but direct. Use their real numbers. Start with a relevant emoji.
+- Never lecture. Just be real. If it's fine, say only "OK".`
+      },
+      { role: 'user', content: `I just logged: ${description || category} for $${parseFloat(amount || 0).toFixed(2)}` }
+    ];
+    const reply = await callAI(messages);
+    const isBad = reply.trim().toUpperCase() !== 'OK' && !reply.trim().toUpperCase().startsWith('OK\n') && !reply.trim().toUpperCase().startsWith('OK ');
+    res.json({ isBad, message: isBad ? reply.trim() : null });
+  } catch (e) {
+    console.error('Analyze expense error:', e);
+    res.json({ isBad: false, message: null });
+  }
+});
+
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 50', [req.userId]);
