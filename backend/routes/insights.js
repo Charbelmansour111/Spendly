@@ -3,14 +3,14 @@ const router = express.Router();
 const pool = require('../db');
 const authenticateToken = require('../middleware/auth');
 
-const callAI = async (messages) => {
+const callAI = async (messages, maxTokens = 300) => {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, max_tokens: 300 })
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, max_tokens: maxTokens })
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error?.message || 'AI error');
@@ -238,6 +238,72 @@ Slide topics (in order):
   } catch (e) {
     console.error('Monthly wrap error:', e);
     res.status(500).json({ message: 'Error generating wrap' });
+  }
+});
+
+router.post('/time-machine', authenticateToken, async (req, res) => {
+  try {
+    const { year, amount = 100, currency = 'USD' } = req.body;
+    const y = parseInt(year);
+    const a = parseFloat(amount);
+    const currentYear = new Date().getFullYear();
+
+    if (!y || y < 1900 || y > 2100) return res.status(400).json({ error: 'Invalid year' });
+
+    // US CPI historical + projections
+    const CPI = {
+      1900:8.3, 1905:9.1, 1910:9.9, 1915:10.1, 1920:20.0,
+      1925:17.5,1930:16.7,1935:13.7,1940:14.0, 1945:18.0,
+      1950:24.1,1955:26.8,1960:29.6,1965:31.5, 1970:38.8,
+      1975:53.8,1980:82.4,1985:107.6,1990:130.7,1995:152.4,
+      2000:172.2,2005:195.3,2010:218.1,2015:237.0,2020:258.8,
+      2021:270.9,2022:292.7,2023:304.7,2024:314.5,2025:321.0,
+      2026:328.0,2027:334.6,2028:341.3,2030:355.1,2035:392.0,
+      2040:433.0,2050:527.0,2060:642.0,2100:1590.0,
+    };
+    const getCPI = (yr) => {
+      if (CPI[yr]) return CPI[yr];
+      const keys = Object.keys(CPI).map(Number).sort((a,b)=>a-b);
+      const before = [...keys].filter(k=>k<=yr).pop();
+      const after  = keys.find(k=>k>=yr);
+      if (!before) return CPI[keys[0]];
+      if (!after)  return CPI[keys[keys.length-1]];
+      const t = (yr-before)/(after-before);
+      return CPI[before] + t*(CPI[after]-CPI[before]);
+    };
+    const adjustedAmount = (a * getCPI(y) / getCPI(currentYear)).toFixed(2);
+    const isPast   = y < currentYear;
+    const isFuture = y > currentYear;
+
+    const prompt = `You are "Spendly" — a hilariously sarcastic AI financial mascot doing a 30-second comedy sketch.
+
+User in ${currentYear} has ${currency} ${a.toFixed(2)}.
+They're time-traveling to: ${y}${isPast ? ` (${currentYear-y} years in the past)` : isFuture ? ` (${y-currentYear} years in the future)` : ' (the present)'}
+${isPast ? `Their money then: ${currency} ${adjustedAmount} (inflation-adjusted)` : `Their money then: ${currency} ${adjustedAmount} (projected)`}
+
+Return ONLY this exact JSON — no markdown, no extra text. Keep each string under 140 characters:
+{
+  "eraName": "funny 4-word nickname for this era",
+  "greeting": "1 punchy sentence reacting to ${y} — mention ONE real historical fact or event from that exact year",
+  "context": "1 ACCURATE sentence about what things cost or what was economically notable in ${y}",
+  "roast": "1 savage sarcastic line: mock what they could have done with ${currency} ${a.toFixed(2)} in ${y}, or mock the future",
+  "funFact": "1 wild price comparison — what could ${currency} ${a.toFixed(2)} literally buy in ${y}?",
+  "mood": "shocked",
+  "planetColors": ["#hex1","#hex2"],
+  "recommendations": [
+    {"year":number,"label":"why it is historically wild"},
+    {"year":number,"label":"..."},
+    {"year":number,"label":"..."}
+  ]
+}`;
+
+    const aiReply = await callAI([{ role: 'user', content: prompt }], 560);
+    const json = JSON.parse(aiReply.trim().replace(/```json|```/g,'').trim());
+
+    res.json({ ...json, adjustedAmount, originalAmount: a, currency, year: y, currentYear });
+  } catch(e) {
+    console.error('Time machine error:', e.message);
+    res.status(500).json({ error: 'Time machine broke' });
   }
 });
 

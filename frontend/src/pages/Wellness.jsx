@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 import MoneyDefender from '../components/MoneyDefender'
+import TimeMachineModal from '../components/TimeMachineModal'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 
@@ -64,9 +65,7 @@ export default function Wellness() {
   const [showGame, setShowGame] = useState(false)
   const [numModal, setNumModal] = useState(null)
   const [highScore] = useState(() => parseInt(localStorage.getItem('moneyDefenderHS') || '0'))
-  const [tmAmount, setTmAmount] = useState('')
-  const [tmTraveled, setTmTraveled] = useState(false)
-  const [tmWarping, setTmWarping] = useState(false)
+  const [showTimeMachine, setShowTimeMachine] = useState(false)
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
   const dayOfMonth = today.getDate()
@@ -588,141 +587,29 @@ export default function Wellness() {
         </div>
 
         {/* 🕰️ Time Machine */}
-        {(() => {
-          const CPI_NOW = 320
-          const ERA = [
-            { year: 1960, label: "The '60s", emoji: '🎷', cpi: 29.6,  invest: 68,  color: 'from-amber-400 to-orange-500',
-              joke: (p, inv, sym) => `${sym}${p.toFixed(2)}?? Back then that was basically a mortgage payment. You'd have been the richest person on the block — and you're here spending it on what exactly? 💀` },
-            { year: 1970, label: "The '70s", emoji: '🕺', cpi: 38.8,  invest: 38,  color: 'from-orange-400 to-red-500',
-              joke: (p, inv, sym) => `${sym}${p.toFixed(2)} in the '70s? People were driving muscle cars, partying disco, and you had enough for all of it. Instead you chose ${new Date().getFullYear()}. Bold. Wrong, but bold. 🕺` },
-            { year: 1980, label: "The '80s", emoji: '🎸', cpi: 82.4,  invest: 28,  color: 'from-pink-400 to-rose-500',
-              joke: (p, inv, sym) => `${sym}${p.toFixed(2)} in the '80s. For that you could've had the hair, the jacket AND the shoulder pads. But sure, spend it in 2025 when everything costs a kidney. 🎸` },
-            { year: 1990, label: "The '90s", emoji: '📺', cpi: 130.7, invest: 14,  color: 'from-violet-400 to-purple-500',
-              joke: (p, inv, sym) => `${sym}${p.toFixed(2)} in the '90s. That was a full week of fun. No inflation, no crypto crashes, just pure bliss. Now look at us. Truly tragic. 📺` },
-            { year: 2000, label: "Y2K",      emoji: '💿', cpi: 172.2, invest: 5.2, color: 'from-blue-400 to-indigo-500',
-              joke: (p, inv, sym) => `${sym}${p.toFixed(2)} in Y2K. Everyone was panicking the world would end, meanwhile you could've been partying on ${sym}${p.toFixed(2)}. The real catastrophe is inflation. 💿` },
-            { year: 2010, label: "The '10s", emoji: '📱', cpi: 218.1, invest: 3.8, color: 'from-teal-400 to-cyan-500',
-              joke: (p, inv, sym) => `${sym}${p.toFixed(2)} just 15 years ago. That's it. That's the whole joke. You did this to yourself. You had ${sym}${p.toFixed(2)} and now it's ${sym}${(p*(CPI_NOW/218.1)).toFixed(2)}. Inflation said "lol". 😐` },
-          ]
-          const amount = parseFloat(tmAmount) || Math.round((financials.totalSpent || 100) / 10) * 10 || 100
-
-          const handleTravel = () => {
-            if (tmWarping) return
-            setTmTraveled(false)
-            setTmWarping(true)
-            setTimeout(() => { setTmWarping(false); setTmTraveled(true) }, 1600)
-          }
-
-          return (
-            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm overflow-hidden relative">
-
-              {/* Warp overlay */}
-              {tmWarping && (
-                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black rounded-3xl"
-                  style={{ animation: 'tmFadeOut 1.6s ease forwards' }}>
-                  <style>{`
-                    @keyframes tmFadeOut { 0%{opacity:1} 80%{opacity:1} 100%{opacity:0} }
-                    @keyframes tmSpin { 0%{transform:rotate(0deg) scale(1)} 50%{transform:rotate(540deg) scale(2)} 100%{transform:rotate(1080deg) scale(0.5)} }
-                    @keyframes tmSlideIn { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-                    @keyframes tmPulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
-                  `}</style>
-                  <div style={{ animation: 'tmSpin 1.5s ease-in-out forwards' }} className="text-6xl mb-4">🕰️</div>
-                  <p className="text-white font-black text-lg tracking-widest uppercase" style={{ animation: 'tmPulse 0.6s ease infinite' }}>
-                    WARPING…
-                  </p>
-                  <div className="flex gap-1 mt-3">
-                    {[0,1,2,3,4,5].map(i => (
-                      <div key={i} className="w-2 h-2 rounded-full bg-violet-400"
-                        style={{ animation: `tmPulse 0.6s ease ${i*0.1}s infinite` }} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="p-5">
-                <div className="absolute -top-6 -right-6 w-28 h-28 bg-amber-100 dark:bg-amber-900/20 rounded-full opacity-40" />
-                <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-violet-100 dark:bg-violet-900/20 rounded-full opacity-40" />
-                <div className="relative">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xl">🕰️</span>
-                    <h3 className="text-base font-bold text-gray-800 dark:text-white">Time Machine</h3>
-                  </div>
-                  <p className="text-xs text-gray-400 mb-4">What would your money have been worth — or grown to — if you were born earlier? (Spoiler: you'd be rich. You're not.)</p>
-
-                  {/* Amount input + travel button */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-semibold">{currencySymbol}</span>
-                      <input
-                        type="number" min="1" step="1"
-                        value={tmAmount}
-                        onChange={e => { setTmAmount(e.target.value); setTmTraveled(false) }}
-                        placeholder={String(amount)}
-                        className="w-full pl-7 pr-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-bold text-gray-800 dark:text-white bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      />
-                    </div>
-                    <button onClick={handleTravel} disabled={tmWarping}
-                      className="shrink-0 bg-linear-to-r from-violet-600 to-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:from-violet-700 hover:to-indigo-700 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
-                      <span style={{ display: 'inline-block', animation: tmWarping ? 'tmSpin 1.5s linear infinite' : 'none' }}>🕰️</span>
-                      {tmWarping ? 'Warping…' : 'Travel'}
-                    </button>
-                  </div>
-
-                  {/* Era cards — only shown after traveling */}
-                  {!tmTraveled && !tmWarping && (
-                    <div className="flex flex-col items-center gap-2 py-6 text-center">
-                      <p className="text-4xl">🌀</p>
-                      <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Enter an amount and hit Travel</p>
-                      <p className="text-xs text-gray-400">We'll take you back in time and roast your financial decisions</p>
-                    </div>
-                  )}
-
-                  {tmTraveled && (
-                    <div className="space-y-3">
-                      {ERA.map(({ year, label, emoji, cpi, invest, color, joke }, i) => {
-                        const pastPrice   = amount * (cpi / CPI_NOW)
-                        const investValue = amount * invest
-                        return (
-                          <div key={year} style={{ animation: `tmSlideIn 0.4s ease ${i * 0.12}s both` }}>
-                            <div className={`bg-linear-to-r ${color} rounded-2xl p-0.5 shadow-sm`}>
-                              <div className="bg-white dark:bg-gray-800 rounded-[14px] p-3">
-                                {/* Top row */}
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${color} flex items-center justify-center text-lg shrink-0 shadow-sm`}>
-                                    {emoji}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-gray-400">{label} · {year}</p>
-                                    <p className="text-sm font-black text-gray-800 dark:text-white">
-                                      Cost: <span className="text-violet-600 dark:text-violet-400">{currencySymbol}{pastPrice.toFixed(2)}</span>
-                                    </p>
-                                  </div>
-                                  <div className="text-right shrink-0">
-                                    <p className="text-[10px] text-gray-400 leading-tight">Invested →</p>
-                                    <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                                      {currencySymbol}{investValue >= 10000 ? (investValue/1000).toFixed(1)+'k' : investValue.toFixed(0)}
-                                    </p>
-                                  </div>
-                                </div>
-                                {/* Sarcastic joke */}
-                                <div className="mt-2 bg-gray-50 dark:bg-gray-700/60 rounded-xl px-3 py-2">
-                                  <p className="text-xs text-gray-500 dark:text-gray-300 leading-relaxed italic">
-                                    {joke(pastPrice, investValue, currencySymbol)}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                      <p className="text-[10px] text-gray-300 dark:text-gray-600 text-center pt-1">US CPI data · S&P 500 avg returns · For fun, not financial advice</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+        <div className="bg-linear-to-br from-violet-950 to-indigo-900 rounded-3xl p-5 border border-violet-700/30">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h3 className="text-white font-bold text-base flex items-center gap-2">
+                <span>🕰️</span> Time Machine
+              </h3>
+              <p className="text-violet-300 text-xs mt-0.5">Travel to any year in history</p>
+              <p className="text-gray-500 text-[11px] mt-0.5">AI sketch + planet animation + sarcastic roast</p>
             </div>
-          )
-        })()}
+            <button onClick={() => setShowTimeMachine(true)}
+              className="shrink-0 bg-violet-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-violet-500 transition shadow-lg shadow-violet-900/40 active:scale-95">
+              Travel
+            </button>
+          </div>
+        </div>
+
+        {showTimeMachine && (
+          <TimeMachineModal
+            onClose={() => setShowTimeMachine(false)}
+            defaultAmount={financials.totalSpent || 100}
+            currency={localStorage.getItem('currency') || 'USD'}
+          />
+        )}
 
         {/* Notes */}
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
