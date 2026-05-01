@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useDarkMode } from '../hooks/useDarkMode'
 import VoiceAssistant from './VoiceAssistant'
@@ -136,6 +136,45 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const [showVoice, setShowVoice] = useState(false)
   const lastAiTapRef = useRef(0)
   const aiTapTimerRef = useRef(null)
+
+  // ── Pull to refresh ──
+  const mainRef = useRef(null)
+  const ptrStartY = useRef(0)
+  const isPullingRef = useRef(false)
+  const pullDistRef = useRef(0)
+  const [pullDist, setPullDist] = useState(0)
+  const [isPulling, setIsPulling] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const PULL_THRESHOLD = 60
+
+  const onPTRStart = (e) => {
+    if ((mainRef.current?.scrollTop ?? 1) > 0) return
+    ptrStartY.current = e.touches[0].clientY
+    isPullingRef.current = true
+    setIsPulling(true)
+  }
+  const onPTRMove = (e) => {
+    if (!isPullingRef.current) return
+    const dy = e.touches[0].clientY - ptrStartY.current
+    if (dy <= 0) { isPullingRef.current = false; setIsPulling(false); pullDistRef.current = 0; setPullDist(0); return }
+    const v = Math.min(dy * 0.4, 80)
+    pullDistRef.current = v
+    setPullDist(v)
+  }
+  const onPTREnd = () => {
+    if (!isPullingRef.current) return
+    isPullingRef.current = false
+    setIsPulling(false)
+    if (pullDistRef.current >= PULL_THRESHOLD) {
+      setIsRefreshing(true)
+      navigator.vibrate?.(15)
+      setTimeout(() => window.location.reload(), 500)
+    } else {
+      pullDistRef.current = 0
+      setPullDist(0)
+    }
+  }
+  useEffect(() => () => { isPullingRef.current = false }, [])
   const current = window.location.pathname
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
@@ -203,7 +242,28 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       )}
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-20 md:pb-0">
+      <main
+        ref={mainRef}
+        className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-20 md:pb-0 relative"
+        style={{ overscrollBehavior: 'contain' }}
+        onTouchStart={onPTRStart}
+        onTouchMove={onPTRMove}
+        onTouchEnd={onPTREnd}
+      >
+        {/* Pull-to-refresh indicator */}
+        <div style={{
+          height: isRefreshing ? 52 : pullDist > 4 ? pullDist : 0,
+          transition: isPulling ? 'none' : 'height 0.25s ease',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+        }}>
+          {(pullDist > 8 || isRefreshing) && (
+            <div
+              className={`w-7 h-7 rounded-full border-2 border-violet-500 border-t-transparent ${isRefreshing ? 'animate-spin' : ''}`}
+              style={{ transform: isRefreshing ? undefined : `rotate(${pullDist * 4}deg)` }}
+            />
+          )}
+        </div>
+
         <div key={location.pathname} style={{ animation: 'spPageIn 0.22s ease' }}>
           {children}
         </div>

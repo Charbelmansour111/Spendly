@@ -8,6 +8,8 @@ const CAT_COLORS = { Food: '#F97316', Coffee: '#92400E', Transport: '#3B82F6', S
 const INCOME_SOURCES = ['Salary', 'Freelance', 'Business', 'Investment', 'Other']
 const EXPENSE_CATS = ['Food', 'Coffee', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Fitness', 'Education', 'Bills', 'Travel', 'Gifts', 'Subscriptions', 'Other']
 
+const haptic = (ms = 10) => navigator.vibrate?.(ms)
+
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 function fmtMoney(amount, symbol) {
   return symbol + Math.abs(safeNum(amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -38,18 +40,13 @@ function Toast({ message, type, onClose }) {
   )
 }
 
-function ConfirmModal({ message, onConfirm, onCancel }) {
+function UndoToast({ label, onUndo, onDismiss }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-sm text-center">
-        <p className="text-4xl mb-3">🗑️</p>
-        <p className="font-semibold text-gray-800 dark:text-white mb-1">{message}</p>
-        <p className="text-gray-400 text-sm mb-5">This cannot be undone.</p>
-        <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white py-3 rounded-xl font-semibold">Cancel</button>
-          <button onClick={onConfirm} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-semibold hover:bg-red-600 transition">Delete</button>
-        </div>
+    <div className="fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-72 z-50">
+      <div className="bg-gray-900 dark:bg-gray-700 text-white rounded-2xl shadow-2xl px-4 py-3.5 flex items-center gap-3">
+        <span className="text-sm flex-1 min-w-0 truncate">Deleted <span className="font-semibold">"{label}"</span></span>
+        <button onClick={onUndo} className="text-violet-400 hover:text-violet-300 font-bold text-sm shrink-0 px-2 py-1 rounded-lg hover:bg-white/10 transition">Undo</button>
+        <button onClick={onDismiss} className="text-gray-400 hover:text-white shrink-0 text-xl leading-none">×</button>
       </div>
     </div>
   )
@@ -133,7 +130,7 @@ function SwipeRow({ onDelete, children }) {
     if (d > 0) setOffset(Math.min(d, 140))
   }
   const onTouchEnd = () => {
-    if (offset >= THRESHOLD) onDelete()
+    if (offset >= THRESHOLD) { haptic(20); onDelete() }
     else setOffset(0)
     setStartX(null)
   }
@@ -178,8 +175,13 @@ export default function Transactions() {
   const [tab, setTab]           = useState('expenses')   // expenses | income | all
   const [sym] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
   const [toast, setToast]       = useState(null)
-  const [confirm, setConfirm]   = useState(null)
   const [editing, setEditing]   = useState(null)
+  const [undoLabel, setUndoLabel] = useState(null)
+  const undoRef = useRef(null)
+  const undoTimerRef = useRef(null)
+  const tabSwipeRef = useRef(null)
+  const TABS = ['expenses', 'income', 'all']
+  useEffect(() => () => clearTimeout(undoTimerRef.current), [])
   const [numModal, setNumModal] = useState(null)
   const [showRecurring, setShowRecurring] = useState(false)
 
@@ -229,21 +231,50 @@ export default function Transactions() {
   }, [showToast])
 
 
-  const doDeleteExpense = async (id) => {
-    const backup = expenses.find(e => e.id === id)
-    setExpenses(prev => prev.filter(e => e.id !== id))
-    setConfirm(null)
-    try {
-      await API.delete('/expenses/' + id)
-      showToast('Expense deleted')
-    } catch {
-      if (backup) setExpenses(prev => [...prev, backup].sort((a, b) => new Date(b.date) - new Date(a.date)))
+  const commitExpenseDelete = (id, backup) => {
+    API.delete('/expenses/' + id).catch(() => {
+      setExpenses(prev => [...prev, backup].sort((a, b) => new Date(b.date) - new Date(a.date)))
       showToast('Error deleting', 'error')
-    }
+    })
   }
 
   const handleDeleteExpense = (id) => {
-    setConfirm({ message: 'Delete this expense?', onConfirm: () => doDeleteExpense(id) })
+    // Flush any pending undo before starting a new delete
+    if (undoRef.current) {
+      clearTimeout(undoTimerRef.current)
+      commitExpenseDelete(undoRef.current.id, undoRef.current.backup)
+      undoRef.current = null
+    }
+    const backup = expenses.find(e => e.id === id)
+    if (!backup) return
+    haptic(20)
+    setExpenses(prev => prev.filter(e => e.id !== id))
+    setUndoLabel(backup.description || backup.category || 'Expense')
+    undoRef.current = { id, backup }
+    undoTimerRef.current = setTimeout(() => {
+      if (!undoRef.current || undoRef.current.id !== id) return
+      const b = undoRef.current.backup
+      undoRef.current = null
+      setUndoLabel(null)
+      commitExpenseDelete(id, b)
+    }, 4000)
+  }
+
+  const handleUndoExpense = () => {
+    if (!undoRef.current) return
+    clearTimeout(undoTimerRef.current)
+    haptic(10)
+    setExpenses(prev => [undoRef.current.backup, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)))
+    undoRef.current = null
+    setUndoLabel(null)
+  }
+
+  const handleDismissUndo = () => {
+    if (!undoRef.current) return
+    clearTimeout(undoTimerRef.current)
+    commitExpenseDelete(undoRef.current.id, undoRef.current.backup)
+    undoRef.current = null
+    setUndoLabel(null)
   }
 
   const handleEditSave = async (form) => {
@@ -345,11 +376,25 @@ export default function Transactions() {
     showToast('CSV exported!')
   }
 
+  const onTabSwipeStart = (e) => {
+    tabSwipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  }
+  const onTabSwipeEnd = (e) => {
+    if (!tabSwipeRef.current) return
+    const dx = tabSwipeRef.current.x - e.changedTouches[0].clientX
+    const dy = tabSwipeRef.current.y - e.changedTouches[0].clientY
+    tabSwipeRef.current = null
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return
+    const idx = TABS.indexOf(tab)
+    if (dx > 0 && idx < TABS.length - 1) { setTab(TABS[idx + 1]); setCat('All'); haptic(8) }
+    else if (dx < 0 && idx > 0) { setTab(TABS[idx - 1]); setCat('All'); haptic(8) }
+  }
+
   const hasFilters = catFilter !== 'All' || sortBy !== 'newest' || dateFrom || dateTo || search
 
   // ── Render helpers ──
   const renderExpenseRow = (tx, idx, total) => (
-    <SwipeRow key={tx.id} onDelete={() => doDeleteExpense(tx.id)}>
+    <SwipeRow key={tx.id} onDelete={() => handleDeleteExpense(tx.id)}>
       <div className={`flex items-center gap-3 px-4 py-3.5 group hover:bg-gray-50 dark:hover:bg-gray-700/40 transition bg-white dark:bg-gray-800 ${idx < total - 1 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
         <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
           style={{ background: (CAT_COLORS[tx.category] || '#6B7280') + '20' }}>
@@ -506,9 +551,9 @@ export default function Transactions() {
 
   return (
     <Layout>
-      {toast   && <Toast {...toast} onClose={() => setToast(null)} />}
-      {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
-      {editing && <EditSheet expense={editing} sym={sym} onSave={handleEditSave} onClose={() => setEditing(null)} />}
+      {toast     && <Toast {...toast} onClose={() => setToast(null)} />}
+      {undoLabel && <UndoToast label={undoLabel} onUndo={handleUndoExpense} onDismiss={handleDismissUndo} />}
+      {editing   && <EditSheet expense={editing} sym={sym} onSave={handleEditSave} onClose={() => setEditing(null)} />}
 
       <div className="max-w-2xl mx-auto px-4 py-6">
 
@@ -607,7 +652,8 @@ export default function Transactions() {
         )}
 
         {/* Tab bar */}
-        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5">
+        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5"
+          onTouchStart={onTabSwipeStart} onTouchEnd={onTabSwipeEnd}>
           {[
             { key: 'expenses', label: `💸 Expenses`, count: filteredExpenses.length },
             { key: 'income',   label: `💵 Income`,   count: filteredIncome.length },
