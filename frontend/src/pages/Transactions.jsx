@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 
@@ -192,6 +192,26 @@ export default function Transactions() {
   const [showFilters, setShowFilters] = useState(false)
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
+
+  const [visibleDayGroups, setVisibleDayGroups] = useState(3)
+  const observerRef = useRef(null)
+  const sentinelRef = useCallback(node => {
+    if (observerRef.current) observerRef.current.disconnect()
+    if (!node) return
+    observerRef.current = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) setVisibleDayGroups(p => p + 3) },
+      { rootMargin: '200px' }
+    )
+    observerRef.current.observe(node)
+  }, [])
+
+  // Reset visible count when filters/tab change (derived-state pattern — safe to call during render)
+  const filterKey = `${tab}|${catFilter}|${sortBy}|${dateFrom}|${dateTo}|${search}`
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey)
+  if (filterKey !== lastFilterKey) {
+    setLastFilterKey(filterKey)
+    setVisibleDayGroups(3)
+  }
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -445,27 +465,44 @@ export default function Transactions() {
     </div>
   )
 
-  const renderGrouped = (grouped, isIncome) => (
-    <div className="space-y-4">
-      {Object.entries(grouped).map(([label, txs]) => (
-        <div key={label}>
-          <div className="flex items-center gap-3 mb-2 px-1">
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">{label}</p>
-            <div className="flex-1 h-px bg-gray-100 dark:bg-gray-700" />
-            <p className="text-xs font-semibold tabular-nums whitespace-nowrap">
-              {isIncome
-                ? <span className="text-green-600">+{sym}{txs.reduce((s,t) => s + safeNum(t.amount), 0).toFixed(2)}</span>
-                : <span className="text-red-500">-{sym}{txs.reduce((s,t) => s + safeNum(t.amount), 0).toFixed(2)}</span>
-              }
-            </p>
+  const renderGrouped = (grouped, isIncome, options = {}) => {
+    const { rowRenderer, showTotal = true } = options
+    const entries = Object.entries(grouped)
+    const visible = entries.slice(0, visibleDayGroups)
+    const hasMore = entries.length > visibleDayGroups
+    const renderRow = rowRenderer || ((tx, idx, total) =>
+      isIncome ? renderIncomeRow(tx, idx, total) : renderExpenseRow(tx, idx, total))
+    return (
+      <div className="space-y-4">
+        {visible.map(([label, txs]) => (
+          <div key={label}>
+            <div className="flex items-center gap-3 mb-2 px-1">
+              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">{label}</p>
+              <div className="flex-1 h-px bg-gray-100 dark:bg-gray-700" />
+              {showTotal && (
+                <p className="text-xs font-semibold tabular-nums whitespace-nowrap">
+                  {isIncome
+                    ? <span className="text-green-600">+{sym}{txs.reduce((s,t) => s + safeNum(t.amount), 0).toFixed(2)}</span>
+                    : <span className="text-red-500">-{sym}{txs.reduce((s,t) => s + safeNum(t.amount), 0).toFixed(2)}</span>
+                  }
+                </p>
+              )}
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+              {txs.map((tx, idx) => renderRow(tx, idx, txs.length))}
+            </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-            {txs.map((tx, idx) => isIncome ? renderIncomeRow(tx, idx, txs.length) : renderExpenseRow(tx, idx, txs.length))}
+        ))}
+        {hasMore ? (
+          <div ref={sentinelRef} className="flex justify-center py-6">
+            <div className="w-5 h-5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
           </div>
-        </div>
-      ))}
-    </div>
-  )
+        ) : entries.length > 3 && (
+          <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-4">You've seen it all ✓</p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <Layout>
@@ -738,21 +775,10 @@ export default function Transactions() {
                 <p className="font-semibold text-gray-700 dark:text-white mb-1">No transactions found</p>
                 <p className="text-gray-400 text-sm">{hasFilters ? 'Try adjusting your filters.' : 'Add transactions from the Dashboard.'}</p>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {Object.entries(allMixedGrouped).map(([label, txs]) => (
-                  <div key={label}>
-                    <div className="flex items-center gap-3 mb-2 px-1">
-                      <p className="text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">{label}</p>
-                      <div className="flex-1 h-px bg-gray-100 dark:bg-gray-700" />
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-                      {txs.map((tx, idx) => tx._isIncome ? renderIncomeRow(tx, idx, txs.length) : renderExpenseRow(tx, idx, txs.length))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            ) : renderGrouped(allMixedGrouped, false, {
+              rowRenderer: (tx, idx, total) => tx._isIncome ? renderIncomeRow(tx, idx, total) : renderExpenseRow(tx, idx, total),
+              showTotal: false,
+            })}
           </>
         )}
       </div>
