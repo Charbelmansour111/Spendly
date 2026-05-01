@@ -342,7 +342,6 @@ export default function NetWorth() {
           </div>
         </div>
       )}
-      </div>
       </PinLock>
     </Layout>
   )

@@ -78,7 +78,7 @@ export default function PinLock({ children, storageKey = 'spendly_networth_pin' 
   }
 
   const resetPin = () => {
-    if (!window.confirm('This will clear your PIN — you'll need to create a new one. Continue?')) return
+    if (!window.confirm("This will clear your PIN — you'll need to create a new one. Continue?")) return
     localStorage.removeItem(storageKey)
     sessionStorage.removeItem(storageKey + '_ok')
     setPin(''); setConfirm(''); setError(''); setPhase('setup')
