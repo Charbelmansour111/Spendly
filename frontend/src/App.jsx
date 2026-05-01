@@ -17,6 +17,7 @@ const PAGE_TITLES = {
   '/goals': 'Goals — Spendly',
   '/reports': 'Reports — Spendly',
   '/insights': 'Insights — Spendly',
+  '/net-worth': 'Net Worth — Spendly',
   '/wellness': 'Wellness — Spendly',
   '/profile': 'Profile — Spendly',
   '/advisor/apply':     'Apply as Advisor — Spendly',
@@ -47,7 +48,6 @@ import Dashboard from './pages/Dashboard'
 import Budgets from './pages/Budgets'
 import Goals from './pages/Goals'
 import Reports from './pages/Reports'
-import Insights from './pages/Insights'
 import Wellness from './pages/Wellness'
 import Transactions from './pages/Transactions'
 import NetWorth from './pages/NetWorth'
@@ -89,7 +89,7 @@ function App() {
         <Route path="/debts"                 element={<Navigate to="/goals" replace />} />
         <Route path="/subscriptions"          element={<Subscriptions />} />
         <Route path="/reports"               element={<Reports />} />
-        <Route path="/insights"              element={<Insights />} />
+        <Route path="/insights"              element={<Navigate to="/reports" replace />} />
         <Route path="/wellness"              element={<Wellness />} />
         <Route path="/transactions"          element={<Transactions />} />
         <Route path="/net-worth"             element={<NetWorth />} />

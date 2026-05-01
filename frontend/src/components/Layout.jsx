@@ -39,10 +39,10 @@ const NAV_ITEMS = [
 ]
 
 const TAB_ITEMS = [
-  { href: '/dashboard',    icon: 'home',         key: 'tab_home' },
   { href: '/transactions', icon: 'transactions', key: 'nav_transactions' },
-  { href: '/insights',     icon: 'ai',           key: 'tab_ai' },
   { href: '/goals',        icon: 'savings',      key: 'tab_goals' },
+  { href: '/dashboard',    icon: 'home',         key: 'tab_home',    isCenter: true },
+  { href: '/reports',      icon: 'reports',      key: 'nav_reports' },
   { href: '/profile',      icon: 'profile',      key: 'nav_profile' },
 ]
 
@@ -134,8 +134,6 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
   const [showVoice, setShowVoice] = useState(false)
-  const lastAiTapRef = useRef(0)
-  const aiTapTimerRef = useRef(null)
 
   // ── Pull to refresh ──
   const mainRef = useRef(null)
@@ -178,16 +176,19 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const current = window.location.pathname
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-  const handleAiTabClick = () => {
+  const lastDashTapRef = useRef(0)
+  const dashTapTimerRef = useRef(null)
+
+  const handleDashTabClick = () => {
     const now = Date.now()
-    if (now - lastAiTapRef.current < 350) {
-      clearTimeout(aiTapTimerRef.current)
-      lastAiTapRef.current = 0
+    if (now - lastDashTapRef.current < 350) {
+      clearTimeout(dashTapTimerRef.current)
+      lastDashTapRef.current = 0
       setShowVoice(true)
     } else {
-      lastAiTapRef.current = now
-      clearTimeout(aiTapTimerRef.current)
-      aiTapTimerRef.current = setTimeout(() => { window.location.href = '/insights' }, 350)
+      lastDashTapRef.current = now
+      clearTimeout(dashTapTimerRef.current)
+      dashTapTimerRef.current = setTimeout(() => { window.location.href = '/dashboard' }, 350)
     }
   }
 
@@ -226,7 +227,6 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
             {Icons.bell()}
             {unreadCount > 0 && <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{unreadCount > 9 ? '9+' : unreadCount}</span>}
           </button>
-          <button onClick={toggleDark} className="p-2 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">{dark ? Icons.sun() : Icons.moon()}</button>
           <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">{mobileOpen ? Icons.close() : Icons.hamburger()}</button>
         </div>
       </div>
@@ -274,15 +274,15 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
         <div className="flex items-stretch h-16">
           {TAB_ITEMS.map(item => {
             const isActive = current === item.href
-            if (item.icon === 'ai') {
+            if (item.isCenter) {
               return (
-                <button key={item.href} onClick={handleAiTabClick}
-                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                  {isActive && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
-                  <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
-                    {Icons[item.icon]?.(isActive)}
-                  </span>
-                  <span className="text-[10px] font-medium">{t(item.key)}</span>
+                <button key={item.href} onClick={handleDashTabClick}
+                  className="flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all -mt-5 ${
+                    isActive ? 'bg-violet-600 shadow-violet-400/40' : 'bg-violet-600 shadow-violet-400/30'
+                  }`}>
+                    <span className="text-white">{Icons[item.icon]?.(true)}</span>
+                  </div>
                 </button>
               )
             }

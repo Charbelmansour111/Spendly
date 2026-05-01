@@ -48,7 +48,7 @@ router.post('/command', authenticateToken, async (req, res) => {
       ? debtResult.rows.map(d => `"${d.name}": ${currency} ${parseFloat(d.remaining_amount).toFixed(2)} remaining of ${currency} ${parseFloat(d.total_amount).toFixed(2)}`).join('; ')
       : 'none';
 
-    const systemPrompt = `You are Spendly AI, a smart and friendly personal finance assistant. Always respond in the user's language (${language || 'en'}).
+    const systemPrompt = `You are Spendly AI, a smart and friendly personal finance assistant embedded in the Spendly app. Always respond in the user's language (${language || 'en'}).
 
 User: ${userName} | Currency: ${currency} | Today: ${today}
 ${monthName} ${year}: Spent ${currency} ${totalSpent.toFixed(2)} | Income ${currency} ${totalIncome.toFixed(2)} | Balance ${currency} ${(totalIncome - totalSpent).toFixed(2)}
@@ -59,34 +59,63 @@ ${isFollowUp ? `\nThis is a FOLLOW-UP turn. Use the conversation history to unde
 
 Return ONLY a valid JSON object. No markdown, no explanation.
 
-CRITICAL RULE — Check for missing required fields BEFORE executing:
-- set_budget needs: category AND amount
-- add_expense needs: amount (description optional)
-- add_income needs: amount
-- add_goal (savings) needs: name AND target_amount
-- add_goal (debt) needs: name AND total_amount
-- complete_goal needs: name (match from savings goals list above)
-- complete_debt needs: name (match from active debts list above)
-- add_funds_to_goal needs: name AND amount
-- make_debt_payment needs: name AND amount
-- add_networth_item needs: name, amount, type (asset or liability)
-- If user says "add a goal" with no type → ask if it's a savings goal or a debt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CATEGORY AUTO-INFERENCE RULES (NEVER ask the user for category — infer it silently):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Food      → pizza, shawarma, burger, kfc, mcdonald, restaurant, lunch, dinner, breakfast, groceries, sushi, taco, delivery, eat, فطور, غداء, عشاء, مطعم, أكل, طعام, بيتزا, شاورما, برغر, بقالة, سوبرماركت, كبة, منسف, مجدرة
+Coffee    → starbucks, coffee, cafe, latte, espresso, cappuccino, tea, juice, smoothie, drink, قهوة, كافيه, شاي, عصير, ستاربكس
+Transport → uber, taxi, careem, lyft, bolt, bus, metro, gas, petrol, fuel, parking, toll, train, flight (local), أوبر, تاكسي, كريم, بنزين, محطة وقود, ميترو, باص, مواصلات
+Shopping  → amazon, zara, h&m, mall, store, shop, clothes, shoes, electronics, ikea, groceries (non-food), تسوق, شراء, ملابس, جزمة, محل
+Subscriptions → netflix, spotify, disney+, hbo, youtube premium, apple tv, crunchyroll, prime video, gym, app subscription, monthly plan, اشتراك, نتفليكس, سبوتيفاي, ديزني, جيم (monthly)
+Entertainment → cinema, movie, concert, bar, club, gaming, game, arcade, bowling, festival, party, سينما, فيلم, حفلة, ترفيه, العاب
+Health    → hospital, doctor, pharmacy, dentist, medicine, therapy, clinic, lab, مستشفى, دكتور, دواء, صيدلية, طبيب, تحليل
+Fitness   → gym (one-time), yoga, workout, crossfit, swimming, trainer, protein, نادي رياضي, جيم (visit), تمرين, رياضة
+Education → tuition, school, university, course, class, lesson, book (study), certificate, تعليم, مدرسة, جامعة, دورة, درس
+Bills     → rent, electricity, water, internet, phone bill, gas bill, cable, utility, loan payment, mortgage, إيجار, كهرباء, ماء, انترنت, فاتورة, هاتف
+Travel    → flight, hotel, airbnb, booking, visa, resort, cruise, trip, vacation, سفر, فندق, طيران, حجز, تأشيرة
+Gifts     → gift, present, flowers, charity, donation, birthday, wedding, هدية, تبرع, ورد
+Other     → default if nothing above matches
 
-Ask for ONE missing field at a time, starting with the most important.
+ARABIC UNDERSTANDING: Fully understand Lebanese, Egyptian, Gulf, Levantine Arabic dialects. Examples: "اكلت فلافل بالمطعم" → Food, "دفعت تاكسي" → Transport, "فاتورة الكهرباء" → Bills, "اشتركت بنتفليكس" → Subscriptions.
 
-Intent types:
-- "need_more_info" → required field is missing, ask for it
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL FIELD RULES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- add_expense: ONLY ask for amount if missing. Infer category automatically. Description is optional.
+- add_income: ONLY ask for amount if missing. Source is optional (default Salary).
+- set_budget: needs category AND amount
+- add_goal (savings): needs name AND target_amount
+- add_goal (debt): needs name AND total_amount
+- complete_goal: needs name (match from savings goals list)
+- complete_debt: needs name (match from active debts list)
+- add_funds_to_goal: needs name AND amount
+- make_debt_payment: needs name AND amount
+- add_networth_item: needs name, amount, type
+
+RECURRING DETECTION: If the expense description sounds like a subscription (Netflix, Spotify, gym monthly, any "monthly fee") OR if it's an income entry, AND the user has not mentioned whether it's recurring, ask as a follow-up: "Is this recurring? (daily / weekly / monthly / one-time)"
+When the user confirms recurring with a frequency → include is_recurring: true and recurring_frequency in the data.
+
+Ask for ONE missing field at a time.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INTENT TYPES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- "need_more_info" → required field missing or recurring confirmation needed
 - "navigate" → user wants to go to a page
 - "add_expense" → log a purchase/expense
 - "add_income" → log income
 - "set_budget" → set a budget limit
 - "add_goal" → create savings or debt goal
-- "complete_goal" → mark a savings goal as done and add to net worth
-- "complete_debt" → mark a debt as fully paid and remove from net worth
+- "complete_goal" → mark a savings goal as done
+- "complete_debt" → mark a debt as fully paid
 - "add_funds_to_goal" → add money toward a savings goal
 - "make_debt_payment" → record a payment on a debt
 - "add_networth_item" → add an asset or liability to net worth
-- "chat" → question, advice, or anything else
+- "delete_last_expense" → user wants to delete their most recent expense
+- "update_last_expense" → user wants to update a field on their most recent expense
+- "chat" → question, advice, financial tips, or anything else the user asks
+
+For "chat" intent: answer the question helpfully. You can discuss budgeting tips, savings advice, debt strategies, how to use Spendly features, financial concepts, or anything finance-related. Be concise (max 3 sentences).
 
 Response JSON format:
 {
@@ -100,9 +129,9 @@ Response JSON format:
 }
 
 Data schemas:
-- add_expense: { "amount": number, "category": "Food|Transport|Shopping|Subscriptions|Entertainment|Other", "description": "merchant/item", "date": "${today}" }
-- add_income: { "amount": number, "source": "description", "month": ${month}, "year": ${year} }
-- set_budget: { "category": "Food|Transport|Shopping|Subscriptions|Entertainment|Other", "amount": number, "period": "monthly" }
+- add_expense: { "amount": number, "category": "Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other", "description": "merchant/item", "date": "${today}", "is_recurring": false, "recurring_frequency": "monthly" }
+- add_income: { "amount": number, "source": "Salary|Freelance|Business|Investment|Other", "month": ${month}, "year": ${year}, "is_recurring": false, "recurring_frequency": "monthly" }
+- set_budget: { "category": "Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other", "amount": number, "period": "monthly" }
 - add_goal (savings): { "name": "goal name", "target_amount": number, "saved_amount": 0, "goal_type": "Other" }
 - add_goal (debt): { "name": "debt name", "total_amount": number, "remaining_amount": number, "monthly_payment": number, "interest_rate": 0, "category": "Other", "type": "debt" }
 - complete_goal: { "name": "exact or partial goal name from list" }
@@ -110,9 +139,8 @@ Data schemas:
 - add_funds_to_goal: { "name": "goal name", "amount": number }
 - make_debt_payment: { "name": "debt name", "amount": number }
 - add_networth_item: { "name": string, "amount": number, "type": "asset|liability", "category": "Cash & Bank|Savings|Investments|Real Estate|Vehicle|Credit Card|Mortgage|Car Loan|Student Loan|Personal Loan|Other" }
-- navigate: set navigate_to to one of: /dashboard /transactions /budgets /goals /wellness /profile /reports /insights /net-worth
-
-Category hints: Food=restaurants/groceries, Transport=Uber/gas/parking, Shopping=clothes/electronics, Subscriptions=Netflix/apps, Entertainment=cinema/bars/gaming, Other=rent/utilities/gym`;
+- update_last_expense: { "field": "amount|description|category|date", "value": <new value> }
+- navigate: set navigate_to to one of: /dashboard /transactions /budgets /goals /wellness /profile /reports /net-worth`;
 
     const messages = [
       { role: 'system', content: systemPrompt },

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 import { t } from '../i18n'
+import { useDarkMode } from '../hooks/useDarkMode'
 import { requestNotificationPermission, isNotificationsEnabled, disableNotifications, scheduleReminders } from '../utils/notifications'
 
 const CURRENCIES = ['USD','EUR','GBP','LBP','AED','SAR','CAD','AUD']
@@ -82,6 +83,7 @@ export default function Profile() {
   const [supportSent, setSupportSent] = useState(false)
   const [notifEnabled, setNotifEnabled] = useState(() => isNotificationsEnabled())
   const [shortcutCopied, setShortcutCopied] = useState(false)
+  const [dark, toggleDark] = useDarkMode()
 
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700/60 text-gray-900 dark:text-white text-sm transition"
   const showToast = (msg, type = 'success') => setToast({ message: msg, type })
@@ -335,6 +337,21 @@ export default function Profile() {
                 className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 active:scale-95 transition">
                 {prefsSaved ? '✓ ' + t('saved_label') : t('save_preferences')}
               </button>
+            </div>
+
+            {/* Appearance */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
+              <p className="text-sm font-bold text-gray-700 dark:text-white mb-4">Appearance</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Dark Mode</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Switch between light and dark theme</p>
+                </div>
+                <button onClick={toggleDark}
+                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${dark ? 'bg-violet-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${dark ? 'translate-x-6' : 'translate-x-0'}`} />
+                </button>
+              </div>
             </div>
           </div>
         )}

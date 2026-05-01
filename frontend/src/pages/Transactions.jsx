@@ -151,6 +151,224 @@ function SwipeRow({ onDelete, children }) {
   )
 }
 
+const BRAND_LOGOS = {
+  Netflix: 'https://logo.clearbit.com/netflix.com', Spotify: 'https://logo.clearbit.com/spotify.com',
+  'Disney+': 'https://logo.clearbit.com/disneyplus.com', 'HBO Max': 'https://logo.clearbit.com/hbo.com',
+  'Amazon Prime': 'https://logo.clearbit.com/amazon.com', YouTube: 'https://logo.clearbit.com/youtube.com',
+}
+const SUBCATEGORIES = {
+  Food: [{ label: 'Restaurant', emoji: '🍽️' }, { label: 'Groceries', emoji: '🛒' }, { label: 'Fast Food', emoji: '🍔' }, { label: 'Coffee', emoji: '☕' }],
+  Transport: [{ label: 'Uber', emoji: '🚗' }, { label: 'Taxi', emoji: '🚕' }, { label: 'Gas', emoji: '⛽' }, { label: 'Parking', emoji: '🅿️' }],
+  Shopping: [{ label: 'Amazon', emoji: '📦' }, { label: 'Clothes', emoji: '👗' }, { label: 'Electronics', emoji: '💻' }, { label: 'Shoes', emoji: '👟' }],
+  Subscriptions: [{ label: 'Netflix', emoji: '🎬' }, { label: 'Spotify', emoji: '🎵' }, { label: 'Disney+', emoji: '🏰' }, { label: 'YouTube', emoji: '▶️' }],
+  Entertainment: [{ label: 'Cinema', emoji: '🎥' }, { label: 'Concert', emoji: '🎵' }, { label: 'Gaming', emoji: '🎮' }, { label: 'Bar', emoji: '🍻' }],
+}
+const CATEGORY_HINTS_LOCAL = {
+  Food: ['mcdonald','kfc','pizza','burger','grocery','restaurant','food','lunch','dinner','breakfast'],
+  Coffee: ['starbucks','coffee','cafe','tea','juice'],
+  Transport: ['uber','taxi','careem','gas','petrol','metro','bus','parking','fuel'],
+  Shopping: ['amazon','clothing','zara','mall','store','shop'],
+  Subscriptions: ['netflix','spotify','disney','hbo','youtube','subscription','monthly'],
+  Entertainment: ['cinema','movie','bar','club','concert','gaming'],
+  Health: ['hospital','doctor','pharmacy','dentist','medicine'],
+  Fitness: ['gym','yoga','workout','crossfit'],
+  Education: ['tuition','school','university','course'],
+  Bills: ['rent','electricity','water','internet','phone bill','utility'],
+  Travel: ['flight','hotel','airbnb','trip','vacation'],
+  Gifts: ['gift','charity','donation'],
+}
+function suggestCategoryLocal(desc) {
+  if (!desc || desc.length < 3) return null
+  const lower = desc.toLowerCase()
+  for (const [cat, words] of Object.entries(CATEGORY_HINTS_LOCAL)) {
+    if (words.some(w => lower.includes(w))) return cat
+  }
+  return null
+}
+
+function AddExpenseModal({ onClose, onSave, sym }) {
+  const today = new Date().toISOString().split('T')[0]
+  const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly' })
+  const [suggestion, setSuggestion] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const cats = [
+    { key: 'Food', icon: '🍔' }, { key: 'Coffee', icon: '☕' }, { key: 'Transport', icon: '🚗' },
+    { key: 'Shopping', icon: '🛍️' }, { key: 'Entertainment', icon: '🎬' }, { key: 'Health', icon: '🏥' },
+    { key: 'Fitness', icon: '🏋️' }, { key: 'Education', icon: '🎓' }, { key: 'Bills', icon: '💡' },
+    { key: 'Travel', icon: '✈️' }, { key: 'Gifts', icon: '🎁' }, { key: 'Subscriptions', icon: '📱' }, { key: 'Other', icon: '📦' },
+  ]
+  const subs = SUBCATEGORIES[form.category] || []
+  const handleDesc = (val) => {
+    setForm(f => ({ ...f, description: val }))
+    const c = suggestCategoryLocal(val)
+    setSuggestion(c && c !== form.category ? c : null)
+  }
+  const handleSave = async () => {
+    if (!form.amount || saving) return
+    setSaving(true)
+    await onSave(form)
+    setSaving(false)
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
+          <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({sym})</label>
+            <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              min="0.01" step="0.01" autoFocus
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Description (optional)</label>
+            <input type="text" placeholder="What was this for?" value={form.description} onChange={e => handleDesc(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+            {suggestion && (
+              <div className="mt-1.5 flex items-center gap-2 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 rounded-xl px-3 py-2">
+                <span className="text-xs text-violet-700 dark:text-violet-300">🤖 Looks like <strong>{suggestion}</strong>?</span>
+                <button type="button" onClick={() => { setForm(f => ({ ...f, category: suggestion })); setSuggestion(null) }}
+                  className="ml-auto text-xs bg-violet-600 text-white px-3 py-1 rounded-lg font-semibold">Use it</button>
+                <button type="button" onClick={() => setSuggestion(null)} className="text-gray-400 text-xs">✕</button>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-2 block">Category</label>
+            <div className="flex flex-wrap gap-2">
+              {cats.map(({ key, icon }) => (
+                <button key={key} type="button" onClick={() => setForm(f => ({ ...f, category: key }))}
+                  className={`py-1.5 px-3 rounded-full text-xs font-semibold border-2 transition ${form.category === key ? 'border-violet-500 bg-violet-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50'}`}>
+                  {icon} {key}
+                </button>
+              ))}
+            </div>
+          </div>
+          {subs.length > 0 && (
+            <div className="grid grid-cols-4 gap-2">
+              {subs.map(s => (
+                <button key={s.label} type="button" onClick={() => setForm(f => ({ ...f, description: s.label }))}
+                  className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border-2 transition ${form.description === s.label ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50'}`}>
+                  <span className="text-xl">{s.emoji}</span>
+                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 leading-tight text-center">{s.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Date</label>
+            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.is_recurring} onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))} className="w-4 h-4 accent-violet-600" />
+            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
+          </label>
+          {form.is_recurring && (
+            <select value={form.recurring_frequency} onChange={e => setForm(f => ({ ...f, recurring_frequency: e.target.value }))}
+              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+              <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+            </select>
+          )}
+          <button onClick={handleSave} disabled={!form.amount || saving}
+            className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50">
+            {saving ? 'Adding…' : 'Add Expense'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AddIncomeModal({ onClose, onSave, sym }) {
+  const [form, setForm] = useState({ amount: '', source: 'Salary', is_recurring: false, recurring_frequency: 'monthly' })
+  const [saving, setSaving] = useState(false)
+  const handleSave = async () => {
+    if (!form.amount || saving) return
+    setSaving(true)
+    await onSave(form)
+    setSaving(false)
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Income</h3>
+          <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({sym})</label>
+            <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              min="0.01" step="0.01" autoFocus
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Source</label>
+            <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <option>Salary</option><option>Freelance</option><option>Business</option><option>Investment</option><option>Other</option>
+            </select>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.is_recurring} onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))} className="w-4 h-4 accent-green-600" />
+            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
+          </label>
+          {form.is_recurring && (
+            <select value={form.recurring_frequency} onChange={e => setForm(f => ({ ...f, recurring_frequency: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+            </select>
+          )}
+          <button onClick={handleSave} disabled={!form.amount || saving}
+            className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-green-700 transition disabled:opacity-50">
+            {saving ? 'Adding…' : 'Add Income'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AddPickerModal({ onClose, onExpense, onIncome }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl w-full max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="w-10 h-1 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-5" />
+        <p className="text-base font-bold text-gray-800 dark:text-white text-center mb-5">What would you like to add?</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={onExpense}
+            className="flex flex-col items-center gap-3 bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-100 dark:border-rose-800 rounded-2xl py-6 hover:border-rose-300 active:scale-95 transition-all">
+            <div className="w-12 h-12 bg-rose-500 rounded-2xl flex items-center justify-center">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-gray-800 dark:text-white text-sm">Expense</p>
+              <p className="text-xs text-gray-400 mt-0.5">Log a purchase</p>
+            </div>
+          </button>
+          <button onClick={onIncome}
+            className="flex flex-col items-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-100 dark:border-emerald-800 rounded-2xl py-6 hover:border-emerald-300 active:scale-95 transition-all">
+            <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-gray-800 dark:text-white text-sm">Income</p>
+              <p className="text-xs text-gray-400 mt-0.5">Log earnings</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ──────────────────────────────────────────────────────────────
 //  Main page
 // ──────────────────────────────────────────────────────────────
@@ -184,6 +402,9 @@ export default function Transactions() {
   useEffect(() => () => clearTimeout(undoTimerRef.current), [])
   const [numModal, setNumModal] = useState(null)
   const [showRecurring, setShowRecurring] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
+  const [showAddExp, setShowAddExp] = useState(false)
+  const [showAddInc, setShowAddInc] = useState(false)
 
   // Filters
   const [search, setSearch]       = useState('')
@@ -289,6 +510,47 @@ export default function Transactions() {
       setExpenses(prev => prev.map(e => e.id === id ? original : e))
       showToast('Error updating', 'error')
     }
+  }
+
+  const handleAddExpense = async (form) => {
+    try {
+      const now = new Date()
+      await API.post('/expenses', {
+        amount: parseFloat(form.amount),
+        category: form.category,
+        description: form.description || '',
+        date: form.date || now.toISOString().split('T')[0],
+        is_recurring: form.is_recurring || false,
+        recurring_frequency: form.recurring_frequency || 'monthly',
+      })
+      const res = await API.get('/expenses')
+      setExpenses(res.data || [])
+      setShowAddExp(false)
+      setShowPicker(false)
+      showToast('Expense added!')
+    } catch { showToast('Error adding expense', 'error') }
+  }
+
+  const handleAddIncome = async (form) => {
+    try {
+      const now = new Date()
+      await API.post('/income', {
+        amount: parseFloat(form.amount),
+        source: form.source || 'Other',
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+        is_recurring: form.is_recurring || false,
+        recurring_frequency: form.recurring_frequency || 'monthly',
+      })
+      const res = await API.get('/income')
+      setIncome((res.data || []).map(inc => ({
+        ...inc,
+        date: inc.created_at || new Date(inc.year, (inc.month || 1) - 1, 1).toISOString()
+      })))
+      setShowAddInc(false)
+      setShowPicker(false)
+      showToast('Income added!')
+    } catch { showToast('Error adding income', 'error') }
   }
 
   // ── Derived data ──
@@ -554,6 +816,9 @@ export default function Transactions() {
       {toast     && <Toast {...toast} onClose={() => setToast(null)} />}
       {undoLabel && <UndoToast label={undoLabel} onUndo={handleUndoExpense} onDismiss={handleDismissUndo} />}
       {editing   && <EditSheet expense={editing} sym={sym} onSave={handleEditSave} onClose={() => setEditing(null)} />}
+      {showPicker && <AddPickerModal onClose={() => setShowPicker(false)} onExpense={() => { setShowPicker(false); setShowAddExp(true) }} onIncome={() => { setShowPicker(false); setShowAddInc(true) }} />}
+      {showAddExp && <AddExpenseModal onClose={() => setShowAddExp(false)} onSave={handleAddExpense} sym={sym} />}
+      {showAddInc && <AddIncomeModal onClose={() => setShowAddInc(false)} onSave={handleAddIncome} sym={sym} />}
 
       <div className="max-w-2xl mx-auto px-4 py-6">
 
@@ -828,6 +1093,17 @@ export default function Transactions() {
           </>
         )}
       </div>
+
+      {/* FAB */}
+      {!showAddExp && !showAddInc && !showPicker && !editing && (
+        <button onClick={() => setShowPicker(true)}
+          className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-20 w-14 h-14 bg-violet-600 hover:bg-violet-700 active:scale-90 rounded-2xl shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all"
+          aria-label="Add transaction">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+      )}
     </Layout>
   )
 }

@@ -1,4 +1,5 @@
 import Layout from '../components/Layout'
+import VoiceAssistant from '../components/VoiceAssistant'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import API from '../utils/api'
 import ReceiptScanner from '../components/ReceiptScanner'
@@ -685,7 +686,7 @@ export default function Dashboard() {
   const [modalData, setModalData]     = useState(null)
   const [showAddExp, setShowAddExp]     = useState(false)
   const [showAddInc, setShowAddInc]     = useState(false)
-  const [showQuickLog, setShowQuickLog] = useState(false)
+  const [showVoice, setShowVoice]       = useState(false)
   const [editingExpense, setEditing]  = useState(null)
   const [editForm, setEditForm]       = useState({ amount: '', category: 'Food', description: '', date: '', is_recurring: false })
   const [showNotifs, setShowNotifs]   = useState(false)
@@ -711,11 +712,6 @@ export default function Dashboard() {
   const [news, setNews]               = useState([])
   const [newsLoading, setNewsLoading] = useState(() => !!localStorage.getItem('token'))
 
-  // Net worth data
-  const [debts, setDebts]         = useState([])
-  const [subs]                    = useState([])
-  const [allTimeIncome, setAllTimeIncome] = useState([])
-  const [showNWDetails, setShowNWDetails] = useState(false)
   const touchStartX = useRef(null)
   const notifRef    = useRef(null)
 
@@ -770,14 +766,6 @@ export default function Dashboard() {
       const timer = setTimeout(() => setMonthlyCheckModal(true), 2000)
       return () => clearTimeout(timer)
     }
-  }, [])
-
-  // Fetch debts + subscriptions + all-time income for net worth
-  useEffect(() => {
-    if (!localStorage.getItem('token')) return
-    API.get('/debts').then(r => setDebts(r.data || [])).catch(() => {})
-    API.get('/subscriptions').catch(() => {})
-    API.get('/income').then(r => setAllTimeIncome(r.data || [])).catch(() => {})
   }, [])
 
   // Close notification panel on outside click
@@ -973,7 +961,7 @@ export default function Dashboard() {
       {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
       {showAddExp   && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} />}
       {showAddInc   && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}
-      {showQuickLog && <QuickLogSheet onClose={() => setShowQuickLog(false)} onSaved={fetchExpenses} currencySymbol={currencySymbol} />}
+      {showVoice    && <VoiceAssistant onClose={() => setShowVoice(false)} />}
       {showWrap && <MonthlyWrap onClose={() => { localStorage.setItem(wrapKey, '1'); setShowWrap(false) }} />}
 
       {/* AI Behavior Alert */}
@@ -1322,18 +1310,6 @@ export default function Dashboard() {
         {/* Quick Actions */}
         {isCurrentMonth && (
           <div className="space-y-3 mb-5">
-            {/* Quick Log CTA — prominent */}
-            <button onClick={() => setShowQuickLog(true)}
-              className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white rounded-2xl px-5 py-4 flex items-center gap-4 active:scale-95 transition-transform shadow-sm hover:shadow-md hover:border-violet-200 dark:hover:border-violet-700">
-              <div className="w-11 h-11 bg-violet-100 dark:bg-violet-900/40 rounded-2xl flex items-center justify-center shrink-0">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.2" strokeLinecap="round"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
-              </div>
-              <div className="text-left flex-1 min-w-0">
-                <p className="font-bold text-sm leading-tight">Smart Log</p>
-                <p className="text-gray-400 text-xs leading-tight mt-0.5">Type or speak your expenses — AI does the rest</p>
-              </div>
-              <svg className="shrink-0 text-gray-300 dark:text-gray-600" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
             <div className="grid grid-cols-4 gap-2.5">
               {[
                 {
@@ -1349,10 +1325,10 @@ export default function Dashboard() {
                   action: () => setShowAddInc(true),
                 },
                 {
-                  label: 'AI Chat',
+                  label: 'AI Log',
                   grad: 'from-violet-500 to-purple-600',
                   icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
-                  action: () => window.location.href = '/insights',
+                  action: () => setShowVoice(true),
                 },
                 {
                   label: 'Reports',
@@ -1621,81 +1597,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-
-        {/* Net Worth */}
-        {(() => {
-          const cashIncome   = allTimeIncome.reduce((s, i) => s + safeNum(i.amount), 0)
-          const cashExpenses = expenses.reduce((s, e) => s + safeNum(e.amount), 0)
-          const cashBalance  = cashIncome - cashExpenses
-          const totalSaved   = savingsGoals.reduce((s, g) => s + safeNum(g.saved_amount), 0)
-          const totalDebt    = debts.reduce((s, d) => s + safeNum(d.remaining_amount), 0)
-          const netWorth     = cashBalance + totalSaved - totalDebt
-          if (cashIncome === 0 && totalSaved === 0 && totalDebt === 0) return null
-          return (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Net Worth</h3>
-                <button onClick={() => setShowNWDetails(v => !v)}
-                  className="text-xs text-violet-600 font-semibold hover:underline">
-                  {showNWDetails ? 'Hide details' : 'Show details'}
-                </button>
-              </div>
-              <button onClick={() => setModalData({ label: 'Net Worth', value: (netWorth >= 0 ? '+' : '-') + fmt(Math.abs(netWorth), currencySymbol), sub: 'Cash + Savings − Debt' })}
-                className="text-left mb-4">
-                <p className={`text-3xl font-bold tabular-nums ${netWorth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  {netWorth >= 0 ? '+' : '-'}{fmt(Math.abs(netWorth), currencySymbol)}
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">Cash + Savings Goals − Debts</p>
-              </button>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
-                  <p className="text-xs text-blue-500 font-semibold mb-1">💳 Cash</p>
-                  <p className={`text-sm font-bold tabular-nums ${cashBalance >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
-                    {cashBalance >= 0 ? '+' : '-'}{fmt(Math.abs(cashBalance), currencySymbol)}
-                  </p>
-                </div>
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
-                  <p className="text-xs text-green-600 font-semibold mb-1">🏦 Savings</p>
-                  <p className="text-sm font-bold text-green-600 tabular-nums">+{fmt(totalSaved, currencySymbol)}</p>
-                </div>
-                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3 text-center">
-                  <p className="text-xs text-red-500 font-semibold mb-1">💸 Debt</p>
-                  <p className="text-sm font-bold text-red-500 tabular-nums">-{fmt(totalDebt, currencySymbol)}</p>
-                </div>
-              </div>
-              {showNWDetails && (
-                <div className="mt-4 space-y-2 pt-4 border-t border-gray-100 dark:border-gray-700">
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Total income (all time)</span>
-                    <span className="text-green-600 font-semibold tabular-nums">+{fmt(cashIncome, currencySymbol)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Total expenses (all time)</span>
-                    <span className="text-red-500 font-semibold tabular-nums">-{fmt(cashExpenses, currencySymbol)}</span>
-                  </div>
-                  {savingsGoals.map(g => (
-                    <div key={g.id} className="flex justify-between text-xs text-gray-500">
-                      <span>Savings: {g.name}</span>
-                      <span className="text-green-600 font-semibold tabular-nums">+{fmt(g.saved_amount, currencySymbol)}</span>
-                    </div>
-                  ))}
-                  {debts.map(d => (
-                    <div key={d.id} className="flex justify-between text-xs text-gray-500">
-                      <span>Debt: {d.name}</span>
-                      <span className="text-red-500 font-semibold tabular-nums">-{fmt(d.remaining_amount, currencySymbol)}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between text-sm font-bold text-gray-800 dark:text-white pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <span>Net Worth</span>
-                    <span className={netWorth >= 0 ? 'text-green-500' : 'text-red-500'}>
-                      {netWorth >= 0 ? '+' : '-'}{fmt(Math.abs(netWorth), currencySymbol)}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        })()}
 
         {/* 6-Month Trend */}
         {trendsData.length > 1 && (
