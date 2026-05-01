@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
+import PinLock from '../components/PinLock'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 const safeNum = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n }
@@ -166,6 +167,7 @@ export default function NetWorth() {
 
   return (
     <Layout>
+      <PinLock storageKey="spendly_networth_pin">
       <div className="max-w-2xl mx-auto px-4 py-6 pb-28 md:pb-8">
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
@@ -340,6 +342,8 @@ export default function NetWorth() {
           </div>
         </div>
       )}
+      </div>
+      </PinLock>
     </Layout>
   )
 }
