@@ -204,6 +204,29 @@ export default function Goals() {
     finally { setSaving(false) }
   }
 
+  const handleCompleteGoal = async (goal) => {
+    const saved = safeNum(goal.saved_amount)
+    if (!window.confirm(`Archive "${goal.name}" as complete? ${sym}${saved.toFixed(2)} will be added to your Net Worth as a Savings asset.`)) return
+    try {
+      const r = await API.patch(`/savings/${goal.id}/complete`)
+      fetchAll()
+      showToast(r.data.addedToNetWorth
+        ? `🎉 Goal complete! ${sym}${safeNum(r.data.savedAmount).toFixed(2)} added to Net Worth.`
+        : `🎉 "${goal.name}" archived!`)
+    } catch { showToast('Error completing goal', 'error') }
+  }
+
+  const handleCompleteDebt = async (debt) => {
+    if (!window.confirm(`Mark "${debt.name}" as fully paid? It will be removed from your Net Worth liabilities.`)) return
+    try {
+      const r = await API.patch(`/debts/${debt.id}/complete`)
+      fetchAll()
+      showToast(r.data.removedFromNetWorth
+        ? `🎉 Debt paid off! Removed from Net Worth liabilities.`
+        : `🎉 "${debt.name}" marked as paid!`)
+    } catch { showToast('Error marking debt as paid', 'error') }
+  }
+
   const handleDeleteGoal = async (id) => {
     if (!window.confirm('Delete this savings goal?')) return
     try { await API.delete(`/savings/${id}`); fetchAll(); showToast('Deleted') }
@@ -469,14 +492,20 @@ export default function Goals() {
                           </button>
                         )}
 
-                        {/* AI — on completion */}
+                        {/* Complete — on goal reached */}
                         {isComplete && (
-                          <button onClick={() => setAiModal({
-                            title: `🎉 Goal reached — what's next?`,
-                            prompt: `I reached my savings goal "${goal.name}" (${emoji}). I saved ${sym}${saved.toFixed(2)}. What are 3 smart things to do with this money now?`
-                          })} className="w-full flex items-center justify-center gap-2 py-2.5 bg-linear-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-200 dark:border-violet-700 rounded-xl text-violet-700 dark:text-violet-300 text-sm font-semibold hover:from-violet-100 transition">
-                            🤖 Ask AI what to do next
-                          </button>
+                          <div className="space-y-2">
+                            <button onClick={() => handleCompleteGoal(goal)}
+                              className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-500 hover:bg-green-600 active:scale-95 text-white rounded-xl text-sm font-bold transition">
+                              ✓ Mark as Complete — Add to Net Worth
+                            </button>
+                            <button onClick={() => setAiModal({
+                              title: `🎉 Goal reached — what's next?`,
+                              prompt: `I reached my savings goal "${goal.name}" (${emoji}). I saved ${sym}${saved.toFixed(2)}. What are 3 smart things to do with this money now?`
+                            })} className="w-full flex items-center justify-center gap-2 py-2 bg-linear-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-200 dark:border-violet-700 rounded-xl text-violet-700 dark:text-violet-300 text-sm font-semibold hover:from-violet-100 transition">
+                              🤖 Ask AI what to do next
+                            </button>
+                          </div>
                         )}
                       </div>
                     )
@@ -563,14 +592,20 @@ export default function Goals() {
                           </button>
                         )}
 
-                        {/* AI — on payoff */}
+                        {/* Complete — on debt paid off */}
                         {isPaidOff && (
-                          <button onClick={() => setAiModal({
-                            title: `🎉 "${debt.name}" is paid off!`,
-                            prompt: `I just fully paid off "${debt.name}" (${sym}${total.toFixed(2)} total). I was paying ${sym}${safeNum(debt.monthly_payment).toFixed(2)}/month. What are 3 smart ways to use that freed-up money now?`
-                          })} className="w-full flex items-center justify-center gap-2 py-2.5 bg-linear-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-200 dark:border-violet-700 rounded-xl text-violet-700 dark:text-violet-300 text-sm font-semibold hover:from-violet-100 transition">
-                            🤖 Ask AI what to do next
-                          </button>
+                          <div className="space-y-2">
+                            <button onClick={() => handleCompleteDebt(debt)}
+                              className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-500 hover:bg-green-600 active:scale-95 text-white rounded-xl text-sm font-bold transition">
+                              ✓ Mark as Paid — Update Net Worth
+                            </button>
+                            <button onClick={() => setAiModal({
+                              title: `🎉 "${debt.name}" is paid off!`,
+                              prompt: `I just fully paid off "${debt.name}" (${sym}${total.toFixed(2)} total). I was paying ${sym}${safeNum(debt.monthly_payment).toFixed(2)}/month. What are 3 smart ways to use that freed-up money now?`
+                            })} className="w-full flex items-center justify-center gap-2 py-2 bg-linear-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-200 dark:border-violet-700 rounded-xl text-violet-700 dark:text-violet-300 text-sm font-semibold hover:from-violet-100 transition">
+                              🤖 Ask AI what to do next
+                            </button>
+                          </div>
                         )}
                       </div>
                     )

@@ -50,6 +50,11 @@ export default function VoiceAssistant({ onClose }) {
     setTimeout(() => convEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }, [])
 
+  const findByName = (list, name) => {
+    const q = (name || '').toLowerCase()
+    return list.find(item => (item.name || '').toLowerCase().includes(q) || q.includes((item.name || '').toLowerCase()))
+  }
+
   const executeIntent = useCallback(async (result, userText) => {
     const { intent, data, navigate_to, response, question } = result
 
@@ -124,6 +129,57 @@ export default function VoiceAssistant({ onClose }) {
         historyRef.current = []
         setInputHint('')
         setTimeout(() => { window.location.href = '/goals' }, 2500)
+
+      } else if (intent === 'complete_goal' && data?.name) {
+        const goals = (await API.get('/savings')).data || []
+        const goal = findByName(goals, data.name)
+        if (!goal) throw new Error(`Goal "${data.name}" not found`)
+        const r = await API.patch(`/savings/${goal.id}/complete`)
+        const msg = r.data.addedToNetWorth ? `"${goal.name}" complete — added to Net Worth!` : `"${goal.name}" marked complete!`
+        setActionBanner({ state: 'done', text: msg, nav: '/goals' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/goals' }, 2500)
+
+      } else if (intent === 'complete_debt' && data?.name) {
+        const debts = (await API.get('/debts')).data || []
+        const debt = findByName(debts, data.name)
+        if (!debt) throw new Error(`Debt "${data.name}" not found`)
+        const r = await API.patch(`/debts/${debt.id}/complete`)
+        const msg = r.data.removedFromNetWorth ? `"${debt.name}" paid off — Net Worth updated!` : `"${debt.name}" marked as paid!`
+        setActionBanner({ state: 'done', text: msg, nav: '/goals' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/goals' }, 2500)
+
+      } else if (intent === 'add_funds_to_goal' && data?.name && data?.amount) {
+        const goals = (await API.get('/savings')).data || []
+        const goal = findByName(goals, data.name)
+        if (!goal) throw new Error(`Goal "${data.name}" not found`)
+        const newSaved = parseFloat(goal.saved_amount) + parseFloat(data.amount)
+        await API.patch(`/savings/${goal.id}`, { saved_amount: newSaved })
+        setActionBanner({ state: 'done', text: `Added ${data.amount} to "${goal.name}"`, nav: '/goals' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/goals' }, 2500)
+
+      } else if (intent === 'make_debt_payment' && data?.name && data?.amount) {
+        const debts = (await API.get('/debts')).data || []
+        const debt = findByName(debts, data.name)
+        if (!debt) throw new Error(`Debt "${data.name}" not found`)
+        const newRemaining = Math.max(parseFloat(debt.remaining_amount) - parseFloat(data.amount), 0)
+        await API.patch(`/debts/${debt.id}`, { remaining_amount: newRemaining })
+        setActionBanner({ state: 'done', text: `Payment of ${data.amount} recorded for "${debt.name}"`, nav: '/goals' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/goals' }, 2500)
+
+      } else if (intent === 'add_networth_item' && data) {
+        await API.post('/networth/item', data)
+        setActionBanner({ state: 'done', text: `${data.type === 'asset' ? 'Asset' : 'Liability'} added: ${data.name}`, nav: '/net-worth' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/net-worth' }, 2500)
 
       } else {
         setActionBanner(null)
@@ -309,15 +365,25 @@ export default function VoiceAssistant({ onClose }) {
         {/* Conversation */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-25" dir={isRTL ? 'rtl' : 'ltr'}>
           {conversation.length === 0 && status === 'idle' && (
-            <div className="text-center pt-2 space-y-2">
-              <p className="text-xs text-gray-400 font-medium">{t('try_saying')}</p>
+            <div className="text-center pt-2 space-y-1.5">
+              <p className="text-xs text-gray-400 font-medium mb-2">{t('try_saying')}</p>
               {[
-                '"Spent $25 on lunch"',
-                '"Set food budget to $300"',
-                '"Add a savings goal for vacation"',
-                '"Take me to budgets"',
-              ].map((ex, i) => (
-                <p key={i} className="text-xs text-violet-500 font-medium">{ex}</p>
+                ['"Spent $25 on lunch"',                    'expense'],
+                ['"Set food budget to $300"',               'budget'],
+                ['"Add a vacation savings goal"',           'goal'],
+                ['"Add $200 to my vacation goal"',          'goal'],
+                ['"Record $300 payment on car loan"',       'debt'],
+                ['"Mark my vacation goal as complete"',     'complete'],
+                ['"I paid off my credit card"',             'complete'],
+                ['"Add a $5000 savings asset"',             'networth'],
+                ['"Take me to net worth"',                  'nav'],
+              ].map(([ex, type], i) => (
+                <div key={i} className="flex items-center justify-center gap-1.5">
+                  <span className="text-[9px] text-gray-300 dark:text-gray-600 uppercase tracking-wide w-12 text-right shrink-0">
+                    {type}
+                  </span>
+                  <p className="text-xs text-violet-500 font-medium">{ex}</p>
+                </div>
               ))}
             </div>
           )}

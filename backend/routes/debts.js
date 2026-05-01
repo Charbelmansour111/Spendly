@@ -35,6 +35,24 @@ router.put('/:id', authenticateToken, async (req, res) => {
   } catch { res.status(500).json({ message: 'Server error' }) }
 });
 
+router.patch('/:id/complete', authenticateToken, async (req, res) => {
+  try {
+    const debtRes = await pool.query('SELECT * FROM debts WHERE id=$1 AND user_id=$2', [req.params.id, req.userId]);
+    if (!debtRes.rows[0]) return res.status(404).json({ message: 'Debt not found' });
+    const debt = debtRes.rows[0];
+
+    await pool.query('DELETE FROM debts WHERE id=$1 AND user_id=$2', [req.params.id, req.userId]);
+
+    // Remove any matching liability from net worth by name
+    const nwRes = await pool.query(
+      `DELETE FROM net_worth_items WHERE user_id=$1 AND type='liability' AND LOWER(name) LIKE LOWER($2) RETURNING id`,
+      [req.userId, `%${debt.name}%`]
+    );
+
+    res.json({ message: 'Debt marked as paid', debtName: debt.name, totalAmount: debt.total_amount, removedFromNetWorth: nwRes.rows.length > 0 });
+  } catch (e) { console.error(e); res.status(500).json({ message: 'Server error' }) }
+});
+
 router.patch('/:id', authenticateToken, async (req, res) => {
   try {
     const { remaining_amount } = req.body;

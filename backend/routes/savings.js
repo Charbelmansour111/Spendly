@@ -21,6 +21,29 @@ router.post('/', authenticateToken, async (req, res) => {
   } catch { res.status(500).json({ message: 'Server error' }) }
 });
 
+router.patch('/:id/complete', authenticateToken, async (req, res) => {
+  try {
+    const goalRes = await pool.query('SELECT * FROM savings_goals WHERE id=$1 AND user_id=$2', [req.params.id, req.userId]);
+    if (!goalRes.rows[0]) return res.status(404).json({ message: 'Goal not found' });
+    const goal = goalRes.rows[0];
+
+    await pool.query('DELETE FROM savings_goals WHERE id=$1 AND user_id=$2', [req.params.id, req.userId]);
+
+    // Add saved amount as a net worth asset
+    const savedAmount = parseFloat(goal.saved_amount) || 0;
+    let addedToNetWorth = false;
+    if (savedAmount > 0) {
+      await pool.query(
+        `INSERT INTO net_worth_items (user_id, name, category, amount, type) VALUES ($1,$2,'Savings',$3,'asset')`,
+        [req.userId, goal.name, savedAmount]
+      );
+      addedToNetWorth = true;
+    }
+
+    res.json({ message: 'Goal completed', goalName: goal.name, savedAmount, addedToNetWorth });
+  } catch (e) { console.error(e); res.status(500).json({ message: 'Server error' }) }
+});
+
 router.patch('/:id', authenticateToken, async (req, res) => {
   try {
     const { saved_amount } = req.body;
