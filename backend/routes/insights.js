@@ -65,8 +65,9 @@ router.post('/chat', authenticateToken, async (req, res) => {
   try {
     const { message, history, mode } = req.body;
     const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 50', [req.userId]);
-    const income = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20', [req.userId]);
-    const budgets = await pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]);
+    const income   = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20', [req.userId]);
+    const budgets  = await pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]);
+
     const total = expenses.rows.reduce((sum, e) => sum + parseFloat(e.amount), 0);
     const totalIncome = income.rows.reduce((sum, i) => sum + parseFloat(i.amount), 0);
     const categoryTotals = expenses.rows.reduce((acc, e) => {
@@ -78,21 +79,65 @@ router.post('/chat', authenticateToken, async (req, res) => {
       .map(([cat, amt]) => `${cat}: $${amt.toFixed(2)}`)
       .join(', ');
     const budgetSummary = budgets.rows.map(b => `${b.category}: $${b.amount}`).join(', ') || 'None set';
+
+    // Recent expenses with IDs for action capability
+    const expenseList = expenses.rows.slice(0, 30).map(e =>
+      `[ID:${e.id}] ${(e.date||'').split('T')[0]} | ${e.category} | ${e.description || '—'} | $${parseFloat(e.amount).toFixed(2)}`
+    ).join('\n');
+
+    const actionInstructions = `
+
+EXPENSE ACTIONS — you can delete or update expenses when asked:
+Listed expenses (use ONLY these real IDs):
+${expenseList}
+
+If the user asks to delete or update a specific expense:
+1. Write your normal reply (confirm what you found, be funny as usual)
+2. Append EXACTLY ONE tag on its own line at the very end:
+   Delete:  ##ACTION:DELETE:ID##
+   Update:  ##ACTION:UPDATE:ID:amount=X## or ##ACTION:UPDATE:ID:amount=X,description=Y,category=Z##
+Only tag a single expense. If multiple match, ask the user to clarify (no tag).
+Never invent IDs — only use IDs from the list above.`;
+
     const systemFn = mode === 'sarcastic' ? SYSTEM_SARCASTIC : SYSTEM_NORMAL;
     const systemMessage = {
       role: 'system',
-      content: systemFn(total, totalIncome, categoryBreakdown, expenses.rows.length, budgetSummary),
+      content: systemFn(total, totalIncome, categoryBreakdown, expenses.rows.length, budgetSummary) + actionInstructions,
     };
+
     const messages = [
       systemMessage,
       ...(history || []).map(msg => ({
         role: msg.role === 'assistant' ? 'assistant' : 'user',
-        content: msg.content
+        content: typeof msg.content === 'string' ? msg.content : '',
       })),
-      { role: 'user', content: message }
+      { role: 'user', content: message },
     ];
-    const reply = await callAI(messages);
-    res.json({ reply });
+
+    const raw = await callAI(messages, 400);
+
+    // Parse optional action tag
+    const actionMatch = raw.match(/##ACTION:(DELETE|UPDATE):(\d+)(?::([^#\n]+))?##/);
+    let action = null;
+    const reply = raw.replace(/##ACTION:[^#]+##/g, '').trim();
+
+    if (actionMatch) {
+      const [, type, idStr, params] = actionMatch;
+      const expId = parseInt(idStr);
+      const expense = expenses.rows.find(e => e.id === expId);
+      if (expense) {
+        action = { type: type.toLowerCase(), expense };
+        if (type === 'UPDATE' && params) {
+          action.updates = {};
+          params.split(',').forEach(p => {
+            const eq = p.indexOf('=');
+            if (eq > -1) action.updates[p.slice(0, eq).trim()] = p.slice(eq + 1).trim();
+          });
+        }
+      }
+    }
+
+    res.json({ reply, action });
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ message: 'Error getting response' });

@@ -39,10 +39,83 @@ const QUICK_QUESTIONS = [
   "Where am I overspending?",
   "How can I save more?",
   "Am I on track?",
+  "Delete my last expense",
   "Biggest expense?",
   "Give me a tip",
-  "How is my spending?",
 ]
+
+function ActionCard({ action, sym, state, onConfirm, onCancel }) {
+  const e = action.expense
+  const dateStr = (e.date || '').split('T')[0]
+
+  if (state === 'done') return (
+    <div className="mt-2 flex items-center gap-2 text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-3 py-2 rounded-xl">
+      <span>✓</span> Done — expense {action.type === 'delete' ? 'deleted' : 'updated'} successfully.
+    </div>
+  )
+  if (state === 'error') return (
+    <div className="mt-2 text-xs bg-red-50 dark:bg-red-900/20 text-red-600 px-3 py-2 rounded-xl">
+      ✗ Something went wrong. Try again.
+    </div>
+  )
+  if (state === 'cancelled') return null
+
+  return (
+    <div className="mt-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl p-3">
+      {action.type === 'delete' ? (
+        <>
+          <p className="text-xs font-bold text-red-500 uppercase tracking-wide mb-2">Confirm delete</p>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-semibold text-gray-800 dark:text-white">{e.description || e.category}</p>
+              <p className="text-xs text-gray-400">{e.category} · {dateStr}</p>
+            </div>
+            <p className="font-bold text-red-500 tabular-nums text-sm">{sym}{parseFloat(e.amount).toFixed(2)}</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onConfirm} className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 rounded-xl transition">Delete</button>
+            <button onClick={onCancel}  className="flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-semibold py-2 rounded-xl transition">Cancel</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-xs font-bold text-violet-500 uppercase tracking-wide mb-2">Confirm update</p>
+          <div className="mb-3">
+            <p className="text-sm font-semibold text-gray-800 dark:text-white mb-0.5">{e.description || e.category}</p>
+            <p className="text-xs text-gray-400 mb-2">{e.category} · {dateStr}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {action.updates?.amount && (
+                <>
+                  <span className="bg-red-100 dark:bg-red-900/30 text-red-600 px-2 py-1 rounded-lg line-through tabular-nums">
+                    {sym}{parseFloat(e.amount).toFixed(2)}
+                  </span>
+                  <span className="text-gray-400">→</span>
+                  <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold px-2 py-1 rounded-lg tabular-nums">
+                    {sym}{parseFloat(action.updates.amount).toFixed(2)}
+                  </span>
+                </>
+              )}
+              {action.updates?.category && action.updates.category !== e.category && (
+                <span className="bg-violet-100 dark:bg-violet-900/30 text-violet-600 px-2 py-1 rounded-lg">
+                  → {action.updates.category}
+                </span>
+              )}
+              {action.updates?.description && action.updates.description !== e.description && (
+                <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 px-2 py-1 rounded-lg">
+                  "{action.updates.description}"
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onConfirm} className="flex-1 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 rounded-xl transition">Confirm</button>
+            <button onClick={onCancel}  className="flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-semibold py-2 rounded-xl transition">Cancel</button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 const TODAY = new Date()
 const CURRENT_MONTH = TODAY.getMonth()
@@ -102,13 +175,42 @@ export default function Insights() {
     try {
       const history = messages.filter((_, idx) => idx > 0)
       const res = await API.post('/insights/chat', { message: userMessage, history, mode: 'sarcastic' })
-      const reply = res.data.reply
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+      const { reply, action } = res.data
+      setMessages(prev => [...prev, { role: 'assistant', content: reply, action: action || null, actionState: action ? 'pending' : null }])
       if (ttsEnabled) speak(reply)
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Even I had a technical issue. The irony. Try again.' }])
     }
     setLoading(false)
+  }
+
+  const executeAction = async (msgIdx, action) => {
+    try {
+      if (action.type === 'delete') {
+        await API.delete(`/expenses/${action.expense.id}`)
+      } else {
+        const e = action.expense
+        const u = action.updates || {}
+        await API.put(`/expenses/${action.expense.id}`, {
+          amount:               parseFloat(u.amount  || e.amount),
+          category:             u.category    || e.category,
+          description:          u.description || e.description,
+          date:                 (e.date || '').split('T')[0] || e.date,
+          is_recurring:         e.is_recurring,
+          recurring_frequency:  e.recurring_frequency || 'monthly',
+          payment_method:       e.payment_method || 'Card',
+          notes:                e.notes || null,
+        })
+      }
+      setMessages(prev => prev.map((m, i) => i === msgIdx ? { ...m, actionState: 'done' } : m))
+      API.get('/expenses').then(r => setExpenses(r.data)).catch(() => {})
+    } catch {
+      setMessages(prev => prev.map((m, i) => i === msgIdx ? { ...m, actionState: 'error' } : m))
+    }
+  }
+
+  const cancelAction = (msgIdx) => {
+    setMessages(prev => prev.map((m, i) => i === msgIdx ? { ...m, actionState: 'cancelled' } : m))
   }
 
   const handleKeyDown = (e) => {
@@ -221,12 +323,23 @@ export default function Insights() {
                   }`}>
                     {msg.role === 'user' ? 'U' : 'AI'}
                   </div>
-                  <div dir="auto" className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-violet-600 text-white rounded-tr-sm'
-                      : 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm'
-                  }`}>
-                    {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
+                  <div className="flex flex-col max-w-full">
+                    <div dir="auto" className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'bg-violet-600 text-white rounded-tr-sm'
+                        : 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm'
+                    }`}>
+                      {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
+                    </div>
+                    {msg.action && (
+                      <ActionCard
+                        action={msg.action}
+                        sym={currencySymbol}
+                        state={msg.actionState}
+                        onConfirm={() => executeAction(i, msg.action)}
+                        onCancel={() => cancelAction(i)}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
