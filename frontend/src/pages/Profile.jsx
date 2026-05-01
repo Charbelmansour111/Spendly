@@ -81,6 +81,7 @@ export default function Profile() {
   const [supportSending, setSupportSending] = useState(false)
   const [supportSent, setSupportSent] = useState(false)
   const [notifEnabled, setNotifEnabled] = useState(() => isNotificationsEnabled())
+  const [shortcutCopied, setShortcutCopied] = useState(false)
 
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700/60 text-gray-900 dark:text-white text-sm transition"
   const showToast = (msg, type = 'success') => setToast({ message: msg, type })
@@ -418,6 +419,52 @@ export default function Profile() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 Replay Tutorial
               </button>
+            </div>
+
+            {/* Hey Spendly shortcut */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
+              <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
+                <span className="text-sm">🎙️</span>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Hey Spendly</p>
+                <span className="ml-auto text-[10px] bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-300 px-2 py-0.5 rounded-full font-bold tracking-wide">QUICK ADD</span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-4">
+                Add expenses from outside the app with your voice. Open the shortcut and say{' '}
+                <span className="font-semibold text-gray-700 dark:text-gray-200">"I spent $15 on a burger"</span>{' '}
+                — Spendly parses it and adds it instantly.
+              </p>
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(window.location.origin + '/quick-add').catch(() => {})
+                  setShortcutCopied(true)
+                  setTimeout(() => setShortcutCopied(false), 2200)
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-violet-600 text-white py-3 rounded-xl font-semibold hover:bg-violet-700 active:scale-95 transition text-sm mb-4">
+                {shortcutCopied ? (
+                  <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Link Copied!</>
+                ) : (
+                  <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy Shortcut Link</>
+                )}
+              </button>
+              <div className="space-y-2.5">
+                <div className="flex gap-3 p-3 bg-gray-50 dark:bg-gray-700/40 rounded-xl">
+                  <span className="text-base shrink-0 mt-0.5">🍎</span>
+                  <div>
+                    <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-0.5">iPhone / iOS</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Shortcuts app → <span className="font-semibold">+</span> → Add Action → <span className="font-semibold">Open URLs</span> → paste the link above. Name it "Hey Spendly". Then say <span className="font-semibold">"Hey Siri, Hey Spendly"</span>.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3 p-3 bg-gray-50 dark:bg-gray-700/40 rounded-xl">
+                  <span className="text-base shrink-0 mt-0.5">🤖</span>
+                  <div>
+                    <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-0.5">Android</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Install Spendly (Add to Home Screen) → long-press app icon → tap <span className="font-semibold">Quick Add</span> shortcut. Or say <span className="font-semibold">"Hey Google, open Spendly Quick Add"</span>.</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center pt-0.5">
+                  True background wake word requires a native app. This is the best PWA alternative.
+                </p>
+              </div>
             </div>
 
             {/* Sign out */}

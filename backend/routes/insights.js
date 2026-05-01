@@ -352,4 +352,39 @@ Return ONLY this exact JSON — no markdown, no extra text. Keep each string und
   }
 });
 
+router.post('/quick-parse', authenticateToken, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: 'No text' });
+
+    const today = new Date().toISOString().split('T')[0];
+    const messages = [
+      {
+        role: 'system',
+        content: `Extract expense details from natural language. Today is ${today}.
+Return ONLY this exact JSON — no markdown, no extra text:
+{"description":"short expense description","amount":number or null,"category":"one of: Food & Dining|Transport|Entertainment|Shopping|Health|Bills & Utilities|Education|Travel|Personal Care|Other","date":"YYYY-MM-DD","needsAmount":true if amount not mentioned}
+Rules:
+- amount: extract the number only (e.g. "$15" → 15, "fifteen dollars" → 15). null if not mentioned.
+- needsAmount: true when amount is null.
+- date: today (${today}) unless user says yesterday/specific date.
+- Understand English, Arabic, Lebanese dialect, Arabizi.
+Examples:
+"I bought a burger" → {"description":"Burger","amount":null,"category":"Food & Dining","date":"${today}","needsAmount":true}
+"spent 15 on coffee" → {"description":"Coffee","amount":15,"category":"Food & Dining","date":"${today}","needsAmount":false}
+"amount: fifteen" → {"description":"expense","amount":15,"category":"Other","date":"${today}","needsAmount":false}
+"amount is 12 dollars" → {"description":"expense","amount":12,"category":"Other","date":"${today}","needsAmount":false}`
+      },
+      { role: 'user', content: text }
+    ];
+
+    const aiReply = await callAI(messages, 150);
+    const json = JSON.parse(aiReply.trim().replace(/```json|```/g, '').trim());
+    res.json(json);
+  } catch(e) {
+    console.error('Quick parse error:', e.message);
+    res.status(500).json({ error: 'Parse failed' });
+  }
+});
+
 module.exports = router;

@@ -121,6 +121,39 @@ function EditSheet({ expense, sym, onSave, onClose }) {
   )
 }
 
+function SwipeRow({ onDelete, children }) {
+  const [startX, setStartX] = useState(null)
+  const [offset, setOffset] = useState(0)
+  const THRESHOLD = 90
+
+  const onTouchStart = e => setStartX(e.touches[0].clientX)
+  const onTouchMove  = e => {
+    if (startX === null) return
+    const d = startX - e.touches[0].clientX
+    if (d > 0) setOffset(Math.min(d, 140))
+  }
+  const onTouchEnd = () => {
+    if (offset >= THRESHOLD) onDelete()
+    else setOffset(0)
+    setStartX(null)
+  }
+
+  return (
+    <div className="relative overflow-hidden">
+      <div className="absolute inset-y-0 right-0 w-20 bg-red-500 flex items-center justify-center"
+        style={{ opacity: Math.min(offset / THRESHOLD, 1) }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+        </svg>
+      </div>
+      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        style={{ transform: `translateX(-${offset}px)`, transition: startX === null ? 'transform 0.25s ease' : 'none' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 // ──────────────────────────────────────────────────────────────
 //  Main page
 // ──────────────────────────────────────────────────────────────
@@ -175,31 +208,36 @@ export default function Transactions() {
       .finally(() => setLoading(false))
   }, [showToast])
 
-  const fetchAll = useCallback(() => {
-    Promise.all([API.get('/expenses'), API.get('/income')])
-      .then(([e, i]) => {
-        setExpenses(e.data || [])
-        setIncome((i.data || []).map(inc => ({
-          ...inc,
-          date: inc.created_at || new Date(inc.year, (inc.month || 1) - 1, 1).toISOString()
-        })))
-      })
-      .catch(() => showToast('Error loading', 'error'))
-  }, [showToast])
+
+  const doDeleteExpense = async (id) => {
+    const backup = expenses.find(e => e.id === id)
+    setExpenses(prev => prev.filter(e => e.id !== id))
+    setConfirm(null)
+    try {
+      await API.delete('/expenses/' + id)
+      showToast('Expense deleted')
+    } catch {
+      if (backup) setExpenses(prev => [...prev, backup].sort((a, b) => new Date(b.date) - new Date(a.date)))
+      showToast('Error deleting', 'error')
+    }
+  }
 
   const handleDeleteExpense = (id) => {
-    setConfirm({
-      message: 'Delete this expense?',
-      onConfirm: async () => {
-        setConfirm(null)
-        try { await API.delete('/expenses/' + id); fetchAll(); showToast('Deleted', 'error') } catch { showToast('Error deleting', 'error') }
-      }
-    })
+    setConfirm({ message: 'Delete this expense?', onConfirm: () => doDeleteExpense(id) })
   }
 
   const handleEditSave = async (form) => {
-    try { await API.put('/expenses/' + editing.id, form); setEditing(null); fetchAll(); showToast('Updated!') }
-    catch { showToast('Error updating', 'error') }
+    const id = editing.id
+    const original = { ...editing }
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...form } : e))
+    setEditing(null)
+    try {
+      await API.put('/expenses/' + id, form)
+      showToast('Updated!')
+    } catch {
+      setExpenses(prev => prev.map(e => e.id === id ? original : e))
+      showToast('Error updating', 'error')
+    }
   }
 
   // ── Derived data ──
@@ -291,35 +329,37 @@ export default function Transactions() {
 
   // ── Render helpers ──
   const renderExpenseRow = (tx, idx, total) => (
-    <div key={tx.id} className={`flex items-center gap-3 px-4 py-3.5 group hover:bg-gray-50 dark:hover:bg-gray-700/40 transition ${idx < total - 1 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
-      <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
-        style={{ background: (CAT_COLORS[tx.category] || '#6B7280') + '20' }}>
-        {CAT_ICONS[tx.category] || '📦'}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
-          {tx.description || tx.category}
-        </p>
-        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">{tx.category}</span>
-          <span className="text-xs text-gray-400">{fmtDate(tx.date)}</span>
-          {tx.is_recurring && <span className="text-xs text-purple-500 font-medium">↻ Recurring</span>}
+    <SwipeRow key={tx.id} onDelete={() => doDeleteExpense(tx.id)}>
+      <div className={`flex items-center gap-3 px-4 py-3.5 group hover:bg-gray-50 dark:hover:bg-gray-700/40 transition bg-white dark:bg-gray-800 ${idx < total - 1 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
+        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
+          style={{ background: (CAT_COLORS[tx.category] || '#6B7280') + '20' }}>
+          {CAT_ICONS[tx.category] || '📦'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+            {tx.description || tx.category}
+          </p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">{tx.category}</span>
+            <span className="text-xs text-gray-400">{fmtDate(tx.date)}</span>
+            {tx.is_recurring && <span className="text-xs text-purple-500 font-medium">↻ Recurring</span>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="font-bold text-sm tabular-nums text-gray-800 dark:text-white">
+            -{sym}{safeNum(tx.amount).toFixed(2)}
+          </span>
+          <div className="hidden group-hover:flex items-center gap-1">
+            <button onClick={() => setEditing(tx)} className="text-violet-400 hover:text-violet-600 p-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button onClick={() => handleDeleteExpense(tx.id)} className="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            </button>
+          </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="font-bold text-sm tabular-nums text-gray-800 dark:text-white">
-          -{sym}{safeNum(tx.amount).toFixed(2)}
-        </span>
-        <div className="hidden group-hover:flex items-center gap-1">
-          <button onClick={() => setEditing(tx)} className="text-violet-400 hover:text-violet-600 p-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          <button onClick={() => handleDeleteExpense(tx.id)} className="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
+    </SwipeRow>
   )
 
   const renderIncomeRow = (tx, idx, total) => (
@@ -578,7 +618,25 @@ export default function Transactions() {
             )}
 
             {loading ? (
-              <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
+              <div className="space-y-4">
+                {[1,2].map(g => (
+                  <div key={g}>
+                    <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse w-16 mb-2 mx-1" />
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                      {[1,2,3].map((r,i) => (
+                        <div key={r} className={`flex items-center gap-3 px-4 py-3.5 ${i < 2 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
+                          <div className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-gray-700 animate-pulse shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="h-3.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse mb-2" style={{ width: `${50+r*15}%` }} />
+                            <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${30+r*10}%` }} />
+                          </div>
+                          <div className="h-4 w-16 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredExpenses.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm">
                 <p className="text-4xl mb-3">💸</p>
@@ -621,7 +679,25 @@ export default function Transactions() {
             )}
 
             {loading ? (
-              <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
+              <div className="space-y-4">
+                {[1,2].map(g => (
+                  <div key={g}>
+                    <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse w-16 mb-2 mx-1" />
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                      {[1,2,3].map((r,i) => (
+                        <div key={r} className={`flex items-center gap-3 px-4 py-3.5 ${i < 2 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
+                          <div className="w-11 h-11 rounded-2xl bg-green-100/60 dark:bg-gray-700 animate-pulse shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="h-3.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse mb-2" style={{ width: `${50+r*15}%` }} />
+                            <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${30+r*10}%` }} />
+                          </div>
+                          <div className="h-4 w-16 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredIncome.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm">
                 <p className="text-4xl mb-3">💵</p>
@@ -637,7 +713,25 @@ export default function Transactions() {
           <>
             {filterBar(false)}
             {loading ? (
-              <div className="space-y-3">{[1,2,3,4,5].map(i => <div key={i} className="h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
+              <div className="space-y-4">
+                {[1,2,3].map(g => (
+                  <div key={g}>
+                    <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse w-16 mb-2 mx-1" />
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                      {[1,2].map((r,i) => (
+                        <div key={r} className={`flex items-center gap-3 px-4 py-3.5 ${i < 1 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
+                          <div className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-gray-700 animate-pulse shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="h-3.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse mb-2" style={{ width: `${50+r*20}%` }} />
+                            <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${30+r*12}%` }} />
+                          </div>
+                          <div className="h-4 w-16 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : allMixed.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm">
                 <p className="text-4xl mb-3">🔍</p>

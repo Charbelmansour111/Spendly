@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useDarkMode } from '../hooks/useDarkMode'
 import VoiceAssistant from './VoiceAssistant'
 import TourBanner from './TourBanner'
@@ -131,6 +132,7 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
 export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const [dark, toggleDark] = useDarkMode()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const location = useLocation()
   const [showVoice, setShowVoice] = useState(false)
   const lastAiTapRef = useRef(0)
   const aiTapTimerRef = useRef(null)
@@ -164,6 +166,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
 
   return (
     <div className="flex h-screen bg-white dark:bg-gray-900 overflow-hidden relative" dir={isRTL() ? 'rtl' : 'ltr'}>
+      <style>{`@keyframes spPageIn { from { opacity:0; transform:translateX(10px) } to { opacity:1; transform:translateX(0) } }`}</style>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/60 shrink-0 h-screen sticky top-0">
         <SidebarContent {...sidebarProps} />
@@ -200,7 +203,11 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       )}
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-20 md:pb-0">{children}</main>
+      <main className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-20 md:pb-0">
+        <div key={location.pathname} style={{ animation: 'spPageIn 0.22s ease' }}>
+          {children}
+        </div>
+      </main>
 
       {/* Mobile bottom tab bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700/60">
