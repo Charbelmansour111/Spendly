@@ -36,13 +36,25 @@ router.post('/', authenticateToken, async (req, res) => {
 
 router.post('/suggest', authenticateToken, async (req, res) => {
   try {
+    const { totalBudget } = req.body || {};
     const now = new Date();
+
+    // Monthly income (average of last 3 months)
+    const incomeRow = (await pool.query(
+      `SELECT COALESCE(SUM(amount),0) as total FROM income
+       WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '3 months'`,
+      [req.userId]
+    )).rows[0];
+    const monthlyIncome = parseFloat(incomeRow?.total || 0) / 3;
+
+    // Spending history (last 3 months)
     const catTotals = {};
     for (let i = 0; i < 3; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const rows = (await pool.query(
         `SELECT category, COALESCE(SUM(amount),0) as spent
-         FROM expenses WHERE user_id=$1 AND EXTRACT(MONTH FROM date)=$2 AND EXTRACT(YEAR FROM date)=$3
+         FROM expenses WHERE user_id=$1
+         AND EXTRACT(MONTH FROM date)=$2 AND EXTRACT(YEAR FROM date)=$3
          GROUP BY category`,
         [req.userId, d.getMonth() + 1, d.getFullYear()]
       )).rows;
@@ -51,12 +63,24 @@ router.post('/suggest', authenticateToken, async (req, res) => {
         catTotals[r.category].push(parseFloat(r.spent));
       });
     }
-    if (!Object.keys(catTotals).length) return res.json({ suggestions: [] });
-    const summary = Object.entries(catTotals)
-      .map(([cat, amounts]) => {
-        const avg = amounts.reduce((s, a) => s + a, 0) / amounts.length;
-        return `${cat}: avg $${avg.toFixed(2)}/month`;
-      }).join('\n');
+
+    const hasBudgetRef = monthlyIncome > 0 || (totalBudget && parseFloat(totalBudget) > 0);
+    // No income at all and no manual amount — tell frontend to ask the user
+    if (!hasBudgetRef) return res.json({ suggestions: [], noIncome: true });
+
+    const budget = totalBudget && parseFloat(totalBudget) > 0 ? parseFloat(totalBudget) : monthlyIncome;
+    const fromNetWorth = !!(totalBudget && parseFloat(totalBudget) > 0 && monthlyIncome === 0);
+
+    const spendingLines = Object.keys(catTotals).length
+      ? 'Spending history (last 3 months avg):\n' + Object.entries(catTotals).map(([cat, amts]) => {
+          const avg = amts.reduce((s, a) => s + a, 0) / amts.length;
+          return `  ${cat}: $${avg.toFixed(2)}/month avg`;
+        }).join('\n')
+      : 'No spending history yet.';
+
+    const incomeContext = fromNetWorth
+      ? `User has no recurring income. They want to spend from savings/net worth and set a total monthly budget of $${budget.toFixed(2)}.`
+      : `Monthly income: $${budget.toFixed(2)}.`;
 
     const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -68,12 +92,17 @@ router.post('/suggest', authenticateToken, async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: `You are a financial advisor. Based on spending history suggest realistic monthly budget limits.
-Return ONLY a valid JSON array, no markdown, no explanation:
-[{"category":"Food","suggested_amount":350,"reasoning":"One short sentence"}]
-Add a 10-15% buffer above the average so goals feel reachable.`
+            content: `You are a financial advisor. Suggest monthly budget limits for each spending category.
+Return ONLY a valid JSON array — no markdown, no explanation:
+[{"category":"Food","suggested_amount":350,"reasoning":"One sentence mentioning the real numbers"}]
+Rules:
+- Only use categories from: Food, Coffee, Transport, Shopping, Entertainment, Health, Fitness, Education, Bills, Travel, Gifts, Subscriptions, Other
+- Suggest 5–8 of the most relevant categories
+- Total of all suggested_amounts must NOT exceed the monthly budget/income
+- Use the 50/30/20 rule as a guide (needs/wants/savings)
+- Reference the actual budget number in each reasoning sentence`
           },
-          { role: 'user', content: `My average monthly spending:\n${summary}\n\nSuggest a monthly budget for each category.` }
+          { role: 'user', content: `${incomeContext}\n\n${spendingLines}\n\nSuggest a monthly budget for each relevant category.` }
         ]
       })
     });
@@ -81,7 +110,7 @@ Add a 10-15% buffer above the average so goals feel reachable.`
     const text = aiData.choices?.[0]?.message?.content?.trim() || '[]';
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     const suggestions = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-    res.json({ suggestions });
+    res.json({ suggestions, monthlyIncome: monthlyIncome > 0 ? monthlyIncome : null, fromNetWorth });
   } catch (e) {
     console.error('Budget suggest error:', e);
     res.status(500).json({ message: 'Failed to generate suggestions' });

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
+import { scheduleReminders } from './utils/notifications'
 
 const PAGE_TITLES = {
   '/': 'Spendly',
@@ -16,6 +17,7 @@ const PAGE_TITLES = {
   '/goals': 'Goals — Spendly',
   '/reports': 'Reports — Spendly',
   '/insights': 'Insights — Spendly',
+  '/net-worth': 'Net Worth — Spendly',
   '/wellness': 'Wellness — Spendly',
   '/profile': 'Profile — Spendly',
   '/advisor/apply':     'Apply as Advisor — Spendly',
@@ -46,10 +48,10 @@ import Dashboard from './pages/Dashboard'
 import Budgets from './pages/Budgets'
 import Goals from './pages/Goals'
 import Reports from './pages/Reports'
-import Insights from './pages/Insights'
 import Wellness from './pages/Wellness'
 import Transactions from './pages/Transactions'
 import NetWorth from './pages/NetWorth'
+import QuickAdd from './pages/QuickAdd'
 import Subscriptions from './pages/Subscriptions'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
@@ -60,6 +62,10 @@ import Privacy from './pages/Privacy'
 // import AdminAdvisors from './pages/AdminAdvisors'
 
 function App() {
+  useEffect(() => {
+    if (localStorage.getItem('token')) scheduleReminders()
+  }, [])
+
   return (
     <BrowserRouter>
       <RouteTitle />
@@ -83,10 +89,11 @@ function App() {
         <Route path="/debts"                 element={<Navigate to="/goals" replace />} />
         <Route path="/subscriptions"          element={<Subscriptions />} />
         <Route path="/reports"               element={<Reports />} />
-        <Route path="/insights"              element={<Insights />} />
+        <Route path="/insights"              element={<Navigate to="/reports" replace />} />
         <Route path="/wellness"              element={<Wellness />} />
         <Route path="/transactions"          element={<Transactions />} />
         <Route path="/net-worth"             element={<NetWorth />} />
+        <Route path="/quick-add"             element={<QuickAdd />} />
 
         <Route path="/business"              element={<Navigate to="/dashboard" replace />} />
         <Route path="/business/*"            element={<Navigate to="/dashboard" replace />} />

@@ -15,7 +15,7 @@ const LANG_LABELS = {
 const NAV_LABELS = {
   '/dashboard': 'Dashboard', '/transactions': 'Transactions', '/budgets': 'Budgets',
   '/goals': 'Goals', '/wellness': 'Wellness', '/profile': 'Profile',
-  '/reports': 'Reports', '/insights': 'AI Insights',
+  '/reports': 'Reports', '/insights': 'Reports', '/net-worth': 'Net Worth',
 }
 
 export default function VoiceAssistant({ onClose }) {
@@ -24,6 +24,7 @@ export default function VoiceAssistant({ onClose }) {
   const [actionBanner, setActionBanner] = useState(null)
   const [inputHint, setInputHint] = useState('')
   const [textInput, setTextInput] = useState('')
+  const [recurringConfirm, setRecurringConfirm] = useState(null)
 
   const micLang = localStorage.getItem('spendly_lang_mic') || 'en-US'
   const responseLang = localStorage.getItem('spendly_lang_app') || localStorage.getItem('spendly_lang_response') || 'en-US'
@@ -50,6 +51,11 @@ export default function VoiceAssistant({ onClose }) {
     setTimeout(() => convEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }, [])
 
+  const findByName = (list, name) => {
+    const q = (name || '').toLowerCase()
+    return list.find(item => (item.name || '').toLowerCase().includes(q) || q.includes((item.name || '').toLowerCase()))
+  }
+
   const executeIntent = useCallback(async (result, userText) => {
     const { intent, data, navigate_to, response, question } = result
 
@@ -61,19 +67,8 @@ export default function VoiceAssistant({ onClose }) {
         { role: 'assistant', content: q }
       )
       setInputHint(q)
-      setStatus('idle') // show idle — mic will auto-start after speaking
-
-      // Speak question then start listening. Fallback timer handles broken onEnd.
-      let started = false
-      const doStart = () => {
-        if (started) return
-        started = true
-        setTimeout(() => startListeningRef.current?.(), 400)
-      }
-      speak(q, doStart)
-      // Estimate speech duration as fallback if onEnd never fires
-      const fallbackMs = Math.min(q.length * 90 + 1500, 6000)
-      setTimeout(doStart, fallbackMs)
+      speak(q)
+      setStatus('idle')
       return
     }
 
@@ -91,6 +86,11 @@ export default function VoiceAssistant({ onClose }) {
         setTimeout(() => { window.location.href = navigate_to }, 1600)
 
       } else if (intent === 'add_expense' && data) {
+        if (data.is_recurring === true) {
+          setRecurringConfirm({ intent, data })
+          setStatus('idle')
+          return
+        }
         await API.post('/expenses', data)
         const label = `${data.description || 'Expense'} — ${data.amount}`
         setActionBanner({ state: 'done', text: label, nav: '/transactions' })
@@ -99,6 +99,11 @@ export default function VoiceAssistant({ onClose }) {
         setTimeout(() => { window.location.href = '/transactions' }, 2500)
 
       } else if (intent === 'add_income' && data) {
+        if (data.is_recurring === true) {
+          setRecurringConfirm({ intent, data })
+          setStatus('idle')
+          return
+        }
         await API.post('/income', data)
         setActionBanner({ state: 'done', text: `Income logged — ${data.amount}`, nav: '/transactions' })
         historyRef.current = []
@@ -124,6 +129,79 @@ export default function VoiceAssistant({ onClose }) {
         historyRef.current = []
         setInputHint('')
         setTimeout(() => { window.location.href = '/goals' }, 2500)
+
+      } else if (intent === 'complete_goal' && data?.name) {
+        const goals = (await API.get('/savings')).data || []
+        const goal = findByName(goals, data.name)
+        if (!goal) throw new Error(`Goal "${data.name}" not found`)
+        const r = await API.patch(`/savings/${goal.id}/complete`)
+        const msg = r.data.addedToNetWorth ? `"${goal.name}" complete — added to Net Worth!` : `"${goal.name}" marked complete!`
+        setActionBanner({ state: 'done', text: msg, nav: '/goals' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/goals' }, 2500)
+
+      } else if (intent === 'complete_debt' && data?.name) {
+        const debts = (await API.get('/debts')).data || []
+        const debt = findByName(debts, data.name)
+        if (!debt) throw new Error(`Debt "${data.name}" not found`)
+        const r = await API.patch(`/debts/${debt.id}/complete`)
+        const msg = r.data.removedFromNetWorth ? `"${debt.name}" paid off — Net Worth updated!` : `"${debt.name}" marked as paid!`
+        setActionBanner({ state: 'done', text: msg, nav: '/goals' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/goals' }, 2500)
+
+      } else if (intent === 'add_funds_to_goal' && data?.name && data?.amount) {
+        const goals = (await API.get('/savings')).data || []
+        const goal = findByName(goals, data.name)
+        if (!goal) throw new Error(`Goal "${data.name}" not found`)
+        const newSaved = parseFloat(goal.saved_amount) + parseFloat(data.amount)
+        await API.patch(`/savings/${goal.id}`, { saved_amount: newSaved })
+        setActionBanner({ state: 'done', text: `Added ${data.amount} to "${goal.name}"`, nav: '/goals' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/goals' }, 2500)
+
+      } else if (intent === 'make_debt_payment' && data?.name && data?.amount) {
+        const debts = (await API.get('/debts')).data || []
+        const debt = findByName(debts, data.name)
+        if (!debt) throw new Error(`Debt "${data.name}" not found`)
+        const newRemaining = Math.max(parseFloat(debt.remaining_amount) - parseFloat(data.amount), 0)
+        await API.patch(`/debts/${debt.id}`, { remaining_amount: newRemaining })
+        setActionBanner({ state: 'done', text: `Payment of ${data.amount} recorded for "${debt.name}"`, nav: '/goals' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/goals' }, 2500)
+
+      } else if (intent === 'add_networth_item' && data) {
+        await API.post('/networth/item', data)
+        setActionBanner({ state: 'done', text: `${data.type === 'asset' ? 'Asset' : 'Liability'} added: ${data.name}`, nav: '/net-worth' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/net-worth' }, 2500)
+
+      } else if (intent === 'delete_last_expense') {
+        const expenses = (await API.get('/expenses')).data || []
+        if (!expenses.length) throw new Error('No expenses found')
+        const last = expenses[0]
+        await API.delete(`/expenses/${last.id}`)
+        const label = last.description || last.category || 'expense'
+        setActionBanner({ state: 'done', text: `Deleted "${label}" (${last.amount})`, nav: '/transactions' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/transactions' }, 2500)
+
+      } else if (intent === 'update_last_expense' && data) {
+        const expenses = (await API.get('/expenses')).data || []
+        if (!expenses.length) throw new Error('No expenses found')
+        const last = expenses[0]
+        const updated = { ...last, [data.field]: data.value }
+        await API.put(`/expenses/${last.id}`, updated)
+        setActionBanner({ state: 'done', text: `Updated last expense: ${data.field} → ${data.value}`, nav: '/transactions' })
+        historyRef.current = []
+        setInputHint('')
+        setTimeout(() => { window.location.href = '/transactions' }, 2500)
 
       } else {
         setActionBanner(null)
@@ -157,6 +235,32 @@ export default function VoiceAssistant({ onClose }) {
       setStatus('error')
     }
   }, [responseLang, addMessage, executeIntent])
+
+  const confirmRecurring = async () => {
+    if (!recurringConfirm) return
+    const { intent, data } = recurringConfirm
+    setRecurringConfirm(null)
+    setStatus('processing')
+    setActionBanner({ state: 'loading', text: '...' })
+    try {
+      if (intent === 'add_expense') {
+        await API.post('/expenses', data)
+        setActionBanner({ state: 'done', text: `${data.description || 'Expense'} — ${data.amount} (${data.recurring_frequency})`, nav: '/transactions' })
+        setTimeout(() => { window.location.href = '/transactions' }, 2500)
+      } else {
+        await API.post('/income', data)
+        setActionBanner({ state: 'done', text: `Income logged — ${data.amount} (${data.recurring_frequency})`, nav: '/transactions' })
+        setTimeout(() => { window.location.href = '/transactions' }, 2500)
+      }
+      historyRef.current = []
+      setInputHint('')
+    } catch { setActionBanner({ state: 'error', text: 'Could not complete.' }) }
+    setStatus('done')
+  }
+  const cancelRecurring = () => {
+    setRecurringConfirm(null)
+    setStatus('idle')
+  }
 
   const startListening = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -221,7 +325,6 @@ export default function VoiceAssistant({ onClose }) {
     setInputHint('')
     setTextInput('')
     setStatus('idle')
-    setTimeout(() => startListening(), 200)
   }
 
   const handleTextSubmit = (e) => {
@@ -306,18 +409,41 @@ export default function VoiceAssistant({ onClose }) {
           </div>
         </div>
 
+        {recurringConfirm && (
+          <div className="mx-4 mb-3 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 rounded-2xl px-4 py-3">
+            <p className="text-sm font-semibold text-violet-800 dark:text-violet-200 mb-1">Recurring transaction detected</p>
+            <p className="text-xs text-violet-600 dark:text-violet-300 mb-3">
+              Add <strong>{recurringConfirm.data?.description || recurringConfirm.data?.source || 'this'}</strong> as a recurring <strong>{recurringConfirm.data?.recurring_frequency || 'monthly'}</strong> {recurringConfirm.intent === 'add_expense' ? 'expense' : 'income'} of <strong>{recurringConfirm.data?.amount}</strong>?
+            </p>
+            <div className="flex gap-2">
+              <button onClick={confirmRecurring} className="flex-1 bg-violet-600 text-white py-2 rounded-xl text-sm font-bold hover:bg-violet-700 transition">Confirm</button>
+              <button onClick={cancelRecurring} className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white py-2 rounded-xl text-sm font-semibold">Cancel</button>
+            </div>
+          </div>
+        )}
+
         {/* Conversation */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-25" dir={isRTL ? 'rtl' : 'ltr'}>
           {conversation.length === 0 && status === 'idle' && (
-            <div className="text-center pt-2 space-y-2">
-              <p className="text-xs text-gray-400 font-medium">{t('try_saying')}</p>
+            <div className="text-center pt-2 space-y-1.5">
+              <p className="text-xs text-gray-400 font-medium mb-2">{t('try_saying')}</p>
               {[
-                '"Spent $25 on lunch"',
-                '"Set food budget to $300"',
-                '"Add a savings goal for vacation"',
-                '"Take me to budgets"',
-              ].map((ex, i) => (
-                <p key={i} className="text-xs text-violet-500 font-medium">{ex}</p>
+                ['"Spent $25 on lunch"',                    'expense'],
+                ['"Set food budget to $300"',               'budget'],
+                ['"Add a vacation savings goal"',           'goal'],
+                ['"Add $200 to my vacation goal"',          'goal'],
+                ['"Record $300 payment on car loan"',       'debt'],
+                ['"Mark my vacation goal as complete"',     'complete'],
+                ['"I paid off my credit card"',             'complete'],
+                ['"Add a $5000 savings asset"',             'networth'],
+                ['"Take me to net worth"',                  'nav'],
+              ].map(([ex, type], i) => (
+                <div key={i} className="flex items-center justify-center gap-1.5">
+                  <span className="text-[9px] text-gray-300 dark:text-gray-600 uppercase tracking-wide w-12 text-right shrink-0">
+                    {type}
+                  </span>
+                  <p className="text-xs text-violet-500 font-medium">{ex}</p>
+                </div>
               ))}
             </div>
           )}

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 import MoneyDefender from '../components/MoneyDefender'
+import TimeMachineModal from '../components/TimeMachineModal'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 
@@ -64,6 +65,7 @@ export default function Wellness() {
   const [showGame, setShowGame] = useState(false)
   const [numModal, setNumModal] = useState(null)
   const [highScore] = useState(() => parseInt(localStorage.getItem('moneyDefenderHS') || '0'))
+  const [showTimeMachine, setShowTimeMachine] = useState(false)
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
   const dayOfMonth = today.getDate()
@@ -583,6 +585,31 @@ export default function Wellness() {
             </>
           )}
         </div>
+
+        {/* 🕰️ Time Machine */}
+        <div className="bg-linear-to-br from-violet-950 to-indigo-900 rounded-3xl p-5 border border-violet-700/30">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h3 className="text-white font-bold text-base flex items-center gap-2">
+                <span>🕰️</span> Time Machine
+              </h3>
+              <p className="text-violet-300 text-xs mt-0.5">Travel to any year in history</p>
+              <p className="text-gray-500 text-[11px] mt-0.5">AI sketch + planet animation + sarcastic roast</p>
+            </div>
+            <button onClick={() => setShowTimeMachine(true)}
+              className="shrink-0 bg-violet-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-violet-500 transition shadow-lg shadow-violet-900/40 active:scale-95">
+              Travel
+            </button>
+          </div>
+        </div>
+
+        {showTimeMachine && (
+          <TimeMachineModal
+            onClose={() => setShowTimeMachine(false)}
+            defaultAmount={financials.totalSpent || 100}
+            currency={localStorage.getItem('currency') || 'USD'}
+          />
+        )}
 
         {/* Notes */}
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">

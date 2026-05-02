@@ -1,12 +1,14 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
-const CAT_ICONS = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦', Salary: '💼', Freelance: '💻', Business: '🏪', Investment: '📈' }
-const CAT_COLORS = { Food: '#F97316', Transport: '#3B82F6', Shopping: '#EC4899', Subscriptions: '#8B5CF6', Entertainment: '#10B981', Other: '#6B7280' }
+const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦', Salary: '💼', Freelance: '💻', Business: '🏪', Investment: '📈' }
+const CAT_COLORS = { Food: '#F97316', Coffee: '#92400E', Transport: '#3B82F6', Shopping: '#EC4899', Entertainment: '#10B981', Health: '#EF4444', Fitness: '#F59E0B', Education: '#6366F1', Bills: '#0EA5E9', Travel: '#14B8A6', Gifts: '#E879F9', Subscriptions: '#8B5CF6', Other: '#6B7280' }
 const INCOME_SOURCES = ['Salary', 'Freelance', 'Business', 'Investment', 'Other']
-const EXPENSE_CATS = ['Food', 'Transport', 'Shopping', 'Subscriptions', 'Entertainment', 'Other']
+const EXPENSE_CATS = ['Food', 'Coffee', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Fitness', 'Education', 'Bills', 'Travel', 'Gifts', 'Subscriptions', 'Other']
+
+const haptic = (ms = 10) => navigator.vibrate?.(ms)
 
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 function fmtMoney(amount, symbol) {
@@ -38,18 +40,13 @@ function Toast({ message, type, onClose }) {
   )
 }
 
-function ConfirmModal({ message, onConfirm, onCancel }) {
+function UndoToast({ label, onUndo, onDismiss }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-sm text-center">
-        <p className="text-4xl mb-3">🗑️</p>
-        <p className="font-semibold text-gray-800 dark:text-white mb-1">{message}</p>
-        <p className="text-gray-400 text-sm mb-5">This cannot be undone.</p>
-        <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white py-3 rounded-xl font-semibold">Cancel</button>
-          <button onClick={onConfirm} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-semibold hover:bg-red-600 transition">Delete</button>
-        </div>
+    <div className="fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-72 z-50">
+      <div className="bg-gray-900 dark:bg-gray-700 text-white rounded-2xl shadow-2xl px-4 py-3.5 flex items-center gap-3">
+        <span className="text-sm flex-1 min-w-0 truncate">Deleted <span className="font-semibold">"{label}"</span></span>
+        <button onClick={onUndo} className="text-violet-400 hover:text-violet-300 font-bold text-sm shrink-0 px-2 py-1 rounded-lg hover:bg-white/10 transition">Undo</button>
+        <button onClick={onDismiss} className="text-gray-400 hover:text-white shrink-0 text-xl leading-none">×</button>
       </div>
     </div>
   )
@@ -121,6 +118,257 @@ function EditSheet({ expense, sym, onSave, onClose }) {
   )
 }
 
+function SwipeRow({ onDelete, children }) {
+  const [startX, setStartX] = useState(null)
+  const [offset, setOffset] = useState(0)
+  const THRESHOLD = 90
+
+  const onTouchStart = e => setStartX(e.touches[0].clientX)
+  const onTouchMove  = e => {
+    if (startX === null) return
+    const d = startX - e.touches[0].clientX
+    if (d > 0) setOffset(Math.min(d, 140))
+  }
+  const onTouchEnd = () => {
+    if (offset >= THRESHOLD) { haptic(20); onDelete() }
+    else setOffset(0)
+    setStartX(null)
+  }
+
+  return (
+    <div className="relative overflow-hidden">
+      <div className="absolute inset-y-0 right-0 w-20 bg-red-500 flex items-center justify-center"
+        style={{ opacity: Math.min(offset / THRESHOLD, 1) }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+        </svg>
+      </div>
+      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        style={{ transform: `translateX(-${offset}px)`, transition: startX === null ? 'transform 0.25s ease' : 'none' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+const BRAND_LOGOS = {
+  Netflix: 'https://logo.clearbit.com/netflix.com', Spotify: 'https://logo.clearbit.com/spotify.com',
+  'Disney+': 'https://logo.clearbit.com/disneyplus.com', 'HBO Max': 'https://logo.clearbit.com/hbo.com',
+  'Amazon Prime': 'https://logo.clearbit.com/amazon.com', YouTube: 'https://logo.clearbit.com/youtube.com',
+}
+const SUBCATEGORIES = {
+  Food: [{ label: 'Restaurant', emoji: '🍽️' }, { label: 'Groceries', emoji: '🛒' }, { label: 'Fast Food', emoji: '🍔' }, { label: 'Coffee', emoji: '☕' }],
+  Transport: [{ label: 'Uber', emoji: '🚗' }, { label: 'Taxi', emoji: '🚕' }, { label: 'Gas', emoji: '⛽' }, { label: 'Parking', emoji: '🅿️' }],
+  Shopping: [{ label: 'Amazon', emoji: '📦' }, { label: 'Clothes', emoji: '👗' }, { label: 'Electronics', emoji: '💻' }, { label: 'Shoes', emoji: '👟' }],
+  Subscriptions: [{ label: 'Netflix', emoji: '🎬' }, { label: 'Spotify', emoji: '🎵' }, { label: 'Disney+', emoji: '🏰' }, { label: 'YouTube', emoji: '▶️' }],
+  Entertainment: [{ label: 'Cinema', emoji: '🎥' }, { label: 'Concert', emoji: '🎵' }, { label: 'Gaming', emoji: '🎮' }, { label: 'Bar', emoji: '🍻' }],
+}
+const CATEGORY_HINTS_LOCAL = {
+  Food: ['mcdonald','kfc','pizza','burger','grocery','restaurant','food','lunch','dinner','breakfast'],
+  Coffee: ['starbucks','coffee','cafe','tea','juice'],
+  Transport: ['uber','taxi','careem','gas','petrol','metro','bus','parking','fuel'],
+  Shopping: ['amazon','clothing','zara','mall','store','shop'],
+  Subscriptions: ['netflix','spotify','disney','hbo','youtube','subscription','monthly'],
+  Entertainment: ['cinema','movie','bar','club','concert','gaming'],
+  Health: ['hospital','doctor','pharmacy','dentist','medicine'],
+  Fitness: ['gym','yoga','workout','crossfit'],
+  Education: ['tuition','school','university','course'],
+  Bills: ['rent','electricity','water','internet','phone bill','utility'],
+  Travel: ['flight','hotel','airbnb','trip','vacation'],
+  Gifts: ['gift','charity','donation'],
+}
+function suggestCategoryLocal(desc) {
+  if (!desc || desc.length < 3) return null
+  const lower = desc.toLowerCase()
+  for (const [cat, words] of Object.entries(CATEGORY_HINTS_LOCAL)) {
+    if (words.some(w => lower.includes(w))) return cat
+  }
+  return null
+}
+
+function AddExpenseModal({ onClose, onSave, sym }) {
+  const today = new Date().toISOString().split('T')[0]
+  const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly' })
+  const [suggestion, setSuggestion] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const cats = [
+    { key: 'Food', icon: '🍔' }, { key: 'Coffee', icon: '☕' }, { key: 'Transport', icon: '🚗' },
+    { key: 'Shopping', icon: '🛍️' }, { key: 'Entertainment', icon: '🎬' }, { key: 'Health', icon: '🏥' },
+    { key: 'Fitness', icon: '🏋️' }, { key: 'Education', icon: '🎓' }, { key: 'Bills', icon: '💡' },
+    { key: 'Travel', icon: '✈️' }, { key: 'Gifts', icon: '🎁' }, { key: 'Subscriptions', icon: '📱' }, { key: 'Other', icon: '📦' },
+  ]
+  const subs = SUBCATEGORIES[form.category] || []
+  const handleDesc = (val) => {
+    setForm(f => ({ ...f, description: val }))
+    const c = suggestCategoryLocal(val)
+    setSuggestion(c && c !== form.category ? c : null)
+  }
+  const handleSave = async () => {
+    if (!form.amount || saving) return
+    setSaving(true)
+    await onSave(form)
+    setSaving(false)
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
+          <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({sym})</label>
+            <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              min="0.01" step="0.01" autoFocus
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Description (optional)</label>
+            <input type="text" placeholder="What was this for?" value={form.description} onChange={e => handleDesc(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+            {suggestion && (
+              <div className="mt-1.5 flex items-center gap-2 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 rounded-xl px-3 py-2">
+                <span className="text-xs text-violet-700 dark:text-violet-300">🤖 Looks like <strong>{suggestion}</strong>?</span>
+                <button type="button" onClick={() => { setForm(f => ({ ...f, category: suggestion })); setSuggestion(null) }}
+                  className="ml-auto text-xs bg-violet-600 text-white px-3 py-1 rounded-lg font-semibold">Use it</button>
+                <button type="button" onClick={() => setSuggestion(null)} className="text-gray-400 text-xs">✕</button>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-2 block">Category</label>
+            <div className="flex flex-wrap gap-2">
+              {cats.map(({ key, icon }) => (
+                <button key={key} type="button" onClick={() => setForm(f => ({ ...f, category: key }))}
+                  className={`py-1.5 px-3 rounded-full text-xs font-semibold border-2 transition ${form.category === key ? 'border-violet-500 bg-violet-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50'}`}>
+                  {icon} {key}
+                </button>
+              ))}
+            </div>
+          </div>
+          {subs.length > 0 && (
+            <div className="grid grid-cols-4 gap-2">
+              {subs.map(s => (
+                <button key={s.label} type="button" onClick={() => setForm(f => ({ ...f, description: s.label }))}
+                  className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border-2 transition ${form.description === s.label ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50'}`}>
+                  <span className="text-xl">{s.emoji}</span>
+                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 leading-tight text-center">{s.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Date</label>
+            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.is_recurring} onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))} className="w-4 h-4 accent-violet-600" />
+            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
+          </label>
+          {form.is_recurring && (
+            <select value={form.recurring_frequency} onChange={e => setForm(f => ({ ...f, recurring_frequency: e.target.value }))}
+              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+              <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+            </select>
+          )}
+          <button onClick={handleSave} disabled={!form.amount || saving}
+            className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50">
+            {saving ? 'Adding…' : 'Add Expense'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AddIncomeModal({ onClose, onSave, sym }) {
+  const [form, setForm] = useState({ amount: '', source: 'Salary', is_recurring: false, recurring_frequency: 'monthly' })
+  const [saving, setSaving] = useState(false)
+  const handleSave = async () => {
+    if (!form.amount || saving) return
+    setSaving(true)
+    await onSave(form)
+    setSaving(false)
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Income</h3>
+          <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({sym})</label>
+            <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              min="0.01" step="0.01" autoFocus
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Source</label>
+            <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <option>Salary</option><option>Freelance</option><option>Business</option><option>Investment</option><option>Other</option>
+            </select>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.is_recurring} onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))} className="w-4 h-4 accent-green-600" />
+            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
+          </label>
+          {form.is_recurring && (
+            <select value={form.recurring_frequency} onChange={e => setForm(f => ({ ...f, recurring_frequency: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+            </select>
+          )}
+          <button onClick={handleSave} disabled={!form.amount || saving}
+            className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-green-700 transition disabled:opacity-50">
+            {saving ? 'Adding…' : 'Add Income'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AddPickerModal({ onClose, onExpense, onIncome }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl w-full max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="w-10 h-1 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-5" />
+        <p className="text-base font-bold text-gray-800 dark:text-white text-center mb-5">What would you like to add?</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={onExpense}
+            className="flex flex-col items-center gap-3 bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-100 dark:border-rose-800 rounded-2xl py-6 hover:border-rose-300 active:scale-95 transition-all">
+            <div className="w-12 h-12 bg-rose-500 rounded-2xl flex items-center justify-center">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-gray-800 dark:text-white text-sm">Expense</p>
+              <p className="text-xs text-gray-400 mt-0.5">Log a purchase</p>
+            </div>
+          </button>
+          <button onClick={onIncome}
+            className="flex flex-col items-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-100 dark:border-emerald-800 rounded-2xl py-6 hover:border-emerald-300 active:scale-95 transition-all">
+            <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-gray-800 dark:text-white text-sm">Income</p>
+              <p className="text-xs text-gray-400 mt-0.5">Log earnings</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ──────────────────────────────────────────────────────────────
 //  Main page
 // ──────────────────────────────────────────────────────────────
@@ -145,10 +393,18 @@ export default function Transactions() {
   const [tab, setTab]           = useState('expenses')   // expenses | income | all
   const [sym] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
   const [toast, setToast]       = useState(null)
-  const [confirm, setConfirm]   = useState(null)
   const [editing, setEditing]   = useState(null)
+  const [undoLabel, setUndoLabel] = useState(null)
+  const undoRef = useRef(null)
+  const undoTimerRef = useRef(null)
+  const tabSwipeRef = useRef(null)
+  const TABS = ['expenses', 'income', 'all']
+  useEffect(() => () => clearTimeout(undoTimerRef.current), [])
   const [numModal, setNumModal] = useState(null)
   const [showRecurring, setShowRecurring] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
+  const [showAddExp, setShowAddExp] = useState(false)
+  const [showAddInc, setShowAddInc] = useState(false)
 
   // Filters
   const [search, setSearch]       = useState('')
@@ -159,6 +415,26 @@ export default function Transactions() {
   const [showFilters, setShowFilters] = useState(false)
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
+
+  const [visibleDayGroups, setVisibleDayGroups] = useState(3)
+  const observerRef = useRef(null)
+  const sentinelRef = useCallback(node => {
+    if (observerRef.current) observerRef.current.disconnect()
+    if (!node) return
+    observerRef.current = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) setVisibleDayGroups(p => p + 3) },
+      { rootMargin: '200px' }
+    )
+    observerRef.current.observe(node)
+  }, [])
+
+  // Reset visible count when filters/tab change (derived-state pattern — safe to call during render)
+  const filterKey = `${tab}|${catFilter}|${sortBy}|${dateFrom}|${dateTo}|${search}`
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey)
+  if (filterKey !== lastFilterKey) {
+    setLastFilterKey(filterKey)
+    setVisibleDayGroups(3)
+  }
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -175,31 +451,106 @@ export default function Transactions() {
       .finally(() => setLoading(false))
   }, [showToast])
 
-  const fetchAll = useCallback(() => {
-    Promise.all([API.get('/expenses'), API.get('/income')])
-      .then(([e, i]) => {
-        setExpenses(e.data || [])
-        setIncome((i.data || []).map(inc => ({
-          ...inc,
-          date: inc.created_at || new Date(inc.year, (inc.month || 1) - 1, 1).toISOString()
-        })))
-      })
-      .catch(() => showToast('Error loading', 'error'))
-  }, [showToast])
 
-  const handleDeleteExpense = (id) => {
-    setConfirm({
-      message: 'Delete this expense?',
-      onConfirm: async () => {
-        setConfirm(null)
-        try { await API.delete('/expenses/' + id); fetchAll(); showToast('Deleted', 'error') } catch { showToast('Error deleting', 'error') }
-      }
+  const commitExpenseDelete = (id, backup) => {
+    API.delete('/expenses/' + id).catch(() => {
+      setExpenses(prev => [...prev, backup].sort((a, b) => new Date(b.date) - new Date(a.date)))
+      showToast('Error deleting', 'error')
     })
   }
 
+  const handleDeleteExpense = (id) => {
+    // Flush any pending undo before starting a new delete
+    if (undoRef.current) {
+      clearTimeout(undoTimerRef.current)
+      commitExpenseDelete(undoRef.current.id, undoRef.current.backup)
+      undoRef.current = null
+    }
+    const backup = expenses.find(e => e.id === id)
+    if (!backup) return
+    haptic(20)
+    setExpenses(prev => prev.filter(e => e.id !== id))
+    setUndoLabel(backup.description || backup.category || 'Expense')
+    undoRef.current = { id, backup }
+    undoTimerRef.current = setTimeout(() => {
+      if (!undoRef.current || undoRef.current.id !== id) return
+      const b = undoRef.current.backup
+      undoRef.current = null
+      setUndoLabel(null)
+      commitExpenseDelete(id, b)
+    }, 4000)
+  }
+
+  const handleUndoExpense = () => {
+    if (!undoRef.current) return
+    clearTimeout(undoTimerRef.current)
+    haptic(10)
+    setExpenses(prev => [undoRef.current.backup, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)))
+    undoRef.current = null
+    setUndoLabel(null)
+  }
+
+  const handleDismissUndo = () => {
+    if (!undoRef.current) return
+    clearTimeout(undoTimerRef.current)
+    commitExpenseDelete(undoRef.current.id, undoRef.current.backup)
+    undoRef.current = null
+    setUndoLabel(null)
+  }
+
   const handleEditSave = async (form) => {
-    try { await API.put('/expenses/' + editing.id, form); setEditing(null); fetchAll(); showToast('Updated!') }
-    catch { showToast('Error updating', 'error') }
+    const id = editing.id
+    const original = { ...editing }
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...form } : e))
+    setEditing(null)
+    try {
+      await API.put('/expenses/' + id, form)
+      showToast('Updated!')
+    } catch {
+      setExpenses(prev => prev.map(e => e.id === id ? original : e))
+      showToast('Error updating', 'error')
+    }
+  }
+
+  const handleAddExpense = async (form) => {
+    try {
+      const now = new Date()
+      await API.post('/expenses', {
+        amount: parseFloat(form.amount),
+        category: form.category,
+        description: form.description || '',
+        date: form.date || now.toISOString().split('T')[0],
+        is_recurring: form.is_recurring || false,
+        recurring_frequency: form.recurring_frequency || 'monthly',
+      })
+      const res = await API.get('/expenses')
+      setExpenses(res.data || [])
+      setShowAddExp(false)
+      setShowPicker(false)
+      showToast('Expense added!')
+    } catch { showToast('Error adding expense', 'error') }
+  }
+
+  const handleAddIncome = async (form) => {
+    try {
+      const now = new Date()
+      await API.post('/income', {
+        amount: parseFloat(form.amount),
+        source: form.source || 'Other',
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+        is_recurring: form.is_recurring || false,
+        recurring_frequency: form.recurring_frequency || 'monthly',
+      })
+      const res = await API.get('/income')
+      setIncome((res.data || []).map(inc => ({
+        ...inc,
+        date: inc.created_at || new Date(inc.year, (inc.month || 1) - 1, 1).toISOString()
+      })))
+      setShowAddInc(false)
+      setShowPicker(false)
+      showToast('Income added!')
+    } catch { showToast('Error adding income', 'error') }
   }
 
   // ── Derived data ──
@@ -287,39 +638,55 @@ export default function Transactions() {
     showToast('CSV exported!')
   }
 
+  const onTabSwipeStart = (e) => {
+    tabSwipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  }
+  const onTabSwipeEnd = (e) => {
+    if (!tabSwipeRef.current) return
+    const dx = tabSwipeRef.current.x - e.changedTouches[0].clientX
+    const dy = tabSwipeRef.current.y - e.changedTouches[0].clientY
+    tabSwipeRef.current = null
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return
+    const idx = TABS.indexOf(tab)
+    if (dx > 0 && idx < TABS.length - 1) { setTab(TABS[idx + 1]); setCat('All'); haptic(8) }
+    else if (dx < 0 && idx > 0) { setTab(TABS[idx - 1]); setCat('All'); haptic(8) }
+  }
+
   const hasFilters = catFilter !== 'All' || sortBy !== 'newest' || dateFrom || dateTo || search
 
   // ── Render helpers ──
   const renderExpenseRow = (tx, idx, total) => (
-    <div key={tx.id} className={`flex items-center gap-3 px-4 py-3.5 group hover:bg-gray-50 dark:hover:bg-gray-700/40 transition ${idx < total - 1 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
-      <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
-        style={{ background: (CAT_COLORS[tx.category] || '#6B7280') + '20' }}>
-        {CAT_ICONS[tx.category] || '📦'}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
-          {tx.description || tx.category}
-        </p>
-        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">{tx.category}</span>
-          <span className="text-xs text-gray-400">{fmtDate(tx.date)}</span>
-          {tx.is_recurring && <span className="text-xs text-purple-500 font-medium">↻ Recurring</span>}
+    <SwipeRow key={tx.id} onDelete={() => handleDeleteExpense(tx.id)}>
+      <div className={`flex items-center gap-3 px-4 py-3.5 group hover:bg-gray-50 dark:hover:bg-gray-700/40 transition bg-white dark:bg-gray-800 ${idx < total - 1 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
+        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
+          style={{ background: (CAT_COLORS[tx.category] || '#6B7280') + '20' }}>
+          {CAT_ICONS[tx.category] || '📦'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+            {tx.description || tx.category}
+          </p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">{tx.category}</span>
+            <span className="text-xs text-gray-400">{fmtDate(tx.date)}</span>
+            {tx.is_recurring && <span className="text-xs text-purple-500 font-medium">↻ Recurring</span>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="font-bold text-sm tabular-nums text-gray-800 dark:text-white">
+            -{sym}{safeNum(tx.amount).toFixed(2)}
+          </span>
+          <div className="hidden group-hover:flex items-center gap-1">
+            <button onClick={() => setEditing(tx)} className="text-violet-400 hover:text-violet-600 p-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button onClick={() => handleDeleteExpense(tx.id)} className="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            </button>
+          </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="font-bold text-sm tabular-nums text-gray-800 dark:text-white">
-          -{sym}{safeNum(tx.amount).toFixed(2)}
-        </span>
-        <div className="hidden group-hover:flex items-center gap-1">
-          <button onClick={() => setEditing(tx)} className="text-violet-400 hover:text-violet-600 p-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          <button onClick={() => handleDeleteExpense(tx.id)} className="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
+    </SwipeRow>
   )
 
   const renderIncomeRow = (tx, idx, total) => (
@@ -405,33 +772,53 @@ export default function Transactions() {
     </div>
   )
 
-  const renderGrouped = (grouped, isIncome) => (
-    <div className="space-y-4">
-      {Object.entries(grouped).map(([label, txs]) => (
-        <div key={label}>
-          <div className="flex items-center gap-3 mb-2 px-1">
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">{label}</p>
-            <div className="flex-1 h-px bg-gray-100 dark:bg-gray-700" />
-            <p className="text-xs font-semibold tabular-nums whitespace-nowrap">
-              {isIncome
-                ? <span className="text-green-600">+{sym}{txs.reduce((s,t) => s + safeNum(t.amount), 0).toFixed(2)}</span>
-                : <span className="text-red-500">-{sym}{txs.reduce((s,t) => s + safeNum(t.amount), 0).toFixed(2)}</span>
-              }
-            </p>
+  const renderGrouped = (grouped, isIncome, options = {}) => {
+    const { rowRenderer, showTotal = true } = options
+    const entries = Object.entries(grouped)
+    const visible = entries.slice(0, visibleDayGroups)
+    const hasMore = entries.length > visibleDayGroups
+    const renderRow = rowRenderer || ((tx, idx, total) =>
+      isIncome ? renderIncomeRow(tx, idx, total) : renderExpenseRow(tx, idx, total))
+    return (
+      <div className="space-y-4">
+        {visible.map(([label, txs]) => (
+          <div key={label}>
+            <div className="flex items-center gap-3 mb-2 px-1">
+              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">{label}</p>
+              <div className="flex-1 h-px bg-gray-100 dark:bg-gray-700" />
+              {showTotal && (
+                <p className="text-xs font-semibold tabular-nums whitespace-nowrap">
+                  {isIncome
+                    ? <span className="text-green-600">+{sym}{txs.reduce((s,t) => s + safeNum(t.amount), 0).toFixed(2)}</span>
+                    : <span className="text-red-500">-{sym}{txs.reduce((s,t) => s + safeNum(t.amount), 0).toFixed(2)}</span>
+                  }
+                </p>
+              )}
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+              {txs.map((tx, idx) => renderRow(tx, idx, txs.length))}
+            </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-            {txs.map((tx, idx) => isIncome ? renderIncomeRow(tx, idx, txs.length) : renderExpenseRow(tx, idx, txs.length))}
+        ))}
+        {hasMore ? (
+          <div ref={sentinelRef} className="flex justify-center py-6">
+            <div className="w-5 h-5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
           </div>
-        </div>
-      ))}
-    </div>
-  )
+        ) : entries.length > 3 && (
+          <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-4">You've seen it all ✓</p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <Layout>
-      {toast   && <Toast {...toast} onClose={() => setToast(null)} />}
-      {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
-      {editing && <EditSheet expense={editing} sym={sym} onSave={handleEditSave} onClose={() => setEditing(null)} />}
+      {toast     && <Toast {...toast} onClose={() => setToast(null)} />}
+      {undoLabel && <UndoToast label={undoLabel} onUndo={handleUndoExpense} onDismiss={handleDismissUndo} />}
+      {editing   && <EditSheet expense={editing} sym={sym} onSave={handleEditSave} onClose={() => setEditing(null)} />}
+      {showPicker && <AddPickerModal onClose={() => setShowPicker(false)} onExpense={() => { setShowPicker(false); setShowAddExp(true) }} onIncome={() => { setShowPicker(false); setShowAddInc(true) }} />}
+      {showAddExp && <AddExpenseModal onClose={() => setShowAddExp(false)} onSave={handleAddExpense} sym={sym} />}
+      {showAddInc && <AddIncomeModal onClose={() => setShowAddInc(false)} onSave={handleAddIncome} sym={sym} />}
 
       <div className="max-w-2xl mx-auto px-4 py-6">
 
@@ -530,7 +917,8 @@ export default function Transactions() {
         )}
 
         {/* Tab bar */}
-        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5">
+        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5"
+          onTouchStart={onTabSwipeStart} onTouchEnd={onTabSwipeEnd}>
           {[
             { key: 'expenses', label: `💸 Expenses`, count: filteredExpenses.length },
             { key: 'income',   label: `💵 Income`,   count: filteredIncome.length },
@@ -578,7 +966,25 @@ export default function Transactions() {
             )}
 
             {loading ? (
-              <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
+              <div className="space-y-4">
+                {[1,2].map(g => (
+                  <div key={g}>
+                    <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse w-16 mb-2 mx-1" />
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                      {[1,2,3].map((r,i) => (
+                        <div key={r} className={`flex items-center gap-3 px-4 py-3.5 ${i < 2 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
+                          <div className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-gray-700 animate-pulse shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="h-3.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse mb-2" style={{ width: `${50+r*15}%` }} />
+                            <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${30+r*10}%` }} />
+                          </div>
+                          <div className="h-4 w-16 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredExpenses.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm">
                 <p className="text-4xl mb-3">💸</p>
@@ -621,7 +1027,25 @@ export default function Transactions() {
             )}
 
             {loading ? (
-              <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
+              <div className="space-y-4">
+                {[1,2].map(g => (
+                  <div key={g}>
+                    <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse w-16 mb-2 mx-1" />
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                      {[1,2,3].map((r,i) => (
+                        <div key={r} className={`flex items-center gap-3 px-4 py-3.5 ${i < 2 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
+                          <div className="w-11 h-11 rounded-2xl bg-green-100/60 dark:bg-gray-700 animate-pulse shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="h-3.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse mb-2" style={{ width: `${50+r*15}%` }} />
+                            <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${30+r*10}%` }} />
+                          </div>
+                          <div className="h-4 w-16 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredIncome.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm">
                 <p className="text-4xl mb-3">💵</p>
@@ -637,31 +1061,49 @@ export default function Transactions() {
           <>
             {filterBar(false)}
             {loading ? (
-              <div className="space-y-3">{[1,2,3,4,5].map(i => <div key={i} className="h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
+              <div className="space-y-4">
+                {[1,2,3].map(g => (
+                  <div key={g}>
+                    <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse w-16 mb-2 mx-1" />
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                      {[1,2].map((r,i) => (
+                        <div key={r} className={`flex items-center gap-3 px-4 py-3.5 ${i < 1 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
+                          <div className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-gray-700 animate-pulse shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="h-3.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse mb-2" style={{ width: `${50+r*20}%` }} />
+                            <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${30+r*12}%` }} />
+                          </div>
+                          <div className="h-4 w-16 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : allMixed.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm">
                 <p className="text-4xl mb-3">🔍</p>
                 <p className="font-semibold text-gray-700 dark:text-white mb-1">No transactions found</p>
                 <p className="text-gray-400 text-sm">{hasFilters ? 'Try adjusting your filters.' : 'Add transactions from the Dashboard.'}</p>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {Object.entries(allMixedGrouped).map(([label, txs]) => (
-                  <div key={label}>
-                    <div className="flex items-center gap-3 mb-2 px-1">
-                      <p className="text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">{label}</p>
-                      <div className="flex-1 h-px bg-gray-100 dark:bg-gray-700" />
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-                      {txs.map((tx, idx) => tx._isIncome ? renderIncomeRow(tx, idx, txs.length) : renderExpenseRow(tx, idx, txs.length))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            ) : renderGrouped(allMixedGrouped, false, {
+              rowRenderer: (tx, idx, total) => tx._isIncome ? renderIncomeRow(tx, idx, total) : renderExpenseRow(tx, idx, total),
+              showTotal: false,
+            })}
           </>
         )}
       </div>
+
+      {/* FAB */}
+      {!showAddExp && !showAddInc && !showPicker && !editing && (
+        <button onClick={() => setShowPicker(true)}
+          className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-20 w-14 h-14 bg-violet-600 hover:bg-violet-700 active:scale-90 rounded-2xl shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all"
+          aria-label="Add transaction">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+      )}
     </Layout>
   )
 }

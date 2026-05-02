@@ -20,21 +20,26 @@ const callAI = async (messages, maxTokens = 600) => {
 const SHARED_RULES = () => {
   const today = new Date().toISOString().split('T')[0];
   return `
-LANGUAGE DETECTION (always apply first):
-- If user writes in ENGLISH → reply in English only.
-- If user writes in ARABIC SCRIPT, or LEBANESE/ARABIC PHONETIC LATIN (any of: re7et, raye7, w, ana, shu, 3m, 2a, fi, ma, heik, hek, haida, yalla, ktir, kteer, xalas, 5alas, mashi, walla, inno, akid, shi, 7ada, 2adesh, ta3a, bala, 7elo, kif, kef, or any word using 2/3/5/7/8 as Arabic letter substitutes, or obvious Arabic-dialect words mixed with French or English) → reply BILINGUALLY in this EXACT format with no exception:
-
-[Lebanese Latin script answer — WhatsApp-style casual Lebanese, use 3=ع 7=ح 2=أ/ء 5=خ, mix French/English naturally like Lebanese people do]
----
-[نفس الجواب بالعربي — exact same content written in Arabic script, Lebanese dialect]
+LANGUAGE & DIALECT (CRITICAL — always apply):
+- You fully understand English, formal Arabic (الفصحى), Lebanese dialect (العامية اللبنانية), and Arabizi.
+- Arabizi mapping: 2=ء/أ, 3=ع, 5=خ, 6=ط, 7=ح, 9=ق, ch/sh=ش, th=ث.
+- Lebanese vocab: shu=what, kif=how, mni7=good, ktir=a lot, ya3ni=meaning, bas=but, w=and, 3am=currently, 7elo=nice, hayde=this, hek=like this, inno=that, la2=no, eh=yes, yalla=let's go, ma fi=there isn't, fi=there is, 3ndi=I have.
+- Lebanese speakers freely mix Arabic, French, and English in one sentence.
+- REPLY LANGUAGE RULES:
+  • ENGLISH only → reply in English only.
+  • ARABIC script OR Arabizi/Lebanese dialect (any word with 2/3/5/7 substitutes, or Lebanese vocab above, or obvious dialect mixed with French/English) → reply BILINGUALLY:
+    First: full answer in Lebanese Arabizi WhatsApp style (casual, use 3/7/2/5, mix French/English naturally)
+    Then on its own line: ---
+    Then: exact same answer in Arabic script (Lebanese dialect)
 
 TRANSACTION DETECTION (apply every message):
-- If the user mentions ANY spending, payment, or purchase (any amount, any currency, any language) — extract EVERY transaction they mentioned.
-- In your reply, clearly list what you understood (description, amount, category) and ask "Ba3den fi shi tene? / هل في شي تاني?" (or English equivalent if they spoke English).
-- At the VERY END of your reply, on its own line, output EXACTLY this (no extra text after it):
-TXNS:[{"amount":NUMBER,"category":"Food|Transport|Shopping|Subscriptions|Entertainment|Other","description":"merchant or what it was","date":"${today}"}]
-- One JSON object per transaction. Use ${today} unless user mentioned a different date.
-- If NO spending was mentioned in this message, do NOT include the TXNS line at all.`;
+- When user mentions ANY spending, payment, or purchase (any amount, any language):
+  • Summarize each transaction you understood (description, amount, category)
+  • Ask "Ba3den fi shi tene? / هل في شي تاني؟" (or "Anything else?" in English)
+  • At the VERY END of your reply, on its own line, output EXACTLY:
+    TXNS:[{"amount":NUMBER,"category":"Food|Transport|Shopping|Subscriptions|Entertainment|Other","description":"what it was","date":"${today}"}]
+  • One JSON object per transaction. Use ${today} unless user said otherwise.
+  • If NO spending mentioned → do NOT include TXNS.`;
 };
 
 const SYSTEM_NORMAL = (total, totalIncome, categoryBreakdown, txCount, budgets) =>
@@ -45,12 +50,14 @@ User's financial data:
 - Categories: ${categoryBreakdown || 'No expenses yet'}
 - Transactions: ${txCount} | Budgets: ${budgets}
 
-Response style:
-- Start with a short warm reaction
-- Use 2–3 bullet points (•) with real numbers
-- End with one actionable tip
-- Use **bold** for key numbers, 1–2 emojis max
-- Keep it concise. Finance questions only.
+Response style rules:
+- Start with a short, warm 1-line reaction to their question
+- Use 2–3 short bullet points (•) with real numbers from their data
+- End with one friendly, actionable tip on its own line
+- Use **bold** for key numbers and amounts
+- Sprinkle 1–2 emojis naturally (not every sentence)
+- Max 120 words. Only answer finance questions.
+- Always use actual percentage numbers from their data, not vague terms.
 ${SHARED_RULES()}`;
 
 const SYSTEM_SARCASTIC = (total, totalIncome, categoryBreakdown, txCount, budgets) =>
@@ -61,20 +68,22 @@ User's financial data:
 - Categories: ${categoryBreakdown || 'Nothing yet. Impressive restraint or just starting out?'}
 - Transactions: ${txCount} | Budgets: ${budgets}
 
-Response style:
-- Open with a punchy 1-liner using their real numbers
-- 2–3 bullet points mixing sass with real data
-- Close with one genuine tip, slightly softened
-- **bold** key numbers, 1–2 emojis max
-- Finance questions only (make even serious ones fun).
+Response style rules:
+- Open with a punchy, witty 1-liner about their situation (use their real numbers)
+- Then 2–3 bullet points (•) mixing sass with real data
+- Close with one *genuine* tip, slightly softened
+- Use **bold** for key numbers
+- 1–2 perfectly placed emojis — don't overdo it
+- Max 120 words. Finance questions only (but make even serious ones fun).
 ${SHARED_RULES()}`;
 
 router.post('/chat', authenticateToken, async (req, res) => {
   try {
     const { message, history, mode } = req.body;
     const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 50', [req.userId]);
-    const income = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20', [req.userId]);
-    const budgets = await pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]);
+    const income   = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20', [req.userId]);
+    const budgets  = await pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]);
+
     const total = expenses.rows.reduce((sum, e) => sum + parseFloat(e.amount), 0);
     const totalIncome = income.rows.reduce((sum, i) => sum + parseFloat(i.amount), 0);
     const categoryTotals = expenses.rows.reduce((acc, e) => {
@@ -86,36 +95,78 @@ router.post('/chat', authenticateToken, async (req, res) => {
       .map(([cat, amt]) => `${cat}: $${amt.toFixed(2)}`)
       .join(', ');
     const budgetSummary = budgets.rows.map(b => `${b.category}: $${b.amount}`).join(', ') || 'None set';
+
+    const expenseList = expenses.rows.slice(0, 30).map(e =>
+      `[ID:${e.id}] ${(e.date||'').split('T')[0]} | ${e.category} | ${e.description || '—'} | $${parseFloat(e.amount).toFixed(2)}`
+    ).join('\n');
+
+    const actionInstructions = `
+
+EXPENSE ACTIONS — you can delete or update expenses when asked:
+Listed expenses (use ONLY these real IDs):
+${expenseList}
+
+If the user asks to delete or update a specific expense:
+1. Write your normal reply (confirm what you found)
+2. Append EXACTLY ONE tag on its own line at the very end:
+   Delete:  ##ACTION:DELETE:ID##
+   Update:  ##ACTION:UPDATE:ID:amount=X## or ##ACTION:UPDATE:ID:amount=X,description=Y,category=Z##
+Only tag a single expense. If multiple match, ask the user to clarify (no tag).
+Never invent IDs — only use IDs from the list above.`;
+
     const systemFn = mode === 'sarcastic' ? SYSTEM_SARCASTIC : SYSTEM_NORMAL;
     const systemMessage = {
       role: 'system',
-      content: systemFn(total, totalIncome, categoryBreakdown, expenses.rows.length, budgetSummary),
+      content: systemFn(total, totalIncome, categoryBreakdown, expenses.rows.length, budgetSummary) + actionInstructions,
     };
+
     const messages = [
       systemMessage,
       ...(history || []).map(msg => ({
         role: msg.role === 'assistant' ? 'assistant' : 'user',
-        content: msg.content
+        content: typeof msg.content === 'string' ? msg.content : '',
       })),
-      { role: 'user', content: message }
+      { role: 'user', content: message },
     ];
+
     const raw = await callAI(messages, 700);
 
-    // Extract TXNS marker from end of reply
-    const txnMarker = 'TXNS:';
-    const txnIndex = raw.lastIndexOf(txnMarker);
-    let pendingTransactions = [];
-    let reply = raw.trim();
-    if (txnIndex !== -1) {
-      try {
-        const jsonStr = raw.slice(txnIndex + txnMarker.length).trim();
-        const bracketEnd = jsonStr.lastIndexOf(']');
-        pendingTransactions = JSON.parse(jsonStr.slice(0, bracketEnd + 1));
-        reply = raw.slice(0, txnIndex).trim();
-      } catch { /* keep raw reply if parse fails */ }
+    // Parse ##ACTION:...## tag
+    const actionMatch = raw.match(/##ACTION:(DELETE|UPDATE):(\d+)(?::([^#\n]+))?##/);
+    let action = null;
+    let cleaned = raw.replace(/##ACTION:[^#]+##/g, '').trim();
+
+    if (actionMatch) {
+      const [, type, idStr, params] = actionMatch;
+      const expId = parseInt(idStr);
+      const expense = expenses.rows.find(e => e.id === expId);
+      if (expense) {
+        action = { type: type.toLowerCase(), expense };
+        if (type === 'UPDATE' && params) {
+          action.updates = {};
+          params.split(',').forEach(p => {
+            const eq = p.indexOf('=');
+            if (eq > -1) action.updates[p.slice(0, eq).trim()] = p.slice(eq + 1).trim();
+          });
+        }
+      }
     }
 
-    res.json({ reply, pendingTransactions });
+    // Parse TXNS marker
+    const txnMarker = 'TXNS:';
+    const txnIndex = cleaned.lastIndexOf(txnMarker);
+    let pendingTransactions = [];
+    let reply = cleaned;
+    if (txnIndex !== -1) {
+      try {
+        const jsonStr = cleaned.slice(txnIndex + txnMarker.length).trim();
+        const bracketEnd = jsonStr.lastIndexOf(']');
+        pendingTransactions = JSON.parse(jsonStr.slice(0, bracketEnd + 1));
+        reply = cleaned.slice(0, txnIndex).trim();
+      } catch { /* keep cleaned reply if parse fails */ }
+    }
+
+    res.json({ reply, action, pendingTransactions });
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ message: 'Error getting response' });
@@ -195,6 +246,167 @@ router.get('/', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Error generating insights' });
+  }
+});
+
+router.post('/monthly-wrap', authenticateToken, async (req, res) => {
+  try {
+    const { month, year } = req.body;
+    const m = parseInt(month) || new Date().getMonth() + 1;
+    const y = parseInt(year)  || new Date().getFullYear();
+
+    const expenses = await pool.query(
+      `SELECT * FROM expenses WHERE user_id=$1 AND EXTRACT(MONTH FROM date)=$2 AND EXTRACT(YEAR FROM date)=$3 ORDER BY amount DESC`,
+      [req.userId, m, y]
+    );
+    const income = await pool.query(
+      `SELECT * FROM income WHERE user_id=$1 AND EXTRACT(MONTH FROM created_at)=$2 AND EXTRACT(YEAR FROM created_at)=$3`,
+      [req.userId, m, y]
+    );
+
+    if (expenses.rows.length === 0) return res.json({ slides: null });
+
+    const total     = expenses.rows.reduce((s, e) => s + parseFloat(e.amount), 0);
+    const totalInc  = income.rows.reduce((s, i) => s + parseFloat(i.amount), 0);
+    const saved     = totalInc - total;
+    const txCount   = expenses.rows.length;
+    const biggest   = expenses.rows[0];
+    const catTotals = expenses.rows.reduce((acc, e) => { acc[e.category] = (acc[e.category]||0) + parseFloat(e.amount); return acc }, {});
+    const topCat    = Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0];
+    const monthName = new Date(y, m-1, 1).toLocaleString('en-US', { month: 'long' });
+    const catList   = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`${c}: $${a.toFixed(0)}`).join(', ');
+
+    const prompt = `You are writing a funny, warm, Spotify-Wrapped-style monthly financial summary for a personal finance app.
+Be playful, use light humor, never harsh. Mix relatable finance jokes with genuine encouragement.
+
+User's ${monthName} ${y} data:
+- Total spent: $${total.toFixed(2)} | Income: $${totalInc.toFixed(2)} | ${saved >= 0 ? 'Saved' : 'Overspent'}: $${Math.abs(saved).toFixed(2)}
+- Transactions: ${txCount} | Top category: ${topCat?.[0]} ($${topCat?.[1]?.toFixed(2)})
+- Biggest single expense: "${biggest?.description || biggest?.category}" — $${parseFloat(biggest?.amount).toFixed(2)}
+- Category breakdown: ${catList}
+
+Write EXACTLY 6 short funny/cute lines, one per slide. Return ONLY a JSON array of 6 strings, no extra text:
+["slide1 text", "slide2 text", "slide3 text", "slide4 text", "slide5 text", "slide6 text"]
+
+Slide topics (in order):
+1. Warm funny opener about their total spending this month (use the real number)
+2. Roast/celebrate their top spending category with a witty take
+3. React to their biggest purchase with mock drama
+4. Comment on their ${txCount} transactions — compare to something funny
+5. ${saved >= 0 ? `Celebrate their $${saved.toFixed(2)} savings — be encouraging and playful` : `Console them about overspending $${Math.abs(saved).toFixed(2)} — be funny not harsh, give one tiny tip`}
+6. A funny, punchy, actionable financial tip for next month (make it feel personal, not generic)`;
+
+    const aiReply = await callAI([{ role: 'user', content: prompt }]);
+    const lines   = JSON.parse(aiReply.trim().replace(/```json|```/g,'').trim());
+
+    res.json({
+      slides: lines,
+      stats: {
+        month: monthName, year: y, total, totalInc, saved, txCount,
+        topCat: topCat?.[0], topCatAmt: topCat?.[1],
+        biggestDesc: biggest?.description || biggest?.category,
+        biggestAmt: parseFloat(biggest?.amount),
+        catTotals,
+      }
+    });
+  } catch (e) {
+    console.error('Monthly wrap error:', e);
+    res.status(500).json({ message: 'Error generating wrap' });
+  }
+});
+
+router.post('/time-machine', authenticateToken, async (req, res) => {
+  try {
+    const { year, amount = 100, currency = 'USD' } = req.body;
+    const y = parseInt(year);
+    const a = parseFloat(amount);
+    const currentYear = new Date().getFullYear();
+
+    if (!y || y < 1900 || y > 2100) return res.status(400).json({ error: 'Invalid year' });
+
+    const CPI = {
+      1900:8.3, 1905:9.1, 1910:9.9, 1915:10.1, 1920:20.0,
+      1925:17.5,1930:16.7,1935:13.7,1940:14.0, 1945:18.0,
+      1950:24.1,1955:26.8,1960:29.6,1965:31.5, 1970:38.8,
+      1975:53.8,1980:82.4,1985:107.6,1990:130.7,1995:152.4,
+      2000:172.2,2005:195.3,2010:218.1,2015:237.0,2020:258.8,
+      2021:270.9,2022:292.7,2023:304.7,2024:314.5,2025:321.0,
+      2026:328.0,2027:334.6,2028:341.3,2030:355.1,2035:392.0,
+      2040:433.0,2050:527.0,2060:642.0,2100:1590.0,
+    };
+    const getCPI = (yr) => {
+      if (CPI[yr]) return CPI[yr];
+      const keys = Object.keys(CPI).map(Number).sort((a,b)=>a-b);
+      const before = [...keys].filter(k=>k<=yr).pop();
+      const after  = keys.find(k=>k>=yr);
+      if (!before) return CPI[keys[0]];
+      if (!after)  return CPI[keys[keys.length-1]];
+      const t = (yr-before)/(after-before);
+      return CPI[before] + t*(CPI[after]-CPI[before]);
+    };
+    const adjustedAmount = (a * getCPI(y) / getCPI(currentYear)).toFixed(2);
+    const isPast   = y < currentYear;
+    const isFuture = y > currentYear;
+
+    const prompt = `You are "Spendly" — a hilariously sarcastic AI financial mascot doing a 30-second comedy sketch.
+
+User in ${currentYear} has ${currency} ${a.toFixed(2)}.
+They're time-traveling to: ${y}${isPast ? ` (${currentYear-y} years in the past)` : isFuture ? ` (${y-currentYear} years in the future)` : ' (the present)'}
+${isPast ? `Their money then: ${currency} ${adjustedAmount} (inflation-adjusted)` : `Their money then: ${currency} ${adjustedAmount} (projected)`}
+
+Return ONLY this exact JSON — no markdown, no extra text. Keep each string under 140 characters:
+{
+  "eraName": "funny 4-word nickname for this era",
+  "greeting": "1 punchy sentence reacting to ${y} — mention ONE real historical fact or event from that exact year",
+  "context": "1 ACCURATE sentence about what things cost or what was economically notable in ${y}",
+  "roast": "1 savage sarcastic line: mock what they could have done with ${currency} ${a.toFixed(2)} in ${y}, or mock the future",
+  "funFact": "1 wild price comparison — what could ${currency} ${a.toFixed(2)} literally buy in ${y}?",
+  "mood": "shocked",
+  "planetColors": ["#hex1","#hex2"],
+  "recommendations": [
+    {"year":number,"label":"why it is historically wild"},
+    {"year":number,"label":"..."},
+    {"year":number,"label":"..."}
+  ]
+}`;
+
+    const aiReply = await callAI([{ role: 'user', content: prompt }], 560);
+    const json = JSON.parse(aiReply.trim().replace(/```json|```/g,'').trim());
+
+    res.json({ ...json, adjustedAmount, originalAmount: a, currency, year: y, currentYear });
+  } catch(e) {
+    console.error('Time machine error:', e.message);
+    res.status(500).json({ error: 'Time machine broke' });
+  }
+});
+
+router.post('/quick-parse', authenticateToken, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: 'No text' });
+
+    const today = new Date().toISOString().split('T')[0];
+    const messages = [
+      {
+        role: 'system',
+        content: `Extract expense details from natural language. Today is ${today}.
+Return ONLY this exact JSON — no markdown, no extra text:
+{"description":"short expense description","amount":number or null,"category":"one of: Food & Dining|Transport|Entertainment|Shopping|Health|Bills & Utilities|Education|Travel|Personal Care|Other","date":"YYYY-MM-DD","needsAmount":true if amount not mentioned}
+Rules:
+- amount: extract the number only (e.g. "$15" → 15, "fifteen dollars" → 15). null if not mentioned.
+- needsAmount: true when amount is null.
+- date: today (${today}) unless user says yesterday/specific date.
+- Understand English, Arabic, Lebanese dialect, Arabizi.`
+      },
+      { role: 'user', content: text }
+    ];
+
+    const aiReply = await callAI(messages, 150);
+    const json = JSON.parse(aiReply.trim().replace(/```json|```/g, '').trim());
+    res.json(json);
+  } catch(e) {
+    console.error('Quick parse error:', e.message);
+    res.status(500).json({ error: 'Parse failed' });
   }
 });
 

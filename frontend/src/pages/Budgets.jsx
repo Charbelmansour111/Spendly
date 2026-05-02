@@ -3,8 +3,8 @@ import Layout from '../components/Layout'
 import API from '../utils/api'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
-const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Subscriptions', 'Entertainment', 'Other']
-const CAT_ICONS = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
+const CATEGORIES = ['Food', 'Coffee', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Fitness', 'Education', 'Bills', 'Travel', 'Gifts', 'Subscriptions', 'Other']
+const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦' }
 const PERIODS = [{ value: 'monthly', label: 'Monthly' }, { value: 'weekly', label: 'Weekly' }]
 
 function Toast({ message, type, onClose }) {
@@ -85,8 +85,10 @@ export default function Budgets() {
   const [formAiLoading, setFormAiLoading] = useState(false)
   const [numModal, setNumModal] = useState(null)
   const [formAiSuggestion, setFormAiSuggestion] = useState('')
-  const [suggestModal, setSuggestModal] = useState(null) // { suggestions: [...] }
+  const [suggestModal, setSuggestModal] = useState(null) // { suggestions, monthlyIncome, fromNetWorth }
   const [suggestLoading, setSuggestLoading] = useState(false)
+  const [noIncomeModal, setNoIncomeModal] = useState(false)
+  const [totalBudgetInput, setTotalBudgetInput] = useState('')
   const [currencySymbol] = useState(() => {
     const stored = localStorage.getItem('currency') || 'USD'
     return CURRENCY_SYMBOLS[stored] || '$'
@@ -260,6 +262,80 @@ export default function Budgets() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {aiModal && <AiModal budget={aiModal.budget} spent={aiModal.spent} symbol={currencySymbol} onClose={() => setAiModal(null)} />}
 
+      {/* No income modal */}
+      {noIncomeModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-white dark:bg-gray-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden">
+            <div className="bg-linear-to-br from-violet-600 to-purple-700 px-6 pt-7 pb-5 text-white">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full">✨ AI Suggestions</span>
+                <button onClick={() => setNoIncomeModal(false)} className="text-white/60 hover:text-white text-xl leading-none">✕</button>
+              </div>
+              <p className="font-bold text-lg mt-2">No income found yet 🤔</p>
+              <p className="text-white/70 text-sm mt-1">
+                AI needs a reference point to suggest smart limits.
+              </p>
+            </div>
+            <div className="px-6 py-5 space-y-3">
+              {/* Option 1 — add income */}
+              <div className="flex gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800/40">
+                <span className="text-xl shrink-0 mt-0.5">💼</span>
+                <div>
+                  <p className="text-sm font-bold text-blue-800 dark:text-blue-200">Add income first</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 leading-relaxed">
+                    Most accurate — AI will allocate budgets as real percentages of your income.
+                  </p>
+                  <a href="/dashboard"
+                    className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                    Go add income →
+                  </a>
+                </div>
+              </div>
+
+              {/* Option 2 — manual total */}
+              <div className="flex gap-3 p-4 bg-violet-50 dark:bg-violet-900/20 rounded-2xl border border-violet-100 dark:border-violet-800/40">
+                <span className="text-xl shrink-0 mt-0.5">💰</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-violet-800 dark:text-violet-200">Set a monthly spending amount</p>
+                  <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5 leading-relaxed">
+                    No income coming in? Spending from savings or net worth — just tell me the total and I'll split it across categories for you.
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold pointer-events-none">
+                        {currencySymbol}
+                      </span>
+                      <input
+                        type="number" placeholder="e.g. 2000" min="1" step="1"
+                        value={totalBudgetInput}
+                        onChange={e => setTotalBudgetInput(e.target.value)}
+                        className="w-full pl-8 pr-3 py-2.5 border border-violet-200 dark:border-violet-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      />
+                    </div>
+                    <button
+                      disabled={!parseFloat(totalBudgetInput) || suggestLoading}
+                      onClick={async () => {
+                        const amt = parseFloat(totalBudgetInput)
+                        if (!amt) return
+                        setNoIncomeModal(false)
+                        setSuggestLoading(true)
+                        try {
+                          const r = await API.post('/budgets/suggest', { totalBudget: amt })
+                          setSuggestModal({ suggestions: r.data.suggestions || [], monthlyIncome: null, fromNetWorth: true, totalUsed: amt })
+                        } catch { showToast('Failed to generate suggestions', 'error') }
+                        finally { setSuggestLoading(false) }
+                      }}
+                      className="bg-violet-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-violet-700 active:scale-95 transition disabled:opacity-40">
+                      {suggestLoading ? '…' : 'Go'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AI Budget Suggest Modal */}
       {suggestModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4">
@@ -270,7 +346,13 @@ export default function Budgets() {
                 <button onClick={() => setSuggestModal(null)} className="text-white/70 hover:text-white text-xl leading-none">✕</button>
               </div>
               <p className="font-bold text-lg mt-2">Smart Budget Suggestions</p>
-              <p className="text-white/70 text-xs mt-0.5">Based on your last 3 months of spending</p>
+              <p className="text-white/70 text-xs mt-0.5">
+                {suggestModal?.fromNetWorth
+                  ? `Based on your ${currencySymbol}${parseFloat(totalBudgetInput||0).toFixed(0) || '—'}/mo spending plan`
+                  : suggestModal?.monthlyIncome
+                    ? `Based on ${currencySymbol}${suggestModal.monthlyIncome.toFixed(0)}/mo income + spending history`
+                    : 'Based on your last 3 months of spending'}
+              </p>
             </div>
             <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
               {suggestModal.suggestions.length === 0 ? (
@@ -413,7 +495,8 @@ export default function Budgets() {
                 setSuggestLoading(true)
                 try {
                   const r = await API.post('/budgets/suggest')
-                  setSuggestModal({ suggestions: r.data.suggestions || [] })
+                  if (r.data.noIncome) { setNoIncomeModal(true); return }
+                  setSuggestModal({ suggestions: r.data.suggestions || [], monthlyIncome: r.data.monthlyIncome, fromNetWorth: r.data.fromNetWorth })
                 } catch { showToast('Failed to generate suggestions', 'error') }
                 finally { setSuggestLoading(false) }
               }}

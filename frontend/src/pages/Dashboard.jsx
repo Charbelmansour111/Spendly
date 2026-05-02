@@ -1,10 +1,12 @@
 import Layout from '../components/Layout'
+import VoiceAssistant from '../components/VoiceAssistant'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import API from '../utils/api'
 import ReceiptScanner from '../components/ReceiptScanner'
 import { DashboardSkeleton } from '../components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Onboarding from '../components/Onboarding'
+import MonthlyWrap from '../components/MonthlyWrap'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
@@ -91,27 +93,27 @@ const BRAND_LOGOS = {
 const SUBCATEGORIES = {
   Food: [
     { label: "McDonald's", emoji: '🍔' }, { label: 'KFC', emoji: '🍗' },
-    { label: 'Starbucks', emoji: '☕' }, { label: 'Pizza Hut', emoji: '🍕' },
+    { label: 'Pizza Hut', emoji: '🍕' }, { label: 'Burger King', emoji: '🍔' },
     { label: 'Groceries', emoji: '🛒' }, { label: 'Restaurant', emoji: '🍽️' },
-    { label: 'Delivery', emoji: '🛵' }, { label: 'Burger King', emoji: '🍔' },
+    { label: 'Delivery', emoji: '🛵' }, { label: 'Shawarma', emoji: '🌯' },
+  ],
+  Coffee: [
+    { label: 'Starbucks', emoji: '☕' }, { label: 'Costa Coffee', emoji: '☕' },
+    { label: 'Dunkin', emoji: '🍩' }, { label: 'Tim Hortons', emoji: '☕' },
+    { label: 'Cafe Lattè', emoji: '☕' }, { label: 'Espresso', emoji: '☕' },
+    { label: 'Tea', emoji: '🍵' }, { label: 'Juice Bar', emoji: '🧃' },
   ],
   Transport: [
     { label: 'Uber', emoji: '🚗' }, { label: 'Taxi', emoji: '🚕' },
     { label: 'Shell', emoji: '⛽' }, { label: 'Metro', emoji: '🚇' },
     { label: 'Bus', emoji: '🚌' }, { label: 'Parking', emoji: '🅿️' },
-    { label: 'Flight', emoji: '✈️' }, { label: 'Bike', emoji: '🚲' },
+    { label: 'Careem', emoji: '🚗' }, { label: 'Bike Rental', emoji: '🚲' },
   ],
   Shopping: [
     { label: 'Amazon', emoji: '📦' }, { label: 'Clothing', emoji: '👕' },
     { label: 'Electronics', emoji: '💻' }, { label: 'Beauty', emoji: '💄' },
-    { label: 'IKEA', emoji: '🛋️' }, { label: 'Pharmacy', emoji: '💊' },
-    { label: 'Books', emoji: '📚' }, { label: 'Sports', emoji: '🏋️' },
-  ],
-  Subscriptions: [
-    { label: 'Netflix', emoji: '🎬' }, { label: 'Spotify', emoji: '🎵' },
-    { label: 'Disney+', emoji: '🏰' }, { label: 'HBO Max', emoji: '🎭' },
-    { label: 'Amazon Prime', emoji: '📦' }, { label: 'Apple TV+', emoji: '🍎' },
-    { label: 'YouTube', emoji: '▶️' }, { label: 'Crunchyroll', emoji: '🎌' },
+    { label: 'IKEA', emoji: '🛋️' }, { label: 'Books', emoji: '📚' },
+    { label: 'Shoes', emoji: '👟' }, { label: 'Accessories', emoji: '👜' },
   ],
   Entertainment: [
     { label: 'Cinema', emoji: '🎥' }, { label: 'Gaming', emoji: '🎮' },
@@ -119,21 +121,70 @@ const SUBCATEGORIES = {
     { label: 'Club', emoji: '🎉' }, { label: 'Arcade', emoji: '🕹️' },
     { label: 'Live Show', emoji: '🎭' }, { label: 'Bowling', emoji: '🎳' },
   ],
+  Health: [
+    { label: 'Doctor', emoji: '🩺' }, { label: 'Hospital', emoji: '🏥' },
+    { label: 'Pharmacy', emoji: '💊' }, { label: 'Dentist', emoji: '🦷' },
+    { label: 'Lab Tests', emoji: '🧪' }, { label: 'Eye Care', emoji: '👁️' },
+    { label: 'Therapy', emoji: '🧠' }, { label: 'Insurance', emoji: '🛡️' },
+  ],
+  Fitness: [
+    { label: 'Gym', emoji: '🏋️' }, { label: 'Yoga', emoji: '🧘' },
+    { label: 'Swimming', emoji: '🏊' }, { label: 'Running Gear', emoji: '👟' },
+    { label: 'Supplements', emoji: '💪' }, { label: 'Sports Club', emoji: '⚽' },
+    { label: 'Cycling', emoji: '🚴' }, { label: 'Personal Trainer', emoji: '🏅' },
+  ],
+  Education: [
+    { label: 'Tuition', emoji: '🎓' }, { label: 'Online Course', emoji: '💻' },
+    { label: 'Books', emoji: '📚' }, { label: 'School Supplies', emoji: '✏️' },
+    { label: 'Language Class', emoji: '🗣️' }, { label: 'Certification', emoji: '📜' },
+    { label: 'Workshop', emoji: '🛠️' }, { label: 'Tutoring', emoji: '📖' },
+  ],
+  Bills: [
+    { label: 'Rent', emoji: '🏠' }, { label: 'Electricity', emoji: '💡' },
+    { label: 'Water', emoji: '💧' }, { label: 'Internet', emoji: '📶' },
+    { label: 'Phone', emoji: '📱' }, { label: 'Gas', emoji: '🔥' },
+    { label: 'Cable TV', emoji: '📺' }, { label: 'Loan Payment', emoji: '🏦' },
+  ],
+  Travel: [
+    { label: 'Flight', emoji: '✈️' }, { label: 'Hotel', emoji: '🏨' },
+    { label: 'Airbnb', emoji: '🏡' }, { label: 'Car Rental', emoji: '🚗' },
+    { label: 'Travel Insurance', emoji: '🛡️' }, { label: 'Tour', emoji: '🗺️' },
+    { label: 'Visa', emoji: '📋' }, { label: 'Baggage', emoji: '🧳' },
+  ],
+  Gifts: [
+    { label: 'Birthday Gift', emoji: '🎂' }, { label: 'Wedding Gift', emoji: '💍' },
+    { label: 'Flowers', emoji: '💐' }, { label: 'Charity', emoji: '❤️' },
+    { label: 'Donation', emoji: '🤲' }, { label: 'Baby Shower', emoji: '👶' },
+    { label: 'Anniversary', emoji: '🥂' }, { label: 'Holiday Gift', emoji: '🎁' },
+  ],
+  Subscriptions: [
+    { label: 'Netflix', emoji: '🎬' }, { label: 'Spotify', emoji: '🎵' },
+    { label: 'Disney+', emoji: '🏰' }, { label: 'HBO Max', emoji: '🎭' },
+    { label: 'Amazon Prime', emoji: '📦' }, { label: 'Apple TV+', emoji: '🍎' },
+    { label: 'YouTube', emoji: '▶️' }, { label: 'Crunchyroll', emoji: '🎌' },
+  ],
   Other: [
-    { label: 'Healthcare', emoji: '🏥' }, { label: 'Education', emoji: '🎓' },
-    { label: 'Gifts', emoji: '🎁' }, { label: 'Insurance', emoji: '🛡️' },
-    { label: 'Gym', emoji: '🏋️' }, { label: 'Charity', emoji: '❤️' },
-    { label: 'Rent', emoji: '🏠' }, { label: 'Utilities', emoji: '💡' },
+    { label: 'Personal Care', emoji: '💆' }, { label: 'Haircut', emoji: '💈' },
+    { label: 'Laundry', emoji: '👔' }, { label: 'Pet Care', emoji: '🐾' },
+    { label: 'Home Repair', emoji: '🔧' }, { label: 'Parking Fine', emoji: '🚨' },
+    { label: 'Tax', emoji: '📋' }, { label: 'Miscellaneous', emoji: '📦' },
   ],
 }
 
 const CATEGORY_HINTS = {
-  Food:          ['starbucks','mcdonald','kfc','pizza','burger','grocery','restaurant','food','coffee','lunch','dinner','breakfast','cafe','sushi','taco','domino','subway','delivery','eat','shawarma'],
-  Transport:     ['uber','taxi','lyft','careem','gas','shell','petrol','metro','bus','parking','flight','airline','fuel','train','toll','bolt'],
-  Shopping:      ['amazon','clothing','h&m','zara','ikea','pharmacy','book','sport','apple','samsung','laptop','phone','mall','store','shop','clothes','h&m'],
-  Subscriptions: ['netflix','spotify','disney','hbo','youtube','apple tv','crunchyroll','prime video','subscription','plan','monthly fee'],
-  Entertainment: ['cinema','movie','bar','club','concert','gaming','game','arcade','bowling','show','theatre','party','nightclub'],
-  Other:         ['healthcare','hospital','doctor','gym','insurance','rent','utilities','electric','water','internet','charity','donation','tax'],
+  Food:          ['mcdonald','kfc','pizza','burger','grocery','restaurant','food','lunch','dinner','breakfast','sushi','taco','domino','subway','delivery','eat','shawarma','groceries'],
+  Coffee:        ['starbucks','coffee','cafe','espresso','latte','cappuccino','dunkin','costa','tea','juice','smoothie','drink','beverage'],
+  Transport:     ['uber','taxi','lyft','careem','gas','shell','petrol','metro','bus','parking','airline','fuel','train','toll','bolt','transit','carpool'],
+  Shopping:      ['amazon','clothing','h&m','zara','ikea','book','sport','samsung','laptop','phone','mall','store','shop','clothes','fashion','shoes'],
+  Subscriptions: ['netflix','spotify','disney','hbo','youtube','apple tv','crunchyroll','prime video','subscription','plan','monthly fee','streaming'],
+  Entertainment: ['cinema','movie','bar','club','concert','gaming','game','arcade','bowling','show','theatre','party','nightclub','festival'],
+  Health:        ['hospital','doctor','pharmacy','dentist','clinic','medicine','lab','xray','therapy','prescription','medical','health','eye'],
+  Fitness:       ['gym','yoga','crossfit','swimming','supplement','protein','trainer','fitness','sport club','pilates','cycling','workout'],
+  Education:     ['tuition','course','school','university','certificate','book','class','lesson','workshop','tutorial','learning','study'],
+  Bills:         ['rent','electricity','water','internet','phone bill','gas bill','cable','loan','mortgage','utility','utilities','bill'],
+  Travel:        ['flight','hotel','airbnb','booking','visa','tour','baggage','resort','cruise','travel','trip','vacation','holiday'],
+  Gifts:         ['gift','present','flowers','charity','donation','birthday','wedding','anniversary','baby shower'],
+  Other:         ['haircut','barber','laundry','pet','repair','fine','tax','insurance','miscellaneous'],
 }
 
 function suggestCategory(desc) {
@@ -163,15 +214,20 @@ function SubTile({ sub, selected, onClick }) {
 }
 
 const EXP_CATS = [
-  { key: 'Food', icon: '🍔' }, { key: 'Transport', icon: '🚗' },
-  { key: 'Shopping', icon: '🛍️' }, { key: 'Subscriptions', icon: '📱' },
-  { key: 'Entertainment', icon: '🎬' }, { key: 'Other', icon: '📦' },
+  { key: 'Food', icon: '🍔' }, { key: 'Coffee', icon: '☕' },
+  { key: 'Transport', icon: '🚗' }, { key: 'Shopping', icon: '🛍️' },
+  { key: 'Entertainment', icon: '🎬' }, { key: 'Health', icon: '🏥' },
+  { key: 'Fitness', icon: '🏋️' }, { key: 'Education', icon: '🎓' },
+  { key: 'Bills', icon: '💡' }, { key: 'Travel', icon: '✈️' },
+  { key: 'Gifts', icon: '🎁' }, { key: 'Subscriptions', icon: '📱' },
+  { key: 'Other', icon: '📦' },
 ]
 
 function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
   const [form, setForm] = useState({
     amount: '', category: 'Food', description: '',
-    date: new Date().toISOString().split('T')[0], is_recurring: false, recurring_frequency: 'monthly'
+    date: new Date().toISOString().split('T')[0], is_recurring: false, recurring_frequency: 'monthly',
+    payment_method: 'Card', notes: ''
   })
   const [selectedSub, setSelectedSub] = useState(null)
   const [suggestion, setSuggestion] = useState(null)
@@ -206,7 +262,7 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-        <ReceiptScanner onScanComplete={data => setForm(f => ({ ...f, amount: data.amount, description: data.description }))} />
+        <ReceiptScanner onScanComplete={data => setForm(f => ({ ...f, amount: data.amount, description: data.description, category: data.category || f.category, date: data.date || f.date }))} />
         <div className="space-y-3 mt-3">
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Amount ({currencySymbol})</label>
@@ -237,13 +293,13 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
           {/* Category selector */}
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Category</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="flex flex-wrap gap-2">
               {EXP_CATS.map(({ key, icon }) => (
                 <button key={key} type="button" onClick={() => handleCategoryChange(key)}
-                  className={`py-2 px-2 rounded-xl text-xs font-semibold border-2 transition ${
+                  className={`py-1.5 px-3 rounded-full text-xs font-semibold border-2 transition ${
                     form.category === key
-                      ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-violet-300'
+                      ? 'border-violet-500 bg-violet-600 text-white'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-violet-300 bg-white dark:bg-gray-700/50'
                   }`}>
                   {icon} {key}
                 </button>
@@ -280,6 +336,23 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
               <option value="monthly">Monthly</option>
             </select>
           )}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Paid with</label>
+            <div className="flex gap-2">
+              {['Card', 'Cash', 'Mobile Pay', 'Bank Transfer'].map(m => (
+                <button key={m} type="button" onClick={() => setForm(f => ({ ...f, payment_method: m }))}
+                  className={`flex-1 py-2 rounded-xl text-xs font-semibold border-2 transition ${form.payment_method === m ? 'border-violet-500 bg-violet-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700/50 hover:border-violet-300'}`}>
+                  {m === 'Card' ? '💳' : m === 'Cash' ? '💵' : m === 'Mobile Pay' ? '📱' : '🏦'} {m}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Notes <span className="font-normal">(optional)</span></label>
+            <input type="text" placeholder="Any extra details…" value={form.notes}
+              onChange={e => setForm({ ...form, notes: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+          </div>
           <button onClick={() => onSave(form)}
             disabled={!form.amount || !form.date}
             className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50 mt-1">
@@ -341,7 +414,7 @@ function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
   )
 }
 
-const CAT_ICONS_MAP = { Food:'🍔', Transport:'🚗', Shopping:'🛍️', Subscriptions:'📱', Entertainment:'🎬', Other:'📦' }
+const CAT_ICONS_MAP = { Food:'🍔', Coffee:'☕', Transport:'🚗', Shopping:'🛍️', Entertainment:'🎬', Health:'🏥', Fitness:'🏋️', Education:'🎓', Bills:'💡', Travel:'✈️', Gifts:'🎁', Subscriptions:'📱', Other:'📦' }
 const EXAMPLE_PROMPTS = [
   "Starbucks $6 this morning, Uber $22 to the mall, KFC lunch $11",
   "Netflix monthly $15, groceries at Carrefour $85, parking $4",
@@ -613,7 +686,7 @@ export default function Dashboard() {
   const [modalData, setModalData]     = useState(null)
   const [showAddExp, setShowAddExp]     = useState(false)
   const [showAddInc, setShowAddInc]     = useState(false)
-  const [showQuickLog, setShowQuickLog] = useState(false)
+  const [showVoice, setShowVoice]       = useState(false)
   const [editingExpense, setEditing]  = useState(null)
   const [editForm, setEditForm]       = useState({ amount: '', category: 'Food', description: '', date: '', is_recurring: false })
   const [showNotifs, setShowNotifs]   = useState(false)
@@ -627,16 +700,18 @@ export default function Dashboard() {
     try { return JSON.parse(localStorage.getItem('spendly_dismissed_goals') || '[]') } catch { return [] }
   })
 
+  // Monthly Wrap
+  const [showWrap, setShowWrap] = useState(false)
+  const _now = new Date()
+  const wrapKey = `spendly_wrap_watched_${_now.getFullYear()}-${_now.getMonth() + 1}`
+  const _lastDay = new Date(_now.getFullYear(), _now.getMonth() + 1, 0).getDate()
+  const showWrapBanner = _now.getDate() >= _lastDay - 2 && !localStorage.getItem(wrapKey)
+
   // Carousel + news state
   const [carouselPanel, setCarousel]  = useState(0)
   const [news, setNews]               = useState([])
   const [newsLoading, setNewsLoading] = useState(() => !!localStorage.getItem('token'))
 
-  // Net worth data
-  const [debts, setDebts]         = useState([])
-  const [subs]                    = useState([])
-  const [allTimeIncome, setAllTimeIncome] = useState([])
-  const [showNWDetails, setShowNWDetails] = useState(false)
   const touchStartX = useRef(null)
   const notifRef    = useRef(null)
 
@@ -691,14 +766,6 @@ export default function Dashboard() {
       const timer = setTimeout(() => setMonthlyCheckModal(true), 2000)
       return () => clearTimeout(timer)
     }
-  }, [])
-
-  // Fetch debts + subscriptions + all-time income for net worth
-  useEffect(() => {
-    if (!localStorage.getItem('token')) return
-    API.get('/debts').then(r => setDebts(r.data || [])).catch(() => {})
-    API.get('/subscriptions').catch(() => {})
-    API.get('/income').then(r => setAllTimeIncome(r.data || [])).catch(() => {})
   }, [])
 
   // Close notification panel on outside click
@@ -803,9 +870,12 @@ export default function Dashboard() {
 
   // Handlers
   const handleAddExpense = async (form) => {
+    const tempId = `_opt_${Date.now()}`
+    const tempExp = { ...form, id: tempId, _optimistic: true, date: form.date || new Date().toISOString().split('T')[0] }
+    setExpenses(prev => [tempExp, ...prev])
+    setShowAddExp(false)
     try {
       await API.post('/expenses', form)
-      setShowAddExp(false)
       await fetchExpenses()
       const budget = budgets.find(b => b.category === form.category)
       if (budget) {
@@ -825,11 +895,13 @@ export default function Dashboard() {
       } else {
         showToast('Expense added!')
       }
-      // Behavior analysis (fire and forget, show alert if bad)
       API.post('/insights/analyze-expense', { amount: form.amount, category: form.category, description: form.description })
         .then(r => { if (r.data.isBad) setBehaviorAlert(r.data.message) })
         .catch(() => {})
-    } catch { showToast('Error adding expense', 'error') }
+    } catch {
+      setExpenses(prev => prev.filter(e => e.id !== tempId))
+      showToast('Error adding expense', 'error')
+    }
   }
 
   const handleAddIncome = async (form) => {
@@ -889,7 +961,8 @@ export default function Dashboard() {
       {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
       {showAddExp   && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} />}
       {showAddInc   && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}
-      {showQuickLog && <QuickLogSheet onClose={() => setShowQuickLog(false)} onSaved={fetchExpenses} currencySymbol={currencySymbol} />}
+      {showVoice    && <VoiceAssistant onClose={() => setShowVoice(false)} />}
+      {showWrap && <MonthlyWrap onClose={() => { localStorage.setItem(wrapKey, '1'); setShowWrap(false) }} />}
 
       {/* AI Behavior Alert */}
       {behaviorAlert && (
@@ -1219,21 +1292,24 @@ export default function Dashboard() {
           )
         })()}
 
+        {/* Monthly Wrap Banner — last 3 days of month, disappears after watching */}
+        {showWrapBanner && (
+          <button onClick={() => setShowWrap(true)}
+            className="w-full mb-4 relative overflow-hidden rounded-2xl bg-linear-to-r from-violet-600 via-indigo-600 to-violet-700 p-4 flex items-center gap-4 active:scale-95 transition-transform shadow-lg">
+            <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full" />
+            <div className="absolute -bottom-4 right-16 w-16 h-16 bg-white/5 rounded-full" />
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl shrink-0 relative">🎊</div>
+            <div className="text-left flex-1 min-w-0 relative">
+              <p className="text-white font-black text-sm leading-tight">{new Date().toLocaleString('en-US',{month:'long'})} Wrapped is here!</p>
+              <p className="text-white/70 text-xs mt-0.5 leading-tight">Your monthly highlights, reviewed by AI ✨</p>
+            </div>
+            <span className="text-white/60 text-lg relative">→</span>
+          </button>
+        )}
+
         {/* Quick Actions */}
         {isCurrentMonth && (
           <div className="space-y-3 mb-5">
-            {/* Quick Log CTA — prominent */}
-            <button onClick={() => setShowQuickLog(true)}
-              className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white rounded-2xl px-5 py-4 flex items-center gap-4 active:scale-95 transition-transform shadow-sm hover:shadow-md hover:border-violet-200 dark:hover:border-violet-700">
-              <div className="w-11 h-11 bg-violet-100 dark:bg-violet-900/40 rounded-2xl flex items-center justify-center shrink-0">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.2" strokeLinecap="round"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
-              </div>
-              <div className="text-left flex-1 min-w-0">
-                <p className="font-bold text-sm leading-tight">Smart Log</p>
-                <p className="text-gray-400 text-xs leading-tight mt-0.5">Type or speak your expenses — AI does the rest</p>
-              </div>
-              <svg className="shrink-0 text-gray-300 dark:text-gray-600" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
             <div className="grid grid-cols-4 gap-2.5">
               {[
                 {
@@ -1249,10 +1325,10 @@ export default function Dashboard() {
                   action: () => setShowAddInc(true),
                 },
                 {
-                  label: 'AI Chat',
+                  label: 'AI Log',
                   grad: 'from-violet-500 to-purple-600',
                   icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
-                  action: () => window.location.href = '/insights',
+                  action: () => setShowVoice(true),
                 },
                 {
                   label: 'Reports',
@@ -1522,81 +1598,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Net Worth */}
-        {(() => {
-          const cashIncome   = allTimeIncome.reduce((s, i) => s + safeNum(i.amount), 0)
-          const cashExpenses = expenses.reduce((s, e) => s + safeNum(e.amount), 0)
-          const cashBalance  = cashIncome - cashExpenses
-          const totalSaved   = savingsGoals.reduce((s, g) => s + safeNum(g.saved_amount), 0)
-          const totalDebt    = debts.reduce((s, d) => s + safeNum(d.remaining_amount), 0)
-          const netWorth     = cashBalance + totalSaved - totalDebt
-          if (cashIncome === 0 && totalSaved === 0 && totalDebt === 0) return null
-          return (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Net Worth</h3>
-                <button onClick={() => setShowNWDetails(v => !v)}
-                  className="text-xs text-violet-600 font-semibold hover:underline">
-                  {showNWDetails ? 'Hide details' : 'Show details'}
-                </button>
-              </div>
-              <button onClick={() => setModalData({ label: 'Net Worth', value: (netWorth >= 0 ? '+' : '-') + fmt(Math.abs(netWorth), currencySymbol), sub: 'Cash + Savings − Debt' })}
-                className="text-left mb-4">
-                <p className={`text-3xl font-bold tabular-nums ${netWorth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  {netWorth >= 0 ? '+' : '-'}{fmt(Math.abs(netWorth), currencySymbol)}
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">Cash + Savings Goals − Debts</p>
-              </button>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
-                  <p className="text-xs text-blue-500 font-semibold mb-1">💳 Cash</p>
-                  <p className={`text-sm font-bold tabular-nums ${cashBalance >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
-                    {cashBalance >= 0 ? '+' : '-'}{fmt(Math.abs(cashBalance), currencySymbol)}
-                  </p>
-                </div>
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
-                  <p className="text-xs text-green-600 font-semibold mb-1">🏦 Savings</p>
-                  <p className="text-sm font-bold text-green-600 tabular-nums">+{fmt(totalSaved, currencySymbol)}</p>
-                </div>
-                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3 text-center">
-                  <p className="text-xs text-red-500 font-semibold mb-1">💸 Debt</p>
-                  <p className="text-sm font-bold text-red-500 tabular-nums">-{fmt(totalDebt, currencySymbol)}</p>
-                </div>
-              </div>
-              {showNWDetails && (
-                <div className="mt-4 space-y-2 pt-4 border-t border-gray-100 dark:border-gray-700">
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Total income (all time)</span>
-                    <span className="text-green-600 font-semibold tabular-nums">+{fmt(cashIncome, currencySymbol)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Total expenses (all time)</span>
-                    <span className="text-red-500 font-semibold tabular-nums">-{fmt(cashExpenses, currencySymbol)}</span>
-                  </div>
-                  {savingsGoals.map(g => (
-                    <div key={g.id} className="flex justify-between text-xs text-gray-500">
-                      <span>Savings: {g.name}</span>
-                      <span className="text-green-600 font-semibold tabular-nums">+{fmt(g.saved_amount, currencySymbol)}</span>
-                    </div>
-                  ))}
-                  {debts.map(d => (
-                    <div key={d.id} className="flex justify-between text-xs text-gray-500">
-                      <span>Debt: {d.name}</span>
-                      <span className="text-red-500 font-semibold tabular-nums">-{fmt(d.remaining_amount, currencySymbol)}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between text-sm font-bold text-gray-800 dark:text-white pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <span>Net Worth</span>
-                    <span className={netWorth >= 0 ? 'text-green-500' : 'text-red-500'}>
-                      {netWorth >= 0 ? '+' : '-'}{fmt(Math.abs(netWorth), currencySymbol)}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        })()}
-
         {/* 6-Month Trend */}
         {trendsData.length > 1 && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
@@ -1615,6 +1616,7 @@ export default function Dashboard() {
         )}
 
       </div>
+
     </Layout>
   )
 }

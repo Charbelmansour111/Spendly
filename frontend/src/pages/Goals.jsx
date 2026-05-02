@@ -17,6 +17,19 @@ const GOAL_TYPES = [
 
 const safeNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 const goalEmoji = (type) => GOAL_TYPES.find(t => t.key === type)?.emoji || '💰'
+const haptic = (ms = 10) => navigator.vibrate?.(ms)
+
+function UndoToast({ label, onUndo, onDismiss }) {
+  return (
+    <div className="fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-72 z-50">
+      <div className="bg-gray-900 dark:bg-gray-700 text-white rounded-2xl shadow-2xl px-4 py-3.5 flex items-center gap-3">
+        <span className="text-sm flex-1 min-w-0 truncate">Deleted <span className="font-semibold">"{label}"</span></span>
+        <button onClick={onUndo} className="text-violet-400 hover:text-violet-300 font-bold text-sm shrink-0 px-2 py-1 rounded-lg hover:bg-white/10 transition">Undo</button>
+        <button onClick={onDismiss} className="text-gray-400 hover:text-white shrink-0 text-xl leading-none">×</button>
+      </div>
+    </div>
+  )
+}
 
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
@@ -98,9 +111,13 @@ export default function Goals() {
   const [addFundsAmount, setAddFundsAmount] = useState('')
   const [aiModal, setAiModal] = useState(null)
   const [toast, setToast]     = useState(null)
+  const [undoLabel, setUndoLabel] = useState(null)
+  const undoRef = useRef(null)
+  const undoTimerRef = useRef(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
   const [sym] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
+  useEffect(() => () => clearTimeout(undoTimerRef.current), [])
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
 
@@ -204,16 +221,92 @@ export default function Goals() {
     finally { setSaving(false) }
   }
 
-  const handleDeleteGoal = async (id) => {
-    if (!window.confirm('Delete this savings goal?')) return
-    try { await API.delete(`/savings/${id}`); fetchAll(); showToast('Deleted') }
-    catch { showToast('Error deleting', 'error') }
+  const handleCompleteGoal = async (goal) => {
+    haptic(20)
+    try {
+      const r = await API.patch(`/savings/${goal.id}/complete`)
+      fetchAll()
+      showToast(r.data.addedToNetWorth
+        ? `🎉 Goal complete! ${sym}${safeNum(r.data.savedAmount).toFixed(2)} added to Net Worth.`
+        : `🎉 "${goal.name}" archived!`)
+    } catch { showToast('Error completing goal', 'error') }
   }
 
-  const handleDeleteDebt = async (id) => {
-    if (!window.confirm('Delete this debt?')) return
-    try { await API.delete(`/debts/${id}`); fetchAll(); showToast('Deleted') }
-    catch { showToast('Error deleting', 'error') }
+  const handleCompleteDebt = async (debt) => {
+    haptic(20)
+    try {
+      const r = await API.patch(`/debts/${debt.id}/complete`)
+      fetchAll()
+      showToast(r.data.removedFromNetWorth
+        ? `🎉 Debt paid off! Removed from Net Worth liabilities.`
+        : `🎉 "${debt.name}" marked as paid!`)
+    } catch { showToast('Error marking debt as paid', 'error') }
+  }
+
+  const commitItemDelete = (type, id, backup) => {
+    const endpoint = type === 'goal' ? `/savings/${id}` : `/debts/${id}`
+    API.delete(endpoint).catch(() => {
+      if (type === 'goal') setGoals(prev => [...prev, backup].sort((a, b) => b.id - a.id))
+      else setDebts(prev => [...prev, backup].sort((a, b) => b.id - a.id))
+      showToast('Error deleting', 'error')
+    })
+  }
+
+  const handleDeleteGoal = (id) => {
+    if (undoRef.current) {
+      clearTimeout(undoTimerRef.current)
+      commitItemDelete(undoRef.current.type, undoRef.current.id, undoRef.current.backup)
+      undoRef.current = null
+    }
+    const backup = goals.find(g => g.id === id)
+    if (!backup) return
+    haptic(20)
+    setGoals(prev => prev.filter(g => g.id !== id))
+    setUndoLabel(backup.name || 'Goal')
+    undoRef.current = { type: 'goal', id, backup }
+    undoTimerRef.current = setTimeout(() => {
+      if (!undoRef.current || undoRef.current.id !== id) return
+      const b = undoRef.current
+      undoRef.current = null; setUndoLabel(null)
+      commitItemDelete(b.type, b.id, b.backup)
+    }, 4000)
+  }
+
+  const handleDeleteDebt = (id) => {
+    if (undoRef.current) {
+      clearTimeout(undoTimerRef.current)
+      commitItemDelete(undoRef.current.type, undoRef.current.id, undoRef.current.backup)
+      undoRef.current = null
+    }
+    const backup = debts.find(d => d.id === id)
+    if (!backup) return
+    haptic(20)
+    setDebts(prev => prev.filter(d => d.id !== id))
+    setUndoLabel(backup.name || 'Debt')
+    undoRef.current = { type: 'debt', id, backup }
+    undoTimerRef.current = setTimeout(() => {
+      if (!undoRef.current || undoRef.current.id !== id) return
+      const b = undoRef.current
+      undoRef.current = null; setUndoLabel(null)
+      commitItemDelete(b.type, b.id, b.backup)
+    }, 4000)
+  }
+
+  const handleUndoDelete = () => {
+    if (!undoRef.current) return
+    clearTimeout(undoTimerRef.current)
+    haptic(10)
+    const { type, backup } = undoRef.current
+    if (type === 'goal') setGoals(prev => [...prev, backup].sort((a, b) => b.id - a.id))
+    else setDebts(prev => [...prev, backup].sort((a, b) => b.id - a.id))
+    undoRef.current = null; setUndoLabel(null)
+  }
+
+  const handleDismissUndo = () => {
+    if (!undoRef.current) return
+    clearTimeout(undoTimerRef.current)
+    commitItemDelete(undoRef.current.type, undoRef.current.id, undoRef.current.backup)
+    undoRef.current = null; setUndoLabel(null)
   }
 
   // Stats
@@ -228,8 +321,9 @@ export default function Goals() {
 
   return (
     <Layout>
-      {toast   && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {aiModal && <AiModal title={aiModal.title} prompt={aiModal.prompt} onClose={() => setAiModal(null)} />}
+      {toast     && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {undoLabel && <UndoToast label={undoLabel} onUndo={handleUndoDelete} onDismiss={handleDismissUndo} />}
+      {aiModal   && <AiModal title={aiModal.title} prompt={aiModal.prompt} onClose={() => setAiModal(null)} />}
 
       <div className="max-w-4xl mx-auto px-4 py-6">
 
@@ -469,14 +563,20 @@ export default function Goals() {
                           </button>
                         )}
 
-                        {/* AI — on completion */}
+                        {/* Complete — on goal reached */}
                         {isComplete && (
-                          <button onClick={() => setAiModal({
-                            title: `🎉 Goal reached — what's next?`,
-                            prompt: `I reached my savings goal "${goal.name}" (${emoji}). I saved ${sym}${saved.toFixed(2)}. What are 3 smart things to do with this money now?`
-                          })} className="w-full flex items-center justify-center gap-2 py-2.5 bg-linear-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-200 dark:border-violet-700 rounded-xl text-violet-700 dark:text-violet-300 text-sm font-semibold hover:from-violet-100 transition">
-                            🤖 Ask AI what to do next
-                          </button>
+                          <div className="space-y-2">
+                            <button onClick={() => handleCompleteGoal(goal)}
+                              className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-500 hover:bg-green-600 active:scale-95 text-white rounded-xl text-sm font-bold transition">
+                              ✓ Mark as Complete — Add to Net Worth
+                            </button>
+                            <button onClick={() => setAiModal({
+                              title: `🎉 Goal reached — what's next?`,
+                              prompt: `I reached my savings goal "${goal.name}" (${emoji}). I saved ${sym}${saved.toFixed(2)}. What are 3 smart things to do with this money now?`
+                            })} className="w-full flex items-center justify-center gap-2 py-2 bg-linear-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-200 dark:border-violet-700 rounded-xl text-violet-700 dark:text-violet-300 text-sm font-semibold hover:from-violet-100 transition">
+                              🤖 Ask AI what to do next
+                            </button>
+                          </div>
                         )}
                       </div>
                     )
@@ -563,14 +663,20 @@ export default function Goals() {
                           </button>
                         )}
 
-                        {/* AI — on payoff */}
+                        {/* Complete — on debt paid off */}
                         {isPaidOff && (
-                          <button onClick={() => setAiModal({
-                            title: `🎉 "${debt.name}" is paid off!`,
-                            prompt: `I just fully paid off "${debt.name}" (${sym}${total.toFixed(2)} total). I was paying ${sym}${safeNum(debt.monthly_payment).toFixed(2)}/month. What are 3 smart ways to use that freed-up money now?`
-                          })} className="w-full flex items-center justify-center gap-2 py-2.5 bg-linear-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-200 dark:border-violet-700 rounded-xl text-violet-700 dark:text-violet-300 text-sm font-semibold hover:from-violet-100 transition">
-                            🤖 Ask AI what to do next
-                          </button>
+                          <div className="space-y-2">
+                            <button onClick={() => handleCompleteDebt(debt)}
+                              className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-500 hover:bg-green-600 active:scale-95 text-white rounded-xl text-sm font-bold transition">
+                              ✓ Mark as Paid — Update Net Worth
+                            </button>
+                            <button onClick={() => setAiModal({
+                              title: `🎉 "${debt.name}" is paid off!`,
+                              prompt: `I just fully paid off "${debt.name}" (${sym}${total.toFixed(2)} total). I was paying ${sym}${safeNum(debt.monthly_payment).toFixed(2)}/month. What are 3 smart ways to use that freed-up money now?`
+                            })} className="w-full flex items-center justify-center gap-2 py-2 bg-linear-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-200 dark:border-violet-700 rounded-xl text-violet-700 dark:text-violet-300 text-sm font-semibold hover:from-violet-100 transition">
+                              🤖 Ask AI what to do next
+                            </button>
+                          </div>
                         )}
                       </div>
                     )

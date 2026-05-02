@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useDarkMode } from '../hooks/useDarkMode'
 import VoiceAssistant from './VoiceAssistant'
 import TourBanner from './TourBanner'
@@ -31,17 +32,16 @@ const NAV_ITEMS = [
   { key: 'nav_goals',           icon: 'savings',      href: '/goals' },
   { key: 'nav_subscriptions',   icon: 'subs',         href: '/subscriptions' },
   { key: 'nav_reports',         icon: 'reports',      href: '/reports' },
-  { key: 'nav_ai',              icon: 'ai',           href: '/insights' },
   { key: 'nav_wellness',        icon: 'wellness',     href: '/wellness' },
   { key: 'nav_networth',        icon: 'networth',     href: '/net-worth' },
   { key: 'nav_profile',         icon: 'profile',      href: '/profile' },
 ]
 
 const TAB_ITEMS = [
-  { href: '/dashboard',    icon: 'home',         key: 'tab_home' },
   { href: '/transactions', icon: 'transactions', key: 'nav_transactions' },
-  { href: '/insights',     icon: 'ai',           key: 'tab_ai' },
   { href: '/goals',        icon: 'savings',      key: 'tab_goals' },
+  { href: '/dashboard',    icon: 'home',         key: 'tab_home',    isCenter: true },
+  { href: '/net-worth',    icon: 'networth',     key: 'nav_networth' },
   { href: '/profile',      icon: 'profile',      key: 'nav_profile' },
 ]
 
@@ -131,22 +131,63 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
 export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const [dark, toggleDark] = useDarkMode()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const location = useLocation()
   const [showVoice, setShowVoice] = useState(false)
-  const lastAiTapRef = useRef(0)
-  const aiTapTimerRef = useRef(null)
+
+  // ── Pull to refresh ──
+  const mainRef = useRef(null)
+  const ptrStartY = useRef(0)
+  const isPullingRef = useRef(false)
+  const pullDistRef = useRef(0)
+  const [pullDist, setPullDist] = useState(0)
+  const [isPulling, setIsPulling] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const PULL_THRESHOLD = 60
+
+  const onPTRStart = (e) => {
+    if ((mainRef.current?.scrollTop ?? 1) > 0) return
+    ptrStartY.current = e.touches[0].clientY
+    isPullingRef.current = true
+    setIsPulling(true)
+  }
+  const onPTRMove = (e) => {
+    if (!isPullingRef.current) return
+    const dy = e.touches[0].clientY - ptrStartY.current
+    if (dy <= 0) { isPullingRef.current = false; setIsPulling(false); pullDistRef.current = 0; setPullDist(0); return }
+    const v = Math.min(dy * 0.4, 80)
+    pullDistRef.current = v
+    setPullDist(v)
+  }
+  const onPTREnd = () => {
+    if (!isPullingRef.current) return
+    isPullingRef.current = false
+    setIsPulling(false)
+    if (pullDistRef.current >= PULL_THRESHOLD) {
+      setIsRefreshing(true)
+      navigator.vibrate?.(15)
+      setTimeout(() => window.location.reload(), 500)
+    } else {
+      pullDistRef.current = 0
+      setPullDist(0)
+    }
+  }
+  useEffect(() => () => { isPullingRef.current = false }, [])
   const current = window.location.pathname
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-  const handleAiTabClick = () => {
+  const lastDashTapRef = useRef(0)
+  const dashTapTimerRef = useRef(null)
+
+  const handleDashTabClick = () => {
     const now = Date.now()
-    if (now - lastAiTapRef.current < 350) {
-      clearTimeout(aiTapTimerRef.current)
-      lastAiTapRef.current = 0
+    if (now - lastDashTapRef.current < 350) {
+      clearTimeout(dashTapTimerRef.current)
+      lastDashTapRef.current = 0
       setShowVoice(true)
     } else {
-      lastAiTapRef.current = now
-      clearTimeout(aiTapTimerRef.current)
-      aiTapTimerRef.current = setTimeout(() => { window.location.href = '/insights' }, 350)
+      lastDashTapRef.current = now
+      clearTimeout(dashTapTimerRef.current)
+      dashTapTimerRef.current = setTimeout(() => { window.location.href = '/dashboard' }, 350)
     }
   }
 
@@ -164,6 +205,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
 
   return (
     <div className="flex h-screen bg-white dark:bg-gray-900 overflow-hidden relative" dir={isRTL() ? 'rtl' : 'ltr'}>
+      <style>{`@keyframes spPageIn { from { opacity:0; transform:translateX(10px) } to { opacity:1; transform:translateX(0) } }`}</style>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/60 shrink-0 h-screen sticky top-0">
         <SidebarContent {...sidebarProps} />
@@ -184,7 +226,6 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
             {Icons.bell()}
             {unreadCount > 0 && <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{unreadCount > 9 ? '9+' : unreadCount}</span>}
           </button>
-          <button onClick={toggleDark} className="p-2 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">{dark ? Icons.sun() : Icons.moon()}</button>
           <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">{mobileOpen ? Icons.close() : Icons.hamburger()}</button>
         </div>
       </div>
@@ -200,22 +241,47 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       )}
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-20 md:pb-0">{children}</main>
+      <main
+        ref={mainRef}
+        className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-20 md:pb-0 relative"
+        style={{ overscrollBehavior: 'contain' }}
+        onTouchStart={onPTRStart}
+        onTouchMove={onPTRMove}
+        onTouchEnd={onPTREnd}
+      >
+        {/* Pull-to-refresh indicator */}
+        <div style={{
+          height: isRefreshing ? 52 : pullDist > 4 ? pullDist : 0,
+          transition: isPulling ? 'none' : 'height 0.25s ease',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+        }}>
+          {(pullDist > 8 || isRefreshing) && (
+            <div
+              className={`w-7 h-7 rounded-full border-2 border-violet-500 border-t-transparent ${isRefreshing ? 'animate-spin' : ''}`}
+              style={{ transform: isRefreshing ? undefined : `rotate(${pullDist * 4}deg)` }}
+            />
+          )}
+        </div>
+
+        <div key={location.pathname} style={{ animation: 'spPageIn 0.22s ease' }}>
+          {children}
+        </div>
+      </main>
 
       {/* Mobile bottom tab bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700/60">
         <div className="flex items-stretch h-16">
           {TAB_ITEMS.map(item => {
             const isActive = current === item.href
-            if (item.icon === 'ai') {
+            if (item.isCenter) {
               return (
-                <button key={item.href} onClick={handleAiTabClick}
-                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                  {isActive && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
-                  <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
-                    {Icons[item.icon]?.(isActive)}
-                  </span>
-                  <span className="text-[10px] font-medium">{t(item.key)}</span>
+                <button key={item.href} onClick={handleDashTabClick}
+                  className="flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all -mt-5 ${
+                    isActive ? 'bg-violet-600 shadow-violet-400/40' : 'bg-violet-600 shadow-violet-400/30'
+                  }`}>
+                    <span className="text-white">{Icons[item.icon]?.(true)}</span>
+                  </div>
                 </button>
               )
             }

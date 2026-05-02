@@ -7,7 +7,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Ba
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 const COLORS = ['#4F46E5', '#7C3AED', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6']
-const CAT_ICONS = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
+const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦' }
 
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 function fmt(amount, sym) { return sym + Math.abs(safeNum(amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
@@ -180,6 +180,47 @@ function HeatmapCalendar({ year, month, monthExpenses, monthIncome, sym, fmt, mo
   )
 }
 
+const QUICK_QUESTIONS = [
+  "Where am I overspending?", "How can I save more?", "Am I on track?",
+  "Delete my last expense", "Biggest expense this month?", "Give me a tip",
+]
+const CHAT_GREETING = "I've analyzed your spending data. Ask me anything — budgeting tips, expense insights, or just delete that embarrassing takeout order. 😏"
+
+function ActionCard({ action, sym, state, onConfirm, onCancel }) {
+  const e = action.expense
+  const dateStr = (e.date || '').split('T')[0]
+  if (state === 'done') return <div className="mt-2 flex items-center gap-2 text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-3 py-2 rounded-xl"><span>✓</span> Done — expense {action.type === 'delete' ? 'deleted' : 'updated'}.</div>
+  if (state === 'error') return <div className="mt-2 text-xs bg-red-50 dark:bg-red-900/20 text-red-600 px-3 py-2 rounded-xl">✗ Something went wrong. Try again.</div>
+  if (state === 'cancelled') return null
+  return (
+    <div className="mt-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl p-3">
+      {action.type === 'delete' ? (
+        <>
+          <p className="text-xs font-bold text-red-500 uppercase tracking-wide mb-2">Confirm delete</p>
+          <div className="flex items-center justify-between mb-3">
+            <div><p className="text-sm font-semibold text-gray-800 dark:text-white">{e.description || e.category}</p><p className="text-xs text-gray-400">{e.category} · {dateStr}</p></div>
+            <p className="font-bold text-red-500 text-sm tabular-nums">{sym}{parseFloat(e.amount).toFixed(2)}</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onConfirm} className="flex-1 bg-red-500 text-white text-xs font-bold py-2 rounded-xl">Delete</button>
+            <button onClick={onCancel} className="flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-white text-xs py-2 rounded-xl">Cancel</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-xs font-bold text-violet-500 uppercase tracking-wide mb-2">Confirm update</p>
+          <p className="text-sm font-semibold text-gray-800 dark:text-white mb-1">{e.description || e.category}</p>
+          {action.updates?.amount && <p className="text-xs text-gray-400 mb-2">{sym}{parseFloat(e.amount).toFixed(2)} → {sym}{parseFloat(action.updates.amount).toFixed(2)}</p>}
+          <div className="flex gap-2">
+            <button onClick={onConfirm} className="flex-1 bg-violet-600 text-white text-xs font-bold py-2 rounded-xl">Confirm</button>
+            <button onClick={onCancel} className="flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:white text-xs py-2 rounded-xl">Cancel</button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function SectionHeader({ icon, title, subtitle }) {
   return (
     <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
@@ -208,6 +249,15 @@ export default function Reports() {
   const [sym] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
   const [user] = useState(() => { try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} } })
   const [activeTab, setActiveTab] = useState('analytics')
+  // AI Chat tab state
+  const [chatMessages, setChatMessages] = useState([{ role: 'assistant', content: CHAT_GREETING }])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('spendly_insights_tts') === 'true')
+  const [listening, setListening] = useState(false)
+  const chatEndRef = useRef(null)
+  const recognitionRef = useRef(null)
+  const micLang = localStorage.getItem('spendly_lang_mic') || 'en-US'
   const aiRequested = useRef(false)
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
@@ -405,6 +455,69 @@ export default function Reports() {
     showToast('CSV downloaded!')
   }
 
+  // ── AI Chat handlers ──
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages])
+
+  const chatSpeak = (text) => {
+    if (!window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    const utt = new SpeechSynthesisUtterance(text)
+    utt.lang = localStorage.getItem('spendly_lang_app') || 'en-US'
+    utt.rate = 0.95
+    window.speechSynthesis.speak(utt)
+  }
+  const toggleTts = () => {
+    const next = !ttsEnabled
+    setTtsEnabled(next)
+    localStorage.setItem('spendly_insights_tts', String(next))
+    if (!next) window.speechSynthesis?.cancel()
+  }
+  const sendChatMessage = async (text) => {
+    const msg = text || chatInput.trim()
+    if (!msg || chatLoading) return
+    setChatInput('')
+    setChatMessages(prev => [...prev, { role: 'user', content: msg }])
+    setChatLoading(true)
+    try {
+      const history = chatMessages.filter((_, i) => i > 0)
+      const res = await API.post('/insights/chat', { message: msg, history, mode: 'sarcastic' })
+      const { reply, action } = res.data
+      setChatMessages(prev => [...prev, { role: 'assistant', content: reply, action: action || null, actionState: action ? 'pending' : null }])
+      if (ttsEnabled) chatSpeak(reply)
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Something went wrong. Try again.' }])
+    }
+    setChatLoading(false)
+  }
+  const executeChatAction = async (msgIdx, action) => {
+    try {
+      if (action.type === 'delete') {
+        await API.delete(`/expenses/${action.expense.id}`)
+      } else {
+        const e = action.expense; const u = action.updates || {}
+        await API.put(`/expenses/${action.expense.id}`, { amount: parseFloat(u.amount || e.amount), category: u.category || e.category, description: u.description || e.description, date: (e.date || '').split('T')[0] || e.date, is_recurring: e.is_recurring, recurring_frequency: e.recurring_frequency || 'monthly' })
+      }
+      setChatMessages(prev => prev.map((m, i) => i === msgIdx ? { ...m, actionState: 'done' } : m))
+    } catch {
+      setChatMessages(prev => prev.map((m, i) => i === msgIdx ? { ...m, actionState: 'error' } : m))
+    }
+  }
+  const cancelChatAction = (msgIdx) => setChatMessages(prev => prev.map((m, i) => i === msgIdx ? { ...m, actionState: 'cancelled' } : m))
+  const startMic = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) return
+    window.speechSynthesis?.cancel()
+    const rec = new SR()
+    rec.lang = micLang; rec.interimResults = false; rec.maxAlternatives = 1
+    recognitionRef.current = rec
+    rec.onstart = () => setListening(true)
+    rec.onend = () => setListening(false)
+    rec.onerror = () => setListening(false)
+    rec.onresult = (e) => { const text = e.results[0][0].transcript.trim(); if (text) sendChatMessage(text) }
+    rec.start()
+  }
+  const stopMic = () => { recognitionRef.current?.stop(); setListening(false) }
+
   return (
     <Layout>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -414,7 +527,7 @@ export default function Reports() {
 
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
-          <p className="text-gray-400 text-sm mt-0.5">Monthly breakdown · deep analytics · export</p>
+          <p className="text-gray-400 text-sm mt-0.5">Monthly breakdown · deep analytics · AI assistant</p>
         </div>
 
         {/* Month Selector */}
@@ -429,13 +542,103 @@ export default function Reports() {
 
         {/* Tab bar */}
         <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-6">
-          {[{ key: 'analytics', label: '📊 Analytics' }, { key: 'recap', label: '🗓️ Monthly Recap' }].map(t => (
+          {[{ key: 'analytics', label: '📊 Analytics' }, { key: 'recap', label: '🗓️ Monthly Recap' }, { key: 'ai', label: '🤖 AI Chat' }].map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition ${activeTab === t.key ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600 dark:text-violet-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>
               {t.label}
             </button>
           ))}
         </div>
+
+        {/* ── AI CHAT TAB ─────────────────────────────────── */}
+        {activeTab === 'ai' && (
+          <div className="flex flex-col" style={{ minHeight: 500 }}>
+            {/* Chat header */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="font-bold text-gray-800 dark:text-white">AI Finance Assistant</p>
+                <p className="text-xs text-gray-400 mt-0.5">Ask anything — I know your real data</p>
+              </div>
+              <button onClick={toggleTts}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${ttsEnabled ? 'bg-violet-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+                {ttsEnabled
+                  ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+                  : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                }
+                {ttsEnabled ? 'Voice On' : 'Voice Off'}
+              </button>
+            </div>
+
+            {/* Chat messages */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm flex flex-col flex-1 overflow-hidden mb-3" style={{ minHeight: 340 }}>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {chatMessages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex items-start gap-2 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${msg.role === 'user' ? 'bg-violet-600 text-white' : 'bg-gradient-to-br from-violet-500 to-purple-600 text-white'}`}>
+                        {msg.role === 'user' ? 'U' : 'AI'}
+                      </div>
+                      <div className="flex flex-col max-w-full">
+                        <div dir="auto" className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user' ? 'bg-violet-600 text-white rounded-tr-sm' : 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm'}`}>
+                          {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
+                        </div>
+                        {msg.action && (
+                          <ActionCard action={msg.action} sym={sym} state={msg.actionState}
+                            onConfirm={() => executeChatAction(i, msg.action)}
+                            onCancel={() => cancelChatAction(i)} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="flex justify-start">
+                    <div className="flex items-start gap-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center text-xs font-bold">AI</div>
+                      <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 rounded-2xl rounded-tl-sm flex gap-1 items-center">
+                        {[0, 150, 300].map(d => <div key={d} className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: d + 'ms' }} />)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+              {/* Input */}
+              <div className="border-t border-gray-100 dark:border-gray-700 p-3">
+                <div className="flex gap-2">
+                  <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
+                    placeholder={listening ? 'Listening…' : 'Ask anything about your finances…'}
+                    className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+                  <button onClick={listening ? stopMic : startMic} disabled={chatLoading}
+                    className={`px-3 py-2.5 rounded-xl transition flex items-center justify-center ${listening ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-violet-100 hover:text-violet-600'}`}>
+                    {listening
+                      ? <span className="flex gap-0.5 items-end">{[4,7,5].map((h,i) => <span key={i} className="w-0.5 bg-white rounded-full animate-pulse" style={{ height: h+'px', animationDelay: i*0.12+'s' }} />)}</span>
+                      : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                    }
+                  </button>
+                  <button onClick={() => sendChatMessage()} disabled={chatLoading || !chatInput.trim()}
+                    className="bg-violet-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition disabled:opacity-50 text-sm">
+                    {chatLoading ? '…' : 'Send'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick questions */}
+            <div>
+              <p className="text-xs text-gray-400 mb-2 font-medium">Quick questions</p>
+              <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                {QUICK_QUESTIONS.map((q, i) => (
+                  <button key={i} onClick={() => sendChatMessage(q)} disabled={chatLoading}
+                    className="shrink-0 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs font-medium hover:border-violet-400 hover:text-violet-600 transition disabled:opacity-50 whitespace-nowrap">
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── ANALYTICS TAB ───────────────────────────────── */}
         {activeTab === 'analytics' && (
