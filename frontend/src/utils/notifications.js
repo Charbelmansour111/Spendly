@@ -37,7 +37,7 @@ export function playSpendlyChime() {
     gain2.gain.exponentialRampToValueAtTime(0.001, t1 + 0.42)
     osc2.start(t1); osc2.stop(t1 + 0.46)
 
-    setTimeout(() => { try { ctx.close() } catch {} }, 1400)
+    setTimeout(() => { try { ctx.close() } catch (_e) { /* already closed */ } }, 1400)
   } catch { /* AudioContext not available */ }
 }
 

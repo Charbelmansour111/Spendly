@@ -228,7 +228,6 @@ function Planet({ year, colors, eraName, size=160 }) {
   )
 }
 
-// ── Main component ───────────────────────────────────────────────────────────
 // ── TTS helpers ─────────────────────────────────────────────────────────────
 function stripEmoji(str) {
   return str.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27FF}]/gu, '').trim()
@@ -359,7 +358,7 @@ export default function TimeMachineModal({ onClose, defaultAmount, currency='USD
 
   // ── render ───────────────────────────────────────────────────────────────
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col overflow-hidden bg-gradient-to-br ${theme.bg}`}>
+    <div className={`fixed inset-0 z-50 flex flex-col overflow-hidden bg-linear-to-br ${theme.bg}`}>
       <style>{ANIM}</style>
 
       {/* Stars (visible in all non-input phases) */}
