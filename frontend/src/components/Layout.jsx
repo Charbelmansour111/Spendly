@@ -32,7 +32,6 @@ const NAV_ITEMS = [
   { key: 'nav_goals',           icon: 'savings',      href: '/goals' },
   { key: 'nav_subscriptions',   icon: 'subs',         href: '/subscriptions' },
   { key: 'nav_reports',         icon: 'reports',      href: '/reports' },
-  { key: 'nav_ai',              icon: 'ai',           href: '/insights' },
   { key: 'nav_wellness',        icon: 'wellness',     href: '/wellness' },
   { key: 'nav_networth',        icon: 'networth',     href: '/net-worth' },
   { key: 'nav_profile',         icon: 'profile',      href: '/profile' },
