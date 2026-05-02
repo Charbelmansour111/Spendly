@@ -3,51 +3,71 @@ const router = express.Router();
 const pool = require('../db');
 const authenticateToken = require('../middleware/auth');
 
-const callAI = async (messages) => {
+const callAI = async (messages, maxTokens = 600) => {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, max_tokens: 300 })
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, max_tokens: maxTokens })
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error?.message || 'AI error');
   return data.choices[0].message.content;
 };
 
+const SHARED_RULES = () => {
+  const today = new Date().toISOString().split('T')[0];
+  return `
+LANGUAGE DETECTION (always apply first):
+- If user writes in ENGLISH → reply in English only.
+- If user writes in ARABIC SCRIPT, or LEBANESE/ARABIC PHONETIC LATIN (any of: re7et, raye7, w, ana, shu, 3m, 2a, fi, ma, heik, hek, haida, yalla, ktir, kteer, xalas, 5alas, mashi, walla, inno, akid, shi, 7ada, 2adesh, ta3a, bala, 7elo, kif, kef, or any word using 2/3/5/7/8 as Arabic letter substitutes, or obvious Arabic-dialect words mixed with French or English) → reply BILINGUALLY in this EXACT format with no exception:
+
+[Lebanese Latin script answer — WhatsApp-style casual Lebanese, use 3=ع 7=ح 2=أ/ء 5=خ, mix French/English naturally like Lebanese people do]
+---
+[نفس الجواب بالعربي — exact same content written in Arabic script, Lebanese dialect]
+
+TRANSACTION DETECTION (apply every message):
+- If the user mentions ANY spending, payment, or purchase (any amount, any currency, any language) — extract EVERY transaction they mentioned.
+- In your reply, clearly list what you understood (description, amount, category) and ask "Ba3den fi shi tene? / هل في شي تاني?" (or English equivalent if they spoke English).
+- At the VERY END of your reply, on its own line, output EXACTLY this (no extra text after it):
+TXNS:[{"amount":NUMBER,"category":"Food|Transport|Shopping|Subscriptions|Entertainment|Other","description":"merchant or what it was","date":"${today}"}]
+- One JSON object per transaction. Use ${today} unless user mentioned a different date.
+- If NO spending was mentioned in this message, do NOT include the TXNS line at all.`;
+};
+
 const SYSTEM_NORMAL = (total, totalIncome, categoryBreakdown, txCount, budgets) =>
   `You are Spendly AI ✨ — a warm, encouraging, and genuinely helpful money friend.
 
-User's data:
+User's financial data:
 - Income: $${totalIncome.toFixed(2)} | Spending: $${total.toFixed(2)} | Balance: $${(totalIncome - total).toFixed(2)}
 - Categories: ${categoryBreakdown || 'No expenses yet'}
 - Transactions: ${txCount} | Budgets: ${budgets}
 
-Response style rules:
-- Start with a short, warm 1-line reaction to their question
-- Use 2–3 short bullet points (•) with real numbers from their data
-- End with one friendly, actionable tip on its own line
-- Use **bold** for key numbers and amounts
-- Sprinkle 1–2 emojis naturally (not every sentence)
-- Max 120 words. Only answer finance questions.`;
+Response style:
+- Start with a short warm reaction
+- Use 2–3 bullet points (•) with real numbers
+- End with one actionable tip
+- Use **bold** for key numbers, 1–2 emojis max
+- Keep it concise. Finance questions only.
+${SHARED_RULES()}`;
 
 const SYSTEM_SARCASTIC = (total, totalIncome, categoryBreakdown, txCount, budgets) =>
-  `You are Spendly AI 😏 — a sharp, witty, lovably savage finance assistant. Think: funny best friend who's also a CPA.
+  `You are Spendly AI 😏 — sharp, witty, lovably savage. Funny best friend who's also a CPA.
 
-User's data:
+User's financial data:
 - Income: $${totalIncome.toFixed(2)} | Spending: $${total.toFixed(2)} | Balance: $${(totalIncome - total).toFixed(2)}
 - Categories: ${categoryBreakdown || 'Nothing yet. Impressive restraint or just starting out?'}
 - Transactions: ${txCount} | Budgets: ${budgets}
 
-Response style rules:
-- Open with a punchy, witty 1-liner about their situation (use their real numbers)
-- Then 2–3 bullet points (•) mixing sass with real data
-- Close with one *genuine* tip, slightly softened
-- Use **bold** for key numbers
-- 1–2 perfectly placed emojis — don't overdo it
-- Max 120 words. Finance questions only (but make even serious ones fun).`;
+Response style:
+- Open with a punchy 1-liner using their real numbers
+- 2–3 bullet points mixing sass with real data
+- Close with one genuine tip, slightly softened
+- **bold** key numbers, 1–2 emojis max
+- Finance questions only (make even serious ones fun).
+${SHARED_RULES()}`;
 
 router.post('/chat', authenticateToken, async (req, res) => {
   try {
@@ -79,8 +99,23 @@ router.post('/chat', authenticateToken, async (req, res) => {
       })),
       { role: 'user', content: message }
     ];
-    const reply = await callAI(messages);
-    res.json({ reply });
+    const raw = await callAI(messages, 700);
+
+    // Extract TXNS marker from end of reply
+    const txnMarker = 'TXNS:';
+    const txnIndex = raw.lastIndexOf(txnMarker);
+    let pendingTransactions = [];
+    let reply = raw.trim();
+    if (txnIndex !== -1) {
+      try {
+        const jsonStr = raw.slice(txnIndex + txnMarker.length).trim();
+        const bracketEnd = jsonStr.lastIndexOf(']');
+        pendingTransactions = JSON.parse(jsonStr.slice(0, bracketEnd + 1));
+        reply = raw.slice(0, txnIndex).trim();
+      } catch { /* keep raw reply if parse fails */ }
+    }
+
+    res.json({ reply, pendingTransactions });
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ message: 'Error getting response' });

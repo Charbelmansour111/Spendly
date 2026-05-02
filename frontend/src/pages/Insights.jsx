@@ -49,7 +49,9 @@ const CURRENT_MONTH = TODAY.getMonth()
 const CURRENT_YEAR  = TODAY.getFullYear()
 const MONTH_NAME    = TODAY.toLocaleString('default', { month: 'long', year: 'numeric' })
 
-const GREETING = "Oh, you've decided to check your finances. Brave. 😏 I've seen your spending data and... we have things to discuss. Ask me anything — I'll be honest, accurate, and maybe a little savage about it."
+const GREETING = "Oh, you've decided to check your finances. Brave. 😏 I've seen your spending data and... we have things to discuss. Ask me anything — I'll be honest, accurate, and maybe a little savage about it.\n\n*Tip: you can speak to me in English or Lebanese Arabic (re7et, shu, w, 3m...) — I'll understand and reply in both scripts.*"
+
+const CAT_ICONS = { Food:'🍔', Transport:'🚗', Shopping:'🛍️', Subscriptions:'📱', Entertainment:'🎬', Other:'📦' }
 
 export default function Insights() {
   const [messages, setMessages] = useState([{ role: 'assistant', content: GREETING }])
@@ -58,6 +60,7 @@ export default function Insights() {
   const [expenses, setExpenses] = useState([])
   const [income, setIncome] = useState([])
   const [currencySymbol] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
+  const [micLangMode, setMicLangMode] = useState(() => localStorage.getItem('spendly_mic_lang') || 'en')
   const [modalData, setModalData] = useState(null)
   const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('spendly_insights_tts') === 'true')
   const [listening, setListening]   = useState(false)
@@ -93,17 +96,23 @@ export default function Insights() {
     if (!next) window.speechSynthesis?.cancel()
   }
 
-  const sendMessage = async (text) => {
+  const sendMessage = async (text, silent = false) => {
     const userMessage = text || input.trim()
     if (!userMessage || loading) return
     setInput('')
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }])
+    if (!silent) setMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setLoading(true)
     try {
-      const history = messages.filter((_, idx) => idx > 0)
+      const history = messages.filter(m => m.role === 'user' || m.role === 'assistant')
       const res = await API.post('/insights/chat', { message: userMessage, history, mode: 'sarcastic' })
-      const reply = res.data.reply
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+      const { reply, pendingTransactions } = res.data
+      setMessages(prev => {
+        const next = [...prev, { role: 'assistant', content: reply }]
+        if (pendingTransactions && pendingTransactions.length > 0) {
+          next.push({ role: 'confirm', transactions: pendingTransactions, confirmed: false, skipped: false })
+        }
+        return next
+      })
       if (ttsEnabled) speak(reply)
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Even I had a technical issue. The irony. Try again.' }])
@@ -111,8 +120,48 @@ export default function Insights() {
     setLoading(false)
   }
 
+  const confirmTransactions = async (transactions, msgIdx) => {
+    setMessages(prev => prev.map((m, i) => i === msgIdx ? { ...m, confirmed: true } : m))
+    const today = new Date().toISOString().split('T')[0]
+    for (const tx of transactions) {
+      try {
+        await API.post('/expenses', {
+          amount: tx.amount,
+          category: tx.category || 'Other',
+          description: tx.description,
+          date: tx.date || today,
+          is_recurring: false
+        })
+      } catch { /* skip individual failures */ }
+    }
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: transactions.length === 1
+          ? `✅ Logged! Ba3den, fi shi tene nse7to? / هل في معاملة تانية بدك تضيفها؟`
+          : `✅ All ${transactions.length} logged! Ba3den, fi shi tene? / في شي تاني؟`
+      }])
+    }, 400)
+  }
+
+  const skipTransactions = (msgIdx) => {
+    setMessages(prev => prev.map((m, i) => i === msgIdx ? { ...m, skipped: true } : m))
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'No worries! 👌 Fi shi tene bte7ke 3anno? / في شي تاني بدك تحكيه؟'
+      }])
+    }, 300)
+  }
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+  }
+
+  const toggleMicLang = () => {
+    const next = micLangMode === 'en' ? 'ar' : 'en'
+    setMicLangMode(next)
+    localStorage.setItem('spendly_mic_lang', next)
   }
 
   const startMic = () => {
@@ -120,9 +169,9 @@ export default function Insights() {
     if (!SR) { setMessages(m => [...m, { role: 'assistant', content: "Speech recognition isn't supported in this browser. Try Chrome." }]); return }
     window.speechSynthesis?.cancel()
     const rec = new SR()
-    rec.lang = micLang
+    rec.lang = micLangMode === 'ar' ? 'ar' : (localStorage.getItem('spendly_lang_mic') || 'en-US')
     rec.interimResults = false
-    rec.maxAlternatives = 1
+    rec.maxAlternatives = 3
     recognitionRef.current = rec
     rec.onstart  = () => setListening(true)
     rec.onend    = () => setListening(false)
@@ -213,7 +262,45 @@ export default function Insights() {
         {/* Chat Box */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm flex flex-col flex-1 overflow-hidden mb-3" style={{ minHeight: 320 }}>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg, i) => (
+            {messages.map((msg, i) => {
+              if (msg.role === 'confirm') {
+                return (
+                  <div key={i} className="flex justify-start w-full">
+                    <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 rounded-2xl p-4 w-full max-w-[90%]">
+                      <p className="font-semibold text-violet-700 dark:text-violet-300 text-sm mb-3">📋 Shu fhemto / What I understood:</p>
+                      <div className="space-y-2 mb-4">
+                        {msg.transactions.map((tx, ti) => (
+                          <div key={ti} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-xl px-3 py-2.5 shadow-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{CAT_ICONS[tx.category] || '📦'}</span>
+                              <div>
+                                <p className="text-sm font-semibold text-gray-800 dark:text-white">{tx.description}</p>
+                                <p className="text-xs text-gray-400">{tx.category} · {tx.date}</p>
+                              </div>
+                            </div>
+                            <p className="text-sm font-bold text-violet-600">{currencySymbol}{parseFloat(tx.amount).toFixed(2)}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {!msg.confirmed && !msg.skipped && (
+                        <div className="flex gap-2">
+                          <button onClick={() => confirmTransactions(msg.transactions, i)}
+                            className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-violet-700 transition">
+                            ✓ Log {msg.transactions.length > 1 ? `all ${msg.transactions.length}` : 'it'}
+                          </button>
+                          <button onClick={() => skipTransactions(i)}
+                            className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-2.5 rounded-xl font-semibold text-sm">
+                            Skip
+                          </button>
+                        </div>
+                      )}
+                      {msg.confirmed && <p className="text-green-600 dark:text-green-400 text-sm font-bold text-center">✅ Logged successfully!</p>}
+                      {msg.skipped && <p className="text-gray-400 text-sm text-center">Skipped</p>}
+                    </div>
+                  </div>
+                )
+              }
+              return (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`flex items-start gap-2 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm ${
@@ -230,7 +317,8 @@ export default function Insights() {
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
             {loading && (
               <div className="flex justify-start">
                 <div className="flex items-start gap-2">
@@ -256,13 +344,24 @@ export default function Insights() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={listening ? 'Listening…' : 'Ask anything about your finances...'}
+                placeholder={listening ? (micLangMode === 'ar' ? '…بيسمعك' : 'Listening…') : 'Ask anything — English or Lebanese Arabic...'}
                 className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                dir={micLangMode === 'ar' && input && /[؀-ۿ]/.test(input) ? 'rtl' : 'ltr'}
               />
+              <button
+                onClick={toggleMicLang}
+                title={micLangMode === 'ar' ? 'Switch to English mic' : 'Switch to Arabic mic'}
+                className={`px-2.5 py-2.5 rounded-xl transition text-xs font-bold ${
+                  micLangMode === 'ar'
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                }`}>
+                {micLangMode === 'ar' ? 'ع' : 'EN'}
+              </button>
               <button
                 onClick={listening ? stopMic : startMic}
                 disabled={loading}
-                title={listening ? 'Stop listening' : 'Speak your question'}
+                title={listening ? 'Stop listening' : (micLangMode === 'ar' ? 'تحدث بالعربي' : 'Speak in English')}
                 className={`px-3 py-2.5 rounded-xl transition flex items-center justify-center ${
                   listening
                     ? 'bg-red-500 text-white'
