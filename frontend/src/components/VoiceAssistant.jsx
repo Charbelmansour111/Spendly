@@ -25,6 +25,7 @@ export default function VoiceAssistant({ onClose }) {
   const [inputHint, setInputHint] = useState('')
   const [textInput, setTextInput] = useState('')
   const [recurringConfirm, setRecurringConfirm] = useState(null)
+  const [multiExpenseConfirm, setMultiExpenseConfirm] = useState(null)
 
   const micLang = localStorage.getItem('spendly_lang_mic') || 'en-US'
   const responseLang = localStorage.getItem('spendly_lang_app') || localStorage.getItem('spendly_lang_response') || 'en-US'
@@ -181,6 +182,12 @@ export default function VoiceAssistant({ onClose }) {
         setInputHint('')
         setTimeout(() => { window.location.href = '/net-worth' }, 2500)
 
+      } else if (intent === 'add_multiple_expenses' && data?.expenses?.length) {
+        setRecurringConfirm(null)
+        setMultiExpenseConfirm({ expenses: data.expenses, unclear: data.unclear || [] })
+        setStatus('idle')
+        return
+
       } else if (intent === 'delete_last_expense') {
         const expenses = (await API.get('/expenses')).data || []
         if (!expenses.length) throw new Error('No expenses found')
@@ -261,6 +268,23 @@ export default function VoiceAssistant({ onClose }) {
     setRecurringConfirm(null)
     setStatus('idle')
   }
+
+  const confirmMultiple = async () => {
+    if (!multiExpenseConfirm) return
+    const { expenses } = multiExpenseConfirm
+    setMultiExpenseConfirm(null)
+    setStatus('processing')
+    setActionBanner({ state: 'loading', text: `Adding ${expenses.length} expenses...` })
+    try {
+      for (const exp of expenses) await API.post('/expenses', exp)
+      setActionBanner({ state: 'done', text: `${expenses.length} expenses logged`, nav: '/transactions' })
+      historyRef.current = []
+      setInputHint('')
+      setTimeout(() => { window.location.href = '/transactions' }, 2500)
+    } catch { setActionBanner({ state: 'error', text: 'Could not complete.' }) }
+    setStatus('done')
+  }
+  const cancelMultiple = () => { setMultiExpenseConfirm(null); setStatus('idle') }
 
   const startListening = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -418,6 +442,31 @@ export default function VoiceAssistant({ onClose }) {
             <div className="flex gap-2">
               <button onClick={confirmRecurring} className="flex-1 bg-violet-600 text-white py-2 rounded-xl text-sm font-bold hover:bg-violet-700 transition">Confirm</button>
               <button onClick={cancelRecurring} className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white py-2 rounded-xl text-sm font-semibold">Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {multiExpenseConfirm && (
+          <div className="mx-4 mb-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-2xl px-4 py-3">
+            <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200 mb-2">
+              {multiExpenseConfirm.expenses.length} expenses detected
+            </p>
+            <div className="space-y-1.5 mb-3">
+              {multiExpenseConfirm.expenses.map((exp, i) => (
+                <div key={i} className="flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-100/60 dark:bg-emerald-900/30 px-3 py-1.5 rounded-xl">
+                  <span className="font-medium">{exp.description || exp.category}</span>
+                  <span className="font-bold">{exp.amount}</span>
+                </div>
+              ))}
+              {multiExpenseConfirm.unclear.map((u, i) => (
+                <div key={`u${i}`} className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl">
+                  ⚠ {u.question}
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={confirmMultiple} className="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition">Confirm all</button>
+              <button onClick={cancelMultiple} className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white py-2 rounded-xl text-sm font-semibold">Cancel</button>
             </div>
           </div>
         )}

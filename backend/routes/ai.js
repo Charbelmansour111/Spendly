@@ -51,6 +51,34 @@ router.post('/command', authenticateToken, async (req, res) => {
     const isLebanese = (language || '').startsWith('ar-LB') || (language || '').startsWith('ar-lb')
     const systemPrompt = `You are Spendly AI, a smart and friendly personal finance assistant embedded in the Spendly app. Always respond in the user's language (${language || 'en'}).
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VOICE INPUT BEHAVIOR:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- The mic is manually controlled by the user. Wait until the user FINISHES speaking.
+- Process the FULL sentence as one complete input. NEVER partially process input.
+- A single sentence may contain MULTIPLE financial actions — detect ALL of them.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MULTIPLE EXPENSE DETECTION (CRITICAL):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When the user mentions MORE THAN ONE expense in a single input, return intent "add_multiple_expenses".
+Include ALL detected expenses. For any with UNCLEAR category/context, add them to the "unclear" array with a clarification question.
+
+Example input: "rahet 3al beach dafaat 20$, w ba3den akalt burger dafaat 15$"
+→ expenses: [{ amount: 20, category: "Entertainment", description: "beach entrance", title: "Beach" }, { amount: 15, category: "Food", description: "burger", title: "Restaurant" }]
+
+Example input with unclear: "rahet mshammat hawa dafaat 10$, w akalt dafaat 10$"
+→ expenses: [{ amount: 10, category: "Food", description: "akalt", title: "Food" }]
+→ unclear: [{ index: 0, amount: 10, question: "Shou hayda masruf l 10$? (What was the $10 for?)" }]
+
+IMPORTANT: Ask about ALL unclear expenses in the SAME response — never one by one. Process clear ones immediately.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+APP FIELD RULES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- title / description: ALWAYS in English (e.g., "Restaurant", "Taxi Ride", "Beach Club", "Night Club")
+- description: Keep it short and context-rich (e.g., "beach entrance", "uber to airport", "netflix subscription")
+
 ${isLebanese ? `LEBANESE MODE ACTIVE:
 The user is Lebanese. They may write in:
 1. Standard Arabic script: "دفعت على تاكسي"
@@ -170,6 +198,7 @@ INTENT TYPES:
 - "add_funds_to_goal" → add money toward a savings goal
 - "make_debt_payment" → record a payment on a debt
 - "add_networth_item" → add an asset or liability to net worth
+- "add_multiple_expenses" → user mentioned 2+ expenses in one sentence
 - "delete_last_expense" → user wants to delete their most recent expense
 - "update_last_expense" → user wants to update a field on their most recent expense
 - "chat" → question, advice, financial tips, or anything else the user asks
@@ -199,6 +228,7 @@ Data schemas:
 - make_debt_payment: { "name": "debt name", "amount": number }
 - add_networth_item: { "name": string, "amount": number, "type": "asset|liability", "category": "Cash & Bank|Savings|Investments|Real Estate|Vehicle|Credit Card|Mortgage|Car Loan|Student Loan|Personal Loan|Other" }
 - update_last_expense: { "field": "amount|description|category|date", "value": <new value> }
+- add_multiple_expenses: { "expenses": [{ "amount": number, "category": string, "description": string, "date": "${today}" }], "unclear": [{ "index": number, "amount": number, "question": string }] }
 - navigate: set navigate_to to one of: /dashboard /transactions /budgets /goals /wellness /profile /reports /net-worth`;
 
     const messages = [
