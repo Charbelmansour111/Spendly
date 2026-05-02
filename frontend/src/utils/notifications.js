@@ -1,6 +1,46 @@
 const STORAGE_KEY = 'spendly_notif_enabled'
 const LAST_NOTIF_KEY = 'spendly_last_notif'
 
+// Spendly signature chime — C5→E5→G5 chord sweep + descending coin finish
+export function playSpendlyChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const master = ctx.createGain()
+    master.gain.value = 0.55
+    master.connect(ctx.destination)
+
+    // Three rising notes: C5, E5, G5
+    const notes = [523.25, 659.25, 783.99]
+    notes.forEach((freq, i) => {
+      const osc  = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(master)
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      const t0 = ctx.currentTime + i * 0.155
+      gain.gain.setValueAtTime(0, t0)
+      gain.gain.linearRampToValueAtTime(0.6, t0 + 0.018)
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.38)
+      osc.start(t0); osc.stop(t0 + 0.42)
+    })
+
+    // Descending "coin drop" finish using triangle wave
+    const osc2  = ctx.createOscillator()
+    const gain2 = ctx.createGain()
+    osc2.connect(gain2); gain2.connect(master)
+    osc2.type = 'triangle'
+    const t1 = ctx.currentTime + 0.52
+    osc2.frequency.setValueAtTime(1047, t1)
+    osc2.frequency.exponentialRampToValueAtTime(523, t1 + 0.38)
+    gain2.gain.setValueAtTime(0, t1)
+    gain2.gain.linearRampToValueAtTime(0.5, t1 + 0.02)
+    gain2.gain.exponentialRampToValueAtTime(0.001, t1 + 0.42)
+    osc2.start(t1); osc2.stop(t1 + 0.46)
+
+    setTimeout(() => { try { ctx.close() } catch {} }, 1400)
+  } catch { /* AudioContext not available */ }
+}
+
 const PROMPTS = [
   "💸 Hey! Don't forget to log today's expenses.",
   "📊 Keep your budget on track — log your spending!",
@@ -36,6 +76,7 @@ export function disableNotifications() {
 export function sendExpenseReminder() {
   if (!isNotificationsEnabled()) return
   const msg = PROMPTS[Math.floor(Math.random() * PROMPTS.length)]
+  playSpendlyChime()
   new Notification('Spendly', {
     body: msg,
     icon: '/vite.svg',

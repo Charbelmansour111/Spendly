@@ -3,7 +3,7 @@ import Layout from '../components/Layout'
 import API from '../utils/api'
 import { t } from '../i18n'
 import { useDarkMode } from '../hooks/useDarkMode'
-import { requestNotificationPermission, isNotificationsEnabled, disableNotifications, scheduleReminders } from '../utils/notifications'
+import { requestNotificationPermission, isNotificationsEnabled, disableNotifications, scheduleReminders, playSpendlyChime } from '../utils/notifications'
 
 const CURRENCIES = ['USD','EUR','GBP','LBP','AED','SAR','CAD','AUD']
 const CURRENCY_SYMBOLS = { USD:'$',EUR:'€',GBP:'£',LBP:'L£',AED:'AED',SAR:'SAR',CAD:'C$',AUD:'A$' }
@@ -319,7 +319,7 @@ export default function Profile() {
                     } else {
                       const granted = await requestNotificationPermission()
                       setNotifEnabled(granted)
-                      if (granted) scheduleReminders()
+                      if (granted) { playSpendlyChime(); scheduleReminders() }
                     }
                   }}
                   className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifEnabled ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'}`}>

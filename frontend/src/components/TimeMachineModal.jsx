@@ -229,6 +229,26 @@ function Planet({ year, colors, eraName, size=160 }) {
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
+// ── TTS helpers ─────────────────────────────────────────────────────────────
+function stripEmoji(str) {
+  return str.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27FF}]/gu, '').trim()
+}
+
+function speakNow(text, rate = 0.92, pitch = 1.08) {
+  if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const utt = new SpeechSynthesisUtterance(stripEmoji(text))
+  utt.rate  = rate
+  utt.pitch = pitch
+  const voices = window.speechSynthesis.getVoices()
+  const pick = voices.find(v =>
+    /samantha|google uk english female|karen|victoria|fiona/i.test(v.name)
+  ) || voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
+    || voices.find(v => v.lang.startsWith('en'))
+  if (pick) utt.voice = pick
+  window.speechSynthesis.speak(utt)
+}
+
 export default function TimeMachineModal({ onClose, defaultAmount, currency='USD' }) {
   const sym = SYM[currency] || '$'
 
@@ -242,14 +262,27 @@ export default function TimeMachineModal({ onClose, defaultAmount, currency='USD
   const [talking,     setTalking]     = useState(false)
   const [mood,        setMood]        = useState('neutral')
   const [err,         setErr]         = useState('')
+  const [muted,       setMuted]       = useState(() => localStorage.getItem('spendly_tm_muted') === 'true')
 
   // Refs so onLineDone never reads stale state
   const linesRef    = useRef([])
   const lineIdxRef  = useRef(-1)
   const starsRef    = useRef(makeStars(42))
+  const mutedRef    = useRef(muted)
 
   useEffect(() => { linesRef.current   = lines   }, [lines])
   useEffect(() => { lineIdxRef.current = lineIdx }, [lineIdx])
+  useEffect(() => { mutedRef.current   = muted   }, [muted])
+
+  // Speak each line when it starts
+  useEffect(() => {
+    if (talking && lineIdx >= 0 && lines[lineIdx] && !mutedRef.current) {
+      speakNow(lines[lineIdx].text)
+    }
+  }, [lineIdx, talking]) // eslint-disable-line
+
+  // Cancel speech on unmount
+  useEffect(() => () => window.speechSynthesis?.cancel(), [])
 
   const theme = sketch ? getTheme(sketch.year) : getTheme(1970)
 
@@ -310,7 +343,15 @@ export default function TimeMachineModal({ onClose, defaultAmount, currency='USD
     }, 950)
   }
 
+  const toggleMute = () => {
+    const next = !muted
+    setMuted(next)
+    localStorage.setItem('spendly_tm_muted', String(next))
+    if (next) window.speechSynthesis?.cancel()
+  }
+
   const reset = () => {
+    window.speechSynthesis?.cancel()
     setPhase('input'); setSketch(null); setLines([])
     setLineIdx(-1); setWalking(false); setTalking(false); setMood('neutral')
     lineIdxRef.current = -1
@@ -336,9 +377,23 @@ export default function TimeMachineModal({ onClose, defaultAmount, currency='USD
         </div>
       )}
 
-      {/* Close */}
-      <div className="absolute top-4 right-4 z-20">
-        <button onClick={onClose}
+      {/* Controls: mute + close */}
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+        <button onClick={toggleMute} title={muted ? 'Unmute narrator' : 'Mute narrator'}
+          className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition">
+          {muted ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+          )}
+        </button>
+        <button onClick={() => { window.speechSynthesis?.cancel(); onClose() }}
           className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white text-sm font-bold transition">
           ✕
         </button>
