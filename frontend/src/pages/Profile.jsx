@@ -84,6 +84,10 @@ export default function Profile() {
   const [notifEnabled, setNotifEnabled] = useState(() => isNotificationsEnabled())
   const [shortcutCopied, setShortcutCopied] = useState(false)
   const [dark, toggleDark] = useDarkMode()
+  const [nwPin, setNwPin] = useState(() => localStorage.getItem('spendly_nw_pin') || '')
+  const [nwPinInput, setNwPinInput] = useState('')
+  const [nwPinConfirm, setNwPinConfirm] = useState('')
+  const [nwPinMode, setNwPinMode] = useState(null) // 'set' | 'remove'
 
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700/60 text-gray-900 dark:text-white text-sm transition"
   const showToast = (msg, type = 'success') => setToast({ message: msg, type })
@@ -398,6 +402,114 @@ export default function Profile() {
                 className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
                 {t('change_password')}
               </button>
+            </div>
+
+            {/* Net Worth PIN */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Net Worth PIN</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    {nwPin ? 'PIN is active' : 'No PIN set'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {nwPin ? 'Your Net Worth page is protected' : 'Protect your Net Worth page with a 4-digit PIN'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {nwPin && (
+                    <button onClick={() => { setNwPinInput(''); setNwPinConfirm(''); setNwPinMode('remove') }}
+                      className="text-xs font-bold text-red-500 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                      Remove
+                    </button>
+                  )}
+                  <button onClick={() => { setNwPinInput(''); setNwPinConfirm(''); setNwPinMode('set') }}
+                    className="text-xs font-bold text-violet-600 border border-violet-200 dark:border-violet-800 px-3 py-1.5 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
+                    {nwPin ? 'Change' : 'Set PIN'}
+                  </button>
+                </div>
+              </div>
+
+              {nwPinMode === 'set' && (
+                <div className="space-y-3 pt-1">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">New 4-digit PIN</label>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="••••"
+                      value={nwPinInput}
+                      onChange={e => setNwPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      className={cls}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">Confirm PIN</label>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="••••"
+                      value={nwPinConfirm}
+                      onChange={e => setNwPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      className={cls}
+                    />
+                    {nwPinConfirm.length === 4 && nwPinInput !== nwPinConfirm && (
+                      <p className="text-xs text-red-500 mt-1">PINs do not match</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setNwPinMode(null)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition">Cancel</button>
+                    <button
+                      disabled={nwPinInput.length !== 4 || nwPinInput !== nwPinConfirm}
+                      onClick={() => {
+                        localStorage.setItem('spendly_nw_pin', nwPinInput)
+                        setNwPin(nwPinInput)
+                        setNwPinMode(null)
+                        showToast('Net Worth PIN set')
+                      }}
+                      className="flex-1 py-3 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition disabled:opacity-50">
+                      Save PIN
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {nwPinMode === 'remove' && (
+                <div className="space-y-3 pt-1">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">Enter current PIN to confirm</label>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="••••"
+                      value={nwPinInput}
+                      onChange={e => setNwPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      className={cls}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setNwPinMode(null)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition">Cancel</button>
+                    <button
+                      disabled={nwPinInput.length !== 4}
+                      onClick={() => {
+                        if (nwPinInput !== nwPin) { showToast('Incorrect PIN', 'error'); return }
+                        localStorage.removeItem('spendly_nw_pin')
+                        setNwPin('')
+                        setNwPinMode(null)
+                        showToast('PIN removed')
+                      }}
+                      className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition disabled:opacity-50">
+                      Remove PIN
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

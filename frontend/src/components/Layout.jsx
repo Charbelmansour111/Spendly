@@ -292,7 +292,6 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
                 <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
                   {Icons[item.icon]?.(isActive)}
                 </span>
-                <span className="text-[10px] font-medium">{t(item.key)}</span>
               </a>
             )
           })}

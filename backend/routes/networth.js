@@ -5,20 +5,43 @@ const auth = require('../middleware/auth')
 
 router.get('/', auth, async (req, res) => {
   try {
-    const items = await pool.query(
-      'SELECT * FROM net_worth_items WHERE user_id=$1 ORDER BY type, category, name',
-      [req.userId]
-    )
-    const history = await pool.query(
-      'SELECT * FROM net_worth_snapshots WHERE user_id=$1 ORDER BY snapshot_date DESC LIMIT 6',
-      [req.userId]
-    )
-    const assets = items.rows.filter(i => i.type === 'asset')
-    const liabilities = items.rows.filter(i => i.type === 'liability')
+    const [items, history, savings, debts] = await Promise.all([
+      pool.query('SELECT * FROM net_worth_items WHERE user_id=$1 ORDER BY type, category, name', [req.userId]),
+      pool.query('SELECT * FROM net_worth_snapshots WHERE user_id=$1 ORDER BY snapshot_date DESC LIMIT 6', [req.userId]),
+      pool.query('SELECT * FROM savings_goals WHERE user_id=$1 AND saved_amount > 0', [req.userId]),
+      pool.query('SELECT * FROM debts WHERE user_id=$1 AND remaining_amount > 0', [req.userId]),
+    ])
+
+    // Auto-import savings goals as assets
+    const autoAssets = savings.rows.map(g => ({
+      id: `savings_${g.id}`,
+      user_id: req.userId,
+      name: g.name,
+      category: 'Savings',
+      amount: parseFloat(g.saved_amount),
+      type: 'asset',
+      source: 'auto',
+    }))
+
+    // Auto-import debts as liabilities
+    const DEBT_CAT_MAP = { 'Credit Card': 'Credit Card', 'Mortgage': 'Mortgage', 'Car Loan': 'Car Loan', 'Student Loan': 'Student Loan', 'Personal Loan': 'Personal Loan' }
+    const autoLiabilities = debts.rows.map(d => ({
+      id: `debt_${d.id}`,
+      user_id: req.userId,
+      name: d.name,
+      category: DEBT_CAT_MAP[d.category] || 'Personal Loan',
+      amount: parseFloat(d.remaining_amount),
+      type: 'liability',
+      source: 'auto',
+    }))
+
+    const allItems = [...items.rows, ...autoAssets, ...autoLiabilities]
+    const assets = allItems.filter(i => i.type === 'asset')
+    const liabilities = allItems.filter(i => i.type === 'liability')
     const totalAssets = assets.reduce((s, i) => s + parseFloat(i.amount), 0)
     const totalLiabilities = liabilities.reduce((s, i) => s + parseFloat(i.amount), 0)
     const netWorth = totalAssets - totalLiabilities
-    res.json({ items: items.rows, totalAssets, totalLiabilities, netWorth, history: history.rows })
+    res.json({ items: allItems, totalAssets, totalLiabilities, netWorth, history: history.rows })
   } catch (e) {
     console.error(e)
     res.status(500).json({ message: 'Server error' })
