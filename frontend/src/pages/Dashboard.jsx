@@ -1617,17 +1617,6 @@ export default function Dashboard() {
 
       </div>
 
-      {/* FAB — quick add expense */}
-      {!showAddExp && !showAddInc && !showQuickLog && (
-        <button
-          onClick={() => setShowAddExp(true)}
-          className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-20 w-14 h-14 bg-violet-600 hover:bg-violet-700 active:scale-90 rounded-2xl shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all"
-          aria-label="Add expense">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-        </button>
-      )}
     </Layout>
   )
 }
