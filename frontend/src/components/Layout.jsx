@@ -42,7 +42,7 @@ const TAB_ITEMS = [
   { href: '/transactions', icon: 'transactions', key: 'nav_transactions' },
   { href: '/goals',        icon: 'savings',      key: 'tab_goals' },
   { href: '/dashboard',    icon: 'home',         key: 'tab_home',    isCenter: true },
-  { href: '/reports',      icon: 'reports',      key: 'nav_reports' },
+  { href: '/net-worth',    icon: 'networth',     key: 'nav_networth' },
   { href: '/profile',      icon: 'profile',      key: 'nav_profile' },
 ]
 
