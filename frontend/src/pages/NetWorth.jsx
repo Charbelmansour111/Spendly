@@ -119,7 +119,7 @@ function PinModal({ onUnlock }) {
 
 export default function NetWorth() {
   const hasPinSet = !!localStorage.getItem('spendly_nw_pin')
-  const [pinUnlocked, setPinUnlocked] = useState(!hasPinSet)
+  const [pinUnlocked, setPinUnlocked] = useState(false)
   const [data, setData] = useState({ items: [], totalAssets: 0, totalLiabilities: 0, netWorth: 0, cashBalance: 0, history: [] })
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
@@ -214,7 +214,7 @@ export default function NetWorth() {
 
   const cats = type => type === 'asset' ? ASSET_CATEGORIES : LIABILITY_CATEGORIES
 
-  if (!pinUnlocked) return <PinModal onUnlock={() => setPinUnlocked(true)} />
+  if (hasPinSet && !pinUnlocked) return <PinModal onUnlock={() => setPinUnlocked(true)} />
 
   if (loading) return (
     <Layout>
