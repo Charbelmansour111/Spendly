@@ -141,6 +141,23 @@ async function migrate() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        subscription JSONB NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id)
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_activity (
+        user_id INTEGER PRIMARY KEY,
+        last_seen DATE NOT NULL DEFAULT CURRENT_DATE
+      )
+    `);
+
     console.log('DB migration complete');
   } catch (e) {
     console.error('DB migration error:', e.message);

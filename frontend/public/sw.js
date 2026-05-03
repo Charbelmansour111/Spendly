@@ -31,6 +31,31 @@ self.addEventListener('activate', e => {
   )
 })
 
+self.addEventListener('push', e => {
+  const data = e.data?.json() || {};
+  e.waitUntil(
+    self.registration.showNotification(data.title || 'Spendly', {
+      body: data.body || '',
+      icon: data.icon || '/icon-192.png',
+      badge: data.badge || '/icon-192.png',
+      tag: data.tag || 'spendly',
+      data: { url: data.url || '/dashboard' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/dashboard';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const existing = list.find(c => c.url.includes(self.location.origin));
+      if (existing) { existing.focus(); existing.navigate(url); }
+      else clients.openWindow(url);
+    })
+  );
+});
+
 self.addEventListener('fetch', e => {
   const { request } = e
   const url = new URL(request.url)

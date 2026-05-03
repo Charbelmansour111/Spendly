@@ -51,7 +51,6 @@ import Reports from './pages/Reports'
 import Wellness from './pages/Wellness'
 import Transactions from './pages/Transactions'
 import NetWorth from './pages/NetWorth'
-import VoicePage from './pages/VoicePage'
 import QuickAdd from './pages/QuickAdd'
 import Subscriptions from './pages/Subscriptions'
 import Terms from './pages/Terms'
@@ -94,7 +93,6 @@ function App() {
         <Route path="/wellness"              element={<Wellness />} />
         <Route path="/transactions"          element={<Transactions />} />
         <Route path="/net-worth"             element={<NetWorth />} />
-        <Route path="/voice"                 element={<VoicePage />} />
         <Route path="/quick-add"             element={<QuickAdd />} />
 
         <Route path="/business"              element={<Navigate to="/dashboard" replace />} />

@@ -3,7 +3,7 @@ import Layout from '../components/Layout'
 import API from '../utils/api'
 import { t } from '../i18n'
 import { useDarkMode } from '../hooks/useDarkMode'
-import { requestNotificationPermission, isNotificationsEnabled, disableNotifications, scheduleReminders, playSpendlyChime } from '../utils/notifications'
+import { requestNotificationPermission, isNotificationsEnabled, disableNotifications, unsubscribeFromPush, playSpendlyChime } from '../utils/notifications'
 
 const CURRENCIES = ['USD','EUR','GBP','LBP','AED','SAR','CAD','AUD']
 const CURRENCY_SYMBOLS = { USD:'$',EUR:'€',GBP:'£',LBP:'L£',AED:'AED',SAR:'SAR',CAD:'C$',AUD:'A$' }
@@ -84,7 +84,6 @@ export default function Profile() {
   const [notifEnabled, setNotifEnabled] = useState(() => isNotificationsEnabled())
   const [shortcutCopied, setShortcutCopied] = useState(false)
   const [dark, toggleDark] = useDarkMode()
-  const [quickVoice, setQuickVoice] = useState(() => localStorage.getItem('spendly_quick_voice') === '1')
   const [nwPin, setNwPin] = useState(() => localStorage.getItem('spendly_nw_pin') || '')
   const [nwPinInput, setNwPinInput] = useState('')
   const [nwPinConfirm, setNwPinConfirm] = useState('')
@@ -305,22 +304,23 @@ export default function Profile() {
                 </select>
               </Field>
 
-              {/* Expense reminder notifications */}
+              {/* Push notifications */}
               <div className="flex items-center justify-between py-1">
                 <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">🔔 Expense Reminders</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Get nudged to log your spending every ~8 hours</p>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">🔔 Notifications</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Daily reminders, budget warnings & more</p>
                 </div>
                 <button
                   type="button"
                   onClick={async () => {
                     if (notifEnabled) {
                       disableNotifications()
+                      unsubscribeFromPush()
                       setNotifEnabled(false)
                     } else {
                       const granted = await requestNotificationPermission()
                       setNotifEnabled(granted)
-                      if (granted) { playSpendlyChime(); scheduleReminders() }
+                      if (granted) playSpendlyChime()
                     }
                   }}
                   className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifEnabled ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
@@ -359,40 +359,6 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Quick Voice Access */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-gray-700 dark:text-white">🎙 Quick Voice Access</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Talk to Spendly from outside the app</p>
-                </div>
-                <button
-                  onClick={() => {
-                    const next = !quickVoice
-                    setQuickVoice(next)
-                    if (next) localStorage.setItem('spendly_quick_voice', '1')
-                    else localStorage.removeItem('spendly_quick_voice')
-                  }}
-                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${quickVoice ? 'bg-violet-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${quickVoice ? 'translate-x-6' : 'translate-x-0'}`} />
-                </button>
-              </div>
-              {quickVoice && (
-                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                  <p className="text-xs text-gray-400 mb-2">Bookmark this link or add to your home screen:</p>
-                  <div className="flex gap-2">
-                    <div className="flex-1 bg-gray-50 dark:bg-gray-700/50 rounded-xl px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 font-mono truncate select-all">
-                      {window.location.origin}/voice
-                    </div>
-                    <button
-                      onClick={() => window.open('/voice', '_blank')}
-                      className="bg-violet-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-violet-700 active:scale-95 transition shrink-0">
-                      Open
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         )}
 

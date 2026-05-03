@@ -21,6 +21,8 @@ const debtsRoutes = require('./routes/debts');
 const subscriptionsRoutes = require('./routes/subscriptions');
 const aiRoutes = require('./routes/ai');
 const networthRoutes = require('./routes/networth');
+const pushRoutes = require('./routes/push');
+const { startScheduler } = require('./services/scheduler');
 
 const app = express();
 
@@ -45,6 +47,7 @@ app.use('/api/debts', debtsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/networth', networthRoutes);
+app.use('/api/push', pushRoutes);
 app.use('/api/advisor', require('./routes/advisor'));
 app.use('/api/support', require('./routes/support'));
 
@@ -55,5 +58,6 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   await migrate();
+  startScheduler();
   console.log(`Server running on port ${PORT}`);
 });

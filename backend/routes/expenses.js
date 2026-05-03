@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const authenticateToken = require('../middleware/auth');
+const { sendPush } = require('../services/push');
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -30,6 +31,40 @@ router.post('/', authenticateToken, async (req, res) => {
       ]
     );
     res.status(201).json(result.rows[0]);
+
+    // Budget alert — fire and forget
+    if (category) {
+      const now = new Date();
+      const m = now.getMonth() + 1;
+      const y = now.getFullYear();
+      pool.query('SELECT amount FROM budgets WHERE user_id=$1 AND category=$2', [req.userId, category])
+        .then(async (bRes) => {
+          if (!bRes.rows.length) return;
+          const limit = parseFloat(bRes.rows[0].amount);
+          const spentRes = await pool.query(
+            'SELECT COALESCE(SUM(amount),0) as total FROM expenses WHERE user_id=$1 AND category=$2 AND EXTRACT(MONTH FROM date)=$3 AND EXTRACT(YEAR FROM date)=$4',
+            [req.userId, category, m, y]
+          );
+          const spent = parseFloat(spentRes.rows[0].total);
+          const pct = spent / limit;
+          if (pct >= 1.0) {
+            sendPush(req.userId, {
+              title: 'Budget Exceeded 🚨',
+              body: `You went over your ${category} budget! ($${spent.toFixed(0)} of $${limit.toFixed(0)})`,
+              icon: '/icon-192.png', badge: '/icon-192.png',
+              url: '/budgets', tag: `budget-over-${category}`,
+            });
+          } else if (pct >= 0.8) {
+            sendPush(req.userId, {
+              title: 'Budget Warning ⚠️',
+              body: `${category} is ${Math.round(pct * 100)}% used — $${spent.toFixed(0)} of $${limit.toFixed(0)}`,
+              icon: '/icon-192.png', badge: '/icon-192.png',
+              url: '/budgets', tag: `budget-warn-${category}`,
+            });
+          }
+        })
+        .catch(() => {});
+    }
   } catch (e) {
     console.log('Expense error:', e);
     res.status(500).json({ message: 'Server error' });

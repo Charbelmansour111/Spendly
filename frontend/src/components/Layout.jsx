@@ -172,6 +172,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
     }
   }
   useEffect(() => () => { isPullingRef.current = false }, [])
+
   const current = window.location.pathname
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
