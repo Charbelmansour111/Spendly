@@ -322,10 +322,13 @@ router.post('/time-machine', authenticateToken, async (req, res) => {
     const a = parseFloat(amount);
     const currentYear = new Date().getFullYear();
 
-    if (!y || y < 1900 || y > 2100) return res.status(400).json({ error: 'Invalid year' });
+    if (isNaN(y) || y < -2000 || y > 2100) return res.status(400).json({ error: 'Invalid year' });
 
+    const displayYear = y < 0 ? `${Math.abs(y)} BC` : String(y);
+
+    // CPI for modern era; ancient/medieval eras use narrative equivalents
     const CPI = {
-      1900:8.3, 1905:9.1, 1910:9.9, 1915:10.1, 1920:20.0,
+      1800:13.0,1850:10.6,1900:8.3, 1905:9.1, 1910:9.9, 1915:10.1,1920:20.0,
       1925:17.5,1930:16.7,1935:13.7,1940:14.0, 1945:18.0,
       1950:24.1,1955:26.8,1960:29.6,1965:31.5, 1970:38.8,
       1975:53.8,1980:82.4,1985:107.6,1990:130.7,1995:152.4,
@@ -335,6 +338,7 @@ router.post('/time-machine', authenticateToken, async (req, res) => {
       2040:433.0,2050:527.0,2060:642.0,2100:1590.0,
     };
     const getCPI = (yr) => {
+      if (yr < 1800) return 2.0; // ancient/medieval era — money was worth vastly more
       if (CPI[yr]) return CPI[yr];
       const keys = Object.keys(CPI).map(Number).sort((a,b)=>a-b);
       const before = [...keys].filter(k=>k<=yr).pop();
@@ -347,33 +351,40 @@ router.post('/time-machine', authenticateToken, async (req, res) => {
     const adjustedAmount = (a * getCPI(y) / getCPI(currentYear)).toFixed(2);
     const isPast   = y < currentYear;
     const isFuture = y > currentYear;
+    const timeDesc = y < 0
+      ? `${Math.abs(y)} years before the Common Era (ancient world)`
+      : isPast ? `${currentYear - y} years in the past` : `${y - currentYear} years in the future`;
 
-    const prompt = `You are "Spendly" — a hilariously sarcastic AI financial mascot doing a 30-second comedy sketch.
+    const prompt = `You are "Spendly" — a wildly entertaining AI narrator doing a fun 45-second time travel story.
 
 User in ${currentYear} has ${currency} ${a.toFixed(2)}.
-They're time-traveling to: ${y}${isPast ? ` (${currentYear-y} years in the past)` : isFuture ? ` (${y-currentYear} years in the future)` : ' (the present)'}
-${isPast ? `Their money then: ${currency} ${adjustedAmount} (inflation-adjusted)` : `Their money then: ${currency} ${adjustedAmount} (projected)`}
+Destination: ${displayYear} (${timeDesc})
+Buying power then: ${y >= 1800 ? `${currency} ${adjustedAmount} inflation-adjusted` : `ancient times — gold & barter era, equivalent to several months of a craftsman's wages`}
 
-Return ONLY this exact JSON — no markdown, no extra text. Keep each string under 140 characters:
+Write SIX short punchy lines (each under 120 chars). Be funny, accurate, dramatic, exciting. Use real historical facts.
+Return ONLY this exact JSON — no markdown, no extra text:
 {
-  "eraName": "funny 4-word nickname for this era",
-  "greeting": "1 punchy sentence reacting to ${y} — mention ONE real historical fact or event from that exact year",
-  "context": "1 ACCURATE sentence about what things cost or what was economically notable in ${y}",
-  "roast": "1 savage sarcastic line: mock what they could have done with ${currency} ${a.toFixed(2)} in ${y}, or mock the future",
-  "funFact": "1 wild price comparison — what could ${currency} ${a.toFixed(2)} literally buy in ${y}?",
+  "eraName": "catchy 3-4 word era nickname",
+  "line1": "SHOCK: react to arriving in ${displayYear} — one jaw-dropping real fact from this era",
+  "line2": "LIFE: describe daily life vividly — what people ate, wore, feared, or celebrated in ${displayYear}",
+  "line3": "MONEY BOMBSHELL: with ${currency} ${a.toFixed(2)} in ${displayYear} you could buy [hilarious specific thing] — be exact and funny",
+  "line4": "ROAST: savage sarcastic comparison between ${displayYear} and modern life — mock one specific thing",
+  "line5": "WILD TWIST: one mind-blowing thing that happened/will happen near ${displayYear} that changes everything",
+  "line6": "CLOSING: funny summary — could they buy a house? a goat? a spaceship? wrap it up with energy!",
   "mood": "shocked",
+  "sceneEmoji": ["era-fitting emoji 1","emoji 2","emoji 3","emoji 4","emoji 5"],
   "planetColors": ["#hex1","#hex2"],
   "recommendations": [
-    {"year":number,"label":"why it is historically wild"},
-    {"year":number,"label":"..."},
-    {"year":number,"label":"..."}
+    {"year": number, "label": "why visit (under 30 chars)"},
+    {"year": number, "label": "why visit"},
+    {"year": number, "label": "why visit"}
   ]
 }`;
 
-    const aiReply = await callAI([{ role: 'user', content: prompt }], 560);
+    const aiReply = await callAI([{ role: 'user', content: prompt }], 900);
     const json = JSON.parse(aiReply.trim().replace(/```json|```/g,'').trim());
 
-    res.json({ ...json, adjustedAmount, originalAmount: a, currency, year: y, currentYear });
+    res.json({ ...json, adjustedAmount, originalAmount: a, currency, year: y, currentYear, displayYear });
   } catch(e) {
     console.error('Time machine error:', e.message);
     res.status(500).json({ error: 'Time machine broke' });
