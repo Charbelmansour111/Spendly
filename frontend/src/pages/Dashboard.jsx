@@ -7,6 +7,7 @@ import { DashboardSkeleton } from '../components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Onboarding from '../components/Onboarding'
 import MonthlyWrap from '../components/MonthlyWrap'
+import { requestNotificationPermission, isNotificationsEnabled } from '../utils/notifications'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
@@ -699,6 +700,9 @@ export default function Dashboard() {
   const [dismissedGoals, setDismissedGoals] = useState(() => {
     try { return JSON.parse(localStorage.getItem('spendly_dismissed_goals') || '[]') } catch { return [] }
   })
+  const [showNotifPrompt, setShowNotifPrompt] = useState(() =>
+    !localStorage.getItem('spendly_notif_asked') && !isNotificationsEnabled()
+  )
 
   // Monthly Wrap
   const [showWrap, setShowWrap] = useState(false)
@@ -963,6 +967,27 @@ export default function Dashboard() {
       {showAddInc   && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}
       {showVoice    && <VoiceAssistant onClose={() => setShowVoice(false)} />}
       {showWrap && <MonthlyWrap onClose={() => { localStorage.setItem(wrapKey, '1'); setShowWrap(false) }} />}
+
+      {/* Push notification prompt banner */}
+      {showNotifPrompt && (
+        <div className="fixed top-0 left-0 right-0 z-40 bg-violet-600 text-white px-4 py-3 flex items-center gap-3 shadow-lg">
+          <span className="text-lg">🔔</span>
+          <span className="flex-1 text-sm font-medium">Get budget alerts &amp; daily reminders</span>
+          <button
+            onClick={async () => {
+              localStorage.setItem('spendly_notif_asked', '1')
+              setShowNotifPrompt(false)
+              await requestNotificationPermission()
+            }}
+            className="bg-white text-violet-700 font-semibold text-sm px-4 py-1.5 rounded-xl shrink-0"
+          >Enable</button>
+          <button
+            onClick={() => { localStorage.setItem('spendly_notif_asked', '1'); setShowNotifPrompt(false) }}
+            className="text-violet-200 text-xl leading-none shrink-0"
+            aria-label="Dismiss"
+          >×</button>
+        </div>
+      )}
 
       {/* AI Behavior Alert */}
       {behaviorAlert && (

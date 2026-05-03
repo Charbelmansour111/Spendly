@@ -158,6 +158,17 @@ async function migrate() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS net_worth_adjustments (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        amount DECIMAL(12,2) NOT NULL,
+        description VARCHAR(255),
+        type VARCHAR(30) DEFAULT 'other',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
     console.log('DB migration complete');
   } catch (e) {
     console.error('DB migration error:', e.message);

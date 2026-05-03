@@ -56,11 +56,23 @@ router.patch('/:id/complete', authenticateToken, async (req, res) => {
 router.patch('/:id', authenticateToken, async (req, res) => {
   try {
     const { remaining_amount } = req.body;
+    const prev = await pool.query('SELECT * FROM debts WHERE id=$1 AND user_id=$2', [req.params.id, req.userId]);
     const result = await pool.query(
       'UPDATE debts SET remaining_amount = $1 WHERE id = $2 AND user_id = $3 RETURNING *',
       [remaining_amount, req.params.id, req.userId]
     );
     res.json(result.rows[0]);
+
+    // Record payment as a cash deduction in net worth
+    if (prev.rows[0]) {
+      const payment = parseFloat(prev.rows[0].remaining_amount) - parseFloat(remaining_amount);
+      if (payment > 0) {
+        pool.query(
+          `INSERT INTO net_worth_adjustments (user_id, amount, description, type) VALUES ($1,$2,$3,'debt_payment')`,
+          [req.userId, -payment, `Debt payment: ${prev.rows[0].name}`]
+        ).catch(() => {});
+      }
+    }
   } catch { res.status(500).json({ message: 'Server error' }) }
 });
 

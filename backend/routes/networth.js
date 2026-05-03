@@ -5,25 +5,32 @@ const auth = require('../middleware/auth')
 
 router.get('/', auth, async (req, res) => {
   try {
-    const [items, history, savings, debts] = await Promise.all([
+    const [items, history, debts, incomeRes, expenseRes, adjRes] = await Promise.all([
       pool.query('SELECT * FROM net_worth_items WHERE user_id=$1 ORDER BY type, category, name', [req.userId]),
       pool.query('SELECT * FROM net_worth_snapshots WHERE user_id=$1 ORDER BY snapshot_date DESC LIMIT 6', [req.userId]),
-      pool.query('SELECT * FROM savings_goals WHERE user_id=$1 AND saved_amount > 0', [req.userId]),
       pool.query('SELECT * FROM debts WHERE user_id=$1 AND remaining_amount > 0', [req.userId]),
+      pool.query('SELECT COALESCE(SUM(amount),0) AS total FROM income WHERE user_id=$1', [req.userId]),
+      pool.query('SELECT COALESCE(SUM(amount),0) AS total FROM expenses WHERE user_id=$1', [req.userId]),
+      pool.query('SELECT COALESCE(SUM(amount),0) AS total FROM net_worth_adjustments WHERE user_id=$1', [req.userId]),
     ])
 
-    // Auto-import savings goals as assets
-    const autoAssets = savings.rows.map(g => ({
-      id: `savings_${g.id}`,
-      user_id: req.userId,
-      name: g.name,
-      category: 'Savings',
-      amount: parseFloat(g.saved_amount),
-      type: 'asset',
-      source: 'auto',
-    }))
+    // Cash balance = all-time income − all-time expenses + adjustments (adjustments are negative)
+    const cashBalance = parseFloat(incomeRes.rows[0].total)
+      - parseFloat(expenseRes.rows[0].total)
+      + parseFloat(adjRes.rows[0].total)
 
-    // Auto-import debts as liabilities
+    const cashItem = {
+      id: 'auto_cash',
+      user_id: req.userId,
+      name: 'Cash Balance',
+      category: 'Cash & Bank',
+      amount: cashBalance,
+      type: 'asset',
+      source: 'computed',
+    }
+
+    // Auto-import debts as liabilities (savings goals are NOT auto-imported —
+    // they only affect net worth when completed via the goal Paid button)
     const DEBT_CAT_MAP = { 'Credit Card': 'Credit Card', 'Mortgage': 'Mortgage', 'Car Loan': 'Car Loan', 'Student Loan': 'Student Loan', 'Personal Loan': 'Personal Loan' }
     const autoLiabilities = debts.rows.map(d => ({
       id: `debt_${d.id}`,
@@ -35,13 +42,13 @@ router.get('/', auth, async (req, res) => {
       source: 'auto',
     }))
 
-    const allItems = [...items.rows, ...autoAssets, ...autoLiabilities]
+    const allItems = [cashItem, ...items.rows, ...autoLiabilities]
     const assets = allItems.filter(i => i.type === 'asset')
     const liabilities = allItems.filter(i => i.type === 'liability')
     const totalAssets = assets.reduce((s, i) => s + parseFloat(i.amount), 0)
     const totalLiabilities = liabilities.reduce((s, i) => s + parseFloat(i.amount), 0)
     const netWorth = totalAssets - totalLiabilities
-    res.json({ items: allItems, totalAssets, totalLiabilities, netWorth, history: history.rows })
+    res.json({ items: allItems, totalAssets, totalLiabilities, netWorth, cashBalance, history: history.rows })
   } catch (e) {
     console.error(e)
     res.status(500).json({ message: 'Server error' })

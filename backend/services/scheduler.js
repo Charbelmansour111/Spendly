@@ -55,7 +55,94 @@ function startScheduler() {
     }
   });
 
-  console.log('[scheduler] Cron jobs started');
+  // 1st of month at 9 AM — monthly spending summary
+  cron.schedule('0 9 1 * *', async () => {
+    console.log('[scheduler] Sending monthly summaries');
+    const now = new Date();
+    const lastMonth = now.getMonth() === 0 ? 12 : now.getMonth();
+    const lastYear  = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    const monthName = new Date(lastYear, lastMonth - 1, 1).toLocaleString('default', { month: 'long' });
+    try {
+      const subs = await pool.query('SELECT user_id FROM push_subscriptions');
+      for (const { user_id } of subs.rows) {
+        const r = await pool.query(
+          `SELECT COALESCE(SUM(amount),0) as total, COUNT(*) as cnt
+           FROM expenses WHERE user_id=$1
+           AND EXTRACT(MONTH FROM date)=$2 AND EXTRACT(YEAR FROM date)=$3`,
+          [user_id, lastMonth, lastYear]
+        );
+        const total = parseFloat(r.rows[0].total).toFixed(2);
+        const cnt   = parseInt(r.rows[0].cnt);
+        if (cnt > 0) {
+          await sendPush(user_id, {
+            title: `${monthName} Summary 📅`,
+            body: `You logged ${cnt} expenses totalling $${total} last month. New month, fresh start!`,
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            url: '/reports',
+            tag: 'monthly-summary',
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[scheduler] Monthly summary error:', e.message);
+    }
+  });
+
+  // Daily 10 AM — subscription renewals in 1–2 days
+  cron.schedule('0 10 * * *', async () => {
+    console.log('[scheduler] Checking subscription renewals');
+    try {
+      const rows = await pool.query(
+        `SELECT s.user_id, s.name, s.amount,
+                s.next_billing_date::date - CURRENT_DATE AS days_until
+         FROM subscriptions s
+         JOIN push_subscriptions p ON p.user_id = s.user_id
+         WHERE s.next_billing_date::date - CURRENT_DATE IN (1, 2)
+           AND s.next_billing_date IS NOT NULL`
+      );
+      for (const row of rows.rows) {
+        const when = row.days_until === 1 ? 'tomorrow' : 'in 2 days';
+        await sendPush(row.user_id, {
+          title: 'Subscription Renewing 💳',
+          body: `${row.name} renews ${when} for $${parseFloat(row.amount).toFixed(2)}`,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          url: '/subscriptions',
+          tag: `sub-renewal-${row.name}`,
+        });
+      }
+    } catch (e) {
+      console.error('[scheduler] Subscription renewal error:', e.message);
+    }
+  });
+
+  // Daily 6 PM — inactivity nudge (3+ days since last seen)
+  cron.schedule('0 18 * * *', async () => {
+    console.log('[scheduler] Checking inactive users');
+    try {
+      const rows = await pool.query(
+        `SELECT p.user_id FROM push_subscriptions p
+         LEFT JOIN user_activity a ON a.user_id = p.user_id
+         WHERE a.last_seen IS NULL
+            OR CURRENT_DATE - a.last_seen >= 3`
+      );
+      for (const { user_id } of rows.rows) {
+        await sendPush(user_id, {
+          title: 'Miss you on Spendly 👋',
+          body: "You haven't logged any expenses in a few days. Stay on top of your budget!",
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          url: '/dashboard',
+          tag: 'inactivity',
+        });
+      }
+    } catch (e) {
+      console.error('[scheduler] Inactivity error:', e.message);
+    }
+  });
+
+  console.log('[scheduler] Cron jobs started (daily reminders, monthly summary, renewals, inactivity)');
 }
 
 module.exports = { startScheduler };

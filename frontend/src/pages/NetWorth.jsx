@@ -120,7 +120,7 @@ function PinModal({ onUnlock }) {
 export default function NetWorth() {
   const hasPinSet = !!localStorage.getItem('spendly_nw_pin')
   const [pinUnlocked, setPinUnlocked] = useState(!hasPinSet)
-  const [data, setData] = useState({ items: [], totalAssets: 0, totalLiabilities: 0, netWorth: 0, history: [] })
+  const [data, setData] = useState({ items: [], totalAssets: 0, totalLiabilities: 0, netWorth: 0, cashBalance: 0, history: [] })
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [modal, setModal] = useState(null) // { type: 'asset'|'liability', item?: existing }
@@ -198,6 +198,7 @@ export default function NetWorth() {
   const assets = data.items.filter(i => i.type === 'asset')
   const liabilities = data.items.filter(i => i.type === 'liability')
   const netWorth = data.netWorth
+  const cashBalance = safeNum(data.cashBalance)
   const trend = data.history.length >= 2
     ? netWorth - safeNum(data.history[1]?.net_worth)
     : null
@@ -249,12 +250,23 @@ export default function NetWorth() {
 
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div className="bg-white/15 rounded-2xl px-4 py-3">
-                <p className="text-white/70 text-xs mb-0.5">Total Assets</p>
-                <p className="text-white font-bold text-base tabular-nums">{fmtFull(data.totalAssets, sym)}</p>
+                <p className="text-white/70 text-xs mb-0.5">Net Worth in Cash</p>
+                <p className={`font-bold text-base tabular-nums ${cashBalance >= 0 ? 'text-white' : 'text-rose-200'}`}>{fmtFull(cashBalance, sym)}</p>
               </div>
               <div className="bg-white/15 rounded-2xl px-4 py-3">
                 <p className="text-white/70 text-xs mb-0.5">Total Liabilities</p>
                 <p className="text-white font-bold text-base tabular-nums">{fmtFull(data.totalLiabilities, sym)}</p>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="bg-white/15 rounded-2xl px-4 py-3">
+                <p className="text-white/70 text-xs mb-0.5">Total Assets</p>
+                <p className="text-white font-bold text-base tabular-nums">{fmtFull(data.totalAssets, sym)}</p>
+              </div>
+              <div className="bg-white/15 rounded-2xl px-4 py-3">
+                <p className="text-white/70 text-xs mb-0.5">Assets excl. Cash</p>
+                <p className="text-white font-bold text-base tabular-nums">{fmtFull(safeNum(data.totalAssets) - cashBalance, sym)}</p>
               </div>
             </div>
 
@@ -327,7 +339,7 @@ export default function NetWorth() {
           color="rose"
         />
 
-        <p className="text-center text-xs text-gray-400 pb-2">Savings goals & debts are synced automatically</p>
+        <p className="text-center text-xs text-gray-400 pb-2">Cash balance updates with every transaction · Debts sync automatically</p>
       </div>
 
       {/* Add / Edit modal */}
@@ -450,9 +462,9 @@ function Section({ title, total, sym, items, type, groupBy, onAdd, onEdit, onDel
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{item.name}</p>
                   </div>
-                  <p className="text-sm font-bold text-gray-900 dark:text-white tabular-nums shrink-0">{fmtFull(safeNum(item.amount), sym)}</p>
-                  {item.source === 'auto' ? (
-                    <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full shrink-0">auto</span>
+                  <p className={`text-sm font-bold tabular-nums shrink-0 ${item.source === 'computed' && safeNum(item.amount) < 0 ? 'text-rose-500' : 'text-gray-900 dark:text-white'}`}>{fmtFull(safeNum(item.amount), sym)}</p>
+                  {item.source === 'auto' || item.source === 'computed' ? (
+                    <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full shrink-0">{item.source === 'computed' ? 'auto' : 'auto'}</span>
                   ) : (
                     <div className="flex items-center gap-1 shrink-0">
                       <button onClick={() => onEdit(item)} className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">

@@ -226,8 +226,8 @@ export default function Goals() {
     try {
       const r = await API.patch(`/savings/${goal.id}/complete`)
       fetchAll()
-      showToast(r.data.addedToNetWorth
-        ? `🎉 Goal complete! ${sym}${safeNum(r.data.savedAmount).toFixed(2)} added to Net Worth.`
+      showToast(r.data.deductedFromCash
+        ? `🎉 Goal paid! ${sym}${safeNum(r.data.savedAmount).toFixed(2)} deducted from your cash balance.`
         : `🎉 "${goal.name}" archived!`)
     } catch { showToast('Error completing goal', 'error') }
   }
