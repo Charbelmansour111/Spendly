@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useLocation } from 'react-router-dom'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 
@@ -119,18 +118,12 @@ function PinModal({ onUnlock }) {
 }
 
 export default function NetWorth() {
-  const location = useLocation()
   const hasPinSet = !!localStorage.getItem('spendly_nw_pin')
   const [pinUnlocked, setPinUnlocked] = useState(false)
   const [data, setData] = useState({ items: [], totalAssets: 0, totalLiabilities: 0, netWorth: 0, cashBalance: 0, history: [] })
-
-  // Lock every time the user navigates to this page
-  useEffect(() => {
-    if (hasPinSet) setPinUnlocked(false)
-  }, [location.key]) // eslint-disable-line react-hooks/exhaustive-deps
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
-  const [modal, setModal] = useState(null) // { type: 'asset'|'liability', item?: existing }
+  const [modal, setModal] = useState(null)
   const [form, setForm] = useState({ name: '', category: '', amount: '' })
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState(null)

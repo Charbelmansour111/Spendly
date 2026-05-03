@@ -61,6 +61,11 @@ import Privacy from './pages/Privacy'
 // import AdvisorDirectory from './pages/AdvisorDirectory'
 // import AdminAdvisors from './pages/AdminAdvisors'
 
+function NetWorthGuarded() {
+  const { key } = useLocation()
+  return <NetWorth key={key} />
+}
+
 function App() {
   useEffect(() => {
     if (localStorage.getItem('token')) scheduleReminders()
@@ -92,7 +97,7 @@ function App() {
         <Route path="/insights"              element={<Navigate to="/reports" replace />} />
         <Route path="/wellness"              element={<Wellness />} />
         <Route path="/transactions"          element={<Transactions />} />
-        <Route path="/net-worth"             element={<NetWorth />} />
+        <Route path="/net-worth"             element={<NetWorthGuarded />} />
         <Route path="/quick-add"             element={<QuickAdd />} />
 
         <Route path="/business"              element={<Navigate to="/dashboard" replace />} />
