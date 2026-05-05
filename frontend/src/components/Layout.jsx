@@ -271,27 +271,27 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
 
       {/* Mobile bottom tab bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700/60">
-        {/* Fixed-height icon+label strip at the very top */}
-        <div className="flex" style={{ height: 54 }}>
+        {/* Icons + labels pinned to the top of the bar */}
+        <div className="flex pt-3 pb-1 px-1">
           {TAB_ITEMS.map(item => {
             const isActive = current === item.href
             if (item.isCenter) {
               return (
                 <button key={item.href} onClick={handleDashTabClick}
-                  className="flex-1 flex flex-col items-center justify-start pt-1.5 gap-1 active:scale-90 transition-all">
+                  className="flex-1 flex flex-col items-center gap-1 active:scale-90 transition-all">
                   <div className={`rounded-2xl flex items-center justify-center shadow-md transition-all ${
                     isActive ? 'bg-violet-600 shadow-violet-400/40' : 'bg-violet-600 shadow-violet-400/30'
-                  }`} style={{ width: 44, height: 36 }}>
+                  }`} style={{ width: 46, height: 30 }}>
                     <span className="text-white">{Icons[item.icon]?.(true)}</span>
                   </div>
-                  <span className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 leading-none">{item.label}</span>
+                  <span className="text-[10px] font-bold text-violet-600 dark:text-violet-400 leading-none">{item.label}</span>
                 </button>
               )
             }
             return (
               <a key={item.href} href={item.href}
-                className={`flex-1 flex flex-col items-center justify-start pt-2 gap-1 active:scale-90 transition-all relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                {isActive && <span className="absolute top-0 inset-x-1/4 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
+                className={`flex-1 flex flex-col items-center gap-1 active:scale-90 transition-all relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                {isActive && <span className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
                 <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
                   {Icons[item.icon]?.(isActive)}
                 </span>
@@ -300,8 +300,8 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
             )
           })}
         </div>
-        {/* Safe-area spacer — fills home-indicator area on iPhone */}
-        <div style={{ height: 'env(safe-area-inset-bottom, 10px)' }} />
+        {/* Always-visible bottom gap + iPhone home-indicator safe area */}
+        <div style={{ height: 'calc(16px + env(safe-area-inset-bottom, 0px))' }} />
       </nav>
 
       {showVoice && <VoiceAssistant onClose={() => setShowVoice(false)} />}
