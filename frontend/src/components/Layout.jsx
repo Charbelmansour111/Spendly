@@ -6,20 +6,26 @@ import TourBanner from './TourBanner'
 import { t, isRTL } from '../i18n'
 
 const Icons = {
-  home: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.15:0}/><path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
+  // Dashboard — 2×2 grid (clean, modern)
+  home: (a) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.9" fill={a?'currentColor':'none'} fillOpacity={a?0.18:0}/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.9" fill={a?'currentColor':'none'} fillOpacity={a?0.18:0}/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.9" fill={a?'currentColor':'none'} fillOpacity={a?0.18:0}/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.9" fill={a?'currentColor':'none'} fillOpacity={a?0.18:0}/></svg>),
+  // Transactions — receipt with lines
+  transactions: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6 2L3 6v13a1 1 0 001 1h16a1 1 0 001-1V6l-3-4H6z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M8 11h8M8 15h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M3 6h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
+  // Goals — flag/target
+  savings: (a) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.15:0}/><line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
+  // Net Worth — trending up
+  networth: (a) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><polyline points="2 18 9 11 13 15 22 6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><polyline points="16 6 22 6 22 12" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>),
+  // Profile — person
+  profile: (a) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.15:0}/><path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
+  // Sidebar-only icons below
   reports: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.1:0}/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   ai: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.1:0}/><path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
-  savings: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M19 7H5a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.1:0}/><path d="M16 3H8L5 7h14l-3-4z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><circle cx="12" cy="13" r="2" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.2:0}/></svg>),
-  profile: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.15:0}/><path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   budget: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.15:0}/><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>),
   wellness: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.15:0}/></svg>),
-  transactions: () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8 6l4-4 4 4M16 18l-4 4-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 2v20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   bell: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>),
   moon: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>),
   sun: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="1.8"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   debt: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.1:0}/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2M12 12v4M10 14h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   subs: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.1:0}/><path d="M9 7h6M9 11h6M9 15h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
-  networth: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.12:0}/><polyline points="17 13.5 21 11.5 21 18.5 12 22.5 3 18.5 3 11.5 7 13.5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.08:0}/></svg>),
   logout: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>),
   hamburger: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   close: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
@@ -271,37 +277,25 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
 
       {/* Mobile bottom tab bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700/60">
-        {/* Icons + labels pinned to the top of the bar */}
-        <div className="flex pt-3 pb-1 px-1">
+        <div className="flex pt-2.5 pb-1 px-2">
           {TAB_ITEMS.map(item => {
             const isActive = current === item.href
-            if (item.isCenter) {
-              return (
-                <button key={item.href} onClick={handleDashTabClick}
-                  className="flex-1 flex flex-col items-center gap-1 active:scale-90 transition-all">
-                  <div className={`rounded-full flex items-center justify-center shadow-md shadow-violet-400/40 transition-all ${
-                    isActive ? 'bg-violet-600' : 'bg-violet-500'
-                  }`} style={{ width: 38, height: 38 }}>
-                    <span className="text-white">{Icons[item.icon]?.(true)}</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-violet-600 dark:text-violet-400 leading-none">{item.label}</span>
-                </button>
-              )
-            }
-            return (
-              <a key={item.href} href={item.href}
-                className={`flex-1 flex flex-col items-center gap-1 active:scale-90 transition-all relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                {isActive && <span className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
+            const cls = `flex-1 flex flex-col items-center gap-1 active:scale-90 transition-all relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`
+            const inner = (
+              <>
+                {isActive && <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
                 <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
                   {Icons[item.icon]?.(isActive)}
                 </span>
                 <span className="text-[10px] font-semibold leading-none">{item.label}</span>
-              </a>
+              </>
             )
+            return item.isCenter
+              ? <button key={item.href} onClick={handleDashTabClick} className={cls}>{inner}</button>
+              : <a key={item.href} href={item.href} className={cls}>{inner}</a>
           })}
         </div>
-        {/* Always-visible bottom gap + iPhone home-indicator safe area */}
-        <div style={{ height: 'calc(16px + env(safe-area-inset-bottom, 0px))' }} />
+        <div style={{ height: 'calc(14px + env(safe-area-inset-bottom, 0px))' }} />
       </nav>
 
       {showVoice && <VoiceAssistant onClose={() => setShowVoice(false)} />}
