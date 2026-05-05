@@ -279,9 +279,9 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
               return (
                 <button key={item.href} onClick={handleDashTabClick}
                   className="flex-1 flex flex-col items-center gap-1 active:scale-90 transition-all">
-                  <div className={`rounded-2xl flex items-center justify-center shadow-md transition-all ${
-                    isActive ? 'bg-violet-600 shadow-violet-400/40' : 'bg-violet-600 shadow-violet-400/30'
-                  }`} style={{ width: 46, height: 30 }}>
+                  <div className={`rounded-full flex items-center justify-center shadow-md shadow-violet-400/40 transition-all ${
+                    isActive ? 'bg-violet-600' : 'bg-violet-500'
+                  }`} style={{ width: 38, height: 38 }}>
                     <span className="text-white">{Icons[item.icon]?.(true)}</span>
                   </div>
                   <span className="text-[10px] font-bold text-violet-600 dark:text-violet-400 leading-none">{item.label}</span>

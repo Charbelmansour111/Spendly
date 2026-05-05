@@ -214,7 +214,11 @@ export default function NetWorth() {
 
   const cats = type => type === 'asset' ? ASSET_CATEGORIES : LIABILITY_CATEGORIES
 
-  if (hasPinSet && !pinUnlocked) return <PinModal onUnlock={() => setPinUnlocked(true)} />
+  if (hasPinSet && !pinUnlocked) return (
+    <Layout>
+      <PinModal onUnlock={() => setPinUnlocked(true)} />
+    </Layout>
+  )
 
   if (loading) return (
     <Layout>
