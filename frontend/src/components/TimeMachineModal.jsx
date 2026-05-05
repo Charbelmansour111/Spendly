@@ -135,20 +135,20 @@ function makeStars(seed) {
 }
 
 const ERA_PHOTOS = [
-  { test: y => y <= -500,  url: 'https://source.unsplash.com/900x600/?pyramid,ancient,egypt,desert&sig=1' },
-  { test: y => y <= 500,   url: 'https://source.unsplash.com/900x600/?colosseum,roman,ruins,ancient&sig=2' },
-  { test: y => y <= 1000,  url: 'https://source.unsplash.com/900x600/?medieval,castle,stone,forest&sig=3' },
-  { test: y => y <= 1400,  url: 'https://source.unsplash.com/900x600/?castle,gothic,dark,medieval&sig=4' },
-  { test: y => y <= 1600,  url: 'https://source.unsplash.com/900x600/?ocean,ship,sailing,exploration&sig=5' },
-  { test: y => y <= 1800,  url: 'https://source.unsplash.com/900x600/?countryside,nature,historical,village&sig=6' },
-  { test: y => y <= 1900,  url: 'https://source.unsplash.com/900x600/?industrial,factory,steam,vintage&sig=7' },
-  { test: y => y <= 1945,  url: 'https://source.unsplash.com/900x600/?vintage,city,1940s,black,white&sig=8' },
-  { test: y => y <= 1970,  url: 'https://source.unsplash.com/900x600/?retro,space,rocket,1960s&sig=9' },
-  { test: y => y <= 1990,  url: 'https://source.unsplash.com/900x600/?neon,retro,city,night,1980s&sig=10' },
-  { test: y => y <= 2010,  url: 'https://source.unsplash.com/900x600/?city,skyline,night,downtown&sig=11' },
-  { test: y => y <= 2030,  url: 'https://source.unsplash.com/900x600/?modern,city,technology,urban&sig=12' },
-  { test: y => y <= 2060,  url: 'https://source.unsplash.com/900x600/?futuristic,city,neon,cyberpunk&sig=13' },
-  { test: () => true,       url: 'https://source.unsplash.com/900x600/?galaxy,space,cosmos,nebula&sig=14' },
+  { test: y => y <= -500,  url: 'https://picsum.photos/seed/egypt-desert/900/600' },
+  { test: y => y <= 500,   url: 'https://picsum.photos/seed/roman-ruins/900/600' },
+  { test: y => y <= 1000,  url: 'https://picsum.photos/seed/medieval-forest/900/600' },
+  { test: y => y <= 1400,  url: 'https://picsum.photos/seed/dark-castle/900/600' },
+  { test: y => y <= 1600,  url: 'https://picsum.photos/seed/ocean-voyage/900/600' },
+  { test: y => y <= 1800,  url: 'https://picsum.photos/seed/colonial-country/900/600' },
+  { test: y => y <= 1900,  url: 'https://picsum.photos/seed/steam-factory/900/600' },
+  { test: y => y <= 1945,  url: 'https://picsum.photos/seed/wartime-city/900/600' },
+  { test: y => y <= 1970,  url: 'https://picsum.photos/seed/space-race-60s/900/600' },
+  { test: y => y <= 1990,  url: 'https://picsum.photos/seed/neon-eighties/900/600' },
+  { test: y => y <= 2010,  url: 'https://picsum.photos/seed/urban-night-2k/900/600' },
+  { test: y => y <= 2030,  url: 'https://picsum.photos/seed/modern-metropolis/900/600' },
+  { test: y => y <= 2060,  url: 'https://picsum.photos/seed/cyber-future/900/600' },
+  { test: () => true,       url: 'https://picsum.photos/seed/deep-cosmos/900/600' },
 ]
 
 // ── Era Scene ──────────────────────────────────────────────────────────────
@@ -173,7 +173,7 @@ function EraScene({ year, aiEmoji }) {
         {/* Real photo background */}
         <div style={{
           position: 'absolute', inset: 0, zIndex: 0,
-          backgroundImage: `url(${photo.url})`,
+          backgroundImage: `url("${photo.url}")`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           opacity: 0.42,
