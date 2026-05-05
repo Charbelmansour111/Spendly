@@ -134,13 +134,31 @@ function makeStars(seed) {
   return Array.from({ length: 55 }, () => ({ x: r() * 100, y: r() * 100, rad: r() * 1.4 + 0.4, op: r() * 0.45 + 0.12, dur: r() * 3 + 2 }))
 }
 
+const ERA_PHOTOS = [
+  { test: y => y <= -500,  url: 'https://source.unsplash.com/900x600/?pyramid,ancient,egypt,desert&sig=1' },
+  { test: y => y <= 500,   url: 'https://source.unsplash.com/900x600/?colosseum,roman,ruins,ancient&sig=2' },
+  { test: y => y <= 1000,  url: 'https://source.unsplash.com/900x600/?medieval,castle,stone,forest&sig=3' },
+  { test: y => y <= 1400,  url: 'https://source.unsplash.com/900x600/?castle,gothic,dark,medieval&sig=4' },
+  { test: y => y <= 1600,  url: 'https://source.unsplash.com/900x600/?ocean,ship,sailing,exploration&sig=5' },
+  { test: y => y <= 1800,  url: 'https://source.unsplash.com/900x600/?countryside,nature,historical,village&sig=6' },
+  { test: y => y <= 1900,  url: 'https://source.unsplash.com/900x600/?industrial,factory,steam,vintage&sig=7' },
+  { test: y => y <= 1945,  url: 'https://source.unsplash.com/900x600/?vintage,city,1940s,black,white&sig=8' },
+  { test: y => y <= 1970,  url: 'https://source.unsplash.com/900x600/?retro,space,rocket,1960s&sig=9' },
+  { test: y => y <= 1990,  url: 'https://source.unsplash.com/900x600/?neon,retro,city,night,1980s&sig=10' },
+  { test: y => y <= 2010,  url: 'https://source.unsplash.com/900x600/?city,skyline,night,downtown&sig=11' },
+  { test: y => y <= 2030,  url: 'https://source.unsplash.com/900x600/?modern,city,technology,urban&sig=12' },
+  { test: y => y <= 2060,  url: 'https://source.unsplash.com/900x600/?futuristic,city,neon,cyberpunk&sig=13' },
+  { test: () => true,       url: 'https://source.unsplash.com/900x600/?galaxy,space,cosmos,nebula&sig=14' },
+]
+
 // ── Era Scene ──────────────────────────────────────────────────────────────
 function EraScene({ year, aiEmoji }) {
   const def = ERA_SCENES.find(s => s.test(year)) || ERA_SCENES[ERA_SCENES.length - 1]
   const objs = def.objs.map((o, i) => ({ ...o, e: aiEmoji?.[i] || o.e }))
+  const photo = ERA_PHOTOS.find(p => p.test(year)) || ERA_PHOTOS[ERA_PHOTOS.length - 1]
 
   return (
-    <div style={{ position: 'relative', height: 190, overflow: 'hidden', borderRadius: 0 }}>
+    <div style={{ position: 'relative', height: 280, overflow: 'hidden', borderRadius: 0 }}>
       {/* Film perforations top */}
       <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', height: 14, background: '#111', zIndex: 5, position: 'relative' }}>
         {[...Array(10)].map((_, i) => <div key={i} style={{ width: 10, height: 7, background: '#333', borderRadius: 2 }} />)}
@@ -148,10 +166,20 @@ function EraScene({ year, aiEmoji }) {
 
       {/* Scene */}
       <div style={{
-        position: 'relative', height: 162, overflow: 'hidden',
+        position: 'relative', height: 252, overflow: 'hidden',
         background: `linear-gradient(180deg, ${def.sky} 0%, ${def.sky} 65%, ${def.ground} 100%)`,
         animation: 'tmCamPan 18s ease-in-out infinite',
       }}>
+        {/* Real photo background */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 0,
+          backgroundImage: `url(${photo.url})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.42,
+          filter: 'saturate(0.65) brightness(0.55)',
+        }} />
+
         {/* Stars for dark/night scenes */}
         {[...Array(20)].map((_, i) => (
           <div key={i} style={{
@@ -160,6 +188,7 @@ function EraScene({ year, aiEmoji }) {
             left: `${(i * 13 + 7) % 95}%`,
             top: `${(i * 7 + 3) % 45}%`,
             opacity: def.sky.startsWith('#0') || def.sky.startsWith('#1') || def.sky.startsWith('#2') ? 0.6 : 0.1,
+            zIndex: 1,
           }} />
         ))}
 
@@ -173,7 +202,7 @@ function EraScene({ year, aiEmoji }) {
             lineHeight: 1,
             animation: ANIM_MAP[obj.a] || 'none',
             filter: 'drop-shadow(0 3px 10px rgba(0,0,0,0.7))',
-            zIndex: i + 1,
+            zIndex: i + 2,
             userSelect: 'none',
           }}>
             {obj.e}

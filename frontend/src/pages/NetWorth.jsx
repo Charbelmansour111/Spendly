@@ -79,7 +79,7 @@ function PinModal({ onUnlock }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/90 backdrop-blur-sm">
+    <div className="fixed inset-0 z-20 flex items-center justify-center bg-gray-950/90 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl px-8 py-8 w-full max-w-xs mx-4 flex flex-col items-center gap-6">
         <div className="w-14 h-14 bg-violet-100 dark:bg-violet-900/40 rounded-2xl flex items-center justify-center">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>

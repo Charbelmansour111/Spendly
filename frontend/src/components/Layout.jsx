@@ -13,7 +13,7 @@ const Icons = {
   // Goals — flag/target
   savings: (a) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?0.15:0}/><line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   // Net Worth — trending up
-  networth: (a) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><polyline points="2 18 9 11 13 15 22 6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><polyline points="16 6 22 6 22 12" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>),
+  networth: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><polyline points="2 18 9 11 13 15 22 6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><polyline points="16 6 22 6 22 12" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>),
   // Profile — person
   profile: (a) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.15:0}/><path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   // Sidebar-only icons below
@@ -277,13 +277,13 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
 
       {/* Mobile bottom tab bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700/60">
-        <div className="flex pt-2.5 pb-1 px-2">
+        <div className="flex pt-3 pb-2 px-2">
           {TAB_ITEMS.map(item => {
             const isActive = current === item.href
-            const cls = `flex-1 flex flex-col items-center gap-1 active:scale-90 transition-all relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`
+            const cls = `flex-1 flex flex-col items-center gap-1.5 active:scale-90 transition-all relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`
             const inner = (
               <>
-                {isActive && <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
+                {isActive && <span className="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
                 <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
                   {Icons[item.icon]?.(isActive)}
                 </span>
@@ -295,7 +295,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
               : <a key={item.href} href={item.href} className={cls}>{inner}</a>
           })}
         </div>
-        <div style={{ height: 'calc(14px + env(safe-area-inset-bottom, 0px))' }} />
+        <div style={{ height: 'calc(22px + env(safe-area-inset-bottom, 0px))' }} />
       </nav>
 
       {showVoice && <VoiceAssistant onClose={() => setShowVoice(false)} />}
