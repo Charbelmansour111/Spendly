@@ -244,7 +244,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       {/* Main */}
       <main
         ref={mainRef}
-        className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-24 md:pb-0 relative"
+        className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-28 md:pb-0 relative"
         style={{ overscrollBehavior: 'contain' }}
         onTouchStart={onPTRStart}
         onTouchMove={onPTRMove}
@@ -271,30 +271,31 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
 
       {/* Mobile bottom tab bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700/60">
-        <div className="flex items-stretch h-20 pb-safe" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        {/* Icon + label row — sits at the top; space below is for the home indicator */}
+        <div className="flex items-start pt-2 px-1" style={{ paddingBottom: 'env(safe-area-inset-bottom, 12px)' }}>
           {TAB_ITEMS.map(item => {
             const isActive = current === item.href
             if (item.isCenter) {
               return (
                 <button key={item.href} onClick={handleDashTabClick}
-                  className="flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 relative">
-                  <div className={`w-13 h-13 rounded-2xl flex items-center justify-center shadow-lg transition-all -mt-8 ${
+                  className="flex-1 flex flex-col items-center gap-1 transition-all active:scale-90 relative -mt-5">
+                  <div className={`rounded-2xl flex items-center justify-center shadow-lg transition-all ${
                     isActive ? 'bg-violet-600 shadow-violet-400/40' : 'bg-violet-600 shadow-violet-400/30'
                   }`} style={{ width: 52, height: 52 }}>
                     <span className="text-white">{Icons[item.icon]?.(true)}</span>
                   </div>
-                  <span className="text-[10px] font-semibold mt-1 text-violet-600 dark:text-violet-400">{item.label}</span>
+                  <span className="text-[10px] font-semibold text-violet-600 dark:text-violet-400">{item.label}</span>
                 </button>
               )
             }
             return (
               <a key={item.href} href={item.href}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 transition-all active:scale-90 relative pt-2 ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                {isActive && <span className="absolute top-0 w-8 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
+                className={`flex-1 flex flex-col items-center gap-1 transition-all active:scale-90 relative ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                {isActive && <span className="absolute -top-2 w-8 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />}
                 <span className={`transition-transform duration-150 ${isActive ? 'scale-110' : 'scale-100'}`}>
                   {Icons[item.icon]?.(isActive)}
                 </span>
-                <span className={`text-[10px] font-semibold leading-none ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{item.label}</span>
+                <span className="text-[10px] font-semibold leading-none">{item.label}</span>
               </a>
             )
           })}
