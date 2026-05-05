@@ -710,25 +710,33 @@ export default function Transactions() {
     </div>
   )
 
-  const filterBar = (isIncome) => (
+  const filterBar = (isIncome) => {
+    const showPills = search.length > 0 || showFilters || catFilter !== 'All'
+    return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-4">
       {/* Search */}
       <div className="relative mb-3">
         <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search transactions..."
           className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 text-gray-900 dark:text-white" />
         {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">✕</button>}
       </div>
 
       <div className="flex items-center gap-2 justify-between">
         <button onClick={() => setShowFilters(v => !v)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${showFilters || hasFilters ? 'bg-violet-600 text-white border-violet-600' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'}`}>
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition shrink-0 ${showFilters || hasFilters ? 'bg-violet-600 text-white border-violet-600' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'}`}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
           Filters {hasFilters ? '•' : ''}
         </button>
 
-        {/* Category quick pills */}
-        <div className="flex gap-1.5 flex-wrap flex-1 justify-end">
+        {!showPills && (
+          <p className="text-xs text-gray-400 flex-1 text-right">Type to search or tap Filters</p>
+        )}
+      </div>
+
+      {/* Category quick pills — shown when searching or filtering */}
+      {showPills && (
+        <div className="flex gap-1.5 flex-wrap mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
           <button onClick={() => setCat('All')} className={`px-2.5 py-1 rounded-full text-xs font-semibold transition ${catFilter === 'All' ? 'bg-violet-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>All</button>
           {(isIncome ? INCOME_SOURCES : EXPENSE_CATS).map(c => (
             <button key={c} onClick={() => setCat(c === catFilter ? 'All' : c)}
@@ -737,7 +745,7 @@ export default function Transactions() {
             </button>
           ))}
         </div>
-      </div>
+      )}
 
       {showFilters && (
         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-3">
@@ -771,6 +779,7 @@ export default function Transactions() {
       )}
     </div>
   )
+  }
 
   const renderGrouped = (grouped, isIncome, options = {}) => {
     const { rowRenderer, showTotal = true } = options
