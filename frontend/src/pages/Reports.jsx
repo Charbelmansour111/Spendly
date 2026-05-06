@@ -484,8 +484,9 @@ export default function Reports() {
       const { reply, action } = res.data
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply, action: action || null, actionState: action ? 'pending' : null }])
       if (ttsEnabled) chatSpeak(reply)
-    } catch {
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Something went wrong. Try again.' }])
+    } catch (e) {
+      const detail = e?.response?.data?.message || e?.response?.status || e?.message || 'unknown'
+      setChatMessages(prev => [...prev, { role: 'assistant', content: `Error: ${detail}` }])
     }
     setChatLoading(false)
   }
