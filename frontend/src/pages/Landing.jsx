@@ -79,6 +79,12 @@ function Landing() {
   const [showInstall, setShowInstall] = useState(false)
   const [openFeature, setOpenFeature] = useState(null)
   const [installModal, setInstallModal] = useState(null)
+  const [showIOSBanner, setShowIOSBanner] = useState(() => {
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream
+    const isInstalled = window.navigator.standalone === true
+    const dismissed = localStorage.getItem('ios-banner-dismissed')
+    return isIOS && !isInstalled && !dismissed
+  })
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -87,6 +93,11 @@ function Landing() {
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
+
+  const dismissIOSBanner = () => {
+    setShowIOSBanner(false)
+    localStorage.setItem('ios-banner-dismissed', '1')
+  }
 
   const handleInstall = async () => {
     if (!deferredPrompt) return
@@ -456,7 +467,7 @@ function Landing() {
             </div>
 
             {/* Right: download buttons */}
-            <div className="flex flex-col gap-3 w-full lg:w-auto lg:min-w-[260px]">
+            <div className="flex flex-col gap-3 w-full lg:w-auto lg:min-w-65">
               {/* iOS / App Store */}
               <button
                 onClick={() => setInstallModal('ios')}
@@ -549,6 +560,65 @@ function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* ── iOS install banner ─────────────────────────────────── */}
+      {showIOSBanner && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 pointer-events-none">
+          <div className="pointer-events-auto max-w-sm mx-auto bg-gray-900 dark:bg-gray-800 rounded-2xl shadow-2xl border border-white/10 overflow-hidden">
+            {/* Top accent bar */}
+            <div className="h-1 bg-linear-to-r from-violet-500 to-indigo-500" />
+            <div className="px-4 pt-4 pb-4">
+              <div className="flex items-start gap-3">
+                {/* App icon */}
+                <div className="w-12 h-12 bg-violet-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold text-sm leading-tight">Install Spendly</p>
+                  <p className="text-gray-400 text-xs mt-0.5 leading-relaxed">Add to your home screen for instant access, offline use, and push notifications.</p>
+                </div>
+                <button onClick={dismissIOSBanner} className="text-gray-500 hover:text-gray-300 transition shrink-0 p-1 -mt-1 -mr-1">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+
+              {/* Step row */}
+              <div className="mt-4 flex items-center gap-0.5">
+                {[
+                  { icon: '📤', label: 'Tap Share' },
+                  { sep: true },
+                  { icon: '📲', label: 'Add to Home' },
+                  { sep: true },
+                  { icon: '✅', label: 'Done!' },
+                ].map((s, i) =>
+                  s.sep
+                    ? <div key={i} className="flex-1 h-px bg-white/10 mx-1" />
+                    : (
+                      <div key={i} className="flex flex-col items-center gap-1 shrink-0">
+                        <span className="text-lg">{s.icon}</span>
+                        <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">{s.label}</span>
+                      </div>
+                    )
+                )}
+              </div>
+
+              {/* Animated share arrow */}
+              <div className="flex justify-center mt-3">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-6 h-6 bg-violet-500/20 rounded-full flex items-center justify-center animate-bounce">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+                    </svg>
+                  </div>
+                  <p className="text-[10px] text-violet-400 font-semibold">Tap the Share button above</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

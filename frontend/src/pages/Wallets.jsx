@@ -211,6 +211,53 @@ export default function Wallets() {
           </button>
         </div>
 
+        {/* Why use wallets — shown when empty, collapses after first wallet added */}
+        {wallets.length === 0 && !loading && (
+          <div className="bg-linear-to-br from-violet-600 to-indigo-600 rounded-2xl p-6 mb-6 text-white shadow-lg shadow-violet-500/20">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center text-xl shrink-0">🏦</div>
+              <div>
+                <h2 className="font-bold text-base leading-tight">Your financial accounts, all in one place</h2>
+                <p className="text-white/70 text-xs mt-0.5">Track every wallet, account, and cash stash</p>
+              </div>
+            </div>
+            <div className="space-y-3 mb-5">
+              {[
+                { icon: '💳', title: 'Multiple accounts', desc: 'Add your bank accounts, credit cards, and cash wallets separately — see exactly how much is in each.' },
+                { icon: '📊', title: 'Real balance tracking', desc: 'Set a starting balance and Spendly shows how your spending affects each account over time.' },
+                { icon: '🔗', title: 'Link expenses', desc: 'When you add an expense, tag which wallet it came from — know exactly where your money went.' },
+                { icon: '💰', title: 'Net worth at a glance', desc: 'Your total across all wallets is your financial snapshot — savings, checking, cash, all summed up.' },
+              ].map(item => (
+                <div key={item.title} className="flex items-start gap-3 bg-white/10 rounded-xl px-3.5 py-3">
+                  <span className="text-xl shrink-0">{item.icon}</span>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm leading-tight">{item.title}</p>
+                    <p className="text-white/65 text-xs mt-0.5 leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowModal(true)}
+              className="w-full bg-white text-violet-700 font-bold py-3 rounded-xl hover:bg-violet-50 transition text-sm active:scale-95">
+              Add your first wallet →
+            </button>
+          </div>
+        )}
+
+        {/* Compact why-card after first wallet is added */}
+        {wallets.length > 0 && (
+          <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/40 rounded-2xl px-4 py-3 mb-4 flex items-start gap-3">
+            <span className="text-lg shrink-0 mt-0.5">💡</span>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-violet-700 dark:text-violet-300">Tip: tag expenses to wallets</p>
+              <p className="text-xs text-violet-600/70 dark:text-violet-400/70 mt-0.5 leading-relaxed">
+                When adding an expense on the Transactions page, pick a wallet so you always know which account was charged.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Total balance card */}
         {wallets.length > 0 && (
           <div className="bg-gradient-to-br from-violet-600 to-purple-700 rounded-2xl px-5 py-4 mb-6 text-white">
