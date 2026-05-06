@@ -45,9 +45,44 @@ export default function QuickScanModal({ onClose, onAdded }) {
   const [saving, setSaving] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
 
+  // Currency conversion
+  const userCurrency = (localStorage.getItem('currency') || 'USD').toUpperCase()
+  const [detectedCurrency, setDetectedCurrency] = useState(null)
+  const [converting, setConverting] = useState(false)
+
+  // Recurring suggestions shown in done screen
+  const [recurSuggestions, setRecurSuggestions] = useState([])
+  const [markedRecurring, setMarkedRecurring] = useState({})
+
   const cameraRef = useRef(null)
   const galleryRef = useRef(null)
   const smsTimer = useRef(null)
+
+  // ── Currency conversion ───────────────────────────────────────────────────
+
+  const applyConversion = useCallback(async (from) => {
+    if (from === userCurrency) return
+    setConverting(true)
+    try {
+      const { data } = await API.get(`/currency/rate?from=${from}&to=${userCurrency}`)
+      const rate = data.rate
+      if (!rate || rate === 1) return
+      setReceipt(prev => prev ? {
+        ...prev,
+        items: prev.items.map(it => ({
+          ...it,
+          price: it.price ? String((parseFloat(it.price) * rate).toFixed(2)) : ''
+        }))
+      } : null)
+      setTransactions(prev => prev.map(t => ({
+        ...t,
+        amount: t.amount ? String((parseFloat(t.amount) * rate).toFixed(2)) : ''
+      })))
+    } catch {
+      // silent — user can edit manually
+    }
+    setConverting(false)
+  }, [userCurrency])
 
   // ── Processing ────────────────────────────────────────────────────────────
 
@@ -58,6 +93,8 @@ export default function QuickScanModal({ onClose, onAdded }) {
     try {
       const { data } = await API.post('/expenses/parse-image', { image: dataUrl })
       if (data.type === 'receipt' && data.items?.length > 0) {
+        const detected = (data.currency || 'USD').toUpperCase()
+        setDetectedCurrency(detected)
         setReceipt({
           merchant: data.merchant || '',
           category: data.category || 'Food',
@@ -66,9 +103,18 @@ export default function QuickScanModal({ onClose, onAdded }) {
           items: data.items.map((it, i) => ({ id: i, name: it.name || '', price: String(it.price ?? '') })),
         })
         setView('receipt')
+        if (detected !== userCurrency) {
+          // auto-convert after a short delay so user sees the banner
+          setTimeout(() => applyConversion(detected), 600)
+        }
       } else if (data.type === 'transactions' && data.transactions?.length > 0) {
+        const detected = (data.transactions[0]?.currency || data.currency || 'USD').toUpperCase()
+        setDetectedCurrency(detected)
         setTransactions(data.transactions.map((t, i) => ({ ...t, id: i, amount: String(t.amount ?? '') })))
         setView('transactions')
+        if (detected !== userCurrency) {
+          setTimeout(() => applyConversion(detected), 600)
+        }
       } else {
         setError(data.message || 'No financial data found — try a clearer image')
         setView('input')
@@ -77,7 +123,7 @@ export default function QuickScanModal({ onClose, onAdded }) {
       setError(e?.response?.data?.message || 'Could not read image — try again')
       setView('input')
     }
-  }, [])
+  }, [userCurrency, applyConversion])
 
   const processText = useCallback(async (text) => {
     if (!text.trim() || text.trim().length < 10) return
@@ -86,8 +132,13 @@ export default function QuickScanModal({ onClose, onAdded }) {
     try {
       const { data } = await API.post('/expenses/parse-text', { text })
       if (data.type === 'transactions' && data.transactions?.length > 0) {
+        const detected = (data.transactions[0]?.currency || 'USD').toUpperCase()
+        setDetectedCurrency(detected)
         setTransactions(data.transactions.map((t, i) => ({ ...t, id: i, amount: String(t.amount ?? '') })))
         setView('transactions')
+        if (detected !== userCurrency) {
+          setTimeout(() => applyConversion(detected), 600)
+        }
       } else {
         setError(data.message || 'No transactions found — try a different message')
         setView('input')
@@ -96,7 +147,7 @@ export default function QuickScanModal({ onClose, onAdded }) {
       setError(e?.response?.data?.message || 'Could not parse — try again')
       setView('input')
     }
-  }, [])
+  }, [userCurrency, applyConversion])
 
   const onImageFile = (e) => {
     const file = e.target.files?.[0]
@@ -141,7 +192,7 @@ export default function QuickScanModal({ onClose, onAdded }) {
         .filter(it => it.name)
         .map(it => `${it.name}${it.price ? ` ($${parseFloat(it.price).toFixed(2)})` : ''}`)
         .join(', ')
-      await API.post('/expenses', {
+      const { data } = await API.post('/expenses', {
         amount: receiptTotal,
         category: receipt.category,
         description: desc || receipt.merchant || 'Receipt',
@@ -149,8 +200,15 @@ export default function QuickScanModal({ onClose, onAdded }) {
         payment_method: receipt.payment_method,
       })
       setSavedCount(1)
+      const suggestions = []
+      if (data.suggestion?.type === 'recurring') {
+        suggestions.push(data.suggestion)
+      }
+      setRecurSuggestions(suggestions)
       setView('done')
-      setTimeout(() => { onAdded?.(); onClose() }, 1400)
+      if (suggestions.length === 0) {
+        setTimeout(() => { onAdded?.(); onClose() }, 1400)
+      }
     } catch {
       setError('Failed to save — try again')
     }
@@ -168,6 +226,7 @@ export default function QuickScanModal({ onClose, onAdded }) {
     if (!transactions.length || saving) return
     setSaving(true)
     let saved = 0
+    const suggestions = []
     try {
       for (const tx of transactions) {
         if (tx.type === 'income') {
@@ -179,23 +238,45 @@ export default function QuickScanModal({ onClose, onAdded }) {
             year: d.getFullYear(),
           })
         } else {
-          await API.post('/expenses', {
+          const { data } = await API.post('/expenses', {
             amount: parseFloat(tx.amount),
             category: tx.category,
             description: tx.description,
             date: tx.date,
             payment_method: tx.payment_method,
           })
+          if (data.suggestion?.type === 'recurring') {
+            suggestions.push(data.suggestion)
+          }
         }
         saved++
       }
       setSavedCount(saved)
+      setRecurSuggestions(suggestions)
       setView('done')
-      setTimeout(() => { onAdded?.(); onClose() }, 1400)
+      if (suggestions.length === 0) {
+        setTimeout(() => { onAdded?.(); onClose() }, 1400)
+      }
     } catch {
       setError('Failed to save — try again')
     }
     setSaving(false)
+  }
+
+  // ── Recurring ─────────────────────────────────────────────────────────────
+
+  const markRecurring = async (expenseId) => {
+    try {
+      await API.put(`/expenses/${expenseId}`, { is_recurring: true })
+      setMarkedRecurring(prev => ({ ...prev, [expenseId]: true }))
+    } catch {
+      // silent
+    }
+  }
+
+  const dismissSuggestions = () => {
+    onAdded?.()
+    onClose()
   }
 
   // ── Back / reset ──────────────────────────────────────────────────────────
@@ -206,7 +287,25 @@ export default function QuickScanModal({ onClose, onAdded }) {
     setReceipt(null)
     setTransactions([])
     setPreviewUrl(null)
+    setDetectedCurrency(null)
   }
+
+  // ── Currency banner ───────────────────────────────────────────────────────
+
+  const CurrencyBanner = detectedCurrency && detectedCurrency !== userCurrency ? (
+    <div className="mx-5 mb-3 flex items-center gap-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl px-3 py-2.5 shrink-0">
+      <span className="text-base shrink-0">💱</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
+          {detectedCurrency} → {userCurrency}
+        </p>
+        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
+          {converting ? 'Converting amounts…' : 'Amounts auto-converted to your currency'}
+        </p>
+      </div>
+      {converting && <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin shrink-0" />}
+    </div>
+  ) : null
 
   // ── Views ─────────────────────────────────────────────────────────────────
 
@@ -223,10 +322,39 @@ export default function QuickScanModal({ onClose, onAdded }) {
 
   if (view === 'done') return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl p-8 text-center w-72 mx-4">
-        <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✅</div>
-        <p className="font-bold text-xl text-gray-900 dark:text-white">{savedCount} Added!</p>
-        <p className="text-sm text-gray-400 mt-2">Transaction{savedCount !== 1 ? 's' : ''} saved successfully</p>
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl p-6 w-80 mx-4">
+        <div className="text-center mb-4">
+          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center text-3xl mx-auto mb-3">✅</div>
+          <p className="font-bold text-xl text-gray-900 dark:text-white">{savedCount} Added!</p>
+          <p className="text-sm text-gray-400 mt-1">Transaction{savedCount !== 1 ? 's' : ''} saved successfully</p>
+        </div>
+
+        {recurSuggestions.length > 0 && (
+          <div className="space-y-2 mt-4">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide text-center">Recurring?</p>
+            {recurSuggestions.map(s => (
+              <div key={s.expense_id} className="flex items-center gap-2 bg-violet-50 dark:bg-violet-900/20 rounded-xl px-3 py-2.5">
+                <span className="text-base shrink-0">🔁</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{s.merchant}</p>
+                  <p className="text-[11px] text-gray-500">You've saved this 3+ times</p>
+                </div>
+                {markedRecurring[s.expense_id] ? (
+                  <span className="text-xs font-bold text-emerald-600">✓ Done</span>
+                ) : (
+                  <button
+                    onClick={() => markRecurring(s.expense_id)}
+                    className="text-xs font-bold text-violet-600 bg-white dark:bg-gray-800 border border-violet-200 dark:border-violet-700 rounded-lg px-2.5 py-1 shrink-0 hover:bg-violet-50 transition">
+                    Mark
+                  </button>
+                )}
+              </div>
+            ))}
+            <button onClick={dismissSuggestions} className="w-full mt-2 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm font-semibold">
+              Done
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -243,6 +371,8 @@ export default function QuickScanModal({ onClose, onAdded }) {
         </div>
         <CloseBtn onClick={onClose} />
       </div>
+
+      {CurrencyBanner}
 
       <div className="px-5 pt-4 pb-2 shrink-0">
         <div className="grid grid-cols-3 gap-2">
@@ -282,7 +412,7 @@ export default function QuickScanModal({ onClose, onAdded }) {
                 className="flex-1 bg-transparent text-sm text-gray-800 dark:text-gray-200 focus:outline-none min-w-0 placeholder-gray-300"
               />
               <div className="flex items-center gap-0.5 shrink-0 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1">
-                <span className="text-xs text-gray-400">$</span>
+                <span className="text-xs text-gray-400">{userCurrency === 'USD' ? '$' : userCurrency}</span>
                 <input
                   type="number" value={it.price} onChange={e => updateItem(it.id, 'price', e.target.value)}
                   placeholder="0.00"
@@ -334,6 +464,8 @@ export default function QuickScanModal({ onClose, onAdded }) {
           </div>
           <CloseBtn onClick={onClose} />
         </div>
+
+        {CurrencyBanner}
 
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
           {transactions.map(tx => (

@@ -58,6 +58,9 @@ app.use('/api/networth', networthRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/advisor', require('./routes/advisor'));
 app.use('/api/support', require('./routes/support'));
+app.use('/api/categories', require('./routes/categories'));
+app.use('/api/splits', require('./routes/splits'));
+app.use('/api/currency', require('./routes/currency'));
 
 app.get('/', (req, res) => {
   res.json({ message: 'Spendly API is running' });

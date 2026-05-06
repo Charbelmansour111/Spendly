@@ -2,6 +2,9 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 import QuickScanModal from '../components/QuickScanModal'
+import SplitBillModal from '../components/SplitBillModal'
+import CategoryManagerModal from '../components/CategoryManagerModal'
+import useCategories from '../hooks/useCategories'
 import { METHOD_ICONS, METHOD_COLORS } from '../utils/paymentMethods'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
@@ -188,17 +191,19 @@ function suggestCategoryLocal(desc) {
   return null
 }
 
-function AddExpenseModal({ onClose, onSave, sym }) {
+function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
   const today = new Date().toISOString().split('T')[0]
   const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly' })
   const [suggestion, setSuggestion] = useState(null)
   const [saving, setSaving] = useState(false)
-  const cats = [
-    { key: 'Food', icon: '🍔' }, { key: 'Coffee', icon: '☕' }, { key: 'Transport', icon: '🚗' },
-    { key: 'Shopping', icon: '🛍️' }, { key: 'Entertainment', icon: '🎬' }, { key: 'Health', icon: '🏥' },
-    { key: 'Fitness', icon: '🏋️' }, { key: 'Education', icon: '🎓' }, { key: 'Bills', icon: '💡' },
-    { key: 'Travel', icon: '✈️' }, { key: 'Gifts', icon: '🎁' }, { key: 'Subscriptions', icon: '📱' }, { key: 'Other', icon: '📦' },
-  ]
+  const cats = dynamicCats?.length
+    ? dynamicCats.map(c => ({ key: c.name, icon: c.emoji }))
+    : [
+      { key: 'Food', icon: '🍔' }, { key: 'Coffee', icon: '☕' }, { key: 'Transport', icon: '🚗' },
+      { key: 'Shopping', icon: '🛍️' }, { key: 'Entertainment', icon: '🎬' }, { key: 'Health', icon: '🏥' },
+      { key: 'Fitness', icon: '🏋️' }, { key: 'Education', icon: '🎓' }, { key: 'Bills', icon: '💡' },
+      { key: 'Travel', icon: '✈️' }, { key: 'Gifts', icon: '🎁' }, { key: 'Subscriptions', icon: '📱' }, { key: 'Other', icon: '📦' },
+    ]
   const subs = SUBCATEGORIES[form.category] || []
   const handleDesc = (val) => {
     setForm(f => ({ ...f, description: val }))
@@ -337,7 +342,7 @@ function AddIncomeModal({ onClose, onSave, sym }) {
   )
 }
 
-function AddPickerModal({ onClose, onExpense, onIncome, onScan }) {
+function AddPickerModal({ onClose, onExpense, onIncome, onScan, onSplit }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -366,11 +371,19 @@ function AddPickerModal({ onClose, onExpense, onIncome, onScan }) {
             </div>
           </button>
           <button onClick={onScan}
-            className="col-span-2 flex items-center gap-4 bg-violet-50 dark:bg-violet-900/20 border-2 border-violet-100 dark:border-violet-800 rounded-2xl px-5 py-4 hover:border-violet-400 active:scale-95 transition-all">
-            <div className="w-12 h-12 bg-violet-600 rounded-2xl flex items-center justify-center text-2xl shrink-0">📩</div>
+            className="flex items-center gap-3 bg-violet-50 dark:bg-violet-900/20 border-2 border-violet-100 dark:border-violet-800 rounded-2xl px-4 py-4 hover:border-violet-400 active:scale-95 transition-all">
+            <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-xl shrink-0">📩</div>
             <div className="text-left">
               <p className="font-bold text-gray-800 dark:text-white text-sm">Quick Scan</p>
-              <p className="text-xs text-gray-400 mt-0.5">Paste bank SMS or upload screenshot — auto-detected</p>
+              <p className="text-xs text-gray-400 mt-0.5">SMS or screenshot</p>
+            </div>
+          </button>
+          <button onClick={onSplit}
+            className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-100 dark:border-blue-800 rounded-2xl px-4 py-4 hover:border-blue-400 active:scale-95 transition-all">
+            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-xl shrink-0">🤝</div>
+            <div className="text-left">
+              <p className="font-bold text-gray-800 dark:text-white text-sm">Split Bill</p>
+              <p className="text-xs text-gray-400 mt-0.5">Divide with friends</p>
             </div>
           </button>
         </div>
@@ -416,6 +429,11 @@ export default function Transactions() {
   const [showAddExp, setShowAddExp] = useState(false)
   const [showAddInc, setShowAddInc] = useState(false)
   const [showScan, setShowScan] = useState(false)
+  const [showSplit, setShowSplit] = useState(false)
+  const [showCatManager, setShowCatManager] = useState(false)
+  const [recurringHint, setRecurringHint] = useState(null) // { merchant, expense_id }
+
+  const { categories: dynCats, refresh: refreshCats, addCategory, removeCategory } = useCategories()
 
   // Filters
   const [search, setSearch]       = useState('')
@@ -526,7 +544,7 @@ export default function Transactions() {
   const handleAddExpense = async (form) => {
     try {
       const now = new Date()
-      await API.post('/expenses', {
+      const { data } = await API.post('/expenses', {
         amount: parseFloat(form.amount),
         category: form.category,
         description: form.description || '',
@@ -534,12 +552,24 @@ export default function Transactions() {
         is_recurring: form.is_recurring || false,
         recurring_frequency: form.recurring_frequency || 'monthly',
       })
+      if (data.suggestion?.type === 'recurring') {
+        setRecurringHint({ merchant: data.suggestion.merchant, expense_id: data.suggestion.expense_id })
+      }
       const res = await API.get('/expenses')
       setExpenses(res.data || [])
       setShowAddExp(false)
       setShowPicker(false)
       showToast('Expense added!')
     } catch { showToast('Error adding expense', 'error') }
+  }
+
+  const markRecurring = async (expenseId) => {
+    try {
+      await API.put('/expenses/' + expenseId, { is_recurring: true })
+      setExpenses(prev => prev.map(e => e.id === expenseId ? { ...e, is_recurring: true } : e))
+      showToast('Marked as recurring!')
+    } catch { showToast('Error updating', 'error') }
+    setRecurringHint(null)
   }
 
   const handleScanAdded = async () => {
@@ -858,10 +888,36 @@ export default function Transactions() {
       {toast     && <Toast {...toast} onClose={() => setToast(null)} />}
       {undoLabel && <UndoToast label={undoLabel} onUndo={handleUndoExpense} onDismiss={handleDismissUndo} />}
       {editing   && <EditSheet expense={editing} sym={sym} onSave={handleEditSave} onClose={() => setEditing(null)} />}
-      {showPicker && <AddPickerModal onClose={() => setShowPicker(false)} onExpense={() => { setShowPicker(false); setShowAddExp(true) }} onIncome={() => { setShowPicker(false); setShowAddInc(true) }} onScan={() => { setShowPicker(false); setShowScan(true) }} />}
-      {showAddExp && <AddExpenseModal onClose={() => setShowAddExp(false)} onSave={handleAddExpense} sym={sym} />}
+      {showPicker && <AddPickerModal onClose={() => setShowPicker(false)} onExpense={() => { setShowPicker(false); setShowAddExp(true) }} onIncome={() => { setShowPicker(false); setShowAddInc(true) }} onScan={() => { setShowPicker(false); setShowScan(true) }} onSplit={() => { setShowPicker(false); setShowSplit(true) }} />}
+      {showAddExp && <AddExpenseModal onClose={() => setShowAddExp(false)} onSave={handleAddExpense} sym={sym} dynamicCats={dynCats} />}
       {showAddInc && <AddIncomeModal onClose={() => setShowAddInc(false)} onSave={handleAddIncome} sym={sym} />}
       {showScan && <QuickScanModal onClose={() => setShowScan(false)} onAdded={handleScanAdded} />}
+      {showSplit && <SplitBillModal onClose={() => setShowSplit(false)} onSaved={() => { const r = API.get('/expenses'); r.then(e => setExpenses(e.data || [])); showToast('Split bill logged!') }} />}
+      {showCatManager && <CategoryManagerModal categories={dynCats} onAdd={addCategory} onDelete={removeCategory} onClose={() => { setShowCatManager(false); refreshCats() }} />}
+
+      {/* Recurring hint banner */}
+      {recurringHint && (
+        <div className="fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-80 z-50">
+          <div className="bg-violet-600 text-white rounded-2xl shadow-2xl px-4 py-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl shrink-0">🔁</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm">Recurring pattern detected</p>
+                <p className="text-white/70 text-xs mt-0.5 truncate">"{recurringHint.merchant}" appears regularly</p>
+              </div>
+              <button onClick={() => setRecurringHint(null)} className="text-white/60 hover:text-white text-xl leading-none shrink-0">×</button>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => markRecurring(recurringHint.expense_id)} className="flex-1 bg-white text-violet-600 font-bold text-sm py-2 rounded-xl hover:bg-violet-50 transition">
+                Mark Recurring
+              </button>
+              <button onClick={() => setRecurringHint(null)} className="flex-1 bg-white/20 text-white font-semibold text-sm py-2 rounded-xl hover:bg-white/30 transition">
+                Skip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-2xl mx-auto px-4 py-6">
 
@@ -871,11 +927,17 @@ export default function Transactions() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
             <p className="text-gray-400 text-sm mt-0.5">{expenses.length + income.length} total entries</p>
           </div>
-          <button onClick={exportCSV}
-            className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3 py-2 rounded-xl text-xs font-semibold hover:border-violet-300 hover:text-violet-600 transition shadow-sm">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export CSV
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowCatManager(true)}
+              className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3 py-2 rounded-xl text-xs font-semibold hover:border-violet-300 hover:text-violet-600 transition shadow-sm">
+              🏷️ Categories
+            </button>
+            <button onClick={exportCSV}
+              className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3 py-2 rounded-xl text-xs font-semibold hover:border-violet-300 hover:text-violet-600 transition shadow-sm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
         </div>
 
         {/* Overview */}

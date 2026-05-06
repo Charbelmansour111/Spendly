@@ -169,6 +169,42 @@ async function migrate() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS custom_categories (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(50) NOT NULL,
+        emoji VARCHAR(10) DEFAULT '📦',
+        color VARCHAR(20) DEFAULT '#6B7280',
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, name)
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS splits (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        total_amount DECIMAL(12,2) NOT NULL,
+        category VARCHAR(50) DEFAULT 'Other',
+        date DATE DEFAULT CURRENT_DATE,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS split_participants (
+        id SERIAL PRIMARY KEY,
+        split_id INTEGER NOT NULL REFERENCES splits(id) ON DELETE CASCADE,
+        name VARCHAR(100) NOT NULL,
+        amount DECIMAL(12,2) NOT NULL,
+        paid BOOLEAN DEFAULT FALSE,
+        paid_at TIMESTAMP
+      )
+    `);
+
     console.log('DB migration complete');
   } catch (e) {
     console.error('DB migration error:', e.message);
