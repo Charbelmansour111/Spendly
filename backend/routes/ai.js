@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const authenticateToken = require('../middleware/auth');
+const asyncHandler = require('../middleware/asyncHandler');
 
-router.post('/command', authenticateToken, async (req, res) => {
-  try {
+router.post('/command', authenticateToken, asyncHandler(async (req, res) => {
     const { text, language, history = [] } = req.body;
     if (!text || text.trim().length < 1) return res.status(400).json({ message: 'Text required' });
 
@@ -252,10 +252,6 @@ Data schemas:
 
     const result = JSON.parse(jsonMatch[0]);
     res.json(result);
-  } catch (e) {
-    console.error('AI command error:', e);
-    res.status(500).json({ message: 'AI error', error: e.message });
-  }
-});
+}));
 
 module.exports = router;

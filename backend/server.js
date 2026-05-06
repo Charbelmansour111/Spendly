@@ -2,6 +2,14 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Fail fast if critical env vars are missing
+const REQUIRED_ENV = ['JWT_SECRET', 'DB_USER', 'DB_HOST', 'DB_NAME', 'GROQ_API_KEY'];
+const missing = REQUIRED_ENV.filter(k => !process.env[k]);
+if (missing.length) {
+  console.error('Missing required environment variables:', missing.join(', '));
+  process.exit(1);
+}
+
 const migrate = require('./db/migrate');
 
 const authRoutes = require('./routes/auth');
@@ -71,6 +79,9 @@ app.get('/api/health/ai', async (req, res) => {
     res.json({ ok: false, error: e.message });
   }
 });
+
+const errorHandler = require('./middleware/errorHandler');
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {

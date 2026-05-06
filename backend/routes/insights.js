@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const authenticateToken = require('../middleware/auth');
+const asyncHandler = require('../middleware/asyncHandler');
 
 const callAI = async (messages, maxTokens = 600) => {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -77,8 +78,7 @@ Response style rules:
 - Max 120 words. Finance questions only (but make even serious ones fun).
 ${SHARED_RULES()}`;
 
-router.post('/chat', authenticateToken, async (req, res) => {
-  try {
+router.post('/chat', authenticateToken, asyncHandler(async (req, res) => {
     const { message, history, mode } = req.body;
     const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 50', [req.userId]);
     const income   = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20', [req.userId]);
@@ -167,11 +167,7 @@ Never invent IDs — only use IDs from the list above.`;
     }
 
     res.json({ reply, action, pendingTransactions });
-  } catch (error) {
-    console.error('Chat error:', error);
-    res.status(500).json({ message: 'Error getting response' });
-  }
-});
+}));
 
 router.post('/analyze-expense', authenticateToken, async (req, res) => {
   try {
