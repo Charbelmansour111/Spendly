@@ -169,7 +169,7 @@ Never invent IDs — only use IDs from the list above.`;
     res.json({ reply, action, pendingTransactions });
   } catch (error) {
     console.error('Chat error:', error);
-    res.status(500).json({ message: 'Error getting response' });
+    res.status(500).json({ message: error.message || 'Error getting response' });
   }
 });
 
