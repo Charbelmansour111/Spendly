@@ -20,6 +20,7 @@ const PAGE_TITLES = {
   '/net-worth': 'Net Worth — Spendly',
   '/wellness': 'Wellness — Spendly',
   '/profile': 'Profile — Spendly',
+  '/wallets': 'Wallets — Spendly',
   '/advisor/apply':     'Apply as Advisor — Spendly',
   '/advisor/dashboard': 'Advisor Dashboard — Spendly',
   '/advisors':          'Find an Advisor — Spendly',
@@ -53,6 +54,7 @@ import Transactions from './pages/Transactions'
 import NetWorth from './pages/NetWorth'
 import QuickAdd from './pages/QuickAdd'
 import Subscriptions from './pages/Subscriptions'
+import Wallets from './pages/Wallets'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 // Advisor feature disabled — re-enable when ready
@@ -99,6 +101,7 @@ function App() {
         <Route path="/transactions"          element={<Transactions />} />
         <Route path="/net-worth"             element={<NetWorthGuarded />} />
         <Route path="/quick-add"             element={<QuickAdd />} />
+        <Route path="/wallets"               element={<Wallets />} />
 
         <Route path="/business"              element={<Navigate to="/dashboard" replace />} />
         <Route path="/business/*"            element={<Navigate to="/dashboard" replace />} />

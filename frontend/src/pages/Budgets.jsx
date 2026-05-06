@@ -5,7 +5,7 @@ import API from '../utils/api'
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 const CATEGORIES = ['Food', 'Coffee', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Fitness', 'Education', 'Bills', 'Travel', 'Gifts', 'Subscriptions', 'Other']
 const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦' }
-const PERIODS = [{ value: 'monthly', label: 'Monthly' }, { value: 'weekly', label: 'Weekly' }]
+const PERIODS = [{ value: 'monthly', label: 'Monthly' }, { value: 'weekly', label: 'Weekly' }, { value: 'daily', label: 'Daily' }]
 
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
@@ -29,7 +29,7 @@ function AiModal({ budget, spent, symbol, onClose }) {
     fetched.current = true
     const limit = parseFloat(budget.amount)
     const pct = ((spent / limit) * 100).toFixed(0)
-    const periodLabel = budget.period === 'weekly' ? 'this week' : 'this month'
+    const periodLabel = budget.period === 'daily' ? 'today' : budget.period === 'weekly' ? 'this week' : 'this month'
     const isOver = spent >= limit
     const msg = isOver
       ? `I've exceeded my ${budget.category} budget ${periodLabel}. My limit was ${symbol}${limit.toFixed(2)} and I've spent ${symbol}${spent.toFixed(2)} (${pct}% used). What should I do to get back on track? Give me 3 specific actionable steps.`
@@ -126,7 +126,10 @@ export default function Budgets() {
 
   const getSpent = (category, period) => {
     let filtered = expenses.filter(e => e.category === category)
-    if (period === 'weekly') {
+    if (period === 'daily') {
+      const todayStr = today.toISOString().split('T')[0]
+      filtered = filtered.filter(e => (e.date || '').split('T')[0] === todayStr)
+    } else if (period === 'weekly') {
       const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 7)
       filtered = filtered.filter(e => new Date(e.date) >= weekAgo)
     } else {
@@ -150,8 +153,9 @@ export default function Budgets() {
     setFormAiLoading(true)
     setFormAiSuggestion('')
     const spent = getSpent(form.category, form.period)
-    const periodLabel = form.period === 'weekly' ? 'weekly' : 'monthly'
-    const msg = `I want to set a ${periodLabel} budget for ${form.category}. I've spent ${currencySymbol}${spent.toFixed(2)} on ${form.category} ${form.period === 'weekly' ? 'this week' : 'this month'}. What's a realistic and healthy ${periodLabel} budget limit I should set? Reply in 2 sentences max with a specific number suggestion.`
+    const periodLabel = form.period === 'daily' ? 'daily' : form.period === 'weekly' ? 'weekly' : 'monthly'
+    const periodContext = form.period === 'daily' ? 'today' : form.period === 'weekly' ? 'this week' : 'this month'
+    const msg = `I want to set a ${periodLabel} budget for ${form.category}. I've spent ${currencySymbol}${spent.toFixed(2)} on ${form.category} ${periodContext}. What's a realistic and healthy ${periodLabel} budget limit I should set? Reply in 2 sentences max with a specific number suggestion.`
     try {
       const res = await API.post('/insights/chat', { message: msg })
       setFormAiSuggestion(res.data.reply || '')
@@ -585,7 +589,7 @@ export default function Budgets() {
               const isOver = b.pct >= 100
               const isWarning = b.pct >= 85 && !isOver
               const remaining = b.limit - b.spent
-              const periodLabel = b.period === 'weekly' ? 'This week' : monthName
+              const periodLabel = b.period === 'daily' ? 'Today' : b.period === 'weekly' ? 'This week' : monthName
               const lastMonthSpent = b.period === 'monthly' ? getLastMonthSpent(b.category) : null
               const lastMonthRollover = lastMonthSpent !== null ? b.limit - lastMonthSpent : null
 
@@ -607,7 +611,14 @@ export default function Budgets() {
                           {isOver ? '🔴 Over' : isWarning ? '🟠 Warning' : '✅ On Track'}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5">{periodLabel} · {b.period}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5">
+                        {periodLabel}
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                          b.period === 'daily' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
+                          b.period === 'weekly' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
+                          'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                        }`}>{b.period}</span>
+                      </p>
                     </div>
                     <button onClick={() => handleDelete(b.id)} className="shrink-0 text-gray-300 hover:text-red-400 transition p-1">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

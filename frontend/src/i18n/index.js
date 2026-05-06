@@ -5,6 +5,7 @@ const T = {
     nav_goals: 'Goals', nav_reports: 'Reports', nav_ai: 'AI Insights', nav_wellness: 'My Wellness',
     nav_networth: 'Net Worth',
     nav_subscriptions: 'Subscriptions',
+    nav_wallets: 'Wallets',
     nav_profile: 'Profile', nav_notifications: 'Notifications', nav_dark: 'Dark Mode',
     nav_light: 'Light Mode', nav_logout: 'Logout', tab_home: 'Home', tab_ai: 'AI', tab_goals: 'Goals',
     // Common

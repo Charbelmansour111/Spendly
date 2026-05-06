@@ -142,7 +142,38 @@ function startScheduler() {
     }
   });
 
-  console.log('[scheduler] Cron jobs started (daily reminders, monthly summary, renewals, inactivity)');
+  // Daily 10 AM — debt due dates in 3 days or overdue
+  cron.schedule('30 10 * * *', async () => {
+    console.log('[scheduler] Checking debt due dates');
+    try {
+      const rows = await pool.query(
+        `SELECT d.user_id, d.name, d.remaining_amount, d.monthly_payment,
+                d.due_date::date - CURRENT_DATE AS days_until
+         FROM debts d
+         JOIN push_subscriptions p ON p.user_id = d.user_id
+         WHERE d.due_date IS NOT NULL
+           AND d.due_date::date - CURRENT_DATE BETWEEN -1 AND 3
+           AND d.remaining_amount > 0`
+      );
+      for (const row of rows.rows) {
+        const days = parseInt(row.days_until);
+        const when = days < 0 ? 'overdue' : days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+        const isOverdue = days < 0;
+        await sendPush(row.user_id, {
+          title: isOverdue ? `Debt Overdue ⚠️` : `Debt Due Soon 💸`,
+          body: `${row.name} payment of $${parseFloat(row.monthly_payment || row.remaining_amount).toFixed(2)} is due ${when}`,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          url: '/debts',
+          tag: `debt-due-${row.name}`,
+        });
+      }
+    } catch (e) {
+      console.error('[scheduler] Debt due date error:', e.message);
+    }
+  });
+
+  console.log('[scheduler] Cron jobs started (daily reminders, monthly summary, renewals, inactivity, debt due dates)');
 }
 
 module.exports = { startScheduler };

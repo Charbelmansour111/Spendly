@@ -65,6 +65,7 @@ function EditSheet({ expense, sym, onSave, onClose }) {
     date: expense.date?.split('T')[0] || '',
     is_recurring: expense.is_recurring || false,
     recurring_frequency: expense.recurring_frequency || 'monthly',
+    notes: expense.notes || '',
   })
   const [saving, setSaving] = useState(false)
   const handleSave = async () => {
@@ -101,6 +102,10 @@ function EditSheet({ expense, sym, onSave, onClose }) {
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Description</label>
             <input type="text" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Optional" className={cls} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Notes (optional)</label>
+            <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Any extra details…" className={cls + ' resize-none'} />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="accent-violet-600 w-4 h-4" />
@@ -193,9 +198,15 @@ function suggestCategoryLocal(desc) {
 
 function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
   const today = new Date().toISOString().split('T')[0]
-  const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly' })
+  const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly', wallet_id: null })
   const [suggestion, setSuggestion] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [wallets, setWallets] = useState([])
+
+  useEffect(() => {
+    API.get('/wallets').then(r => setWallets(r.data || [])).catch(() => {})
+  }, [])
+
   const cats = dynamicCats?.length
     ? dynamicCats.map(c => ({ key: c.name, icon: c.emoji }))
     : [
@@ -270,6 +281,31 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Date</label>
             <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
               className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+          </div>
+          {wallets.length > 0 && (
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Wallet (optional)</label>
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <button type="button"
+                  onClick={() => setForm(f => ({ ...f, wallet_id: null }))}
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition ${form.wallet_id === null ? 'border-violet-500 bg-violet-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50'}`}>
+                  None
+                </button>
+                {wallets.map(w => (
+                  <button key={w.id} type="button"
+                    onClick={() => setForm(f => ({ ...f, wallet_id: w.id }))}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition ${form.wallet_id === w.id ? 'border-violet-500 bg-violet-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50'}`}>
+                    <span>{w.emoji}</span>
+                    <span>{w.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Notes (optional)</label>
+            <textarea rows={2} value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any extra details…"
+              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none" />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.is_recurring} onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))} className="w-4 h-4 accent-violet-600" />
@@ -423,6 +459,29 @@ export default function Transactions() {
   const tabSwipeRef = useRef(null)
   const TABS = ['expenses', 'income', 'all']
   useEffect(() => () => clearTimeout(undoTimerRef.current), [])
+
+  // ── Bulk selection ──
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState(new Set())
+  const [showRecatSheet, setShowRecatSheet] = useState(false)
+
+  const exitSelectMode = () => {
+    setSelectMode(false)
+    setSelected(new Set())
+    setShowRecatSheet(false)
+  }
+  const toggleSelectMode = () => {
+    if (selectMode) exitSelectMode()
+    else setSelectMode(true)
+  }
+  const toggleItem = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
   const [numModal, setNumModal] = useState(null)
   const [showRecurring, setShowRecurring] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
@@ -551,6 +610,8 @@ export default function Transactions() {
         date: form.date || now.toISOString().split('T')[0],
         is_recurring: form.is_recurring || false,
         recurring_frequency: form.recurring_frequency || 'monthly',
+        notes: form.notes || null,
+        wallet_id: form.wallet_id || null,
       })
       if (data.suggestion?.type === 'recurring') {
         setRecurringHint({ merchant: data.suggestion.merchant, expense_id: data.suggestion.expense_id })
@@ -602,6 +663,49 @@ export default function Transactions() {
       setShowPicker(false)
       showToast('Income added!')
     } catch { showToast('Error adding income', 'error') }
+  }
+
+  // ── Bulk actions ──
+  const handleBulkDelete = async () => {
+    if (selected.size === 0) return
+    const ids = [...selected]
+    const count = ids.length
+    // flush undo if pending
+    if (undoRef.current) {
+      clearTimeout(undoTimerRef.current)
+      commitExpenseDelete(undoRef.current.id, undoRef.current.backup)
+      undoRef.current = null
+      setUndoLabel(null)
+    }
+    setExpenses(prev => prev.filter(e => !ids.includes(e.id)))
+    exitSelectMode()
+    try {
+      await Promise.all(ids.map(id => API.delete('/expenses/' + id)))
+      showToast(`${count} deleted`)
+    } catch {
+      const res = await API.get('/expenses')
+      setExpenses(res.data || [])
+      showToast('Error deleting some items', 'error')
+    }
+  }
+
+  const handleBulkRecategorize = async (newCategory) => {
+    if (selected.size === 0) return
+    // only expense ids (income rows are not recategorizable via this action)
+    const expenseIds = [...selected].filter(id => expenses.some(e => e.id === id))
+    const count = expenseIds.length
+    if (count === 0) return
+    setExpenses(prev => prev.map(e => expenseIds.includes(e.id) ? { ...e, category: newCategory } : e))
+    setShowRecatSheet(false)
+    exitSelectMode()
+    try {
+      await Promise.all(expenseIds.map(id => API.put('/expenses/' + id, { category: newCategory })))
+      showToast(`${count} updated`)
+    } catch {
+      const res = await API.get('/expenses')
+      setExpenses(res.data || [])
+      showToast('Error updating some items', 'error')
+    }
   }
 
   // ── Derived data ──
@@ -706,11 +810,36 @@ export default function Transactions() {
   const hasFilters = catFilter !== 'All' || sortBy !== 'newest' || dateFrom || dateTo || search
 
   // ── Render helpers ──
-  const renderExpenseRow = (tx, idx, total) => (
-    <SwipeRow key={tx.id} onDelete={() => handleDeleteExpense(tx.id)}>
-      <div className={`flex items-center gap-3 px-4 py-4 group bg-white dark:bg-gray-800 transition hover:bg-gray-50 dark:hover:bg-gray-700/40 ${idx < total - 1 ? 'border-b border-gray-100 dark:border-gray-700/40' : ''}`}>
-        {/* Category colour bar */}
-        <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: CAT_COLORS[tx.category] || '#6B7280' }} />
+  const renderExpenseRow = (tx, idx, total) => {
+    const isSelected = selected.has(tx.id)
+    const rowContent = (
+      <div
+        key={tx.id}
+        onClick={selectMode ? () => toggleItem(tx.id) : undefined}
+        className={`flex items-center gap-3 px-4 py-4 group transition
+          ${selectMode ? 'cursor-pointer' : ''}
+          ${isSelected
+            ? 'bg-violet-50 dark:bg-violet-900/20'
+            : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/40'}
+          ${idx < total - 1 ? 'border-b border-gray-100 dark:border-gray-700/40' : ''}`}
+      >
+        {/* Checkbox OR colour bar */}
+        {selectMode ? (
+          <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition
+            ${isSelected ? 'bg-violet-600 border-violet-600' : 'border-gray-300 dark:border-gray-500'}`}>
+            {isSelected && (
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="2 6 5 9 10 3"/>
+              </svg>
+            )}
+          </div>
+        ) : (
+          <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: CAT_COLORS[tx.category] || '#6B7280' }} />
+        )}
+        {/* Left violet border when selected */}
+        {selectMode && isSelected && (
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-violet-500 rounded-r" />
+        )}
         {/* Icon */}
         <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
           style={{ background: (CAT_COLORS[tx.category] || '#6B7280') + '22' }}>
@@ -737,23 +866,58 @@ export default function Transactions() {
           <span className="font-black text-sm tabular-nums text-red-500 dark:text-red-400 leading-tight">
             -{sym}{safeNum(tx.amount).toFixed(2)}
           </span>
-          <div className="hidden group-hover:flex items-center gap-1 mt-0.5">
-            <button onClick={() => setEditing(tx)} className="text-violet-400 hover:text-violet-600 p-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
-            <button onClick={() => handleDeleteExpense(tx.id)} className="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-            </button>
-          </div>
+          {!selectMode && (
+            <div className="hidden group-hover:flex items-center gap-1 mt-0.5">
+              <button onClick={() => setEditing(tx)} className="text-violet-400 hover:text-violet-600 p-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button onClick={() => handleDeleteExpense(tx.id)} className="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
-    </SwipeRow>
-  )
+    )
+    if (selectMode) {
+      return <div key={tx.id} className="relative">{rowContent}</div>
+    }
+    return (
+      <SwipeRow key={tx.id} onDelete={() => handleDeleteExpense(tx.id)}>
+        {rowContent}
+      </SwipeRow>
+    )
+  }
 
-  const renderIncomeRow = (tx, idx, total) => (
-    <div key={tx.id} className={`flex items-center gap-3 px-4 py-4 bg-white dark:bg-gray-800 ${idx < total - 1 ? 'border-b border-gray-100 dark:border-gray-700/40' : ''}`}>
-      {/* Green bar */}
-      <div className="w-1 self-stretch rounded-full shrink-0 bg-emerald-400" />
+  const renderIncomeRow = (tx, idx, total) => {
+    const isSelected = selected.has(tx.id)
+    return (
+    <div
+      key={tx.id}
+      onClick={selectMode ? () => toggleItem(tx.id) : undefined}
+      className={`relative flex items-center gap-3 px-4 py-4 transition
+        ${selectMode ? 'cursor-pointer' : ''}
+        ${isSelected
+          ? 'bg-violet-50 dark:bg-violet-900/20'
+          : 'bg-white dark:bg-gray-800'}
+        ${idx < total - 1 ? 'border-b border-gray-100 dark:border-gray-700/40' : ''}`}
+    >
+      {selectMode && isSelected && (
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-violet-500 rounded-r" />
+      )}
+      {/* Checkbox OR green bar */}
+      {selectMode ? (
+        <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition
+          ${isSelected ? 'bg-violet-600 border-violet-600' : 'border-gray-300 dark:border-gray-500'}`}>
+          {isSelected && (
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="2 6 5 9 10 3"/>
+            </svg>
+          )}
+        </div>
+      ) : (
+        <div className="w-1 self-stretch rounded-full shrink-0 bg-emerald-400" />
+      )}
       <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 bg-emerald-100 dark:bg-emerald-900/30">
         {CAT_ICONS[tx.source] || '💰'}
       </div>
@@ -771,7 +935,8 @@ export default function Transactions() {
         +{sym}{safeNum(tx.amount).toFixed(2)}
       </span>
     </div>
-  )
+    )
+  }
 
   const filterBar = (isIncome) => {
     const showPills = search.length > 0 || showFilters || catFilter !== 'All'
@@ -936,6 +1101,13 @@ export default function Transactions() {
               className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3 py-2 rounded-xl text-xs font-semibold hover:border-violet-300 hover:text-violet-600 transition shadow-sm">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Export
+            </button>
+            <button onClick={toggleSelectMode}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition shadow-sm
+                ${selectMode
+                  ? 'bg-violet-600 text-white border-violet-600 hover:bg-violet-700'
+                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-violet-300 hover:text-violet-600'}`}>
+              {selectMode ? 'Cancel' : 'Select'}
             </button>
           </div>
         </div>
@@ -1219,8 +1391,8 @@ export default function Transactions() {
         )}
       </div>
 
-      {/* FAB */}
-      {!showAddExp && !showAddInc && !showPicker && !editing && !showScan && (
+      {/* FAB — hidden in select mode */}
+      {!selectMode && !showAddExp && !showAddInc && !showPicker && !editing && !showScan && (
         <button onClick={() => setShowPicker(true)}
           className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-20 w-14 h-14 bg-violet-600 hover:bg-violet-700 active:scale-90 rounded-2xl shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all"
           aria-label="Add transaction">
@@ -1228,6 +1400,70 @@ export default function Transactions() {
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
+      )}
+
+      {/* Bulk action bar */}
+      {selectMode && selected.size > 0 && (
+        <div className="fixed bottom-20 md:bottom-6 left-4 right-4 z-40 flex items-center gap-2 bg-gray-900 dark:bg-gray-700 text-white rounded-2xl shadow-2xl px-4 py-3">
+          {/* Left: count + select all */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="text-sm font-bold whitespace-nowrap">{selected.size} selected</span>
+            <button
+              onClick={() => {
+                const visibleIds = [
+                  ...(tab === 'income' ? [] : filteredExpenses.map(e => e.id)),
+                  ...(tab === 'expenses' ? [] : filteredIncome.map(i => i.id)),
+                ]
+                const allVisible = new Set(visibleIds)
+                const allSelected = visibleIds.every(id => selected.has(id))
+                setSelected(allSelected ? new Set() : allVisible)
+              }}
+              className="text-violet-400 hover:text-violet-300 text-xs font-semibold px-2 py-1 rounded-lg hover:bg-white/10 transition whitespace-nowrap">
+              {(() => {
+                const visibleIds = [
+                  ...(tab === 'income' ? [] : filteredExpenses.map(e => e.id)),
+                  ...(tab === 'expenses' ? [] : filteredIncome.map(i => i.id)),
+                ]
+                return visibleIds.every(id => selected.has(id)) ? 'Deselect All' : 'Select All'
+              })()}
+            </button>
+          </div>
+          {/* Right: action buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Re-categorize — only when at least one expense is selected */}
+            {[...selected].some(id => expenses.some(e => e.id === id)) && (
+              <button
+                onClick={() => setShowRecatSheet(true)}
+                className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition">
+                🏷️ Re-cat
+              </button>
+            )}
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center gap-1.5 bg-red-500 hover:bg-red-400 text-white text-xs font-bold px-3 py-2 rounded-xl transition">
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Re-categorize sheet */}
+      {showRecatSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowRecatSheet(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl w-full max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+            <p className="text-base font-bold text-gray-800 dark:text-white mb-4">Choose new category</p>
+            <div className="flex flex-wrap gap-2">
+              {EXPENSE_CATS.map(cat => (
+                <button key={cat} onClick={() => handleBulkRecategorize(cat)}
+                  className="py-1.5 px-3 rounded-full text-xs font-semibold border-2 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50 hover:border-violet-500 hover:bg-violet-600 hover:text-white transition">
+                  {CAT_ICONS[cat]} {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   )

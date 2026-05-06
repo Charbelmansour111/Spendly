@@ -61,6 +61,7 @@ app.use('/api/support', require('./routes/support'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/splits', require('./routes/splits'));
 app.use('/api/currency', require('./routes/currency'));
+app.use('/api/wallets', require('./routes/wallets'));
 
 app.get('/', (req, res) => {
   res.json({ message: 'Spendly API is running' });

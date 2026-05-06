@@ -251,6 +251,9 @@ export default function Reports() {
   const [user] = useState(() => { try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} } })
   const [activeTab, setActiveTab] = useState('analytics')
   const [paymentStats, setPaymentStats] = useState([])
+  const [forecast, setForecast] = useState(null)
+  const [forecastLoading, setForecastLoading] = useState(true)
+  const [forecastPeriod, setForecastPeriod] = useState(30)
   // AI Chat tab state
   const [chatMessages, setChatMessages] = useState([{ role: 'assistant', content: CHAT_GREETING }])
   const [chatInput, setChatInput] = useState('')
@@ -276,16 +279,18 @@ export default function Reports() {
     setLoading(true)
     setAiSummary('')
     aiRequested.current = false
+    setForecastLoading(true)
     Promise.all([
       API.get('/expenses'),
       API.get('/income?month=' + (selectedMonth + 1) + '&year=' + selectedYear),
       API.get('/income?month=' + (prevMonthNum + 1) + '&year=' + prevYearNum),
       API.get('/expenses/trends'),
       API.get('/expenses/payment-method-stats?month=' + (selectedMonth + 1) + '&year=' + selectedYear),
+      API.get('/expenses/forecast'),
     ])
-      .then(([e, i, pi, t, pm]) => { setExpenses(e.data); setIncome(i.data); setPrevIncome(pi.data); setTrends(t.data); setPaymentStats(pm.data || []) })
+      .then(([e, i, pi, t, pm, fc]) => { setExpenses(e.data); setIncome(i.data); setPrevIncome(pi.data); setTrends(t.data); setPaymentStats(pm.data || []); setForecast(fc.data || null) })
       .catch(() => showToast('Error loading data', 'error'))
-      .finally(() => setLoading(false))
+      .finally(() => { setLoading(false); setForecastLoading(false) })
   }, [selectedMonth, selectedYear, prevMonthNum, prevYearNum, showToast])
 
   const prevMonth = () => {
@@ -836,6 +841,133 @@ export default function Reports() {
                 </div>
               </div>
             )}
+
+            {/* Cash Flow Forecast */}
+            {(() => {
+              const periodDays = forecastPeriod
+              const slicedDays = forecast?.days?.slice(0, periodDays) || []
+              const hasRecurring = slicedDays.some(d => d.income > 0 || d.expense > 0)
+              const projIncome  = slicedDays.reduce((s, d) => s + d.income,  0)
+              const projExpense = slicedDays.reduce((s, d) => s + d.expense, 0)
+              const projNet     = projIncome - projExpense
+              const lowest      = forecast?.summary?.lowest_balance ?? 0
+              const lowestDate  = forecast?.summary?.lowest_balance_date ?? ''
+              const maxAbsNet   = slicedDays.reduce((m, d) => Math.max(m, Math.abs(d.net)), 1)
+
+              return (
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+                  <SectionHeader icon="🔮" title="Cash Flow Forecast" subtitle="90-day projection from recurring items" />
+
+                  {/* Period toggle */}
+                  <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl mb-4 w-fit gap-1">
+                    {[30, 60, 90].map(p => (
+                      <button key={p} onClick={() => setForecastPeriod(p)}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${forecastPeriod === p ? 'bg-white dark:bg-gray-600 shadow-sm text-violet-600 dark:text-violet-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>
+                        {p} days
+                      </button>
+                    ))}
+                  </div>
+
+                  {forecastLoading ? (
+                    <div className="space-y-2">
+                      <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />
+                      <div className="grid grid-cols-3 gap-3">
+                        {[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />)}
+                      </div>
+                    </div>
+                  ) : !hasRecurring ? (
+                    <div className="text-center py-10">
+                      <p className="text-3xl mb-2">📅</p>
+                      <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">No recurring items found</p>
+                      <p className="text-xs text-gray-400 mt-1">Mark expenses or income as recurring to see your forecast</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Shortfall warning */}
+                      {lowest < 0 && (
+                        <div className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl px-4 py-3 mb-4">
+                          <span className="text-base shrink-0">⚠️</span>
+                          <p className="text-xs font-semibold text-red-700 dark:text-red-400">
+                            Projected shortfall on <span className="font-black">{lowestDate}</span> — balance drops to <span className="font-black">{sym}{Math.abs(lowest).toFixed(2)}</span> below zero
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Bar chart */}
+                      <div className="overflow-x-auto pb-1">
+                        <div className="relative" style={{ minWidth: Math.max(slicedDays.length * 6, 280) + 'px' }}>
+                          {/* Running balance label strip */}
+                          <div className="flex items-end gap-px mb-1" style={{ height: '14px' }}>
+                            {slicedDays.map((d, i) => (
+                              <div key={i} className="flex-1 flex items-center justify-center" style={{ minWidth: 4 }}>
+                                {i % 7 === 0 && (
+                                  <span className="text-[8px] text-gray-400 tabular-nums whitespace-nowrap" style={{ transform: 'translateX(-50%)', position: 'absolute', left: `${(i / slicedDays.length) * 100}%` }}>
+                                    {sym}{d.running >= 0 ? '' : '-'}{Math.abs(d.running) >= 1000 ? (Math.abs(d.running) / 1000).toFixed(1) + 'k' : Math.abs(d.running).toFixed(0)}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Bars */}
+                          <div className="flex items-center gap-px" style={{ height: '80px' }}>
+                            {slicedDays.map((d, i) => {
+                              const pct = maxAbsNet > 0 ? (Math.abs(d.net) / maxAbsNet) * 100 : 0
+                              const isPos = d.net >= 0
+                              return (
+                                <div key={i} className="flex-1 flex flex-col items-center justify-center h-full" style={{ minWidth: 4 }} title={`${d.date}\nIncome: ${sym}${d.income.toFixed(2)}\nExpense: ${sym}${d.expense.toFixed(2)}\nNet: ${d.net >= 0 ? '+' : ''}${sym}${d.net.toFixed(2)}\nRunning: ${sym}${d.running.toFixed(2)}`}>
+                                  {isPos ? (
+                                    <>
+                                      <div style={{ flex: 1 }} />
+                                      <div className="w-full rounded-t-sm bg-emerald-400 dark:bg-emerald-500" style={{ height: `${pct}%` }} />
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="w-full rounded-b-sm bg-red-400 dark:bg-red-500" style={{ height: `${pct}%` }} />
+                                      <div style={{ flex: 1 }} />
+                                    </>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+
+                          {/* Zero line */}
+                          <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+
+                          {/* X-axis date labels */}
+                          <div className="relative mt-1" style={{ height: '16px' }}>
+                            {slicedDays.map((d, i) => i % 7 === 0 && (
+                              <span key={i} className="text-[9px] text-gray-400 absolute whitespace-nowrap" style={{ left: `${(i / slicedDays.length) * 100}%`, transform: 'translateX(-50%)' }}>
+                                {d.date.slice(5)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Stat cards */}
+                      <div className="grid grid-cols-3 gap-3 mt-4">
+                        <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 text-center">
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wide mb-1">Projected Income</p>
+                          <p className="text-sm font-black text-emerald-700 dark:text-emerald-300 tabular-nums">{sym}{projIncome.toFixed(2)}</p>
+                        </div>
+                        <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3 text-center">
+                          <p className="text-[10px] text-red-500 dark:text-red-400 font-semibold uppercase tracking-wide mb-1">Projected Expenses</p>
+                          <p className="text-sm font-black text-red-600 dark:text-red-400 tabular-nums">{sym}{projExpense.toFixed(2)}</p>
+                        </div>
+                        <div className={`rounded-xl p-3 text-center ${projNet >= 0 ? 'bg-violet-50 dark:bg-violet-900/20' : 'bg-orange-50 dark:bg-orange-900/20'}`}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wide mb-1 ${projNet >= 0 ? 'text-violet-600 dark:text-violet-400' : 'text-orange-600 dark:text-orange-400'}`}>Net Balance</p>
+                          <p className={`text-sm font-black tabular-nums ${projNet >= 0 ? 'text-violet-700 dark:text-violet-300' : 'text-orange-600 dark:text-orange-400'}`}>
+                            {projNet >= 0 ? '+' : '-'}{sym}{Math.abs(projNet).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* 6-Month Income vs Spending */}
             {trendChartData.length > 1 && (

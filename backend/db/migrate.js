@@ -205,6 +205,21 @@ async function migrate() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(100) NOT NULL,
+        type VARCHAR(30) DEFAULT 'checking',
+        balance DECIMAL(12,2) DEFAULT 0,
+        currency VARCHAR(10) DEFAULT 'USD',
+        color VARCHAR(20) DEFAULT '#6B7280',
+        emoji VARCHAR(10) DEFAULT '🏦',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await pool.query(`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS wallet_id INTEGER REFERENCES wallets(id) ON DELETE SET NULL`);
+
     console.log('DB migration complete');
   } catch (e) {
     console.error('DB migration error:', e.message);

@@ -13,11 +13,11 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { amount, category, description, date, is_recurring, expense_scope, linked_date, recurring_frequency, payment_method, notes } = req.body;
+    const { amount, category, description, date, is_recurring, expense_scope, linked_date, recurring_frequency, payment_method, notes, wallet_id } = req.body;
     if (!amount || !date) return res.status(400).json({ message: 'Amount and date required' });
     const result = await pool.query(
-      `INSERT INTO expenses (user_id, amount, category, description, date, is_recurring, expense_scope, linked_date, recurring_frequency, payment_method, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      `INSERT INTO expenses (user_id, amount, category, description, date, is_recurring, expense_scope, linked_date, recurring_frequency, payment_method, notes, wallet_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING *`,
       [
         req.userId, amount, category || 'Other',
@@ -27,10 +27,22 @@ router.post('/', authenticateToken, async (req, res) => {
         linked_date || null,
         recurring_frequency || 'monthly',
         payment_method || 'Card',
-        notes || null
+        notes || null,
+        wallet_id || null
       ]
     );
-    res.status(201).json(result.rows[0]);
+    // Recurring suggestion — check if same merchant appears 2+ previous times
+    let suggestion = null;
+    if (description) {
+      const prev = await pool.query(
+        `SELECT COUNT(*) FROM expenses WHERE user_id=$1 AND LOWER(description)=LOWER($2) AND id!=$3 AND is_recurring=FALSE`,
+        [req.userId, description, result.rows[0].id]
+      );
+      if (parseInt(prev.rows[0].count) >= 2) {
+        suggestion = { type: 'recurring', merchant: description, expense_id: result.rows[0].id };
+      }
+    }
+    res.status(201).json({ ...result.rows[0], suggestion });
 
     // Budget alert — fire and forget
     if (category) {
@@ -61,6 +73,43 @@ router.post('/', authenticateToken, async (req, res) => {
               icon: '/icon-192.png', badge: '/icon-192.png',
               url: '/budgets', tag: `budget-warn-${category}`,
             });
+          }
+        })
+        .catch(() => {});
+
+      // Daily / weekly budget check
+      pool.query('SELECT amount, period FROM budgets WHERE user_id=$1 AND category=$2 AND period IN (\'daily\',\'weekly\')', [req.userId, category])
+        .then(async (bRes) => {
+          if (!bRes.rows.length) return;
+          for (const { amount: limit, period } of bRes.rows) {
+            let from;
+            const now = new Date();
+            if (period === 'daily') {
+              from = now.toISOString().split('T')[0];
+            } else {
+              const day = now.getDay(); // 0=Sun
+              const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
+              from = new Date(now.setDate(diff)).toISOString().split('T')[0];
+            }
+            const spentRes = await pool.query(
+              `SELECT COALESCE(SUM(amount),0) as total FROM expenses WHERE user_id=$1 AND category=$2 AND date::date >= $3`,
+              [req.userId, category, from]
+            );
+            const spent = parseFloat(spentRes.rows[0].total);
+            const pct = spent / parseFloat(limit);
+            if (pct >= 1.0) {
+              sendPush(req.userId, {
+                title: `${period === 'daily' ? 'Daily' : 'Weekly'} Budget Exceeded 🚨`,
+                body: `${category} ${period} limit hit! $${spent.toFixed(0)} of $${parseFloat(limit).toFixed(0)}`,
+                icon: '/icon-192.png', badge: '/icon-192.png', url: '/budgets', tag: `budget-${period}-${category}`,
+              });
+            } else if (pct >= 0.8) {
+              sendPush(req.userId, {
+                title: `${period === 'daily' ? 'Daily' : 'Weekly'} Budget Warning ⚠️`,
+                body: `${category} is ${Math.round(pct * 100)}% of ${period} limit — $${spent.toFixed(0)}/$${parseFloat(limit).toFixed(0)}`,
+                icon: '/icon-192.png', badge: '/icon-192.png', url: '/budgets', tag: `budget-${period}-warn-${category}`,
+              });
+            }
           }
         })
         .catch(() => {});
@@ -213,9 +262,10 @@ const asyncHandler = require('../middleware/asyncHandler');
 const today = () => new Date().toISOString().split('T')[0];
 
 const PARSE_TEXT_SYSTEM = `Extract ALL financial transactions from the text. Return ONLY valid JSON, nothing else.
-Schema: {"type":"transactions","count":<N>,"transactions":[{"amount":<positive number>,"category":"Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other","description":"<merchant or item, max 5 words>","date":"<YYYY-MM-DD>","payment_method":"Card|Bank|Cash|Virtual","type":"expense|income"}]}
+Schema: {"type":"transactions","count":<N>,"transactions":[{"amount":<positive number>,"currency":"USD|EUR|GBP|AED|SAR|LBP|CAD|AUD|other 3-letter code","category":"Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other","description":"<merchant or item, max 5 words>","date":"<YYYY-MM-DD>","payment_method":"Card|Bank|Cash|Virtual","type":"expense|income"}]}
 Rules:
 - amount: positive number, no currency symbol
+- currency: detect from symbols ($=USD, €=EUR, £=GBP, د.إ=AED, ل.ل=LBP) — default "USD" if unclear
 - date: use today ${today()} if not specified
 - payment_method: Bank=wire/transfer/IBAN, Cash=cash/ATM withdrawal, Virtual=PayPal/Apple Pay/Google Pay, Card=everything else
 - type: "income" if deposit/received/credited/salary, "expense" otherwise
@@ -255,11 +305,12 @@ router.post('/parse-image', authenticateToken, asyncHandler(async (req, res) => 
   const imagePrompt = `Analyze this image carefully. Determine what type of financial document it is and extract ALL data.
 
 If it is a RECEIPT or BILL (paper receipt, itemized invoice, e-receipt with product lines):
-Return ONLY this JSON: {"type":"receipt","merchant":"<store name>","category":"Food|Coffee|Shopping|Entertainment|Health|Other","date":"<YYYY-MM-DD or ${today()}>","payment_method":"Card|Bank|Cash|Virtual","items":[{"name":"<item name>","price":<number>}]}
+Return ONLY this JSON: {"type":"receipt","merchant":"<store name>","currency":"<3-letter code e.g. USD>","category":"Food|Coffee|Shopping|Entertainment|Health|Other","date":"<YYYY-MM-DD or ${today()}>","payment_method":"Card|Bank|Cash|Virtual","items":[{"name":"<item name>","price":<number>}]}
 
 If it is a BANK NOTIFICATION, APP SCREENSHOT, or STATEMENT (bank app, transaction list, SMS screenshot):
-Return ONLY this JSON: {"type":"transactions","count":<N>,"transactions":[{"amount":<number>,"category":"Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other","description":"<merchant>","date":"<YYYY-MM-DD or ${today()}>","payment_method":"Card|Bank|Cash|Virtual","type":"expense|income"}]}
+Return ONLY this JSON: {"type":"transactions","count":<N>,"transactions":[{"amount":<number>,"currency":"<3-letter code>","category":"Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other","description":"<merchant>","date":"<YYYY-MM-DD or ${today()}>","payment_method":"Card|Bank|Cash|Virtual","type":"expense|income"}]}
 
+Detect currency from symbols: $=USD, €=EUR, £=GBP, د.إ=AED, ل.ل=LBP — default "USD" if unclear.
 If no financial data: {"type":"none","message":"no financial data found"}
 
 Return ONLY the JSON. No explanation.`;
@@ -298,4 +349,98 @@ router.get('/payment-method-stats', authenticateToken, asyncHandler(async (req, 
   res.json(result.rows);
 }));
 
-module.exports = router;  
+// GET /api/expenses/forecast  — 90-day cash flow projection from recurring items
+router.get('/forecast', authenticateToken, asyncHandler(async (req, res) => {
+  const [expResult, incResult] = await Promise.all([
+    pool.query('SELECT amount, recurring_frequency FROM expenses WHERE user_id=$1 AND is_recurring=TRUE', [req.userId]),
+    pool.query('SELECT amount, recurring_frequency FROM income   WHERE user_id=$1 AND is_recurring=TRUE', [req.userId]),
+  ]);
+
+  const recurringExpenses = expResult.rows;
+  const recurringIncome   = incResult.rows;
+
+  // Build a map of date string -> { income, expense }
+  const dayMap = {};
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+
+  const dateKey = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  // Pre-populate all 90 days
+  for (let i = 0; i < 90; i++) {
+    const d = new Date(todayDate);
+    d.setDate(todayDate.getDate() + i);
+    dayMap[dateKey(d)] = { income: 0, expense: 0 };
+  }
+
+  const addAmount = (freq, amount, field) => {
+    if (freq === 'daily') {
+      for (let i = 0; i < 90; i++) {
+        const d = new Date(todayDate);
+        d.setDate(todayDate.getDate() + i);
+        const k = dateKey(d);
+        if (dayMap[k]) dayMap[k][field] += parseFloat(amount);
+      }
+    } else if (freq === 'weekly') {
+      for (let i = 0; i < 90; i += 7) {
+        const d = new Date(todayDate);
+        d.setDate(todayDate.getDate() + i);
+        const k = dateKey(d);
+        if (dayMap[k]) dayMap[k][field] += parseFloat(amount);
+      }
+    } else {
+      // monthly — fire on the 1st of each month within the 90-day window
+      for (let i = 0; i < 90; i++) {
+        const d = new Date(todayDate);
+        d.setDate(todayDate.getDate() + i);
+        if (d.getDate() === 1) {
+          const k = dateKey(d);
+          if (dayMap[k]) dayMap[k][field] += parseFloat(amount);
+        }
+      }
+    }
+  };
+
+  recurringExpenses.forEach(e => addAmount(e.recurring_frequency || 'monthly', e.amount, 'expense'));
+  recurringIncome.forEach(i  => addAmount(i.recurring_frequency  || 'monthly', i.amount, 'income'));
+
+  // Build sorted days array with running balance
+  let running = 0;
+  let lowestBalance = Infinity;
+  let lowestBalanceDate = null;
+
+  const days = Object.keys(dayMap).sort().map(date => {
+    const { income, expense } = dayMap[date];
+    const net = income - expense;
+    running += net;
+    if (running < lowestBalance) {
+      lowestBalance = running;
+      lowestBalanceDate = date;
+    }
+    return { date, income: parseFloat(income.toFixed(2)), expense: parseFloat(expense.toFixed(2)), net: parseFloat(net.toFixed(2)), running: parseFloat(running.toFixed(2)) };
+  });
+
+  // Compute period nets
+  const net30 = days.slice(0, 30).reduce((s, d) => s + d.net, 0);
+  const net60 = days.slice(0, 60).reduce((s, d) => s + d.net, 0);
+  const net90 = days.reduce((s, d) => s + d.net, 0);
+
+  res.json({
+    today_balance: 0,
+    days,
+    summary: {
+      '30d_net': parseFloat(net30.toFixed(2)),
+      '60d_net': parseFloat(net60.toFixed(2)),
+      '90d_net': parseFloat(net90.toFixed(2)),
+      lowest_balance_date: lowestBalanceDate,
+      lowest_balance: lowestBalance === Infinity ? 0 : parseFloat(lowestBalance.toFixed(2)),
+    },
+  });
+}));
+
+module.exports = router;
