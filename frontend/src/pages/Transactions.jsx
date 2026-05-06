@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
-import QuickScanModal, { METHOD_ICONS, METHOD_COLORS } from '../components/QuickScanModal'
+import QuickScanModal from '../components/QuickScanModal'
+import { METHOD_ICONS, METHOD_COLORS } from '../utils/paymentMethods'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦', Salary: '💼', Freelance: '💻', Business: '🏪', Investment: '📈' }
@@ -677,36 +678,41 @@ export default function Transactions() {
   // ── Render helpers ──
   const renderExpenseRow = (tx, idx, total) => (
     <SwipeRow key={tx.id} onDelete={() => handleDeleteExpense(tx.id)}>
-      <div className={`flex items-center gap-3 px-4 py-3.5 group hover:bg-gray-50 dark:hover:bg-gray-700/40 transition bg-white dark:bg-gray-800 ${idx < total - 1 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
+      <div className={`flex items-center gap-3 px-4 py-4 group bg-white dark:bg-gray-800 transition hover:bg-gray-50 dark:hover:bg-gray-700/40 ${idx < total - 1 ? 'border-b border-gray-100 dark:border-gray-700/40' : ''}`}>
+        {/* Category colour bar */}
+        <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: CAT_COLORS[tx.category] || '#6B7280' }} />
+        {/* Icon */}
         <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
-          style={{ background: (CAT_COLORS[tx.category] || '#6B7280') + '20' }}>
+          style={{ background: (CAT_COLORS[tx.category] || '#6B7280') + '22' }}>
           {CAT_ICONS[tx.category] || '📦'}
         </div>
+        {/* Text */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+          <p className="text-sm font-bold text-gray-800 dark:text-white truncate leading-tight">
             {tx.description || tx.category}
           </p>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">{tx.category}</span>
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <span className="text-[11px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">{tx.category}</span>
             {tx.payment_method && (
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${METHOD_COLORS[tx.payment_method] || 'bg-gray-100 text-gray-500'}`}>
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${METHOD_COLORS[tx.payment_method] || 'bg-gray-100 text-gray-500'}`}>
                 {METHOD_ICONS[tx.payment_method]} {tx.payment_method}
               </span>
             )}
-            <span className="text-xs text-gray-400">{fmtDate(tx.date)}</span>
-            {tx.is_recurring && <span className="text-xs text-purple-500 font-medium">↻ Recurring</span>}
+            {tx.is_recurring && <span className="text-[11px] text-purple-500 font-semibold">↻ Recurring</span>}
+            <span className="text-[11px] text-gray-400">{fmtDate(tx.date)}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="font-bold text-sm tabular-nums text-gray-800 dark:text-white">
+        {/* Amount + actions */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className="font-black text-sm tabular-nums text-red-500 dark:text-red-400 leading-tight">
             -{sym}{safeNum(tx.amount).toFixed(2)}
           </span>
-          <div className="hidden group-hover:flex items-center gap-1">
+          <div className="hidden group-hover:flex items-center gap-1 mt-0.5">
             <button onClick={() => setEditing(tx)} className="text-violet-400 hover:text-violet-600 p-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
             <button onClick={() => handleDeleteExpense(tx.id)} className="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
             </button>
           </div>
         </div>
@@ -715,21 +721,23 @@ export default function Transactions() {
   )
 
   const renderIncomeRow = (tx, idx, total) => (
-    <div key={tx.id} className={`flex items-center gap-3 px-4 py-3.5 ${idx < total - 1 ? 'border-b border-gray-50 dark:border-gray-700/50' : ''}`}>
-      <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 bg-green-100 dark:bg-green-900/30">
-        {CAT_ICONS[tx.source] || '💵'}
+    <div key={tx.id} className={`flex items-center gap-3 px-4 py-4 bg-white dark:bg-gray-800 ${idx < total - 1 ? 'border-b border-gray-100 dark:border-gray-700/40' : ''}`}>
+      {/* Green bar */}
+      <div className="w-1 self-stretch rounded-full shrink-0 bg-emerald-400" />
+      <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 bg-emerald-100 dark:bg-emerald-900/30">
+        {CAT_ICONS[tx.source] || '💰'}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+        <p className="text-sm font-bold text-gray-800 dark:text-white truncate leading-tight">
           {tx.description || tx.source || 'Income'}
         </p>
-        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full">{tx.source || 'Income'}</span>
-          <span className="text-xs text-gray-400">{fmtDate(tx.date || tx.created_at)}</span>
-          {tx.is_recurring && <span className="text-xs text-purple-500 font-medium">↻ Recurring</span>}
+        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+          <span className="text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">{tx.source || 'Income'}</span>
+          {tx.is_recurring && <span className="text-[11px] text-purple-500 font-semibold">↻ Recurring</span>}
+          <span className="text-[11px] text-gray-400">{fmtDate(tx.date || tx.created_at)}</span>
         </div>
       </div>
-      <span className="font-bold text-sm tabular-nums text-green-600 shrink-0">
+      <span className="font-black text-sm tabular-nums text-emerald-600 dark:text-emerald-400 shrink-0">
         +{sym}{safeNum(tx.amount).toFixed(2)}
       </span>
     </div>
@@ -972,6 +980,16 @@ export default function Transactions() {
         {/* Expenses tab */}
         {tab === 'expenses' && (
           <>
+            {/* Quick Scan banner */}
+            <button onClick={() => setShowScan(true)}
+              className="w-full flex items-center gap-4 bg-linear-to-r from-violet-600 to-indigo-600 rounded-2xl px-5 py-4 mb-4 shadow-lg shadow-violet-500/20 active:scale-[0.98] transition-transform text-left">
+              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center text-2xl shrink-0">📷</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-bold text-sm">Quick Scan</p>
+                <p className="text-white/70 text-xs mt-0.5">Camera · Gallery · Paste SMS — AI adds it for you</p>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" className="opacity-70 shrink-0"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
             {filterBar(false)}
 
             {/* Category breakdown */}
@@ -1033,6 +1051,16 @@ export default function Transactions() {
         {/* Income tab */}
         {tab === 'income' && (
           <>
+            {/* Quick Scan banner */}
+            <button onClick={() => setShowScan(true)}
+              className="w-full flex items-center gap-4 bg-linear-to-r from-emerald-500 to-teal-600 rounded-2xl px-5 py-4 mb-4 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-transform text-left">
+              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center text-2xl shrink-0">📷</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-bold text-sm">Quick Scan</p>
+                <p className="text-white/70 text-xs mt-0.5">Snap salary slip or bank credit SMS — auto-detected</p>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" className="opacity-70 shrink-0"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
             {filterBar(true)}
 
             {/* Source breakdown */}

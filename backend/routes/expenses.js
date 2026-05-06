@@ -212,68 +212,75 @@ router.get('/trends', authenticateToken, async (req, res) => {
 const asyncHandler = require('../middleware/asyncHandler');
 const today = () => new Date().toISOString().split('T')[0];
 
-const PARSE_SYSTEM = `Extract ONE transaction from the text. Return ONLY valid JSON, nothing else.
-Schema: {"amount":number,"category":"Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other","description":"merchant or item","date":"YYYY-MM-DD","payment_method":"Card|Bank|Cash|Virtual","type":"expense|income"}
+const PARSE_TEXT_SYSTEM = `Extract ALL financial transactions from the text. Return ONLY valid JSON, nothing else.
+Schema: {"type":"transactions","count":<N>,"transactions":[{"amount":<positive number>,"category":"Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other","description":"<merchant or item, max 5 words>","date":"<YYYY-MM-DD>","payment_method":"Card|Bank|Cash|Virtual","type":"expense|income"}]}
 Rules:
 - amount: positive number, no currency symbol
-- date: use ${today()} if not specified
+- date: use today ${today()} if not specified
 - payment_method: Bank=wire/transfer/IBAN, Cash=cash/ATM withdrawal, Virtual=PayPal/Apple Pay/Google Pay, Card=everything else
-- type: income if deposit/received/credited, expense otherwise
-- If no transaction found: {"error":"not a transaction"}`;
+- type: "income" if deposit/received/credited/salary, "expense" otherwise
+- Extract EVERY transaction in the message, not just the first
+If no transaction found: {"type":"none","message":"no transactions found"}`;
 
-async function callGroqFast(messages) {
+async function callGroqFast(messages, maxTokens = 400) {
   const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'llama-3.1-8b-instant', max_tokens: 120, temperature: 0, messages })
+    body: JSON.stringify({ model: 'llama-3.1-8b-instant', max_tokens: maxTokens, temperature: 0, messages })
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d.error?.message || 'AI error');
   return d.choices[0].message.content.trim();
 }
 
-// POST /api/expenses/parse-text  — fast SMS/text parse
+// POST /api/expenses/parse-text  — multi-transaction SMS/text parse
 router.post('/parse-text', authenticateToken, asyncHandler(async (req, res) => {
   const { text } = req.body;
   if (!text?.trim()) return res.status(400).json({ message: 'text required' });
   const raw = await callGroqFast([
-    { role: 'system', content: PARSE_SYSTEM },
+    { role: 'system', content: PARSE_TEXT_SYSTEM },
     { role: 'user', content: text.trim() }
-  ]);
+  ], 500);
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) return res.status(422).json({ message: 'Could not parse transaction' });
   const result = JSON.parse(match[0]);
-  if (result.error) return res.status(422).json({ message: result.error });
+  if (result.type === 'none') return res.status(422).json({ message: result.message || 'No transactions found' });
   res.json(result);
 }));
 
-// POST /api/expenses/parse-image  — screenshot parse via vision model
+// POST /api/expenses/parse-image  — receipt or bank screenshot via vision model
 router.post('/parse-image', authenticateToken, asyncHandler(async (req, res) => {
-  const { image } = req.body; // base64 data URL
+  const { image } = req.body;
   if (!image) return res.status(400).json({ message: 'image required' });
+  const imagePrompt = `Analyze this image carefully. Determine what type of financial document it is and extract ALL data.
+
+If it is a RECEIPT or BILL (paper receipt, itemized invoice, e-receipt with product lines):
+Return ONLY this JSON: {"type":"receipt","merchant":"<store name>","category":"Food|Coffee|Shopping|Entertainment|Health|Other","date":"<YYYY-MM-DD or ${today()}>","payment_method":"Card|Bank|Cash|Virtual","items":[{"name":"<item name>","price":<number>}]}
+
+If it is a BANK NOTIFICATION, APP SCREENSHOT, or STATEMENT (bank app, transaction list, SMS screenshot):
+Return ONLY this JSON: {"type":"transactions","count":<N>,"transactions":[{"amount":<number>,"category":"Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other","description":"<merchant>","date":"<YYYY-MM-DD or ${today()}>","payment_method":"Card|Bank|Cash|Virtual","type":"expense|income"}]}
+
+If no financial data: {"type":"none","message":"no financial data found"}
+
+Return ONLY the JSON. No explanation.`;
+
   const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      max_tokens: 150,
+      max_tokens: 600,
       temperature: 0,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Extract the transaction from this screenshot. Return ONLY valid JSON:\n{"amount":number,"category":"Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other","description":"merchant","date":"YYYY-MM-DD or ${today()}","payment_method":"Card|Bank|Cash|Virtual","type":"expense|income"}\nIf no transaction: {"error":"no transaction found"}` },
-          { type: 'image_url', image_url: { url: image } }
-        ]
-      }]
+      messages: [{ role: 'user', content: [{ type: 'text', text: imagePrompt }, { type: 'image_url', image_url: { url: image } }] }]
     })
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d.error?.message || 'Vision AI error');
   const raw = d.choices[0].message.content.trim();
   const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return res.status(422).json({ message: 'Could not parse screenshot' });
+  if (!match) return res.status(422).json({ message: 'Could not read image' });
   const result = JSON.parse(match[0]);
-  if (result.error) return res.status(422).json({ message: result.error });
+  if (result.type === 'none') return res.status(422).json({ message: result.message || 'No financial data found' });
   res.json(result);
 }));
 

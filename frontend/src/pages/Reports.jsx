@@ -4,7 +4,7 @@ import API from '../utils/api'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, LineChart, Line, CartesianGrid } from 'recharts'
-import { METHOD_ICONS, METHOD_COLORS } from '../components/QuickScanModal'
+import { METHOD_ICONS, METHOD_COLORS } from '../utils/paymentMethods'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 const COLORS = ['#4F46E5', '#7C3AED', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6']
