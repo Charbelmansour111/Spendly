@@ -198,14 +198,9 @@ function suggestCategoryLocal(desc) {
 
 function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
   const today = new Date().toISOString().split('T')[0]
-  const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly', wallet_id: null })
+  const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly' })
   const [suggestion, setSuggestion] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [wallets, setWallets] = useState([])
-
-  useEffect(() => {
-    API.get('/wallets').then(r => setWallets(r.data || [])).catch(() => {})
-  }, [])
 
   const cats = dynamicCats?.length
     ? dynamicCats.map(c => ({ key: c.name, icon: c.emoji }))
@@ -282,26 +277,6 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
             <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
               className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
           </div>
-          {wallets.length > 0 && (
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Wallet (optional)</label>
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                <button type="button"
-                  onClick={() => setForm(f => ({ ...f, wallet_id: null }))}
-                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition ${form.wallet_id === null ? 'border-violet-500 bg-violet-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50'}`}>
-                  None
-                </button>
-                {wallets.map(w => (
-                  <button key={w.id} type="button"
-                    onClick={() => setForm(f => ({ ...f, wallet_id: w.id }))}
-                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition ${form.wallet_id === w.id ? 'border-violet-500 bg-violet-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50'}`}>
-                    <span>{w.emoji}</span>
-                    <span>{w.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Notes (optional)</label>
             <textarea rows={2} value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any extra details…"
@@ -611,7 +586,6 @@ export default function Transactions() {
         is_recurring: form.is_recurring || false,
         recurring_frequency: form.recurring_frequency || 'monthly',
         notes: form.notes || null,
-        wallet_id: form.wallet_id || null,
       })
       if (data.suggestion?.type === 'recurring') {
         setRecurringHint({ merchant: data.suggestion.merchant, expense_id: data.suggestion.expense_id })
