@@ -97,7 +97,7 @@ router.post('/chat', authenticateToken, async (req, res) => {
     const budgetSummary = budgets.rows.map(b => `${b.category}: $${b.amount}`).join(', ') || 'None set';
 
     const expenseList = expenses.rows.slice(0, 30).map(e =>
-      `[ID:${e.id}] ${(e.date||'').split('T')[0]} | ${e.category} | ${e.description || '—'} | $${parseFloat(e.amount).toFixed(2)}`
+      `[ID:${e.id}] ${e.date ? new Date(e.date).toISOString().split('T')[0] : ''} | ${e.category} | ${e.description || '—'} | $${parseFloat(e.amount).toFixed(2)}`
     ).join('\n');
 
     const actionInstructions = `
@@ -169,7 +169,7 @@ Never invent IDs — only use IDs from the list above.`;
     res.json({ reply, action, pendingTransactions });
   } catch (error) {
     console.error('Chat error:', error);
-    res.status(500).json({ message: error.message || 'Error getting response' });
+    res.status(500).json({ message: 'Error getting response' });
   }
 });
 
