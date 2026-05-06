@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import Layout from '../components/Layout'
-import { AuroraBg } from '../components/AnimatedBackground'
+import { CanvasBg } from '../components/AnimatedBackground'
 import API from '../utils/api'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
@@ -77,15 +77,16 @@ function renderMarkdown(text) {
 const EMPTY_FORM = { name: '', amount: '', billing_cycle: 'monthly', next_billing_date: '', category: 'Subscriptions' }
 
 export default function Subscriptions() {
-  const [subs, setSubs]           = useState([])
+  const [subs, setSubs]                   = useState([])
   const [monthlyIncome, setMonthlyIncome] = useState(0)
-  const [loading, setLoading]     = useState(true)
-  const [showForm, setShowForm]   = useState(false)
-  const [form, setForm]           = useState(EMPTY_FORM)
-  const [saving, setSaving]       = useState(false)
-  const [aiAudit, setAiAudit]     = useState('')
-  const [aiLoading, setAiLoading] = useState(false)
-  const [deleteId, setDeleteId]   = useState(null)
+  const [subExpenses, setSubExpenses]     = useState([])
+  const [loading, setLoading]             = useState(true)
+  const [showForm, setShowForm]           = useState(false)
+  const [form, setForm]                   = useState(EMPTY_FORM)
+  const [saving, setSaving]               = useState(false)
+  const [aiAudit, setAiAudit]             = useState('')
+  const [aiLoading, setAiLoading]         = useState(false)
+  const [deleteId, setDeleteId]           = useState(null)
   const aiRequested = useRef(false)
   const sym = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
   const today = new Date()
@@ -93,14 +94,20 @@ export default function Subscriptions() {
   const load = () => {
     const token = localStorage.getItem('token')
     if (!token) { window.location.href = '/login'; return }
-    Promise.all([API.get('/subscriptions'), API.get('/income')])
-      .then(([subRes, incRes]) => {
+    Promise.all([API.get('/subscriptions'), API.get('/income'), API.get('/expenses')])
+      .then(([subRes, incRes, expRes]) => {
         setSubs(subRes.data || [])
         const thisMonthInc = (incRes.data || []).filter(i => {
           const d = new Date(i.date || i.created_at)
           return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()
         }).reduce((s, i) => s + safeNum(i.amount), 0)
         setMonthlyIncome(thisMonthInc)
+        setSubExpenses(
+          (expRes.data || [])
+            .filter(e => e.category === 'Subscriptions')
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 8)
+        )
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -154,7 +161,7 @@ export default function Subscriptions() {
 
   return (
     <Layout>
-      <AuroraBg variant="subscriptions" />
+      <CanvasBg variant="subscriptions" />
       <div className="max-w-2xl mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
 
         {/* Header */}
@@ -423,6 +430,33 @@ export default function Subscriptions() {
                 </div>
               )
             })()}
+
+            {/* Subscription expenses pulled from Transactions */}
+            {subExpenses.length > 0 && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-white">From Transactions</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Expenses tagged "Subscriptions" in your history</p>
+                  </div>
+                  <a href="/transactions" className="text-xs font-semibold text-violet-600 hover:underline shrink-0">View all →</a>
+                </div>
+                <div className="space-y-2">
+                  {subExpenses.map(e => (
+                    <div key={e.id} className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0 bg-violet-50 dark:bg-violet-900/30">
+                        <SubLogo name={e.description} category={e.category} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{e.description || 'Subscription'}</p>
+                        <p className="text-[11px] text-gray-400">{new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      </div>
+                      <p className="text-xs font-bold text-red-500 tabular-nums shrink-0">-{sym}{safeNum(e.amount).toFixed(2)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
           </div>
         )}

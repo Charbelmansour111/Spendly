@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
-import { AuroraBg } from '../components/AnimatedBackground'
+import { CanvasBg } from '../components/AnimatedBackground'
 import API from '../utils/api'
 import QuickScanModal from '../components/QuickScanModal'
 import SplitBillModal from '../components/SplitBillModal'
@@ -1059,7 +1059,7 @@ export default function Transactions() {
         </div>
       )}
 
-      <AuroraBg variant="transactions" />
+      <CanvasBg variant="transactions" />
       <div className="max-w-2xl mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
 
         {/* Header */}
@@ -1069,9 +1069,12 @@ export default function Transactions() {
             <p className="text-gray-400 text-sm mt-0.5">{expenses.length + income.length} total entries</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowCatManager(true)}
-              className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3 py-2 rounded-xl text-xs font-semibold hover:border-violet-300 hover:text-violet-600 transition shadow-sm">
-              🏷️ Categories
+            <button
+              onClick={() => setShowCatManager(true)}
+              title="Add or remove custom spending categories"
+              className="flex items-center gap-1.5 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-violet-100 dark:hover:bg-violet-800/30 hover:border-violet-400 active:scale-95 transition shadow-sm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              Categories
             </button>
             <button onClick={exportCSV}
               className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3 py-2 rounded-xl text-xs font-semibold hover:border-violet-300 hover:text-violet-600 transition shadow-sm">

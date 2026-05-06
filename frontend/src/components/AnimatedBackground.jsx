@@ -1,4 +1,25 @@
 import { useEffect, useRef } from 'react'
+import {
+  DashboardBg, TransactionsBg, BudgetsBg, GoalsBg,
+  SubscriptionsBg, ReportsBg, WellnessBg, NetWorthBg, ProfileBg,
+} from './PageBackgrounds'
+
+const CANVAS_MAP = {
+  dashboard: DashboardBg,
+  transactions: TransactionsBg,
+  budgets: BudgetsBg,
+  goals: GoalsBg,
+  subscriptions: SubscriptionsBg,
+  reports: ReportsBg,
+  wellness: WellnessBg,
+  networth: NetWorthBg,
+  profile: ProfileBg,
+}
+
+export function CanvasBg({ variant = 'dashboard' }) {
+  const Comp = CANVAS_MAP[variant] || DashboardBg
+  return <Comp />
+}
 
 const KEYFRAMES = `
 @keyframes aurora-a{0%,100%{transform:translate(0,0) scale(1)}25%{transform:translate(22px,-28px) scale(1.06)}50%{transform:translate(-16px,18px) scale(0.95)}75%{transform:translate(26px,12px) scale(1.04)}}

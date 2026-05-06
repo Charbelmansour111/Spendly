@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
-import { AuroraBg } from '../components/AnimatedBackground'
+import { CanvasBg } from '../components/AnimatedBackground'
 import API from '../utils/api'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
@@ -408,7 +408,7 @@ export default function Budgets() {
         </div>
       )}
 
-      <AuroraBg variant="budgets" />
+      <CanvasBg variant="budgets" />
       <div className="max-w-4xl mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
 
         {/* Header */}

@@ -1,5 +1,5 @@
 import Layout from '../components/Layout'
-import { AuroraBg } from '../components/AnimatedBackground'
+import { CanvasBg } from '../components/AnimatedBackground'
 import VoiceAssistant from '../components/VoiceAssistant'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import API from '../utils/api'
@@ -681,6 +681,7 @@ export default function Dashboard() {
   const [savingsGoals, setSavings]    = useState([])
   const [notifications, setNotifs]    = useState([])
   const [trendsData, setTrends]       = useState([])
+  const [subscriptions, setSubs]      = useState([])
   const [loading, setLoading]         = useState(true)
   const [currencySymbol]              = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
   const [toast, setToast]             = useState(null)
@@ -734,15 +735,16 @@ export default function Dashboard() {
   const fetchSavings  = useCallback(async () => { try { const r = await API.get('/savings'); setSavings(r.data) } catch { /* noop */ } }, [])
   const fetchTrends   = useCallback(async () => { try { const r = await API.get('/expenses/trends'); setTrends(r.data) } catch { /* noop */ } }, [])
   const fetchNotifs   = useCallback(async () => { try { const r = await API.get('/notifications'); setNotifs(r.data) } catch { /* noop */ } }, [])
+  const fetchSubs     = useCallback(async () => { try { const r = await API.get('/subscriptions'); setSubs(r.data || []) } catch { /* noop */ } }, [])
   const fetchIncome   = useCallback(async () => {
     try { const r = await API.get('/income?month=' + (selectedMonth + 1) + '&year=' + selectedYear); setIncomeList(r.data) } catch { /* noop */ }
   }, [selectedMonth, selectedYear])
 
   useEffect(() => {
     if (!localStorage.getItem('token')) return
-    Promise.all([fetchExpenses(), fetchBudgets(), fetchSavings(), fetchTrends(), fetchNotifs()])
+    Promise.all([fetchExpenses(), fetchBudgets(), fetchSavings(), fetchTrends(), fetchNotifs(), fetchSubs()])
       .finally(() => setLoading(false))
-  }, [fetchExpenses, fetchBudgets, fetchSavings, fetchTrends, fetchNotifs])
+  }, [fetchExpenses, fetchBudgets, fetchSavings, fetchTrends, fetchNotifs, fetchSubs])
 
   useEffect(() => {
     if (!localStorage.getItem('token')) return
@@ -1086,7 +1088,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <AuroraBg variant="dashboard" />
+      <CanvasBg variant="dashboard" />
       <div className="max-w-2xl mx-auto px-4 py-4 pb-8 relative" style={{ zIndex: 1 }}>
 
         {/* Month Selector */}
@@ -1416,6 +1418,58 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+          )
+        })()}
+
+        {/* Subscriptions snapshot */}
+        {subscriptions.length > 0 && (() => {
+          const totalPerMonth = subscriptions.reduce((s, sub) => {
+            const a = parseFloat(sub.amount) || 0
+            if (sub.billing_cycle === 'yearly') return s + a / 12
+            if (sub.billing_cycle === 'weekly')  return s + a * 4.33
+            return s + a
+          }, 0)
+          const upcoming = subscriptions
+            .filter(s => s.next_billing_date)
+            .sort((a, b) => new Date(a.next_billing_date) - new Date(b.next_billing_date))
+            .slice(0, 3)
+          return (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Subscriptions</h3>
+                <a href="/subscriptions" className="text-violet-600 text-xs font-semibold hover:underline">Manage →</a>
+              </div>
+              <div className="flex items-center justify-between mb-3 bg-violet-50 dark:bg-violet-900/20 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-xs text-gray-400">Monthly cost</p>
+                  <p className="text-lg font-black text-violet-600 tabular-nums">{currencySymbol}{totalPerMonth.toFixed(2)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-400">Active</p>
+                  <p className="text-lg font-black text-gray-800 dark:text-white">{subscriptions.length}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-400">Per year</p>
+                  <p className="text-sm font-bold text-gray-500 tabular-nums">{currencySymbol}{(totalPerMonth * 12).toFixed(0)}</p>
+                </div>
+              </div>
+              {upcoming.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Upcoming renewals</p>
+                  {upcoming.map(sub => {
+                    const days = Math.round((new Date(sub.next_billing_date) - new Date().setHours(0,0,0,0)) / 86400000)
+                    return (
+                      <div key={sub.id} className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate flex-1">{sub.name}</p>
+                        <span className={`text-[11px] font-semibold ml-2 shrink-0 ${days <= 3 ? 'text-red-500' : days <= 7 ? 'text-amber-500' : 'text-gray-400'}`}>
+                          {days === 0 ? 'Today' : days < 0 ? 'Overdue' : `in ${days}d`}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )
         })()}

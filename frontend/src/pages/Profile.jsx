@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Layout from '../components/Layout'
-import { AuroraBg } from '../components/AnimatedBackground'
+import { CanvasBg } from '../components/AnimatedBackground'
 import API from '../utils/api'
 import { t } from '../i18n'
 import { useDarkMode } from '../hooks/useDarkMode'
@@ -154,7 +154,7 @@ export default function Profile() {
   return (
     <Layout>
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
-      <AuroraBg variant="profile" />
+      <CanvasBg variant="profile" />
       <div className="max-w-lg mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
 
         {/* Hero header */}
