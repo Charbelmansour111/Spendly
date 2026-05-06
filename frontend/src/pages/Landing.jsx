@@ -218,19 +218,39 @@ function Landing() {
             <p className="text-lg text-gray-500 dark:text-gray-400 mb-10 max-w-lg mx-auto lg:mx-0 leading-relaxed">
               Track expenses, set budgets, scan receipts, and get AI-powered insights — all in one clean, free app.
             </p>
-            <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
+            <div className="flex flex-wrap gap-3 justify-center lg:justify-start mb-6">
               <a href="/register" className="px-7 py-3.5 bg-violet-600 text-white font-semibold rounded-xl hover:bg-violet-700 active:scale-95 transition shadow-lg shadow-violet-200 dark:shadow-violet-900/30 text-base">
                 Start for free →
               </a>
               <a href="/login" className="px-7 py-3.5 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition border border-gray-200 dark:border-gray-700 text-base">
                 Sign in
               </a>
-              {showInstall && (
-                <button onClick={handleInstall} className="px-7 py-3.5 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition border border-gray-200 dark:border-gray-700 text-base flex items-center gap-2">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Install App
-                </button>
-              )}
+            </div>
+            {/* App store download buttons */}
+            <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
+              <button
+                onClick={() => setInstallModal('ios')}
+                className="flex items-center gap-3 px-5 py-3 bg-black dark:bg-gray-800 text-white rounded-2xl hover:bg-gray-900 dark:hover:bg-gray-700 active:scale-95 transition border border-gray-800 dark:border-gray-600 shadow-md">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+                <div className="text-left">
+                  <p className="text-[10px] text-gray-400 leading-none mb-1">Download on the</p>
+                  <p className="text-sm font-bold leading-none">App Store</p>
+                </div>
+              </button>
+              <button
+                onClick={() => deferredPrompt ? handleInstall() : setInstallModal('android')}
+                className="flex items-center gap-3 px-5 py-3 bg-black dark:bg-gray-800 text-white rounded-2xl hover:bg-gray-900 dark:hover:bg-gray-700 active:scale-95 transition border border-gray-800 dark:border-gray-600 shadow-md">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.523 15.341l-4.38-4.38 4.38-4.381a.5.5 0 00-.707-.707L12.435 10.254 8.053 5.873a.5.5 0 00-.707.707l4.382 4.381-4.382 4.38a.5.5 0 00.707.707l4.382-4.38 4.381 4.38a.5.5 0 00.707-.707zM5 6.5v11a1 1 0 001.5.866l10-5.5a1 1 0 000-1.732l-10-5.5A1 1 0 005 6.5z"/>
+                </svg>
+                <div className="text-left">
+                  <p className="text-[10px] text-gray-400 leading-none mb-1">Get it on</p>
+                  <p className="text-sm font-bold leading-none">Google Play</p>
+                </div>
+              </button>
+              <p className="w-full text-xs text-gray-400 dark:text-gray-500 text-center lg:text-left mt-1">Free PWA — installs directly from your browser, no store account needed</p>
             </div>
           </div>
 
@@ -405,69 +425,79 @@ function Landing() {
       </section>
 
       {/* ── INSTALL ON MOBILE ─────────────────────────────────── */}
-      <section className="max-w-4xl mx-auto px-6 pb-24">
-        <div className="bg-gray-50 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 rounded-3xl p-8">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-violet-100 dark:bg-violet-900/40 rounded-2xl mb-4">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-violet-600 dark:text-violet-400">
-                <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="2"/>
-              </svg>
+      {/* ── DOWNLOAD THE APP ──────────────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-6 pb-24">
+        <div className="relative overflow-hidden bg-linear-to-br from-gray-900 to-gray-800 dark:from-gray-800 dark:to-gray-900 rounded-3xl px-8 py-12 shadow-2xl">
+          {/* Background decoration */}
+          <div className="absolute top-0 right-0 w-72 h-72 bg-violet-600/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative flex flex-col lg:flex-row items-center gap-10">
+            {/* Left: copy */}
+            <div className="flex-1 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 bg-white/10 text-white/80 text-xs font-semibold px-3 py-1.5 rounded-full mb-5 uppercase tracking-widest">
+                <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse" />
+                Available on all devices
+              </div>
+              <h2 className="text-3xl font-bold text-white mb-3 leading-tight">
+                Take Spendly<br className="hidden sm:block" /> everywhere you go
+              </h2>
+              <p className="text-gray-400 text-base mb-6 max-w-md mx-auto lg:mx-0 leading-relaxed">
+                Install the app on your phone or tablet for instant access, offline support, and push notifications — no App Store account required.
+              </p>
+              {/* Feature pills */}
+              <div className="flex flex-wrap gap-2 justify-center lg:justify-start text-xs">
+                {['Works offline', 'Push notifications', 'Home screen icon', 'Free forever'].map(f => (
+                  <span key={f} className="flex items-center gap-1.5 bg-white/10 text-white/70 px-3 py-1.5 rounded-full font-medium">
+                    <span className="text-violet-400">✓</span> {f}
+                  </span>
+                ))}
+              </div>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Install Spendly on your phone</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-              Add Spendly to your home screen for a full native app experience — works completely offline too.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={() => setInstallModal('ios')}
-              className="flex items-center justify-center gap-3 px-6 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-md transition group"
-            >
-              <div className="w-10 h-10 bg-gray-900 dark:bg-white rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" className="dark:stroke-gray-900" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"/>
-                  <path d="M15.5 8.5c-.828-1.06-2.1-1.75-3.5-1.75-2.485 0-4.5 2.015-4.5 4.5s2.015 4.5 4.5 4.5c1.4 0 2.672-.69 3.5-1.75"/>
-                </svg>
-              </div>
-              <div className="text-left">
-                <p className="text-xs text-gray-400 font-medium">Install on</p>
-                <p className="font-semibold text-gray-900 dark:text-white text-sm">iPhone / iPad</p>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 dark:text-gray-600 ml-auto">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
 
-            <button
-              onClick={() => setInstallModal('android')}
-              className="flex items-center justify-center gap-3 px-6 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-md transition group"
-            >
-              <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="white" strokeWidth="0">
-                  <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4483.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4483.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.0292l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.2439 13.8533 7.8508 12 7.8508s-3.5902.3931-5.1367 1.0873L4.841 5.4361a.4159.4159 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3435-4.1021-2.6892-7.5743-6.1185-9.4488"/>
-                </svg>
-              </div>
-              <div className="text-left">
-                <p className="text-xs text-gray-400 font-medium">Install on</p>
-                <p className="font-semibold text-gray-900 dark:text-white text-sm">Android</p>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 dark:text-gray-600 ml-auto">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
-
-            {showInstall && (
+            {/* Right: download buttons */}
+            <div className="flex flex-col gap-3 w-full lg:w-auto lg:min-w-[260px]">
+              {/* iOS / App Store */}
               <button
-                onClick={handleInstall}
-                className="flex items-center justify-center gap-3 px-6 py-4 bg-violet-600 hover:bg-violet-700 rounded-2xl transition group"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                <div className="text-left">
-                  <p className="text-xs text-white/60 font-medium">One-click</p>
-                  <p className="font-semibold text-white text-sm">Install Now</p>
+                onClick={() => setInstallModal('ios')}
+                className="flex items-center gap-4 px-5 py-4 bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 rounded-2xl transition active:scale-95 group w-full">
+                <div className="w-12 h-12 bg-black/30 rounded-xl flex items-center justify-center shrink-0">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                  </svg>
                 </div>
+                <div className="text-left flex-1 min-w-0">
+                  <p className="text-white/50 text-[11px] font-medium leading-none mb-1">Download on the</p>
+                  <p className="text-white font-bold text-base leading-none">App Store</p>
+                  <p className="text-white/40 text-[11px] mt-1">iPhone · iPad · iPod touch</p>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-40 group-hover:opacity-70 transition shrink-0"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
-            )}
+
+              {/* Android / Google Play */}
+              <button
+                onClick={() => deferredPrompt ? handleInstall() : setInstallModal('android')}
+                className="flex items-center gap-4 px-5 py-4 bg-white/10 hover:bg-white/20 border border-white/15 hover:border-white/30 rounded-2xl transition active:scale-95 group w-full">
+                <div className="w-12 h-12 bg-green-600/80 rounded-xl flex items-center justify-center shrink-0">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <path d="M3 20.5v-17c0-.83 1.01-1.3 1.7-.77l14 8.5c.6.36.6 1.18 0 1.54l-14 8.5c-.69.53-1.7.06-1.7-.77z"/>
+                  </svg>
+                </div>
+                <div className="text-left flex-1 min-w-0">
+                  <p className="text-white/50 text-[11px] font-medium leading-none mb-1">Get it on</p>
+                  <p className="text-white font-bold text-base leading-none">Google Play</p>
+                  <p className="text-white/40 text-[11px] mt-1">Android 8.0+</p>
+                </div>
+                {deferredPrompt
+                  ? <span className="text-[10px] font-bold bg-violet-500 text-white px-2 py-0.5 rounded-full shrink-0">Ready!</span>
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-40 group-hover:opacity-70 transition shrink-0"><polyline points="9 18 15 12 9 6"/></svg>
+                }
+              </button>
+
+              <p className="text-center text-white/30 text-xs pt-1">
+                PWA — installs from the browser, no store account needed
+              </p>
+            </div>
           </div>
         </div>
       </section>
