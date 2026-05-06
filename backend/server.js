@@ -55,6 +55,23 @@ app.get('/', (req, res) => {
   res.json({ message: 'Spendly API is running' });
 });
 
+app.get('/api/health/ai', async (req, res) => {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return res.json({ ok: false, error: 'GROQ_API_KEY not set' });
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 5, messages: [{ role: 'user', content: 'hi' }] })
+    });
+    const d = await r.json();
+    if (!r.ok) return res.json({ ok: false, error: d.error?.message || 'Groq error', status: r.status });
+    res.json({ ok: true, key_prefix: key.slice(0, 8) });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   await migrate();
