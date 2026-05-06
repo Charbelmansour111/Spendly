@@ -80,10 +80,10 @@ function PinModal({ onUnlock }) {
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-gray-950/90 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl px-8 py-8 w-full max-w-xs mx-4 flex flex-col items-center gap-6">
-        <div className="w-14 h-14 bg-violet-100 dark:bg-violet-900/40 rounded-2xl flex items-center justify-center">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <div className="fixed inset-0 z-20 flex items-center justify-center" style={{ background: 'rgba(109,40,217,0.18)', backdropFilter: 'blur(16px)' }}>
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl px-8 py-8 w-full max-w-xs mx-4 flex flex-col items-center gap-6 border border-violet-100 dark:border-violet-900/40">
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
         <div className="text-center">
           <p className="font-bold text-gray-900 dark:text-white text-lg">Net Worth PIN</p>
@@ -91,23 +91,25 @@ function PinModal({ onUnlock }) {
         </div>
         <div className="flex gap-3">
           {[0,1,2,3].map(i => (
-            <div key={i} className={`w-4 h-4 rounded-full transition-all ${
+            <div key={i} className={`w-5 h-5 rounded-full transition-all duration-150 ${
               i < pin.length
-                ? error ? 'bg-red-500' : 'bg-violet-600'
+                ? error ? 'bg-red-500 scale-110' : 'bg-violet-600 scale-110'
                 : 'bg-gray-200 dark:bg-gray-700'
             }`} />
           ))}
         </div>
         {error && <p className="text-red-500 text-sm font-semibold -mt-3">Incorrect PIN</p>}
-        <div className="grid grid-cols-3 gap-3 w-full">
+        <div className="grid grid-cols-3 gap-2.5 w-full">
           {[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map((d, i) => (
             <button key={i} onClick={() => {
               if (d === '') return
               if (d === '⌫') { setPin(p => p.slice(0, -1)); return }
               if (pin.length < 4) press(String(d))
             }}
-              className={`py-4 rounded-2xl text-lg font-bold transition active:scale-90 ${
-                d === '' ? 'invisible' : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-violet-50 dark:hover:bg-violet-900/30'
+              className={`py-4 rounded-2xl text-lg font-bold transition-all active:scale-90 ${
+                d === '' ? 'invisible' : d === '⌫'
+                  ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 hover:bg-violet-100'
+                  : 'bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-violet-50 dark:hover:bg-violet-900/30 border border-gray-100 dark:border-gray-700/60 shadow-sm'
               }`}>
               {d}
             </button>

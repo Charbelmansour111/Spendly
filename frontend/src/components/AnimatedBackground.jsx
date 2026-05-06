@@ -1,41 +1,46 @@
 import { useEffect, useRef } from 'react'
 
 const KEYFRAMES = `
-@keyframes aurora-a{0%,100%{transform:translate(0,0) scale(1)}25%{transform:translate(18px,-22px) scale(1.05)}50%{transform:translate(-12px,14px) scale(0.96)}75%{transform:translate(22px,10px) scale(1.03)}}
-@keyframes aurora-b{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-25px,18px) scale(1.07)}66%{transform:translate(20px,-12px) scale(0.94)}}
-@keyframes aurora-c{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(14px,28px) scale(1.04)}}
+@keyframes aurora-a{0%,100%{transform:translate(0,0) scale(1)}25%{transform:translate(22px,-28px) scale(1.06)}50%{transform:translate(-16px,18px) scale(0.95)}75%{transform:translate(26px,12px) scale(1.04)}}
+@keyframes aurora-b{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-32px,22px) scale(1.08)}66%{transform:translate(24px,-16px) scale(0.93)}}
+@keyframes aurora-c{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(18px,34px) scale(1.05)}}
 `
 
 const VARIANTS = {
-  dashboard:    [['124,58,237',0.13,'aurora-a',19,0],['245,158,11',0.09,'aurora-b',23,4],['109,40,217',0.10,'aurora-c',17,8]],
-  transactions: [['124,58,237',0.12,'aurora-a',20,0],['59,130,246',0.09,'aurora-b',25,5],['99,102,241',0.10,'aurora-c',18,9]],
-  budgets:      [['124,58,237',0.12,'aurora-a',21,0],['16,185,129',0.09,'aurora-b',19,4],['5,150,105', 0.08,'aurora-c',22,8]],
-  goals:        [['124,58,237',0.13,'aurora-a',19,0],['236,72,153',0.09,'aurora-b',24,4],['167,139,250',0.10,'aurora-c',17,7]],
-  reports:      [['124,58,237',0.12,'aurora-a',21,0],['99,102,241',0.10,'aurora-b',26,5],['67,56,202', 0.09,'aurora-c',18,9]],
-  wellness:     [['124,58,237',0.12,'aurora-a',20,0],['20,184,166',0.09,'aurora-b',23,4],['6,182,212', 0.08,'aurora-c',17,8]],
-  networth:     [['124,58,237',0.13,'aurora-a',22,0],['234,179,8', 0.09,'aurora-b',20,5],['161,98,7',  0.08,'aurora-c',18,9]],
-  profile:      [['124,58,237',0.12,'aurora-a',20,0],['167,139,250',0.10,'aurora-b',24,4],['139,92,246',0.09,'aurora-c',17,8]],
-  subscriptions:[['124,58,237',0.12,'aurora-a',21,0],['168,85,247', 0.09,'aurora-b',23,5],['109,40,217',0.09,'aurora-c',19,8]],
+  dashboard:    [['124,58,237',0.28,'aurora-a',19,0],['245,158,11',0.20,'aurora-b',23,4],['109,40,217',0.22,'aurora-c',17,8]],
+  transactions: [['124,58,237',0.26,'aurora-a',20,0],['59,130,246',0.20,'aurora-b',25,5],['99,102,241',0.22,'aurora-c',18,9]],
+  budgets:      [['124,58,237',0.26,'aurora-a',21,0],['16,185,129',0.20,'aurora-b',19,4],['5,150,105', 0.18,'aurora-c',22,8]],
+  goals:        [['124,58,237',0.28,'aurora-a',19,0],['236,72,153',0.20,'aurora-b',24,4],['167,139,250',0.22,'aurora-c',17,7]],
+  reports:      [['124,58,237',0.26,'aurora-a',21,0],['99,102,241',0.22,'aurora-b',26,5],['67,56,202', 0.20,'aurora-c',18,9]],
+  wellness:     [['124,58,237',0.26,'aurora-a',20,0],['20,184,166',0.20,'aurora-b',23,4],['6,182,212', 0.18,'aurora-c',17,8]],
+  networth:     [['124,58,237',0.28,'aurora-a',22,0],['234,179,8', 0.20,'aurora-b',20,5],['161,98,7',  0.18,'aurora-c',18,9]],
+  profile:      [['124,58,237',0.26,'aurora-a',20,0],['167,139,250',0.22,'aurora-b',24,4],['139,92,246',0.20,'aurora-c',17,8]],
+  subscriptions:[['124,58,237',0.26,'aurora-a',21,0],['168,85,247', 0.20,'aurora-b',23,5],['109,40,217',0.20,'aurora-c',19,8]],
 }
-
-const POSITIONS = [
-  { left: '5%',  top: '-40px', w: 520, h: 420 },
-  { right: '8%', top: '-20px', w: 420, h: 360 },
-  { left: '38%', top: '60px',  w: 380, h: 300 },
-]
 
 export function AuroraBg({ variant = 'dashboard' }) {
   const blobs = VARIANTS[variant] || VARIANTS.dashboard
+  const positions = [
+    { left: '-8%',  top: '-15%'  },
+    { right: '-5%', top: '5%'    },
+    { left: '30%',  bottom: '-5%'},
+  ]
+  const sizes = [
+    { width: 800, height: 700 },
+    { width: 700, height: 600 },
+    { width: 650, height: 550 },
+  ]
   return (
-    <div className="absolute inset-x-0 top-0 h-80 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
       <style>{KEYFRAMES}</style>
       {blobs.map(([rgb, opacity, anim, dur, delay], i) => (
         <div key={i} style={{
           position: 'absolute',
-          ...POSITIONS[i],
+          ...positions[i],
+          ...sizes[i],
           borderRadius: '50%',
-          background: `radial-gradient(ellipse at center, rgba(${rgb},${opacity}) 0%, transparent 72%)`,
-          filter: 'blur(72px)',
+          background: `radial-gradient(ellipse at center, rgba(${rgb},${opacity}) 0%, transparent 70%)`,
+          filter: 'blur(80px)',
           animation: `${anim} ${dur}s ease-in-out ${delay}s infinite`,
           willChange: 'transform',
         }} />

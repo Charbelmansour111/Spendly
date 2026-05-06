@@ -211,7 +211,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const sidebarProps = { user, current, dark, toggleDark, onBellClick, unreadCount, onLogout: handleLogout, navItems: activeNavItems }
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900 overflow-hidden relative" dir={isRTL() ? 'rtl' : 'ltr'}>
+    <div className="flex h-screen overflow-hidden relative" style={{ background: 'transparent' }} dir={isRTL() ? 'rtl' : 'ltr'}>
       <style>{`@keyframes spPageIn { from { opacity:0; transform:translateX(10px) } to { opacity:1; transform:translateX(0) } }`}</style>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/60 shrink-0 h-screen sticky top-0">
@@ -251,7 +251,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       <main
         ref={mainRef}
         className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-28 md:pb-0 relative"
-        style={{ overscrollBehavior: 'contain' }}
+        style={{ overscrollBehavior: 'contain', position: 'relative', zIndex: 1 }}
         onTouchStart={onPTRStart}
         onTouchMove={onPTRMove}
         onTouchEnd={onPTREnd}

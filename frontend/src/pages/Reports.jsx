@@ -536,9 +536,15 @@ export default function Reports() {
       <AuroraBg variant="reports" />
       <div className="max-w-4xl mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
 
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
-          <p className="text-gray-400 text-sm mt-0.5">Monthly breakdown · deep analytics · AI assistant</p>
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
+            <p className="text-gray-400 text-sm mt-0.5">Monthly breakdown · deep analytics · AI assistant</p>
+          </div>
+          <a href="/transactions" className="flex items-center gap-1.5 text-xs font-semibold text-violet-600 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/40 px-3 py-2 rounded-xl hover:bg-violet-100 transition mt-1">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 2L3 6v13a1 1 0 001 1h16a1 1 0 001-1V6l-3-4H6z"/><path d="M8 11h8M8 15h5"/><path d="M3 6h18"/></svg>
+            Transactions
+          </a>
         </div>
 
         {/* Month Selector */}
@@ -1252,7 +1258,11 @@ export default function Reports() {
                 {loading ? (
                   <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />)}</div>
                 ) : monthExpenses.length === 0 ? (
-                  <div className="text-center py-10 text-gray-400"><p className="text-3xl mb-2">📭</p><p className="text-sm">No expenses for {monthName}</p></div>
+                  <div className="text-center py-10 text-gray-400">
+                    <p className="text-3xl mb-2">📭</p>
+                    <p className="text-sm">No expenses for {monthName}</p>
+                    <a href="/transactions" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-violet-600 bg-violet-50 dark:bg-violet-900/20 px-4 py-2 rounded-xl hover:bg-violet-100 transition">Add Transactions →</a>
+                  </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">

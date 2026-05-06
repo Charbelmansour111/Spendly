@@ -1424,14 +1424,17 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Recent Transactions</h3>
-            <a href="/reports" className="text-violet-600 text-xs font-semibold hover:underline">View all</a>
+            <a href="/transactions" className="text-violet-600 text-xs font-semibold hover:underline">View all →</a>
           </div>
           {recentExpenses.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-3xl mb-2">💸</p>
               <p className="text-gray-400 text-sm">No expenses for {monthName}</p>
               {isCurrentMonth && (
-                <button onClick={() => setShowAddExp(true)} className="mt-3 bg-violet-600 text-white px-4 py-2 rounded-xl text-xs font-semibold">Add First Expense</button>
+                <div className="flex gap-2 justify-center mt-3">
+                  <button onClick={() => setShowAddExp(true)} className="bg-violet-600 text-white px-4 py-2 rounded-xl text-xs font-semibold">+ Add Expense</button>
+                  <a href="/transactions" className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl text-xs font-semibold">View All</a>
+                </div>
               )}
             </div>
           ) : (
