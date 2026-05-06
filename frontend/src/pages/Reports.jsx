@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
+import { AuroraBg } from '../components/AnimatedBackground'
 import API from '../utils/api'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -532,7 +533,8 @@ export default function Reports() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {modalData && <NumberModal label={modalData.label} value={modalData.value} onClose={() => setModalData(null)} />}
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <AuroraBg variant="reports" />
+      <div className="max-w-4xl mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
 
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>

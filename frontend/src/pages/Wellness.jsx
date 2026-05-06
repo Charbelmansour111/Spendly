@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
+import { AuroraBg } from '../components/AnimatedBackground'
 import API from '../utils/api'
 import MoneyDefender from '../components/MoneyDefender'
 import TimeMachineModal from '../components/TimeMachineModal'
@@ -289,7 +290,8 @@ export default function Wellness() {
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-5">
+      <AuroraBg variant="wellness" />
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-5 relative" style={{ zIndex: 1 }}>
 
         {/* Header */}
         <div className="flex items-center justify-between">

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import Layout from '../components/Layout'
+import { AuroraBg } from '../components/AnimatedBackground'
 import API from '../utils/api'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
@@ -153,7 +154,8 @@ export default function Subscriptions() {
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <AuroraBg variant="subscriptions" />
+      <div className="max-w-2xl mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
