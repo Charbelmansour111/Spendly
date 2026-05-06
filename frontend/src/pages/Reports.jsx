@@ -4,6 +4,7 @@ import API from '../utils/api'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, LineChart, Line, CartesianGrid } from 'recharts'
+import { METHOD_ICONS, METHOD_COLORS } from '../components/QuickScanModal'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 const COLORS = ['#4F46E5', '#7C3AED', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6']
@@ -249,6 +250,7 @@ export default function Reports() {
   const [sym] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
   const [user] = useState(() => { try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} } })
   const [activeTab, setActiveTab] = useState('analytics')
+  const [paymentStats, setPaymentStats] = useState([])
   // AI Chat tab state
   const [chatMessages, setChatMessages] = useState([{ role: 'assistant', content: CHAT_GREETING }])
   const [chatInput, setChatInput] = useState('')
@@ -279,8 +281,9 @@ export default function Reports() {
       API.get('/income?month=' + (selectedMonth + 1) + '&year=' + selectedYear),
       API.get('/income?month=' + (prevMonthNum + 1) + '&year=' + prevYearNum),
       API.get('/expenses/trends'),
+      API.get('/expenses/payment-method-stats?month=' + (selectedMonth + 1) + '&year=' + selectedYear),
     ])
-      .then(([e, i, pi, t]) => { setExpenses(e.data); setIncome(i.data); setPrevIncome(pi.data); setTrends(t.data) })
+      .then(([e, i, pi, t, pm]) => { setExpenses(e.data); setIncome(i.data); setPrevIncome(pi.data); setTrends(t.data); setPaymentStats(pm.data || []) })
       .catch(() => showToast('Error loading data', 'error'))
       .finally(() => setLoading(false))
   }, [selectedMonth, selectedYear, prevMonthNum, prevYearNum, showToast])
@@ -811,6 +814,29 @@ export default function Reports() {
               </div>
             )}
 
+            {/* Payment Method Breakdown */}
+            {paymentStats.length > 0 && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+                <SectionHeader icon="💳" title="Payment Methods" subtitle={`How you pay — ${monthExpenses.length} expense${monthExpenses.length !== 1 ? 's' : ''} this month`} />
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  {paymentStats.map(s => {
+                    const totalCount = paymentStats.reduce((sum, x) => sum + parseInt(x.count), 0)
+                    const pct = totalCount > 0 ? Math.round((parseInt(s.count) / totalCount) * 100) : 0
+                    return (
+                      <div key={s.payment_method} className={`rounded-2xl px-4 py-3 ${METHOD_COLORS[s.payment_method] || 'bg-gray-100 text-gray-700'}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-lg">{METHOD_ICONS[s.payment_method] || '💳'}</span>
+                          <span className="font-bold text-sm">{s.payment_method || 'Card'}</span>
+                        </div>
+                        <p className="text-2xl font-black tabular-nums leading-tight">{s.count}</p>
+                        <p className="text-xs opacity-70 mt-0.5">{pct}% of transactions · {sym}{parseFloat(s.total).toFixed(2)}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* 6-Month Income vs Spending */}
             {trendChartData.length > 1 && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
@@ -982,7 +1008,7 @@ export default function Reports() {
                         </td>
                         <td className="py-3 px-3 text-right font-bold text-red-500 tabular-nums">-{fmt(total, sym)}</td>
                       </tr>
-                      {categoryData.map((c, i) => (
+                      {categoryData.map((c) => (
                         <tr key={c.name} className="border-b border-gray-50 dark:border-gray-700/30">
                           <td className="py-2 px-3 pl-8">
                             <span className="text-xs text-gray-500 dark:text-gray-400">{CAT_ICONS[c.name] || '📦'} {c.name}</span>

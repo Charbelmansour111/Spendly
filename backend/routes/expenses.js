@@ -208,4 +208,87 @@ router.get('/trends', authenticateToken, async (req, res) => {
   }
 });
 
+// ── Quick parse helpers ────────────────────────────────────────────────────
+const asyncHandler = require('../middleware/asyncHandler');
+const today = () => new Date().toISOString().split('T')[0];
+
+const PARSE_SYSTEM = `Extract ONE transaction from the text. Return ONLY valid JSON, nothing else.
+Schema: {"amount":number,"category":"Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other","description":"merchant or item","date":"YYYY-MM-DD","payment_method":"Card|Bank|Cash|Virtual","type":"expense|income"}
+Rules:
+- amount: positive number, no currency symbol
+- date: use ${today()} if not specified
+- payment_method: Bank=wire/transfer/IBAN, Cash=cash/ATM withdrawal, Virtual=PayPal/Apple Pay/Google Pay, Card=everything else
+- type: income if deposit/received/credited, expense otherwise
+- If no transaction found: {"error":"not a transaction"}`;
+
+async function callGroqFast(messages) {
+  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'llama-3.1-8b-instant', max_tokens: 120, temperature: 0, messages })
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error?.message || 'AI error');
+  return d.choices[0].message.content.trim();
+}
+
+// POST /api/expenses/parse-text  — fast SMS/text parse
+router.post('/parse-text', authenticateToken, asyncHandler(async (req, res) => {
+  const { text } = req.body;
+  if (!text?.trim()) return res.status(400).json({ message: 'text required' });
+  const raw = await callGroqFast([
+    { role: 'system', content: PARSE_SYSTEM },
+    { role: 'user', content: text.trim() }
+  ]);
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) return res.status(422).json({ message: 'Could not parse transaction' });
+  const result = JSON.parse(match[0]);
+  if (result.error) return res.status(422).json({ message: result.error });
+  res.json(result);
+}));
+
+// POST /api/expenses/parse-image  — screenshot parse via vision model
+router.post('/parse-image', authenticateToken, asyncHandler(async (req, res) => {
+  const { image } = req.body; // base64 data URL
+  if (!image) return res.status(400).json({ message: 'image required' });
+  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      max_tokens: 150,
+      temperature: 0,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: `Extract the transaction from this screenshot. Return ONLY valid JSON:\n{"amount":number,"category":"Food|Coffee|Transport|Shopping|Subscriptions|Entertainment|Health|Fitness|Education|Bills|Travel|Gifts|Other","description":"merchant","date":"YYYY-MM-DD or ${today()}","payment_method":"Card|Bank|Cash|Virtual","type":"expense|income"}\nIf no transaction: {"error":"no transaction found"}` },
+          { type: 'image_url', image_url: { url: image } }
+        ]
+      }]
+    })
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error?.message || 'Vision AI error');
+  const raw = d.choices[0].message.content.trim();
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) return res.status(422).json({ message: 'Could not parse screenshot' });
+  const result = JSON.parse(match[0]);
+  if (result.error) return res.status(422).json({ message: result.error });
+  res.json(result);
+}));
+
+// GET /api/expenses/payment-method-stats  — counts by payment method
+router.get('/payment-method-stats', authenticateToken, asyncHandler(async (req, res) => {
+  const { month, year } = req.query;
+  let q = 'SELECT payment_method, COUNT(*) as count, COALESCE(SUM(amount),0) as total FROM expenses WHERE user_id=$1';
+  const params = [req.userId];
+  if (month && year) {
+    q += ' AND EXTRACT(MONTH FROM date)=$2 AND EXTRACT(YEAR FROM date)=$3';
+    params.push(month, year);
+  }
+  q += ' GROUP BY payment_method ORDER BY count DESC';
+  const result = await pool.query(q, params);
+  res.json(result.rows);
+}));
+
 module.exports = router;  

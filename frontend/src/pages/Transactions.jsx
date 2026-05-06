@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
+import QuickScanModal, { METHOD_ICONS, METHOD_COLORS } from '../components/QuickScanModal'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦', Salary: '💼', Freelance: '💻', Business: '🏪', Investment: '📈' }
@@ -335,7 +336,7 @@ function AddIncomeModal({ onClose, onSave, sym }) {
   )
 }
 
-function AddPickerModal({ onClose, onExpense, onIncome }) {
+function AddPickerModal({ onClose, onExpense, onIncome, onScan }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -361,6 +362,14 @@ function AddPickerModal({ onClose, onExpense, onIncome }) {
             <div className="text-center">
               <p className="font-bold text-gray-800 dark:text-white text-sm">Income</p>
               <p className="text-xs text-gray-400 mt-0.5">Log earnings</p>
+            </div>
+          </button>
+          <button onClick={onScan}
+            className="col-span-2 flex items-center gap-4 bg-violet-50 dark:bg-violet-900/20 border-2 border-violet-100 dark:border-violet-800 rounded-2xl px-5 py-4 hover:border-violet-400 active:scale-95 transition-all">
+            <div className="w-12 h-12 bg-violet-600 rounded-2xl flex items-center justify-center text-2xl shrink-0">📩</div>
+            <div className="text-left">
+              <p className="font-bold text-gray-800 dark:text-white text-sm">Quick Scan</p>
+              <p className="text-xs text-gray-400 mt-0.5">Paste bank SMS or upload screenshot — auto-detected</p>
             </div>
           </button>
         </div>
@@ -405,6 +414,7 @@ export default function Transactions() {
   const [showPicker, setShowPicker] = useState(false)
   const [showAddExp, setShowAddExp] = useState(false)
   const [showAddInc, setShowAddInc] = useState(false)
+  const [showScan, setShowScan] = useState(false)
 
   // Filters
   const [search, setSearch]       = useState('')
@@ -529,6 +539,16 @@ export default function Transactions() {
       setShowPicker(false)
       showToast('Expense added!')
     } catch { showToast('Error adding expense', 'error') }
+  }
+
+  const handleScanAdded = async () => {
+    const [e, i] = await Promise.all([API.get('/expenses'), API.get('/income')])
+    setExpenses(e.data || [])
+    setIncome((i.data || []).map(inc => ({
+      ...inc,
+      date: inc.created_at || new Date(inc.year, (inc.month || 1) - 1, 1).toISOString()
+    })))
+    showToast('Transaction added!')
   }
 
   const handleAddIncome = async (form) => {
@@ -668,6 +688,11 @@ export default function Transactions() {
           </p>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">{tx.category}</span>
+            {tx.payment_method && (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${METHOD_COLORS[tx.payment_method] || 'bg-gray-100 text-gray-500'}`}>
+                {METHOD_ICONS[tx.payment_method]} {tx.payment_method}
+              </span>
+            )}
             <span className="text-xs text-gray-400">{fmtDate(tx.date)}</span>
             {tx.is_recurring && <span className="text-xs text-purple-500 font-medium">↻ Recurring</span>}
           </div>
@@ -825,9 +850,10 @@ export default function Transactions() {
       {toast     && <Toast {...toast} onClose={() => setToast(null)} />}
       {undoLabel && <UndoToast label={undoLabel} onUndo={handleUndoExpense} onDismiss={handleDismissUndo} />}
       {editing   && <EditSheet expense={editing} sym={sym} onSave={handleEditSave} onClose={() => setEditing(null)} />}
-      {showPicker && <AddPickerModal onClose={() => setShowPicker(false)} onExpense={() => { setShowPicker(false); setShowAddExp(true) }} onIncome={() => { setShowPicker(false); setShowAddInc(true) }} />}
+      {showPicker && <AddPickerModal onClose={() => setShowPicker(false)} onExpense={() => { setShowPicker(false); setShowAddExp(true) }} onIncome={() => { setShowPicker(false); setShowAddInc(true) }} onScan={() => { setShowPicker(false); setShowScan(true) }} />}
       {showAddExp && <AddExpenseModal onClose={() => setShowAddExp(false)} onSave={handleAddExpense} sym={sym} />}
       {showAddInc && <AddIncomeModal onClose={() => setShowAddInc(false)} onSave={handleAddIncome} sym={sym} />}
+      {showScan && <QuickScanModal onClose={() => setShowScan(false)} onAdded={handleScanAdded} />}
 
       <div className="max-w-2xl mx-auto px-4 py-6">
 
@@ -1104,7 +1130,7 @@ export default function Transactions() {
       </div>
 
       {/* FAB */}
-      {!showAddExp && !showAddInc && !showPicker && !editing && (
+      {!showAddExp && !showAddInc && !showPicker && !editing && !showScan && (
         <button onClick={() => setShowPicker(true)}
           className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-20 w-14 h-14 bg-violet-600 hover:bg-violet-700 active:scale-90 rounded-2xl shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all"
           aria-label="Add transaction">
