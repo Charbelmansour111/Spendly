@@ -1484,7 +1484,7 @@ export default function Dashboard() {
               { href: '/goals',         icon: '🏆', label: 'Goals',        color: 'from-amber-500/15 to-orange-500/10',   border: 'border-amber-500/20',   iconBg: 'bg-amber-500/15'   },
               { href: '/reports',       icon: '📊', label: 'Reports',      color: 'from-blue-500/15 to-indigo-500/10',    border: 'border-blue-500/20',    iconBg: 'bg-blue-500/15'    },
               { href: '/subscriptions', icon: '🔄', label: 'Subs',         color: 'from-violet-500/15 to-purple-500/10',  border: 'border-violet-500/20',  iconBg: 'bg-violet-500/15'  },
-              { href: '/networth',      icon: '💎', label: 'Net Worth',    color: 'from-emerald-500/15 to-teal-500/10',   border: 'border-emerald-500/20', iconBg: 'bg-emerald-500/15' },
+              { href: '/net-worth',     icon: '💎', label: 'Net Worth',    color: 'from-emerald-500/15 to-teal-500/10',   border: 'border-emerald-500/20', iconBg: 'bg-emerald-500/15' },
             ].map(item => (
               <a key={item.href} href={item.href}
                 className={`bg-gradient-to-br ${item.color} border ${item.border} rounded-2xl p-3 flex flex-col items-center gap-2 active:scale-95 transition-transform text-center hover:brightness-105`}>
