@@ -8,7 +8,7 @@ import TimeMachineModal from '../components/TimeMachineModal'
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 
 function ScoreRing({ score, revealed }) {
-  const radius = 54
+  const radius = 70
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (score / 100) * circumference
   const color = score >= 80 ? '#10B981' : score >= 60 ? '#F59E0B' : score >= 40 ? '#F97316' : '#EF4444'
@@ -17,34 +17,42 @@ function ScoreRing({ score, revealed }) {
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-36 h-36">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="#E5E7EB" strokeWidth="10" />
-          <circle cx="60" cy="60" r={radius} fill="none" stroke={revealed ? color : '#E5E7EB'} strokeWidth="10"
+      <div className="relative w-48 h-48">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
+          <circle cx="80" cy="80" r={radius} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="12" />
+          <circle cx="80" cy="80" r={radius} fill="none" stroke={revealed ? color : 'rgba(255,255,255,0.15)'} strokeWidth="12"
             strokeDasharray={circumference} strokeDashoffset={revealed ? offset : circumference}
-            strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1.2s ease' }} />
+            strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1.2s ease', filter: revealed ? `drop-shadow(0 0 8px ${color})` : 'none' }} />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {revealed ? (
             <>
-              <span className="text-3xl font-bold text-white">{score}</span>
-              <span className="text-xs text-white/60">/ 100</span>
+              <span className="text-5xl font-black text-white leading-none">{score}</span>
+              <span className="text-sm text-white/50 font-medium">/ 100</span>
             </>
           ) : (
-            <span className="text-4xl">🔒</span>
+            <span className="text-5xl">🔒</span>
           )}
         </div>
       </div>
       {revealed && (
-        <div className="mt-2 flex items-center gap-2">
-          <span className="px-3 py-1 rounded-full text-white font-bold text-sm" style={{ backgroundColor: color }}>
+        <div className="mt-3 flex items-center gap-2">
+          <span className="px-4 py-1.5 rounded-full text-white font-black text-base shadow-lg" style={{ backgroundColor: color, boxShadow: `0 0 16px ${color}66` }}>
             {grade}
           </span>
-          <span className="text-sm font-semibold text-white/80">{label}</span>
+          <span className="text-base font-semibold text-white/70">{label}</span>
         </div>
       )}
     </div>
   )
+}
+
+const BREAKDOWN_ICONS = {
+  'Income Tracked': '💰',
+  'Under Budget': '🎯',
+  'Positive Balance': '📈',
+  'Savings Goals': '🏦',
+  'Consistent Tracking': '📊',
 }
 
 export default function Wellness() {
@@ -296,58 +304,79 @@ export default function Wellness() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Wellness</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Financial Wellness</h1>
             <p className="text-gray-400 text-sm mt-0.5">{monthName}</p>
           </div>
-          <span className="text-3xl">💚</span>
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+            <span className="text-xl leading-none">💚</span>
+          </div>
         </div>
 
-        {/* Health Score Card */}
-        <div className="bg-linear-to-br from-emerald-500 to-green-700 rounded-3xl p-6 text-white overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-12 translate-x-12" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8" />
-          <div className="relative flex flex-col md:flex-row items-center gap-6">
-            <div className="flex flex-col items-center gap-3">
-              <ScoreRing score={data?.score || 0} revealed={scoreRevealed} />
-              <button
-                onClick={handleCalculateScore}
-                disabled={scoreAnimating}
-                className="bg-white/20 hover:bg-white/30 active:scale-95 transition-all text-white text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 disabled:opacity-50">
-                {scoreAnimating ? (
-                  <><div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Scanning…</>
-                ) : (
-                  <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>{scoreRevealed ? 'Recalculate' : 'Calculate My Score'}</>
-                )}
-              </button>
+        {/* Hero Health Score Card */}
+        <div className="relative rounded-3xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #2e1065 0%, #1e1b4b 40%, #0f0c2e 100%)' }}>
+          {/* Decorative orbs */}
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20 blur-3xl" style={{ background: 'radial-gradient(circle, #7c3aed, transparent)', transform: 'translate(30%, -30%)' }} />
+          <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15 blur-3xl" style={{ background: 'radial-gradient(circle, #4f46e5, transparent)', transform: 'translate(-30%, 30%)' }} />
+          <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '28px 28px' }} />
+
+          <div className="relative p-7 flex flex-col items-center gap-5">
+            {/* Score ring — big and centered */}
+            <ScoreRing score={data?.score || 0} revealed={scoreRevealed} />
+
+            <button
+              onClick={handleCalculateScore}
+              disabled={scoreAnimating}
+              className="bg-white/10 hover:bg-white/20 border border-white/20 active:scale-95 transition-all text-white text-sm font-bold px-7 py-3 rounded-full flex items-center gap-2 disabled:opacity-50 backdrop-blur-sm">
+              {scoreAnimating ? (
+                <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Scanning…</>
+              ) : (
+                <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>{scoreRevealed ? 'Recalculate Score' : 'Calculate My Score'}</>
+              )}
+            </button>
+
+            {/* Title */}
+            <div className="text-center">
+              <h2 className="text-white font-bold text-lg">Financial Health Score</h2>
+              <p className="text-white/40 text-xs mt-0.5">Based on your {monthName} activity</p>
             </div>
-            <div className="flex-1 w-full">
-              <h2 className="text-lg font-bold mb-1">Financial Health Score</h2>
-              <p className="text-green-200 text-xs mb-4">Based on your {monthName} activity</p>
-              <div className="space-y-2.5">
-                {data?.breakdown?.map((item, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <span className="text-base mt-0.5">{item.achieved ? '✅' : '⬜'}</span>
-                    <div className="flex-1">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="font-medium text-sm">{item.label}</span>
-                        <span className="font-bold tabular-nums text-sm">{item.points}/{item.max}</span>
+
+            {/* Breakdown as progress bars */}
+            <div className="w-full space-y-3 pt-1">
+              {data?.breakdown?.map((item, i) => {
+                const pct = (item.points / item.max) * 100
+                const barColor = item.achieved ? '#10B981' : pct > 0 ? '#F59E0B' : '#6b7280'
+                return (
+                  <div key={i} className="bg-white/5 rounded-2xl p-3.5 border border-white/8">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-base"
+                        style={{ background: item.achieved ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.06)' }}>
+                        {BREAKDOWN_ICONS[item.label] || '✦'}
                       </div>
-                      <div className="h-1.5 bg-white/20 rounded-full">
-                        <div className="h-1.5 bg-white rounded-full transition-all duration-700"
-                          style={{ width: scoreRevealed ? `${(item.points / item.max) * 100}%` : '0%' }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center">
+                          <span className="text-white text-sm font-semibold">{item.label}</span>
+                          <span className="text-white/60 text-xs font-bold tabular-nums ml-2 shrink-0">{item.points}<span className="text-white/30">/{item.max}</span></span>
+                        </div>
                       </div>
-                      {!item.achieved && item.tip && (
-                        <p className="text-white/60 text-[11px] mt-1">↗ {item.tip}</p>
-                      )}
+                      {item.achieved && <span className="text-emerald-400 text-sm shrink-0">✓</span>}
                     </div>
+                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width: scoreRevealed ? `${pct}%` : '0%', background: barColor, boxShadow: item.achieved ? `0 0 8px ${barColor}88` : 'none' }} />
+                    </div>
+                    {!item.achieved && item.tip && (
+                      <p className="text-white/35 text-[11px] mt-1.5 flex items-center gap-1">
+                        <span className="text-violet-400">↗</span> {item.tip}
+                      </p>
+                    )}
                   </div>
-                ))}
-              </div>
+                )
+              })}
             </div>
           </div>
         </div>
 
-        {/* Stats Row */}
+        {/* Num Modal */}
         {numModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setNumModal(null)}>
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -359,159 +388,190 @@ export default function Wellness() {
             </div>
           </div>
         )}
-        <div className="bg-linear-to-br from-teal-500 to-emerald-600 rounded-2xl px-5 py-4 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
-            <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
-          </div>
-          <div className="relative mb-3">
-            <p className="text-white font-bold text-base">My Wellness</p>
-            <p className="text-white/70 text-xs">{monthName} · {!data ? 'Calculate your score above' : data.score >= 80 ? 'Excellent health 🌟' : data.score >= 60 ? 'Good — keep going' : 'Work in progress'}</p>
-          </div>
-          <div className="relative grid grid-cols-4 gap-2">
-            <button onClick={() => setNumModal({ label: 'Income', value: currencySymbol + totalIncome.toFixed(2), sub: monthName })}
-              className="bg-white/20 rounded-xl px-2 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-white/70 text-[10px] mb-0.5">Income</p>
-              <p className="text-white font-bold text-xs tabular-nums truncate">{currencySymbol}{totalIncome.toFixed(0)}</p>
+
+        {/* Stats Row — 4 styled cards */}
+        <div className="grid grid-cols-4 gap-2.5">
+          {[
+            { label: 'Income', icon: '💵', value: `${currencySymbol}${totalIncome.toFixed(0)}`, sub: monthName, color: 'from-emerald-500/20 to-teal-500/10', border: 'border-emerald-500/20', iconBg: 'bg-emerald-500/20', textColor: 'text-emerald-400', modal: { label: 'Income', value: currencySymbol + totalIncome.toFixed(2), sub: monthName } },
+            { label: 'Spent', icon: '💸', value: `${currencySymbol}${totalSpent.toFixed(0)}`, sub: monthName, color: 'from-rose-500/20 to-red-500/10', border: 'border-rose-500/20', iconBg: 'bg-rose-500/20', textColor: 'text-rose-400', modal: { label: 'Spent', value: currencySymbol + totalSpent.toFixed(2), sub: monthName } },
+            { label: 'Balance', icon: '⚖️', value: `${balance >= 0 ? '+' : '-'}${currencySymbol}${Math.abs(balance).toFixed(0)}`, sub: balance >= 0 ? 'surplus' : 'deficit', color: balance >= 0 ? 'from-blue-500/20 to-indigo-500/10' : 'from-orange-500/20 to-red-500/10', border: balance >= 0 ? 'border-blue-500/20' : 'border-orange-500/20', iconBg: balance >= 0 ? 'bg-blue-500/20' : 'bg-orange-500/20', textColor: balance >= 0 ? 'text-blue-400' : 'text-orange-400', modal: { label: 'Balance', value: (balance >= 0 ? '+' : '') + currencySymbol + Math.abs(balance).toFixed(2), sub: balance >= 0 ? 'surplus' : 'deficit' } },
+            { label: 'Streak', icon: '🔥', value: `${streak}d`, sub: 'in a row', color: 'from-amber-500/20 to-orange-500/10', border: 'border-amber-500/20', iconBg: 'bg-amber-500/20', textColor: 'text-amber-400', modal: { label: 'Tracking Streak', value: streak + ' days', sub: 'consecutive tracking' } },
+          ].map((stat) => (
+            <button key={stat.label} onClick={() => setNumModal(stat.modal)}
+              className={`bg-gradient-to-br ${stat.color} border ${stat.border} rounded-2xl p-3 text-left active:scale-95 transition-transform`}>
+              <div className={`w-7 h-7 rounded-lg ${stat.iconBg} flex items-center justify-center text-sm mb-2`}>{stat.icon}</div>
+              <p className="text-gray-400 text-[10px] font-semibold uppercase tracking-wide mb-0.5">{stat.label}</p>
+              <p className={`${stat.textColor} font-black text-sm tabular-nums truncate`}>{stat.value}</p>
+              <p className="text-gray-500 text-[9px] truncate">{stat.sub}</p>
             </button>
-            <button onClick={() => setNumModal({ label: 'Spent', value: currencySymbol + totalSpent.toFixed(2), sub: monthName })}
-              className="bg-white/20 rounded-xl px-2 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-white/70 text-[10px] mb-0.5">Spent</p>
-              <p className="text-white font-bold text-xs tabular-nums truncate">{currencySymbol}{totalSpent.toFixed(0)}</p>
-            </button>
-            <button onClick={() => setNumModal({ label: 'Balance', value: (balance >= 0 ? '+' : '') + currencySymbol + Math.abs(balance).toFixed(2), sub: balance >= 0 ? 'surplus' : 'deficit' })}
-              className="bg-white/20 rounded-xl px-2 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-white/70 text-[10px] mb-0.5">Balance</p>
-              <p className="text-white font-bold text-xs tabular-nums truncate">{balance >= 0 ? '+' : '-'}{currencySymbol}{Math.abs(balance).toFixed(0)}</p>
-            </button>
-            <button onClick={() => setNumModal({ label: 'Tracking Streak', value: streak + ' days', sub: 'consecutive tracking' })}
-              className="bg-white/20 rounded-xl px-2 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-white/70 text-[10px] mb-0.5">Streak</p>
-              <p className="text-white font-bold text-xs tabular-nums">{streak}d</p>
-            </button>
-          </div>
+          ))}
         </div>
 
         {/* Interesting Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Savings Rate */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Savings Rate</p>
-            {savingsRate !== null ? (
-              <>
-                <p className={`text-2xl font-bold ${savingsRate >= 20 ? 'text-emerald-600' : savingsRate >= 10 ? 'text-yellow-500' : 'text-red-500'}`}>
-                  {savingsRate.toFixed(1)}%
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {savingsRate >= 20 ? 'Excellent — keep it up' : savingsRate >= 10 ? 'Good — aim for 20%' : savingsRate >= 0 ? 'Low — cut some costs' : 'Spending more than earned'}
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-gray-400 mt-1">Add income to calculate</p>
-            )}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-xl bg-violet-500/20 flex items-center justify-center text-sm">📊</div>
+            <h2 className="text-gray-800 dark:text-white font-bold text-base">Monthly Insights</h2>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Savings Rate */}
+            <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-sm">💹</div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Savings Rate</p>
+              </div>
+              {savingsRate !== null ? (
+                <>
+                  <p className={`text-2xl font-black ${savingsRate >= 20 ? 'text-emerald-600' : savingsRate >= 10 ? 'text-yellow-500' : 'text-red-500'}`}>
+                    {savingsRate.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {savingsRate >= 20 ? 'Excellent — keep it up' : savingsRate >= 10 ? 'Good — aim for 20%' : savingsRate >= 0 ? 'Low — cut some costs' : 'Spending more than earned'}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400 mt-1">Add income to calculate</p>
+              )}
+            </div>
 
-          {/* Daily Burn Rate */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Daily Burn</p>
-            {dailyBurn !== null ? (
-              <>
-                <p className="text-2xl font-bold text-gray-800 dark:text-white">{currencySymbol}{dailyBurn.toFixed(2)}</p>
-                <p className="text-xs text-gray-400 mt-1">Average per day this month</p>
-              </>
-            ) : (
-              <p className="text-sm text-gray-400 mt-1">No expenses yet</p>
-            )}
-          </div>
+            {/* Daily Burn Rate */}
+            <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-sm">🔥</div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Daily Burn</p>
+              </div>
+              {dailyBurn !== null ? (
+                <>
+                  <p className="text-2xl font-black text-gray-800 dark:text-white">{currencySymbol}{dailyBurn.toFixed(2)}</p>
+                  <p className="text-xs text-gray-400 mt-1">Average per day this month</p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400 mt-1">No expenses yet</p>
+              )}
+            </div>
 
-          {/* Budget Health */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Budget Health</p>
-            {hasBudgets ? (
-              <>
-                <p className={`text-2xl font-bold ${budgetsOk ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {budgetsOk ? '✓ Good' : '✗ Over'}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {budgetsOk ? 'Under all budgets' : budgetItem?.tip || 'Exceeded a limit'}
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-gray-400 mt-1">No budgets set</p>
-            )}
-          </div>
+            {/* Budget Health */}
+            <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-sm">🎯</div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Budget Health</p>
+              </div>
+              {hasBudgets ? (
+                <>
+                  <p className={`text-2xl font-black ${budgetsOk ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {budgetsOk ? '✓ Good' : '✗ Over'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {budgetsOk ? 'Under all budgets' : budgetItem?.tip || 'Exceeded a limit'}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400 mt-1">No budgets set</p>
+              )}
+            </div>
 
-          {/* Tracking Consistency */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Tracking</p>
-            {txnCount > 0 ? (
-              <>
-                <p className={`text-2xl font-bold ${trackPct >= 100 ? 'text-emerald-600' : trackPct >= 50 ? 'text-yellow-500' : 'text-gray-500'}`}>{trackPct}%</p>
-                <p className="text-xs text-gray-400 mt-1">{txnCount} / 10 transactions this month</p>
-              </>
-            ) : <p className="text-sm text-gray-400 mt-1">No transactions yet</p>}
+            {/* Tracking Consistency */}
+            <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-lg bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center text-sm">📋</div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Tracking</p>
+              </div>
+              {txnCount > 0 ? (
+                <>
+                  <p className={`text-2xl font-black ${trackPct >= 100 ? 'text-emerald-600' : trackPct >= 50 ? 'text-yellow-500' : 'text-gray-500'}`}>{trackPct}%</p>
+                  <p className="text-xs text-gray-400 mt-1">{txnCount} / 10 transactions this month</p>
+                </>
+              ) : <p className="text-sm text-gray-400 mt-1">No transactions yet</p>}
+            </div>
           </div>
         </div>
 
         {/* Spending Personality */}
-        <div className={`bg-linear-to-br ${personality.color} rounded-3xl p-5 text-white relative overflow-hidden`}>
-          <div className="absolute top-0 right-0 text-7xl opacity-20 -translate-y-2 translate-x-2">{personality.emoji}</div>
-          <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-1">Your Spending Personality</p>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl">{personality.emoji}</span>
-            <h3 className="text-xl font-bold">{personality.label}</h3>
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-xl bg-pink-500/20 flex items-center justify-center text-sm">🧠</div>
+            <h2 className="text-gray-800 dark:text-white font-bold text-base">Spending Personality</h2>
           </div>
-          <p className="text-white/80 text-sm leading-relaxed">{personality.desc}</p>
+          <div className={`bg-gradient-to-br ${personality.color} rounded-3xl p-6 text-white relative overflow-hidden`}>
+            <div className="absolute top-0 right-0 text-[100px] opacity-10 leading-none -translate-y-2 translate-x-4 select-none">{personality.emoji}</div>
+            <p className="text-xs font-bold text-white/50 uppercase tracking-widest mb-2">Your Financial Identity</p>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-3xl">{personality.emoji}</span>
+              <h3 className="text-2xl font-black">{personality.label}</h3>
+            </div>
+            <p className="text-white/75 text-sm leading-relaxed">{personality.desc}</p>
+          </div>
         </div>
 
         {/* Achievements */}
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-          <h3 className="text-base font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-            <span className="text-xl">🏅</span> Achievements
-          </h3>
-          {achievements.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2.5">
-              {achievements.map((a, i) => (
-                <div key={i} className="flex items-center gap-3 bg-violet-50 dark:bg-violet-900/20 rounded-2xl p-3">
-                  <span className="text-2xl">{a.icon}</span>
-                  <div>
-                    <p className="text-xs font-bold text-gray-800 dark:text-white">{a.title}</p>
-                    <p className="text-xs text-gray-400 leading-snug">{a.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-3xl mb-2">🚀</p>
-              <p className="text-gray-400 text-sm">Start tracking to unlock achievements!</p>
-            </div>
-          )}
-          {data?.breakdown?.filter(b => !b.achieved && b.tip).length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-              <p className="text-xs font-bold text-gray-500 mb-2">To improve your score:</p>
-              <div className="space-y-1.5">
-                {data.breakdown.filter(b => !b.achieved).map((b, i) => (
-                  <p key={i} className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-1.5">
-                    <span className="text-violet-400 shrink-0 mt-0.5">→</span>
-                    <span><span className="font-semibold text-gray-600 dark:text-gray-300">{b.label}:</span> {b.reason}</span>
-                  </p>
-                ))}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-xl bg-amber-500/20 flex items-center justify-center text-sm">🏅</div>
+            <h2 className="text-gray-800 dark:text-white font-bold text-base">Achievements</h2>
+            {achievements.length > 0 && (
+              <span className="ml-auto bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold px-2.5 py-0.5 rounded-full">{achievements.length} unlocked</span>
+            )}
+          </div>
+          <div className="bg-white dark:bg-gray-800/80 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-5">
+            {achievements.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2.5">
+                {achievements.map((a, i) => {
+                  const gradients = [
+                    'from-violet-500/15 to-purple-500/10 border-violet-500/20',
+                    'from-amber-500/15 to-orange-500/10 border-amber-500/20',
+                    'from-emerald-500/15 to-teal-500/10 border-emerald-500/20',
+                    'from-blue-500/15 to-indigo-500/10 border-blue-500/20',
+                    'from-rose-500/15 to-pink-500/10 border-rose-500/20',
+                    'from-cyan-500/15 to-sky-500/10 border-cyan-500/20',
+                  ]
+                  const g = gradients[i % gradients.length]
+                  return (
+                    <div key={i} className={`bg-gradient-to-br ${g} border rounded-2xl p-3.5 flex items-start gap-3`}>
+                      <div className="w-10 h-10 rounded-xl bg-white/30 dark:bg-white/10 flex items-center justify-center text-xl shrink-0 shadow-sm">{a.icon}</div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-gray-800 dark:text-white leading-tight">{a.title}</p>
+                        <p className="text-xs text-gray-400 leading-snug mt-0.5">{a.desc}</p>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-4xl mb-2">🚀</p>
+                <p className="text-gray-400 text-sm">Start tracking to unlock achievements!</p>
+              </div>
+            )}
+            {data?.breakdown?.filter(b => !b.achieved && b.tip).length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <p className="text-xs font-bold text-gray-500 mb-2">To improve your score:</p>
+                <div className="space-y-1.5">
+                  {data.breakdown.filter(b => !b.achieved).map((b, i) => (
+                    <p key={i} className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-1.5">
+                      <span className="text-violet-400 shrink-0 mt-0.5">→</span>
+                      <span><span className="font-semibold text-gray-600 dark:text-gray-300">{b.label}:</span> {b.reason}</span>
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Mini Games */}
-        <div className="bg-linear-to-br from-violet-950 to-gray-900 rounded-3xl p-5 border border-violet-700/30">
-          <div className="flex justify-between items-center">
+        <div className="relative rounded-3xl overflow-hidden border border-violet-700/30" style={{ background: 'linear-gradient(135deg, #1e1065 0%, #111827 100%)' }}>
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-20 blur-2xl" style={{ background: 'radial-gradient(circle, #7c3aed, transparent)', transform: 'translate(20%, -20%)' }} />
+          <div className="relative flex justify-between items-center p-5">
             <div>
-              <h3 className="text-white font-bold text-base flex items-center gap-2"><span>🎮</span> Finance Mini-Games</h3>
-              <p className="text-gray-400 text-xs mt-1">7 games to sharpen your money skills</p>
-              {highScore > 0 && <p className="text-yellow-400 text-xs mt-1">🏆 Best: {highScore}</p>}
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-7 h-7 rounded-xl bg-violet-500/30 flex items-center justify-center text-sm">🎮</div>
+                <h3 className="text-white font-bold text-base">Finance Mini-Games</h3>
+              </div>
+              <p className="text-gray-400 text-xs mt-0.5 ml-9">7 games to sharpen your money skills</p>
+              {highScore > 0 && <p className="text-yellow-400 text-xs mt-1 ml-9">🏆 Best: {highScore}</p>}
             </div>
             <button onClick={() => setShowGame(true)}
-              className="bg-violet-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-violet-500 transition shadow-lg shadow-violet-900/40 active:scale-95">
+              className="bg-violet-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-violet-500 transition shadow-lg shadow-violet-900/40 active:scale-95 shrink-0">
               Play
             </button>
           </div>
@@ -523,11 +583,12 @@ export default function Wellness() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           {/* Mood Tracker */}
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-            <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2 mb-1">
-              <span>🎨</span> How do you feel?
-            </h3>
-            <p className="text-xs text-gray-400 mb-4">About your finances today</p>
+          <div className="bg-white dark:bg-gray-800/80 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-7 h-7 rounded-xl bg-pink-500/15 flex items-center justify-center text-sm">🎨</div>
+              <h3 className="text-base font-bold text-gray-800 dark:text-white">How do you feel?</h3>
+            </div>
+            <p className="text-xs text-gray-400 mb-4 ml-9">About your finances today</p>
             <div className="flex justify-between mb-4">
               {moods.map((m) => (
                 <button key={m.value} onClick={() => saveMood(m.value)}
@@ -539,22 +600,25 @@ export default function Wellness() {
             </div>
             {moodResponseLoading && <div className="animate-pulse h-8 bg-violet-50 dark:bg-violet-900/20 rounded-xl" />}
             {moodResponse && !moodResponseLoading && (
-              <div className="bg-violet-50 dark:bg-violet-900/20 rounded-xl px-4 py-3">
+              <div className="bg-violet-50 dark:bg-violet-900/20 rounded-xl px-4 py-3 border border-violet-100 dark:border-violet-800/30">
                 <p className="text-sm text-violet-700 dark:text-violet-300 leading-relaxed">{moodResponse}</p>
               </div>
             )}
           </div>
 
           {/* AI Joke */}
-          <div className="bg-linear-to-br from-amber-50 to-orange-50 dark:from-gray-800 dark:to-gray-750 rounded-3xl shadow-sm p-5">
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-gray-800/80 dark:to-gray-800/60 rounded-3xl shadow-sm border border-amber-100/80 dark:border-gray-700/50 p-5">
             <div className="flex justify-between items-center mb-1">
-              <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2"><span>😄</span> Finance Joke</h3>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-orange-100 dark:bg-orange-500/15 flex items-center justify-center text-sm">😄</div>
+                <h3 className="text-base font-bold text-gray-800 dark:text-white">Finance Joke</h3>
+              </div>
               <button onClick={fetchJoke} disabled={jokeLoading}
                 className="text-xs text-orange-500 font-bold disabled:opacity-50 bg-orange-100 dark:bg-orange-900/30 px-3 py-1.5 rounded-full transition hover:bg-orange-200 active:scale-95">
                 {jokeLoading ? '⏳' : '🔄'}
               </button>
             </div>
-            <p className="text-[10px] text-gray-400 mb-4">Powered by AI</p>
+            <p className="text-[10px] text-gray-400 mb-4 ml-9">Powered by AI</p>
             {jokeLoading ? (
               <div className="space-y-2">
                 <div className="animate-pulse h-4 bg-orange-100 dark:bg-gray-600 rounded-xl w-full" />
@@ -567,9 +631,12 @@ export default function Wellness() {
         </div>
 
         {/* AI Quote */}
-        <div className="bg-linear-to-br from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 rounded-3xl p-5 border border-violet-100 dark:border-violet-800/40">
+        <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 rounded-3xl p-5 border border-violet-100 dark:border-violet-800/40">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-bold text-violet-600 flex items-center gap-1.5"><span>💬</span> Motivational Quote</h3>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-xl bg-violet-500/15 flex items-center justify-center text-sm">💬</div>
+              <h3 className="text-sm font-bold text-violet-600">Motivational Quote</h3>
+            </div>
             <button onClick={fetchQuote} disabled={quoteLoading}
               className="text-xs text-violet-500 font-bold disabled:opacity-50 bg-violet-100 dark:bg-violet-900/30 px-3 py-1.5 rounded-full hover:bg-violet-200 transition active:scale-95">
               {quoteLoading ? '⏳' : '🔄'}
@@ -588,15 +655,17 @@ export default function Wellness() {
           )}
         </div>
 
-        {/* 🕰️ Time Machine */}
-        <div className="bg-linear-to-br from-violet-950 to-indigo-900 rounded-3xl p-5 border border-violet-700/30">
-          <div className="flex items-center justify-between gap-4">
+        {/* Time Machine */}
+        <div className="relative rounded-3xl overflow-hidden border border-violet-700/30" style={{ background: 'linear-gradient(135deg, #1a0533 0%, #0f172a 100%)' }}>
+          <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-25 blur-3xl" style={{ background: 'radial-gradient(circle, #6d28d9, transparent)', transform: 'translate(30%, -30%)' }} />
+          <div className="relative flex items-center justify-between gap-4 p-5">
             <div className="min-w-0">
-              <h3 className="text-white font-bold text-base flex items-center gap-2">
-                <span>🕰️</span> Time Machine
-              </h3>
-              <p className="text-violet-300 text-xs mt-0.5">Travel to any year in history</p>
-              <p className="text-gray-500 text-[11px] mt-0.5">AI sketch + planet animation + sarcastic roast</p>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-7 h-7 rounded-xl bg-violet-500/30 flex items-center justify-center text-sm">🕰️</div>
+                <h3 className="text-white font-bold text-base">Time Machine</h3>
+              </div>
+              <p className="text-violet-300 text-xs mt-0.5 ml-9">Travel to any year in history</p>
+              <p className="text-gray-500 text-[11px] mt-0.5 ml-9">AI sketch + planet animation + sarcastic roast</p>
             </div>
             <button onClick={() => setShowTimeMachine(true)}
               className="shrink-0 bg-violet-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-violet-500 transition shadow-lg shadow-violet-900/40 active:scale-95">
@@ -614,11 +683,12 @@ export default function Wellness() {
         )}
 
         {/* Notes */}
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-          <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2 mb-1">
-            <span>📝</span> Personal Notes
-          </h3>
-          <p className="text-xs text-gray-400 mb-3">Your private space</p>
+        <div className="bg-white dark:bg-gray-800/80 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm">📝</div>
+            <h3 className="text-base font-bold text-gray-800 dark:text-white">Personal Notes</h3>
+          </div>
+          <p className="text-xs text-gray-400 mb-3 ml-9">Your private space</p>
           <textarea value={note} onChange={e => setNote(e.target.value)}
             placeholder="Write anything — reminders, thoughts, goals..."
             rows={3}

@@ -45,9 +45,9 @@ const NAV_ITEMS = [
 
 const TAB_ITEMS = [
   { href: '/transactions', icon: 'transactions', key: 'nav_transactions', label: 'Txns' },
-  { href: '/goals',        icon: 'savings',      key: 'tab_goals',        label: 'Goals' },
+  { href: '/budgets',      icon: 'budget',       key: 'nav_budgets',      label: 'Budgets' },
   { href: '/dashboard',    icon: 'home',         key: 'tab_home',         isCenter: true, label: 'Home' },
-  { href: '/net-worth',    icon: 'networth',     key: 'nav_networth',     label: 'Net Worth' },
+  { href: '/wellness',     icon: 'wellness',     key: 'nav_wellness',     label: 'Wellness' },
   { href: '/profile',      icon: 'profile',      key: 'nav_profile',      label: 'Profile' },
 ]
 

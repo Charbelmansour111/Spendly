@@ -158,15 +158,15 @@ function EraScene({ year, aiEmoji }) {
   const photo = ERA_PHOTOS.find(p => p.test(year)) || ERA_PHOTOS[ERA_PHOTOS.length - 1]
 
   return (
-    <div style={{ position: 'relative', height: 280, overflow: 'hidden', borderRadius: 0 }}>
+    <div style={{ position: 'relative', height: 330, overflow: 'hidden', borderRadius: 0 }}>
       {/* Film perforations top */}
-      <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', height: 14, background: '#111', zIndex: 5, position: 'relative' }}>
-        {[...Array(10)].map((_, i) => <div key={i} style={{ width: 10, height: 7, background: '#333', borderRadius: 2 }} />)}
+      <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', height: 18, background: '#0a0a0a', zIndex: 5, position: 'relative', borderBottom: '1px solid #222' }}>
+        {[...Array(12)].map((_, i) => <div key={i} style={{ width: 11, height: 8, background: '#2a2a2a', borderRadius: 3, border: '1px solid #111' }} />)}
       </div>
 
       {/* Scene */}
       <div style={{
-        position: 'relative', height: 252, overflow: 'hidden',
+        position: 'relative', height: 294, overflow: 'hidden',
         background: `linear-gradient(180deg, ${def.sky} 0%, ${def.sky} 65%, ${def.ground} 100%)`,
         animation: 'tmCamPan 18s ease-in-out infinite',
       }}>
@@ -176,8 +176,8 @@ function EraScene({ year, aiEmoji }) {
           backgroundImage: `url("${photo.url}")`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          opacity: 0.42,
-          filter: 'saturate(0.65) brightness(0.55)',
+          opacity: 0.55,
+          filter: 'saturate(0.7) brightness(0.6)',
         }} />
 
         {/* Stars for dark/night scenes */}
@@ -222,8 +222,8 @@ function EraScene({ year, aiEmoji }) {
       </div>
 
       {/* Film perforations bottom */}
-      <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', height: 14, background: '#111', zIndex: 5, position: 'relative' }}>
-        {[...Array(10)].map((_, i) => <div key={i} style={{ width: 10, height: 7, background: '#333', borderRadius: 2 }} />)}
+      <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', height: 18, background: '#0a0a0a', zIndex: 5, position: 'relative', borderTop: '1px solid #222' }}>
+        {[...Array(12)].map((_, i) => <div key={i} style={{ width: 11, height: 8, background: '#2a2a2a', borderRadius: 3, border: '1px solid #111' }} />)}
       </div>
     </div>
   )
@@ -263,9 +263,9 @@ function Planet({ year, colors, eraName, size = 160 }) {
 }
 
 // ── SpendlyBot ─────────────────────────────────────────────────────────────
-function SpendlyBot({ mood = 'neutral', walking = false, talking = false }) {
+function SpendlyBot({ mood = 'neutral', walking = false, talking = false, teaching = false }) {
   return (
-    <svg viewBox="0 0 80 110" width="72" height="88" style={{ overflow: 'visible', flexShrink: 0 }}>
+    <svg viewBox="0 0 80 110" width="80" height="98" style={{ overflow: 'visible', flexShrink: 0 }}>
       <line x1="40" y1="3" x2="40" y2="13" stroke="#a5b4fc" strokeWidth="2.5" strokeLinecap="round" />
       <circle cx="40" cy="3" r="4" fill="#818cf8">
         <animate attributeName="r" values="4;5.5;4" dur="1.8s" repeatCount="indefinite" />
@@ -301,12 +301,41 @@ function SpendlyBot({ mood = 'neutral', walking = false, talking = false }) {
       <rect x="20" y="49" width="40" height="27" rx="8" fill="#4338ca" />
       <rect x="26" y="54" width="28" height="16" rx="4" fill="#1e1b4b" />
       <text x="40" y="66" textAnchor="middle" fill="#818cf8" fontSize="11" fontWeight="bold" fontFamily="monospace">$</text>
+      {/* Left arm */}
       <rect x="7" y="51" width="13" height="21" rx="6.5" fill="#4338ca">
         {walking && <animateTransform attributeName="transform" type="rotate" values="22,13,51; -22,13,51; 22,13,51" dur="0.38s" repeatCount="indefinite" />}
       </rect>
-      <rect x="60" y="51" width="13" height="21" rx="6.5" fill="#4338ca">
-        {walking && <animateTransform attributeName="transform" type="rotate" values="-22,66,51; 22,66,51; -22,66,51" dur="0.38s" repeatCount="indefinite" />}
-      </rect>
+      {/* Right arm — normal or teaching pose */}
+      {teaching ? (
+        <g>
+          {/* Raised arm */}
+          <rect x="60" y="30" width="13" height="21" rx="6.5" fill="#4338ca">
+            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
+          </rect>
+          {/* Ruler stick */}
+          <rect x="63.5" y="8" width="5" height="24" rx="2.5" fill="#fbbf24">
+            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
+          </rect>
+          {/* Ruler tip arrow */}
+          <polygon points="66,3 61,9 71,9" fill="#f59e0b">
+            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
+          </polygon>
+          {/* Ruler tick marks */}
+          <line x1="60" y1="14" x2="64" y2="14" stroke="#f59e0b" strokeWidth="1.5">
+            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
+          </line>
+          <line x1="60" y1="19" x2="62" y2="19" stroke="#f59e0b" strokeWidth="1.5">
+            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
+          </line>
+          <line x1="60" y1="24" x2="64" y2="24" stroke="#f59e0b" strokeWidth="1.5">
+            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
+          </line>
+        </g>
+      ) : (
+        <rect x="60" y="51" width="13" height="21" rx="6.5" fill="#4338ca">
+          {walking && <animateTransform attributeName="transform" type="rotate" values="-22,66,51; 22,66,51; -22,66,51" dur="0.38s" repeatCount="indefinite" />}
+        </rect>
+      )}
       <rect x="25" y="76" width="13" height="24" rx="6.5" fill="#3730a3">
         {walking && <animateTransform attributeName="transform" type="rotate" values="26,31,76; -26,31,76; 26,31,76" dur="0.38s" repeatCount="indefinite" />}
       </rect>
@@ -625,7 +654,7 @@ export default function TimeMachineModal({ onClose, defaultAmount, currency = 'U
           {/* Bot + value chip */}
           <div className="shrink-0 flex items-end gap-3 px-4 pb-2">
             <div style={{ animation: walking ? 'tmAvatarIn 1.5s cubic-bezier(0.16,1,0.3,1) forwards' : 'tmBounce 2.2s ease-in-out infinite' }}>
-              <SpendlyBot mood={mood} walking={walking} talking={talking} />
+              <SpendlyBot mood={mood} walking={walking} talking={talking} teaching={!walking && phase === 'story'} />
             </div>
             {phase === 'done' && sketch.adjustedAmount && (
               <div className="flex-1 bg-white/10 border border-white/20 rounded-2xl p-3" style={{ animation: 'tmSlideUp 0.45s ease both' }}>

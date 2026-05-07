@@ -224,9 +224,9 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
     setSaving(false)
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pb-24 md:pb-0" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[calc(92vh-6rem)] md:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
@@ -318,9 +318,9 @@ function AddIncomeModal({ onClose, onSave, sym }) {
     setSaving(false)
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pb-24 md:pb-0" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[calc(92vh-6rem)] md:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Income</h3>
           <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -363,7 +363,7 @@ function AddIncomeModal({ onClose, onSave, sym }) {
 
 function AddPickerModal({ onClose, onExpense, onIncome, onScan, onSplit }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center pb-24 md:pb-0" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl w-full max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-5" />
@@ -1075,33 +1075,41 @@ const onTabSwipeStart = (e) => {
 
         {/* Overview */}
         {numModal && <NumberModal {...numModal} onClose={() => setNumModal(null)} />}
-        <div className="bg-linear-to-br from-sky-400 to-blue-600 rounded-2xl px-5 py-4 mb-5 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
-            <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
-          </div>
-          <div className="relative mb-3">
-            <p className="text-white font-bold text-base">Transactions</p>
-            <p className="text-white/70 text-xs">{net >= 0 ? `+${fmtMoney(net, sym)} surplus` : `-${fmtMoney(Math.abs(net), sym)} deficit`} this period</p>
+        <div className="rounded-3xl px-5 py-5 mb-5 relative overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1d4ed8 100%)' }}>
+          {/* Decorative orbs */}
+          <div className="absolute top-0 right-0 w-44 h-44 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.35), transparent)', transform: 'translate(30%, -30%)' }} />
+          <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.3), transparent)', transform: 'translate(-30%, 30%)' }} />
+          <div className="absolute inset-0 opacity-5 pointer-events-none"
+            style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '22px 22px' }} />
+          <div className="relative flex items-start justify-between mb-4">
+            <div>
+              <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-1">Overview</p>
+              <p className="text-white font-black text-2xl tabular-nums">{net >= 0 ? '+' : '-'}{fmtMoney(Math.abs(net), sym)}</p>
+              <p className="text-white/55 text-xs mt-0.5">{net >= 0 ? 'net surplus' : 'net deficit'} this period</p>
+            </div>
+            <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-xl">💹</div>
           </div>
           <div className="relative grid grid-cols-3 gap-2">
             <button onClick={() => setNumModal({ label: 'Total Income', value: '+' + fmtMoney(totalIncome, sym), sub: filteredIncome.length + ' entries' })}
-              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-white/70 text-[10px] mb-0.5">Income</p>
-              <p className="text-white font-bold text-sm tabular-nums truncate">+{fmtMoney(totalIncome, sym)}</p>
-              <p className="text-white/50 text-[10px]">{filteredIncome.length} entr{filteredIncome.length !== 1 ? 'ies' : 'y'}</p>
+              className="bg-white/12 hover:bg-white/20 rounded-2xl px-3 py-3 text-left active:scale-95 transition border border-white/10">
+              <p className="text-white/50 text-[10px] font-semibold uppercase tracking-wide mb-1">Income</p>
+              <p className="text-emerald-300 font-black text-sm tabular-nums truncate">+{fmtMoney(totalIncome, sym)}</p>
+              <p className="text-white/35 text-[10px] mt-0.5">{filteredIncome.length} entr{filteredIncome.length !== 1 ? 'ies' : 'y'}</p>
             </button>
             <button onClick={() => setNumModal({ label: 'Total Spent', value: '-' + fmtMoney(totalExpenses, sym), sub: filteredExpenses.length + ' expenses' })}
-              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-white/70 text-[10px] mb-0.5">Spent</p>
-              <p className="text-white font-bold text-sm tabular-nums truncate">-{fmtMoney(totalExpenses, sym)}</p>
-              <p className="text-white/50 text-[10px]">{filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}</p>
+              className="bg-white/12 hover:bg-white/20 rounded-2xl px-3 py-3 text-left active:scale-95 transition border border-white/10">
+              <p className="text-white/50 text-[10px] font-semibold uppercase tracking-wide mb-1">Spent</p>
+              <p className="text-rose-300 font-black text-sm tabular-nums truncate">-{fmtMoney(totalExpenses, sym)}</p>
+              <p className="text-white/35 text-[10px] mt-0.5">{filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}</p>
             </button>
             <button onClick={() => setNumModal({ label: 'Entries', value: String(filteredIncome.length + filteredExpenses.length), sub: 'total transactions' })}
-              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-white/70 text-[10px] mb-0.5">Entries</p>
-              <p className="text-white font-bold text-sm tabular-nums">{filteredIncome.length + filteredExpenses.length}</p>
-              <p className="text-white/50 text-[10px]">total</p>
+              className="bg-white/12 hover:bg-white/20 rounded-2xl px-3 py-3 text-left active:scale-95 transition border border-white/10">
+              <p className="text-white/50 text-[10px] font-semibold uppercase tracking-wide mb-1">Entries</p>
+              <p className="text-blue-200 font-black text-sm tabular-nums">{filteredIncome.length + filteredExpenses.length}</p>
+              <p className="text-white/35 text-[10px] mt-0.5">total</p>
             </button>
           </div>
         </div>
@@ -1355,7 +1363,7 @@ const onTabSwipeStart = (e) => {
       {/* FAB — hidden in select mode */}
       {!selectMode && !showAddExp && !showAddInc && !showPicker && !editing && !showScan && (
         <button onClick={() => setShowPicker(true)}
-          className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-20 w-14 h-14 bg-violet-600 hover:bg-violet-700 active:scale-90 rounded-2xl shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all"
+          className="fixed bottom-28 right-5 md:bottom-8 md:right-8 z-40 w-14 h-14 bg-violet-600 hover:bg-violet-700 active:scale-90 rounded-2xl shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all"
           aria-label="Add transaction">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -1410,7 +1418,7 @@ const onTabSwipeStart = (e) => {
 
       {/* Re-categorize sheet */}
       {showRecatSheet && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowRecatSheet(false)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center pb-24 md:pb-0" onClick={() => setShowRecatSheet(false)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl w-full max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />

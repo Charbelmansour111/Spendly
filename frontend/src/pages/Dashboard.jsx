@@ -255,9 +255,9 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
   const subs = SUBCATEGORIES[form.category] || []
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pb-24 md:pb-0" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[calc(92vh-6rem)] md:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
@@ -367,9 +367,9 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
 function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
   const [form, setForm] = useState({ amount: '', source: 'Salary', is_recurring: false, recurring_frequency: 'monthly' })
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pb-24 md:pb-0" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[calc(92vh-6rem)] md:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Income</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
@@ -1473,6 +1473,27 @@ export default function Dashboard() {
             </div>
           )
         })()}
+
+        {/* Quick Access */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Quick Access</h3>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { href: '/goals',         icon: '🏆', label: 'Goals',        color: 'from-amber-500/15 to-orange-500/10',   border: 'border-amber-500/20',   iconBg: 'bg-amber-500/15'   },
+              { href: '/reports',       icon: '📊', label: 'Reports',      color: 'from-blue-500/15 to-indigo-500/10',    border: 'border-blue-500/20',    iconBg: 'bg-blue-500/15'    },
+              { href: '/subscriptions', icon: '🔄', label: 'Subs',         color: 'from-violet-500/15 to-purple-500/10',  border: 'border-violet-500/20',  iconBg: 'bg-violet-500/15'  },
+              { href: '/networth',      icon: '💎', label: 'Net Worth',    color: 'from-emerald-500/15 to-teal-500/10',   border: 'border-emerald-500/20', iconBg: 'bg-emerald-500/15' },
+            ].map(item => (
+              <a key={item.href} href={item.href}
+                className={`bg-gradient-to-br ${item.color} border ${item.border} rounded-2xl p-3 flex flex-col items-center gap-2 active:scale-95 transition-transform text-center hover:brightness-105`}>
+                <div className={`w-9 h-9 ${item.iconBg} rounded-xl flex items-center justify-center text-lg`}>{item.icon}</div>
+                <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 leading-tight">{item.label}</span>
+              </a>
+            ))}
+          </div>
+        </div>
 
         {/* Recent Transactions */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
