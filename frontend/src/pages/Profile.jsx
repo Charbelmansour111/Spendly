@@ -158,11 +158,12 @@ export default function Profile() {
       <div className="max-w-lg mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
 
         {/* Hero header */}
-        <div className="relative bg-linear-to-br from-gray-600 to-gray-800 rounded-3xl overflow-hidden mb-5">
-          {/* Decorative circles */}
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full" />
-          <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-white/5 rounded-full" />
-          <div className="absolute top-1/2 right-16 w-12 h-12 bg-white/5 rounded-full" />
+        <div className="relative rounded-3xl overflow-hidden mb-5" style={{ background: 'linear-gradient(135deg, #2e1065 0%, #1e1b4b 40%, #0f172a 100%)' }}>
+          {/* Decorative orbs */}
+          <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full opacity-25" style={{ background: 'radial-gradient(circle, #818cf8, transparent)' }} />
+          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #a78bfa, transparent)' }} />
+          <div className="absolute top-1/2 right-16 w-14 h-14 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #c4b5fd, transparent)' }} />
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
 
           <div className="relative p-6">
             <div className="flex items-center gap-4">
