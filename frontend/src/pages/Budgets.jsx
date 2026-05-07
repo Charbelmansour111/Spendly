@@ -444,34 +444,33 @@ export default function Budgets() {
           </div>
         )}
         {budgets.length > 0 && (
-          <div className="rounded-3xl px-5 py-5 mb-5 relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1d4ed8 100%)' }}>
-            <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #818cf8, transparent)' }} />
-            <div className="absolute -bottom-10 -left-6 w-28 h-28 rounded-full opacity-15" style={{ background: 'radial-gradient(circle, #a78bfa, transparent)' }} />
-            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
-            <div className="relative mb-4">
-              <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-1">Budgets</p>
-              <p className="text-white font-black text-2xl tabular-nums">{currencySymbol}{totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              <p className="text-white/55 text-xs mt-0.5">{monthName} · {totalSpent > totalBudget ? '⚠️ over budget' : `${currencySymbol}${(totalBudget - totalSpent).toFixed(0)} remaining`}</p>
+          <div className="bg-linear-to-br from-amber-400 to-orange-500 rounded-2xl px-5 py-4 mb-6 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10 pointer-events-none">
+              <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
+              <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
+            </div>
+            <div className="relative mb-3">
+              <p className="text-white font-bold text-base">Budgets</p>
+              <p className="text-white/70 text-xs">{monthName} · {totalSpent > totalBudget ? '⚠️ over budget' : `${currencySymbol}${(totalBudget - totalSpent).toFixed(0)} remaining`}</p>
             </div>
             <div className="relative grid grid-cols-3 gap-2">
               <button onClick={() => setNumModal({ label: 'Total Spent', value: currencySymbol + totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), sub: totalBudget > 0 ? ((totalSpent/totalBudget)*100).toFixed(0) + '% used' : '' })}
-                className="bg-white/10 hover:bg-white/15 rounded-2xl px-3 py-2.5 text-left active:scale-95 transition border border-white/10">
-                <p className="text-white/50 text-[10px] mb-0.5 uppercase tracking-wide">Spent</p>
-                <p className="text-rose-300 font-black text-sm tabular-nums truncate">{currencySymbol}{totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                <p className="text-white/40 text-[10px]">{totalBudget > 0 ? ((totalSpent/totalBudget)*100).toFixed(0) + '% used' : '0% used'}</p>
+                className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+                <p className="text-white/70 text-[10px] mb-0.5">Spent</p>
+                <p className="text-white font-bold text-sm tabular-nums truncate">{currencySymbol}{totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-white/50 text-[10px]">{totalBudget > 0 ? ((totalSpent/totalBudget)*100).toFixed(0) + '% used' : '0% used'}</p>
               </button>
               <button onClick={() => setNumModal({ label: 'Remaining', value: currencySymbol + Math.max(0, totalBudget - totalSpent).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
-                className="bg-white/10 hover:bg-white/15 rounded-2xl px-3 py-2.5 text-left active:scale-95 transition border border-white/10">
-                <p className="text-white/50 text-[10px] mb-0.5 uppercase tracking-wide">Remaining</p>
-                <p className="text-emerald-300 font-black text-sm tabular-nums truncate">{currencySymbol}{Math.max(0, totalBudget - totalSpent).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                <p className="text-white/40 text-[10px]">{budgets.length} categor{budgets.length !== 1 ? 'ies' : 'y'}</p>
+                className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+                <p className="text-white/70 text-[10px] mb-0.5">Remaining</p>
+                <p className="text-white font-bold text-sm tabular-nums truncate">{currencySymbol}{Math.max(0, totalBudget - totalSpent).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-white/50 text-[10px]">{budgets.length} categor{budgets.length !== 1 ? 'ies' : 'y'}</p>
               </button>
               <button onClick={() => setNumModal({ label: 'Over Limit', value: String(overCount), sub: overCount === 0 ? 'All clear' : overCount + ' exceeded' })}
-                className="bg-white/10 hover:bg-white/15 rounded-2xl px-3 py-2.5 text-left active:scale-95 transition border border-white/10">
-                <p className="text-white/50 text-[10px] mb-0.5 uppercase tracking-wide">Over Limit</p>
-                <p className={`font-black text-sm tabular-nums ${overCount > 0 ? 'text-amber-300' : 'text-blue-300'}`}>{overCount}</p>
-                <p className="text-white/40 text-[10px]">{overCount === 0 ? 'all good ✓' : 'exceeded'}</p>
+                className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+                <p className="text-white/70 text-[10px] mb-0.5">Over Limit</p>
+                <p className="text-white font-bold text-sm tabular-nums">{overCount}</p>
+                <p className="text-white/50 text-[10px]">{overCount === 0 ? 'all good ✓' : 'exceeded'}</p>
               </button>
             </div>
           </div>
@@ -577,11 +576,11 @@ export default function Budgets() {
           </div>
         ) : filtered.length === 0 ? (
           budgets.length === 0 ? (
-            <div className="rounded-3xl px-5 py-8 mb-3 relative overflow-hidden text-center"
-              style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1d4ed8 100%)' }}>
-              <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #818cf8, transparent)' }} />
-              <div className="absolute -bottom-10 -left-6 w-28 h-28 rounded-full opacity-15" style={{ background: 'radial-gradient(circle, #a78bfa, transparent)' }} />
-              <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
+            <div className="bg-linear-to-br from-amber-400 to-orange-500 rounded-2xl px-5 py-8 mb-3 relative overflow-hidden text-center">
+              <div className="absolute inset-0 opacity-10 pointer-events-none">
+                <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
+                <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
+              </div>
               <div className="relative">
                 <div className="text-5xl mb-3">🎯</div>
                 <p className="text-white font-bold text-base mb-1">No budgets yet</p>

@@ -467,8 +467,8 @@ export default function TimeMachineModal({ onClose, defaultAmount, currency = 'U
     if (bcMatch) y = -parseInt(bcMatch[1])
     else y = parseInt(raw)
 
-    if (isNaN(y) || y < -2000 || y > 2100) {
-      setErr('Enter a year between 2000 BC and 2100 (e.g. -44 or "44 BC")')
+    if (isNaN(y) || y < -2000 || y > 4025) {
+      setErr('Enter a year between 2000 BC and 4025 (e.g. -44 or "44 BC")')
       return
     }
     const a = parseFloat(amtInput) || 100
@@ -553,7 +553,7 @@ export default function TimeMachineModal({ onClose, defaultAmount, currency = 'U
           <div className="text-center">
             <div className="text-6xl mb-3">🕰️</div>
             <h2 className="text-white font-black text-2xl mb-1">Time Machine</h2>
-            <p className="text-white/50 text-sm">From 2000 BC to year 2100 — enter any year.</p>
+            <p className="text-white/50 text-sm">From 2000 BC to year 4025 — enter any year.</p>
           </div>
           <div className="w-full max-w-sm space-y-3">
             <div>

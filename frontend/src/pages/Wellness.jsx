@@ -100,6 +100,7 @@ export default function Wellness() {
   }, [])
 
   const fetchData = useCallback(async () => {
+    try { await API.post('/income/apply-recurring', { month: currentMonth, year: currentYear }) } catch { /* noop */ }
     try {
       const [expRes, incRes, budRes, savRes, wellRes] = await Promise.allSettled([
         API.get('/expenses'),
@@ -244,22 +245,6 @@ export default function Wellness() {
   const trackPct    = trackItem ? Math.round((trackItem.points / trackItem.max) * 100) : 0
   const txnCount    = data?.monthExpenseCount ?? 0
 
-  // Achievements computed locally from direct data
-  const achievements = (() => {
-    if (!data) return []
-    const list = []
-    if (txnCount >= 1)        list.push({ icon: '🎯', title: 'First Step',        desc: 'Added your first expense' })
-    if (txnCount >= 50)       list.push({ icon: '📊', title: 'Data Master',       desc: '50+ expenses tracked' })
-    if (hasBudgets)           list.push({ icon: '⚡', title: 'Budget Setter',     desc: 'Created your first budget' })
-    if (data?.breakdown?.find(b => b.label === 'Savings Goals')?.achieved)
-                              list.push({ icon: '🏦', title: 'Saver',             desc: 'Active savings goal set' })
-    if (totalIncome > 0)      list.push({ icon: '💰', title: 'Income Tracker',    desc: 'Tracking your income' })
-    if ((data?.score || 0) >= 80) list.push({ icon: '🏆', title: 'Finance Pro',   desc: 'Health score above 80!' })
-    if ((data?.score || 0) === 100) list.push({ icon: '💎', title: 'Perfect Score', desc: 'Achieved 100/100!' })
-    if (streak >= 7)          list.push({ icon: '🔥', title: 'On Fire',           desc: '7-day tracking streak!' })
-    if (savingsRate !== null && savingsRate >= 20) list.push({ icon: '🌟', title: 'Smart Saver', desc: 'Saving 20%+ of income!' })
-    return list
-  })()
 
   const getPersonality = () => {
     if (totalSpent === 0) return { label: 'Just Getting Started', emoji: '🌱', color: 'from-gray-500 to-gray-600', desc: 'Start logging expenses to unlock your financial identity.' }
@@ -500,61 +485,6 @@ export default function Wellness() {
               <h3 className="text-2xl font-black">{personality.label}</h3>
             </div>
             <p className="text-white/75 text-sm leading-relaxed">{personality.desc}</p>
-          </div>
-        </div>
-
-        {/* Achievements */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-xl bg-amber-500/20 flex items-center justify-center text-sm">🏅</div>
-            <h2 className="text-gray-800 dark:text-white font-bold text-base">Achievements</h2>
-            {achievements.length > 0 && (
-              <span className="ml-auto bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold px-2.5 py-0.5 rounded-full">{achievements.length} unlocked</span>
-            )}
-          </div>
-          <div className="bg-white dark:bg-gray-800/80 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-5">
-            {achievements.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2.5">
-                {achievements.map((a, i) => {
-                  const gradients = [
-                    'from-violet-500/15 to-purple-500/10 border-violet-500/20',
-                    'from-amber-500/15 to-orange-500/10 border-amber-500/20',
-                    'from-emerald-500/15 to-teal-500/10 border-emerald-500/20',
-                    'from-blue-500/15 to-indigo-500/10 border-blue-500/20',
-                    'from-rose-500/15 to-pink-500/10 border-rose-500/20',
-                    'from-cyan-500/15 to-sky-500/10 border-cyan-500/20',
-                  ]
-                  const g = gradients[i % gradients.length]
-                  return (
-                    <div key={i} className={`bg-gradient-to-br ${g} border rounded-2xl p-3.5 flex items-start gap-3`}>
-                      <div className="w-10 h-10 rounded-xl bg-white/30 dark:bg-white/10 flex items-center justify-center text-xl shrink-0 shadow-sm">{a.icon}</div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-gray-800 dark:text-white leading-tight">{a.title}</p>
-                        <p className="text-xs text-gray-400 leading-snug mt-0.5">{a.desc}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-4xl mb-2">🚀</p>
-                <p className="text-gray-400 text-sm">Start tracking to unlock achievements!</p>
-              </div>
-            )}
-            {data?.breakdown?.filter(b => !b.achieved && b.tip).length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                <p className="text-xs font-bold text-gray-500 mb-2">To improve your score:</p>
-                <div className="space-y-1.5">
-                  {data.breakdown.filter(b => !b.achieved).map((b, i) => (
-                    <p key={i} className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-1.5">
-                      <span className="text-violet-400 shrink-0 mt-0.5">→</span>
-                      <span><span className="font-semibold text-gray-600 dark:text-gray-300">{b.label}:</span> {b.reason}</span>
-                    </p>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 

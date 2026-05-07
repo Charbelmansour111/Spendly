@@ -536,42 +536,16 @@ export default function Reports() {
       <CanvasBg variant="reports" />
       <div className="max-w-4xl mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
 
-        {/* Hero card */}
-        <div className="rounded-3xl px-5 py-5 mb-5 relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #0f0c2e 0%, #1e1065 45%, #312e81 100%)' }}>
-          {/* Orbs */}
-          <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #818cf8, transparent)' }} />
-          <div className="absolute -bottom-10 -left-6 w-28 h-28 rounded-full opacity-15" style={{ background: 'radial-gradient(circle, #a78bfa, transparent)' }} />
-          {/* Dot grid */}
-          <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
-          <div className="relative flex items-start justify-between mb-4">
-            <div>
-              <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-1">Reports</p>
-              <p className="text-white font-black text-2xl tabular-nums">{sym}{total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              <p className="text-white/55 text-xs mt-0.5">spent in {monthName}</p>
-            </div>
-            <a href="/transactions" className="flex items-center gap-1.5 text-xs font-semibold text-white/80 bg-white/10 hover:bg-white/20 border border-white/15 px-3 py-2 rounded-xl transition mt-1">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 2L3 6v13a1 1 0 001 1h16a1 1 0 001-1V6l-3-4H6z"/><path d="M8 11h8M8 15h5"/><path d="M3 6h18"/></svg>
-              Txns
-            </a>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
+            <p className="text-gray-400 text-sm mt-0.5">Monthly breakdown · deep analytics · AI assistant</p>
           </div>
-          <div className="relative grid grid-cols-3 gap-2">
-            <button onClick={() => {}} className="bg-white/10 hover:bg-white/15 rounded-2xl px-3 py-2.5 text-left active:scale-95 transition border border-white/10">
-              <p className="text-white/50 text-[10px] mb-0.5 uppercase tracking-wide">Income</p>
-              <p className="text-emerald-300 font-black text-sm tabular-nums truncate">+{sym}{totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              <p className="text-white/40 text-[10px]">this period</p>
-            </button>
-            <button onClick={() => {}} className="bg-white/10 hover:bg-white/15 rounded-2xl px-3 py-2.5 text-left active:scale-95 transition border border-white/10">
-              <p className="text-white/50 text-[10px] mb-0.5 uppercase tracking-wide">Balance</p>
-              <p className={`font-black text-sm tabular-nums truncate ${balance >= 0 ? 'text-blue-300' : 'text-rose-300'}`}>{balance >= 0 ? '+' : ''}{sym}{Math.abs(balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              <p className="text-white/40 text-[10px]">{balance >= 0 ? 'surplus' : 'deficit'}</p>
-            </button>
-            <button onClick={() => {}} className="bg-white/10 hover:bg-white/15 rounded-2xl px-3 py-2.5 text-left active:scale-95 transition border border-white/10">
-              <p className="text-white/50 text-[10px] mb-0.5 uppercase tracking-wide">Saved</p>
-              <p className={`font-black text-sm tabular-nums ${parseFloat(savingsRate) >= 0 ? 'text-teal-300' : 'text-amber-300'}`}>{savingsRate}%</p>
-              <p className="text-white/40 text-[10px]">savings rate</p>
-            </button>
-          </div>
+          <a href="/transactions" className="flex items-center gap-1.5 text-xs font-semibold text-violet-600 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/40 px-3 py-2 rounded-xl hover:bg-violet-100 transition mt-1">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 2L3 6v13a1 1 0 001 1h16a1 1 0 001-1V6l-3-4H6z"/><path d="M8 11h8M8 15h5"/><path d="M3 6h18"/></svg>
+            Transactions
+          </a>
         </div>
 
         {/* Month Selector */}

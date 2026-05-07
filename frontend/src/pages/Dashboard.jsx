@@ -748,13 +748,20 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!localStorage.getItem('token')) return
-    fetchIncome()
-    if (isCurrentMonth) {
-      API.post('/expenses/apply-recurring', { month: selectedMonth + 1, year: selectedYear })
-        .then(r => { if (r.data.added > 0) { fetchExpenses(); showToast(r.data.added + ' recurring expense(s) added', 'warning') } }).catch(() => { /* noop */ })
-      API.post('/income/apply-recurring', { month: selectedMonth + 1, year: selectedYear })
-        .then(r => { if (r.data.added > 0) { fetchIncome(); showToast(r.data.added + ' recurring income(s) added', 'warning') } }).catch(() => { /* noop */ })
+    const run = async () => {
+      if (isCurrentMonth) {
+        try {
+          const r1 = await API.post('/expenses/apply-recurring', { month: selectedMonth + 1, year: selectedYear })
+          if (r1.data.added > 0) { fetchExpenses(); showToast(r1.data.added + ' recurring expense(s) added', 'warning') }
+        } catch { /* noop */ }
+        try {
+          const r2 = await API.post('/income/apply-recurring', { month: selectedMonth + 1, year: selectedYear })
+          if (r2.data.added > 0) showToast(r2.data.added + ' recurring income(s) added', 'warning')
+        } catch { /* noop */ }
+      }
+      fetchIncome()
     }
+    run()
   }, [selectedMonth, selectedYear, isCurrentMonth, fetchIncome, fetchExpenses, showToast])
 
   // Fetch news on mount (newsLoading starts true via lazy init above)
