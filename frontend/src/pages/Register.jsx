@@ -21,7 +21,19 @@ function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPwd, setShowPwd] = useState(false)
   const [dark, toggleDark] = useDarkMode()
+
+  const pwdStrength = (p) => {
+    if (!p) return null
+    let s = 0
+    if (p.length >= 8) s++
+    if (/[A-Z]/.test(p)) s++
+    if (/[0-9]/.test(p)) s++
+    if (/[^A-Za-z0-9]/.test(p)) s++
+    return [null, { label: 'Weak', color: 'bg-red-500' }, { label: 'Fair', color: 'bg-amber-400' }, { label: 'Good', color: 'bg-blue-400' }, { label: 'Strong', color: 'bg-emerald-400' }][s]
+  }
+  const strength = pwdStrength(form.password)
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -144,12 +156,31 @@ function Register() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Password</label>
-                <input
-                  type="password" name="password" placeholder="••••••••"
-                  value={form.password} onChange={handleChange} required minLength={6} autoComplete="new-password"
-                  className="w-full px-4 py-3.5 rounded-2xl border border-white/12 bg-white/8 text-white placeholder:text-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/60 focus:border-violet-400/40 transition"
-                />
-                <p className="text-white/30 text-xs mt-1.5 ml-1">Minimum 6 characters</p>
+                <div className="relative">
+                  <input
+                    type={showPwd ? 'text' : 'password'} name="password" placeholder="••••••••"
+                    value={form.password} onChange={handleChange} required minLength={6} autoComplete="new-password"
+                    className="w-full px-4 py-3.5 pr-11 rounded-2xl border border-white/12 bg-white/8 text-white placeholder:text-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/60 focus:border-violet-400/40 transition"
+                  />
+                  <button type="button" onClick={() => setShowPwd(v => !v)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition">
+                    {showPwd
+                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    }
+                  </button>
+                </div>
+                {form.password && strength && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex gap-1 flex-1">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i <= [null,'Weak','Fair','Good','Strong'].indexOf(strength.label) ? strength.color : 'bg-white/10'}`} />
+                      ))}
+                    </div>
+                    <span className={`text-[11px] font-semibold ${strength.color.replace('bg-','text-').replace('-400','-400').replace('-500','-400')}`}>{strength.label}</span>
+                  </div>
+                )}
+                {!form.password && <p className="text-white/25 text-xs mt-1.5 ml-1">Minimum 6 characters</p>}
               </div>
               <button type="submit" disabled={loading}
                 className="w-full py-3.5 rounded-2xl font-semibold text-sm text-white transition active:scale-[0.98] disabled:opacity-60 mt-2"

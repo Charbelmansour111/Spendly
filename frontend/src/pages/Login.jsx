@@ -25,6 +25,7 @@ function Login() {
     return ''
   })
   const [loading, setLoading] = useState(false)
+  const [showPwd, setShowPwd] = useState(false)
   const [dark, toggleDark] = useDarkMode()
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
@@ -141,11 +142,20 @@ function Login() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Password</label>
-                <input
-                  type="password" name="password" placeholder="••••••••"
-                  value={form.password} onChange={handleChange} required autoComplete="current-password"
-                  className="w-full px-4 py-3.5 rounded-2xl border border-white/12 bg-white/8 text-white placeholder:text-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/60 focus:border-violet-400/40 transition"
-                />
+                <div className="relative">
+                  <input
+                    type={showPwd ? 'text' : 'password'} name="password" placeholder="••••••••"
+                    value={form.password} onChange={handleChange} required autoComplete="current-password"
+                    className="w-full px-4 py-3.5 pr-11 rounded-2xl border border-white/12 bg-white/8 text-white placeholder:text-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/60 focus:border-violet-400/40 transition"
+                  />
+                  <button type="button" onClick={() => setShowPwd(v => !v)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition">
+                    {showPwd
+                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    }
+                  </button>
+                </div>
               </div>
               <div className="flex justify-end pt-0.5">
                 <a href="/forgot-password" className="text-xs text-violet-300/80 hover:text-violet-200 font-medium transition">Forgot password?</a>
