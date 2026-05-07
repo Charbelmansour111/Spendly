@@ -226,12 +226,14 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4">
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
           <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
         </div>
-        <div className="space-y-3">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-3">
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({sym})</label>
             <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
@@ -293,6 +295,9 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
               <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
             </select>
           )}
+        </div>
+        {/* Sticky footer */}
+        <div className="shrink-0 px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl">
           <button onClick={handleSave} disabled={!form.amount || saving}
             className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50">
             {saving ? 'Adding…' : 'Add Expense'}
@@ -315,12 +320,12 @@ function AddIncomeModal({ onClose, onSave, sym }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4">
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Income</h3>
           <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
         </div>
-        <div className="space-y-3">
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-3">
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({sym})</label>
             <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
@@ -344,6 +349,8 @@ function AddIncomeModal({ onClose, onSave, sym }) {
               <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
             </select>
           )}
+        </div>
+        <div className="shrink-0 px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl">
           <button onClick={handleSave} disabled={!form.amount || saving}
             className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-green-700 transition disabled:opacity-50">
             {saving ? 'Adding…' : 'Add Income'}
@@ -481,16 +488,6 @@ export default function Transactions() {
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
 
   const [visibleDayGroups, setVisibleDayGroups] = useState(3)
-  const observerRef = useRef(null)
-  const sentinelRef = useCallback(node => {
-    if (observerRef.current) observerRef.current.disconnect()
-    if (!node) return
-    observerRef.current = new IntersectionObserver(
-      entries => { if (entries[0].isIntersecting) setVisibleDayGroups(p => p + 3) },
-      { rootMargin: '200px' }
-    )
-    observerRef.current.observe(node)
-  }, [])
 
   // Reset visible count when filters/tab change (derived-state pattern — safe to call during render)
   const filterKey = `${tab}|${catFilter}|${sortBy}|${dateFrom}|${dateTo}|${search}`
@@ -756,19 +753,7 @@ export default function Transactions() {
   const groupedExpenses = groupByDate(filteredExpenses, false)
   const groupedIncome   = groupByDate(filteredIncome, true)
 
-  const exportCSV = () => {
-    const rows = [['Date', 'Type', 'Category/Source', 'Description', 'Amount']]
-    filteredExpenses.forEach(e => rows.push([e.date?.split('T')[0], 'Expense', e.category, e.description || '', '-' + safeNum(e.amount).toFixed(2)]))
-    filteredIncome.forEach(i => rows.push([(i.date || i.created_at)?.split('T')[0], 'Income', i.source || 'Other', i.description || '', '+' + safeNum(i.amount).toFixed(2)]))
-    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a'); a.href = url; a.download = 'spendly-transactions.csv'; a.click()
-    URL.revokeObjectURL(url)
-    showToast('CSV exported!')
-  }
-
-  const onTabSwipeStart = (e) => {
+const onTabSwipeStart = (e) => {
     tabSwipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
   }
   const onTabSwipeEnd = (e) => {
@@ -1012,12 +997,14 @@ export default function Transactions() {
             </div>
           </div>
         ))}
-        {hasMore ? (
-          <div ref={sentinelRef} className="flex justify-center py-6">
-            <div className="w-5 h-5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
+        {hasMore && (
+          <div className="flex justify-center py-4">
+            <button
+              onClick={() => setVisibleDayGroups(p => p + 3)}
+              className="px-6 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-violet-600 dark:text-violet-400 text-sm font-semibold rounded-2xl shadow-sm hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 active:scale-95 transition">
+              Load more
+            </button>
           </div>
-        ) : entries.length > 3 && (
-          <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-4">You've seen it all ✓</p>
         )}
       </div>
     )
@@ -1076,12 +1063,7 @@ export default function Transactions() {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
               Categories
             </button>
-            <button onClick={exportCSV}
-              className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3 py-2 rounded-xl text-xs font-semibold hover:border-violet-300 hover:text-violet-600 transition shadow-sm">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Export
-            </button>
-            <button onClick={toggleSelectMode}
+<button onClick={toggleSelectMode}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition shadow-sm
                 ${selectMode
                   ? 'bg-violet-600 text-white border-violet-600 hover:bg-violet-700'

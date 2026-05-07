@@ -265,67 +265,131 @@ function Landing() {
             </div>
           </div>
 
-          {/* Right: floating app preview cards */}
-          <div className="flex-1 relative w-full max-w-sm mx-auto lg:mx-0 hidden sm:block" style={{ minHeight: 340 }}>
-            {/* Main card */}
-            <div className="absolute inset-x-4 top-0 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl shadow-violet-100 dark:shadow-violet-950/40 p-5 border border-gray-100 dark:border-gray-700">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">Monthly Balance</p>
-                  <p className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">$2,840<span className="text-sm text-gray-400 font-normal">.00</span></p>
-                </div>
-                <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center shadow-md shadow-violet-200 dark:shadow-violet-900/50">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-                </div>
-              </div>
-              {/* Mini bar chart */}
-              <div className="flex items-end gap-1.5 h-14 mb-4">
-                {[40, 65, 50, 80, 55, 90, 60, 75, 45, 85, 70, 95].map((h, i) => (
-                  <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: i === 11 ? '#7c3aed' : i % 3 === 0 ? '#ddd6fe' : '#ede9fe', opacity: i < 10 ? 0.7 : 1 }} />
-                ))}
-              </div>
-              <div className="flex gap-3">
-                <div className="flex-1 bg-green-50 dark:bg-green-900/20 rounded-xl p-2.5 text-center">
-                  <p className="text-[10px] text-gray-400 mb-0.5">Income</p>
-                  <p className="text-sm font-bold text-green-600">+$5,200</p>
-                </div>
-                <div className="flex-1 bg-red-50 dark:bg-red-900/20 rounded-xl p-2.5 text-center">
-                  <p className="text-[10px] text-gray-400 mb-0.5">Spent</p>
-                  <p className="text-sm font-bold text-red-500">-$2,360</p>
-                </div>
-                <div className="flex-1 bg-violet-50 dark:bg-violet-900/20 rounded-xl p-2.5 text-center">
-                  <p className="text-[10px] text-gray-400 mb-0.5">Saved</p>
-                  <p className="text-sm font-bold text-violet-600">45%</p>
-                </div>
-              </div>
-            </div>
+          {/* Right: iPhone mockup */}
+          <div className="flex-1 hidden sm:flex justify-center lg:justify-end items-center">
+            <div className="relative" style={{ perspective: '1200px' }}>
+              {/* Glow */}
+              <div className="absolute -inset-8 bg-violet-500/15 dark:bg-violet-500/10 blur-3xl rounded-full pointer-events-none" />
 
-            {/* Floating AI badge */}
-            <div className="absolute -right-2 top-36 bg-violet-600 text-white px-3 py-2 rounded-2xl shadow-xl shadow-violet-200 dark:shadow-violet-950/50 text-xs font-semibold flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-              AI Insight ready
-            </div>
+              {/* Phone body */}
+              <div className="relative" style={{ transform: 'rotateY(-10deg) rotateX(4deg)', transformStyle: 'preserve-3d' }}>
+                <div className="w-[230px] h-[480px] bg-gray-950 rounded-[44px] border-[3px] border-gray-800 shadow-[0_50px_100px_-15px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden relative">
+                  {/* Hardware buttons */}
+                  <div className="absolute -left-[4px] top-[88px] w-[3px] h-7 bg-gray-700 rounded-l-sm" />
+                  <div className="absolute -left-[4px] top-[124px] w-[3px] h-9 bg-gray-700 rounded-l-sm" />
+                  <div className="absolute -left-[4px] top-[168px] w-[3px] h-9 bg-gray-700 rounded-l-sm" />
+                  <div className="absolute -right-[4px] top-[120px] w-[3px] h-14 bg-gray-700 rounded-r-sm" />
 
-            {/* Floating budget pill */}
-            <div className="absolute -left-3 bottom-8 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-lg px-3.5 py-2.5 flex items-center gap-2.5">
-              <div className="w-7 h-7 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center text-sm">🎯</div>
-              <div>
-                <p className="text-[10px] text-gray-400 font-medium">Dining budget</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <div className="w-20 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-amber-500 rounded-full" style={{ width: '72%' }} />
+                  {/* Screen */}
+                  <div className="absolute inset-0 overflow-hidden" style={{ borderRadius: '41px' }}>
+                    <div className="absolute inset-0 bg-gray-100 dark:bg-gray-900" />
+
+                    {/* Header / status */}
+                    <div className="relative bg-violet-700 pt-0 pb-4 px-4">
+                      {/* Notch */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-[22px] bg-gray-950 rounded-b-2xl z-10" />
+                      {/* Status bar */}
+                      <div className="flex justify-between items-center text-white/50 text-[8px] pt-2.5 mt-1 mb-2">
+                        <span className="font-bold text-white/70">9:41</span>
+                        <div className="flex items-center gap-1">
+                          <span>●●●</span>
+                          <svg width="9" height="7" viewBox="0 0 24 24" fill="white" opacity="0.6"><rect x="1" y="7" width="4" height="10" rx="1"/><rect x="8" y="4" width="4" height="13" rx="1"/><rect x="15" y="1" width="4" height="16" rx="1"/><rect x="22" y="5" width="1.5" height="8" rx="0.5"/></svg>
+                        </div>
+                      </div>
+                      {/* Balance */}
+                      <p className="text-violet-200 text-[9px] font-medium">Good morning 👋</p>
+                      <p className="text-white font-extrabold text-xl mt-0.5">$2,840<span className="text-sm font-medium text-violet-300">.00</span></p>
+                      <p className="text-emerald-300 text-[8px] mt-0.5 font-semibold">↑ 12% vs last month</p>
+                      <div className="flex gap-1.5 mt-2.5">
+                        {[['Income', '+$5,200', 'text-emerald-300'], ['Spent', '-$2,360', 'text-rose-300'], ['Saved', '45%', 'text-white']].map(([l, v, c]) => (
+                          <div key={l} className="flex-1 bg-white/12 rounded-xl px-2 py-1.5">
+                            <p className="text-[7px] text-violet-300 font-medium leading-none mb-0.5">{l}</p>
+                            <p className={`text-[10px] font-bold ${c} leading-none`}>{v}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Spending card */}
+                    <div className="mx-3 mt-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-[9px] font-bold text-gray-700 dark:text-gray-200">Spending</p>
+                        <p className="text-[8px] text-violet-500 font-semibold">This month</p>
+                      </div>
+                      <div className="flex items-end gap-0.5 h-11">
+                        {[30, 55, 40, 70, 45, 80, 60, 78, 50, 90, 68, 100].map((h, i) => (
+                          <div key={i} className="flex-1 rounded-sm" style={{
+                            height: `${h}%`,
+                            background: i === 11 ? '#7c3aed' : i >= 9 ? '#c4b5fd' : '#ede9fe'
+                          }} />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recent transactions */}
+                    <div className="mx-3 mt-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                      <div className="px-3 pt-2 pb-1 flex justify-between items-center">
+                        <p className="text-[9px] font-bold text-gray-700 dark:text-gray-200">Recent</p>
+                        <p className="text-[8px] text-violet-500 font-semibold">See all →</p>
+                      </div>
+                      {[
+                        { icon: '🍔', name: "McDonald's", cat: 'Food', amt: '-$12.50', neg: true },
+                        { icon: '🚗', name: 'Uber', cat: 'Transport', amt: '-$22.00', neg: true },
+                        { icon: '💼', name: 'Salary', cat: 'Income', amt: '+$3,200', neg: false },
+                      ].map((tx, i, arr) => (
+                        <div key={i} className={`flex items-center gap-2 px-3 py-1.5 ${i < arr.length - 1 ? 'border-b border-gray-50 dark:border-gray-700' : ''}`}>
+                          <div className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[11px] shrink-0">{tx.icon}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[9px] font-semibold text-gray-800 dark:text-white truncate">{tx.name}</p>
+                            <p className="text-[7px] text-gray-400">{tx.cat}</p>
+                          </div>
+                          <p className={`text-[9px] font-bold tabular-nums ${tx.neg ? 'text-rose-500' : 'text-emerald-500'}`}>{tx.amt}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Bottom nav */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 py-2 px-5 flex justify-around items-center">
+                      {[['🏠', true], ['💳', false], ['📊', false], ['⚙️', false]].map(([icon, active], i) => (
+                        <div key={i} className="flex flex-col items-center gap-0.5">
+                          <span className="text-base">{icon}</span>
+                          {active && <div className="w-1 h-1 bg-violet-600 rounded-full" />}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Home pill */}
+                    <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-14 h-0.5 bg-gray-300 dark:bg-gray-700 rounded-full" />
                   </div>
-                  <span className="text-[10px] font-bold text-amber-600">72%</span>
                 </div>
               </div>
-            </div>
 
-            {/* Wellness badge */}
-            <div className="absolute right-6 bottom-0 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-lg px-3.5 py-2.5 flex items-center gap-2">
-              <span className="text-lg">💚</span>
-              <div>
-                <p className="text-[10px] text-gray-400">Wellness Score</p>
-                <p className="text-sm font-bold text-teal-600">78 / 100</p>
+              {/* Floating: AI badge */}
+              <div className="absolute -right-6 top-16 bg-violet-600 text-white px-3 py-2 rounded-2xl shadow-xl shadow-violet-200 dark:shadow-violet-950/60 text-[11px] font-semibold flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                AI Insight ready
+              </div>
+
+              {/* Floating: budget pill */}
+              <div className="absolute -left-10 top-1/2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-lg px-3 py-2.5 flex items-center gap-2.5">
+                <div className="w-7 h-7 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center text-xs">🎯</div>
+                <div>
+                  <p className="text-[9px] text-gray-400 font-medium">Dining budget</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="w-16 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-500 rounded-full" style={{ width: '72%' }} />
+                    </div>
+                    <span className="text-[9px] font-bold text-amber-600">72%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating: wellness */}
+              <div className="absolute -right-4 bottom-24 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-lg px-3 py-2 flex items-center gap-2">
+                <span className="text-base">💚</span>
+                <div>
+                  <p className="text-[9px] text-gray-400">Wellness</p>
+                  <p className="text-xs font-bold text-teal-600">78 / 100</p>
+                </div>
               </div>
             </div>
           </div>

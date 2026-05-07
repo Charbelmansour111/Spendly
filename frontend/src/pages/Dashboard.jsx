@@ -257,15 +257,17 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-5">
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-        <ReceiptScanner onScanComplete={data => setForm(f => ({ ...f, amount: data.amount, description: data.description, category: data.category || f.category, date: data.date || f.date }))} />
-        <div className="space-y-3 mt-3">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-3">
+          <ReceiptScanner onScanComplete={data => setForm(f => ({ ...f, amount: data.amount, description: data.description, category: data.category || f.category, date: data.date || f.date }))} />
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Amount ({currencySymbol})</label>
             <input type="number" placeholder="0.00" value={form.amount}
@@ -273,8 +275,6 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
               required min="0.01" step="0.01"
               className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
           </div>
-
-          {/* Description first — triggers AI category suggest */}
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Description (optional)</label>
             <input type="text" placeholder="What was this for?" value={form.description}
@@ -291,8 +291,6 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
               </div>
             )}
           </div>
-
-          {/* Category selector */}
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Category</label>
             <div className="flex flex-wrap gap-2">
@@ -308,8 +306,6 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
               ))}
             </div>
           </div>
-
-          {/* Subcategory tiles with real logos */}
           {subs.length > 0 && (
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Quick-fill</label>
@@ -320,7 +316,6 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
               </div>
             </div>
           )}
-
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Date</label>
             <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
@@ -355,9 +350,12 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
               onChange={e => setForm({ ...form, notes: e.target.value })}
               className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
           </div>
+        </div>
+        {/* Sticky footer */}
+        <div className="shrink-0 px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl">
           <button onClick={() => onSave(form)}
             disabled={!form.amount || !form.date}
-            className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50 mt-1">
+            className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50">
             Add Expense
           </button>
         </div>
@@ -371,14 +369,14 @@ function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-5">
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Income</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-        <div className="space-y-3">
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-3">
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Amount ({currencySymbol})</label>
             <input type="number" placeholder="0.00" value={form.amount}
@@ -405,6 +403,8 @@ function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
               <option value="monthly">Monthly</option>
             </select>
           )}
+        </div>
+        <div className="shrink-0 px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl">
           <button onClick={() => onSave(form)}
             disabled={!form.amount}
             className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-green-700 transition disabled:opacity-50">
