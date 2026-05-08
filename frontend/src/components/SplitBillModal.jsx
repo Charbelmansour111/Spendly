@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import API from '../utils/api'
 
 const CATEGORIES = ['Food','Coffee','Transport','Shopping','Subscriptions','Entertainment','Health','Fitness','Education','Bills','Travel','Gifts','Other']
@@ -7,6 +7,10 @@ const CURRENCY_SYMBOLS = { USD:'$', EUR:'€', GBP:'£', LBP:'L£', AED:'AED', S
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 
 export default function SplitBillModal({ onClose, onSaved }) {
+  useEffect(() => {
+    document.body.classList.add('modal-open')
+    return () => document.body.classList.remove('modal-open')
+  }, [])
   const sym = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
   const today = new Date().toISOString().split('T')[0]
 

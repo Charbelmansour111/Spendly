@@ -7,6 +7,7 @@ import SplitBillModal from '../components/SplitBillModal'
 import CategoryManagerModal from '../components/CategoryManagerModal'
 import useCategories from '../hooks/useCategories'
 import { METHOD_ICONS, METHOD_COLORS } from '../utils/paymentMethods'
+import { useHideNav } from '../hooks/useHideNav'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦', Salary: '💼', Freelance: '💻', Business: '🏪', Investment: '📈' }
@@ -59,6 +60,7 @@ function UndoToast({ label, onUndo, onDismiss }) {
 }
 
 function EditSheet({ expense, sym, onSave, onClose }) {
+  useHideNav()
   const [form, setForm] = useState({
     amount: expense.amount,
     category: expense.category,
@@ -198,6 +200,7 @@ function suggestCategoryLocal(desc) {
 }
 
 function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
+  useHideNav()
   const today = new Date().toISOString().split('T')[0]
   const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly' })
   const [suggestion, setSuggestion] = useState(null)
@@ -224,9 +227,9 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
     setSaving(false)
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pb-24 md:pb-0" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[calc(92vh-6rem)] md:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
@@ -297,7 +300,7 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
           )}
         </div>
         {/* Sticky footer */}
-        <div className="shrink-0 px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl">
+        <div className="shrink-0 px-6 pt-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}>
           <button onClick={handleSave} disabled={!form.amount || saving}
             className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50">
             {saving ? 'Adding…' : 'Add Expense'}
@@ -309,6 +312,7 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
 }
 
 function AddIncomeModal({ onClose, onSave, sym }) {
+  useHideNav()
   const [form, setForm] = useState({ amount: '', source: 'Salary', is_recurring: false, recurring_frequency: 'monthly' })
   const [saving, setSaving] = useState(false)
   const handleSave = async () => {
@@ -318,9 +322,9 @@ function AddIncomeModal({ onClose, onSave, sym }) {
     setSaving(false)
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pb-24 md:pb-0" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[calc(92vh-6rem)] md:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Income</h3>
           <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -350,7 +354,7 @@ function AddIncomeModal({ onClose, onSave, sym }) {
             </select>
           )}
         </div>
-        <div className="shrink-0 px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl">
+        <div className="shrink-0 px-6 pt-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}>
           <button onClick={handleSave} disabled={!form.amount || saving}
             className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-green-700 transition disabled:opacity-50">
             {saving ? 'Adding…' : 'Add Income'}
@@ -362,8 +366,9 @@ function AddIncomeModal({ onClose, onSave, sym }) {
 }
 
 function AddPickerModal({ onClose, onExpense, onIncome, onScan, onSplit }) {
+  useHideNav()
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center pb-24 md:pb-0" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl w-full max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-5" />
@@ -486,6 +491,13 @@ export default function Transactions() {
   const [showFilters, setShowFilters] = useState(false)
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
+
+  // Hide bottom nav when inline recategorize sheet is open
+  useEffect(() => {
+    if (showRecatSheet) document.body.classList.add('modal-open')
+    else document.body.classList.remove('modal-open')
+    return () => document.body.classList.remove('modal-open')
+  }, [showRecatSheet])
 
   const [visibleDayGroups, setVisibleDayGroups] = useState(3)
 
@@ -1410,7 +1422,7 @@ const onTabSwipeStart = (e) => {
 
       {/* Re-categorize sheet */}
       {showRecatSheet && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center pb-24 md:pb-0" onClick={() => setShowRecatSheet(false)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowRecatSheet(false)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl w-full max-w-md p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />

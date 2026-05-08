@@ -8,6 +8,7 @@ import { DashboardSkeleton } from '../components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Onboarding from '../components/Onboarding'
 import MonthlyWrap from '../components/MonthlyWrap'
+import { useHideNav } from '../hooks/useHideNav'
 import { requestNotificationPermission, isNotificationsEnabled } from '../utils/notifications'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
@@ -226,6 +227,7 @@ const EXP_CATS = [
 ]
 
 function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
+  useHideNav()
   const [form, setForm] = useState({
     amount: '', category: 'Food', description: '',
     date: new Date().toISOString().split('T')[0], is_recurring: false, recurring_frequency: 'monthly',
@@ -255,9 +257,9 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
   const subs = SUBCATEGORIES[form.category] || []
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pb-24 md:pb-0" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[calc(92vh-6rem)] md:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
@@ -352,7 +354,7 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
           </div>
         </div>
         {/* Sticky footer */}
-        <div className="shrink-0 px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl">
+        <div className="shrink-0 px-6 pt-4 pb-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}>
           <button onClick={() => onSave(form)}
             disabled={!form.amount || !form.date}
             className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50">
@@ -365,11 +367,12 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
 }
 
 function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
+  useHideNav()
   const [form, setForm] = useState({ amount: '', source: 'Salary', is_recurring: false, recurring_frequency: 'monthly' })
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pb-24 md:pb-0" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[calc(92vh-6rem)] md:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Income</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
@@ -404,7 +407,7 @@ function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
             </select>
           )}
         </div>
-        <div className="shrink-0 px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl">
+        <div className="shrink-0 px-6 pt-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}>
           <button onClick={() => onSave(form)}
             disabled={!form.amount}
             className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-green-700 transition disabled:opacity-50">
@@ -425,6 +428,7 @@ const EXAMPLE_PROMPTS = [
 ]
 
 function QuickLogSheet({ onClose, onSaved, currencySymbol }) {
+  useHideNav()
   const today = new Date().toISOString().split('T')[0]
   const [text, setText] = useState('')
   const [step, setStep] = useState('input')   // input | preview | saving | done
@@ -642,7 +646,7 @@ function QuickLogSheet({ onClose, onSaved, currencySymbol }) {
 
         {/* Footer buttons */}
         {step === 'input' && (
-          <div className="px-6 pb-6 pt-3 shrink-0 border-t border-gray-100 dark:border-gray-700">
+          <div className="px-6 pt-3 shrink-0 border-t border-gray-100 dark:border-gray-700" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))' }}>
             <button onClick={parse} disabled={!text.trim() || saving}
               className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50 flex items-center justify-center gap-2">
               {saving ? (
@@ -653,7 +657,7 @@ function QuickLogSheet({ onClose, onSaved, currencySymbol }) {
         )}
 
         {step === 'preview' && parsed.length > 0 && (
-          <div className="px-6 pb-6 pt-3 shrink-0 border-t border-gray-100 dark:border-gray-700">
+          <div className="px-6 pt-3 shrink-0 border-t border-gray-100 dark:border-gray-700" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))' }}>
             <button onClick={saveAll} disabled={saving}
               className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2">
               {saving ? (
@@ -821,10 +825,11 @@ export default function Dashboard() {
     API.get('/news').then(r => setNews(r.data || [])).catch(() => {}).finally(() => setNewsLoading(false))
   }
 
-  // Derived values
+  // Derived values — parse date string directly to avoid UTC-offset month drift
   const monthExpenses = expenses.filter(e => {
-    const d = new Date(e.date)
-    return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear
+    const s = (e.date instanceof Date ? e.date.toISOString() : String(e.date)).split('T')[0]
+    const [y, m] = s.split('-').map(Number)
+    return (m - 1) === selectedMonth && y === selectedYear
   })
   const total       = monthExpenses.reduce((s, e) => s + safeNum(e.amount), 0)
   const totalIncome = incomeList.reduce((s, i) => s + safeNum(i.amount), 0)

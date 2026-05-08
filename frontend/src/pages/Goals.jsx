@@ -120,6 +120,14 @@ export default function Goals() {
   const [sym] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
   useEffect(() => () => clearTimeout(undoTimerRef.current), [])
 
+  // Hide bottom nav when any entry form/modal is open
+  useEffect(() => {
+    const open = showForm || !!paymentId || !!addFundsId || !!aiModal || !!numModal
+    if (open) document.body.classList.add('modal-open')
+    else document.body.classList.remove('modal-open')
+    return () => document.body.classList.remove('modal-open')
+  }, [showForm, paymentId, addFundsId, aiModal, numModal])
+
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
 
   const fetchAll = useCallback(() => {

@@ -276,7 +276,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       </main>
 
       {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700/60">
+      <nav className="sp-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700/60">
         <div className="flex pt-3 pb-2 px-2">
           {TAB_ITEMS.map(item => {
             const isActive = current === item.href

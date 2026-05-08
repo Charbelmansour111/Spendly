@@ -19,14 +19,23 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const { amount, source, month, year, is_recurring, recurring_frequency } = req.body;
-    const result = await pool.query(
-      `INSERT INTO income (user_id, amount, source, month, year, is_recurring, recurring_frequency)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (user_id, month, year, source)
-       DO UPDATE SET amount = EXCLUDED.amount, is_recurring = EXCLUDED.is_recurring, recurring_frequency = EXCLUDED.recurring_frequency
-       RETURNING *`,
-      [req.userId, amount, source, month, year, is_recurring || false, recurring_frequency || 'monthly']
+    const existing = await pool.query(
+      'SELECT id FROM income WHERE user_id = $1 AND month = $2 AND year = $3 AND source = $4',
+      [req.userId, month, year, source]
     );
+    let result;
+    if (existing.rows.length > 0) {
+      result = await pool.query(
+        'UPDATE income SET amount = $1, is_recurring = $2, recurring_frequency = $3 WHERE id = $4 RETURNING *',
+        [amount, is_recurring || false, recurring_frequency || 'monthly', existing.rows[0].id]
+      );
+    } else {
+      result = await pool.query(
+        `INSERT INTO income (user_id, amount, source, month, year, is_recurring, recurring_frequency)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [req.userId, amount, source, month, year, is_recurring || false, recurring_frequency || 'monthly']
+      );
+    }
     res.status(201).json(result.rows[0]);
   } catch (e) {
     console.log('Income error:', e);

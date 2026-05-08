@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import API from '../utils/api'
 import { METHOD_ICONS, METHOD_COLORS } from '../utils/paymentMethods'
 
@@ -35,6 +35,10 @@ function ModalShell({ children, onBackdropClose }) {
 }
 
 export default function QuickScanModal({ onClose, onAdded }) {
+  useEffect(() => {
+    document.body.classList.add('modal-open')
+    return () => document.body.classList.remove('modal-open')
+  }, [])
   const [view, setView] = useState('input') // input | processing | receipt | transactions | done
   const [inputTab, setInputTab] = useState('camera')
   const [smsText, setSmsText] = useState('')

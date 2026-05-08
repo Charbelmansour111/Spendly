@@ -115,10 +115,11 @@ export default function Wellness() {
       const budgetList  = budRes.status  === 'fulfilled' ? (budRes.value.data  || []) : []
       const savingsList = savRes.status  === 'fulfilled' ? (savRes.value.data  || []) : []
 
-      // Month expenses
+      // Month expenses — parse date string directly to avoid UTC-offset month drift
       const monthExpenses = allExpenses.filter(e => {
-        const d = new Date(e.date)
-        return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear
+        const s = (e.date instanceof Date ? e.date.toISOString() : String(e.date)).split('T')[0]
+        const [y, m] = s.split('-').map(Number)
+        return m === currentMonth && y === currentYear
       })
       const totalSpent  = monthExpenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0)
       const totalIncome = incomeList.reduce((s, i) => s + parseFloat(i.amount || 0), 0)

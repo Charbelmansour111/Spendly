@@ -7,3 +7,8 @@ body {
 .dark body {
   background-color: #111827;
 }
+
+/* Hide mobile bottom nav when any modal/sheet is open */
+body.modal-open .sp-bottom-nav {
+  display: none !important;
+}

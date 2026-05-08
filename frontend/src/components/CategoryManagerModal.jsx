@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const EMOJI_PRESETS = ['🍔','☕','🚗','🛍️','🎬','🏥','🏋️','🎓','💡','✈️','🎁','📱','📦','🐾','👶','🎮','🎵','🏠','💊','🌿','🍺','🎯','💼','🏦','🚀','❤️','🌟','🎉']
 
 export default function CategoryManagerModal({ categories, onAdd, onDelete, onClose }) {
+  useEffect(() => {
+    document.body.classList.add('modal-open')
+    return () => document.body.classList.remove('modal-open')
+  }, [])
   const [name, setName] = useState('')
   const [emoji, setEmoji] = useState('📦')
   const [saving, setSaving] = useState(false)

@@ -107,6 +107,14 @@ export default function Budgets() {
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
   const showToast = useCallback((message, type = 'success') => setToast({ message, type }), [])
 
+  // Hide bottom nav when any entry form/modal is open
+  useEffect(() => {
+    const open = showForm || showBillForm || !!aiModal || !!numModal || !!suggestModal || noIncomeModal
+    if (open) document.body.classList.add('modal-open')
+    else document.body.classList.remove('modal-open')
+    return () => document.body.classList.remove('modal-open')
+  }, [showForm, showBillForm, aiModal, numModal, suggestModal, noIncomeModal])
+
   const fetchAll = useCallback(() => {
     setLoading(true)
     Promise.all([API.get('/budgets'), API.get('/expenses')])
