@@ -131,32 +131,48 @@ function EditSheet({ expense, sym, onSave, onClose }) {
 }
 
 function SwipeRow({ onDelete, children }) {
+  const [swiped, setSwiped] = useState(false)
   const [startX, setStartX] = useState(null)
-  const [offset, setOffset] = useState(0)
-  const THRESHOLD = 90
+  const [liveOffset, setLiveOffset] = useState(0)
+  const REVEAL = 76
+  const THRESHOLD = 60
 
-  const onTouchStart = e => setStartX(e.touches[0].clientX)
-  const onTouchMove  = e => {
+  const onTouchStart = e => {
+    setStartX(e.touches[0].clientX)
+  }
+  const onTouchMove = e => {
     if (startX === null) return
     const d = startX - e.touches[0].clientX
-    if (d > 0) setOffset(Math.min(d, 140))
+    if (d > 0) setLiveOffset(Math.min(d, REVEAL + 20))
+    else if (d < -20 && swiped) { setSwiped(false); setLiveOffset(0) }
   }
   const onTouchEnd = () => {
-    if (offset >= THRESHOLD) { haptic(20); onDelete() }
-    else setOffset(0)
+    if (liveOffset >= THRESHOLD) { haptic(12); setSwiped(true); setLiveOffset(REVEAL) }
+    else { setSwiped(false); setLiveOffset(0) }
     setStartX(null)
   }
+  const handleConfirmDelete = () => { haptic(20); setSwiped(false); setLiveOffset(0); onDelete() }
+  const handleSnapBack = () => { setSwiped(false); setLiveOffset(0) }
+
+  const displayOffset = swiped ? REVEAL : liveOffset
 
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-y-0 right-0 w-20 bg-red-500 flex items-center justify-center"
-        style={{ opacity: Math.min(offset / THRESHOLD, 1) }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
-        </svg>
+      {/* Red confirm-delete panel */}
+      <div className="absolute inset-y-0 right-0 flex items-stretch"
+        style={{ width: REVEAL, opacity: displayOffset > 4 ? 1 : 0 }}>
+        <button onClick={handleConfirmDelete}
+          className="flex-1 bg-red-500 active:bg-red-600 flex flex-col items-center justify-center gap-0.5 transition-colors">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+          </svg>
+          <span className="text-[9px] text-white font-bold tracking-wide">Delete</span>
+        </button>
       </div>
-      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-        style={{ transform: `translateX(-${offset}px)`, transition: startX === null ? 'transform 0.25s ease' : 'none' }}>
+      <div
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onClick={swiped ? handleSnapBack : undefined}
+        style={{ transform: `translateX(-${displayOffset}px)`, transition: startX === null ? 'transform 0.22s ease' : 'none' }}>
         {children}
       </div>
     </div>
@@ -436,7 +452,7 @@ export default function Transactions() {
   const [expenses, setExpenses] = useState([])
   const [income, setIncome]     = useState([])
   const [loading, setLoading]   = useState(true)
-  const [tab, setTab]           = useState('expenses')   // expenses | income | all
+  const [tab, setTab]           = useState('all')   // all | expenses | income
   const [sym] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
   const [toast, setToast]       = useState(null)
   const [editing, setEditing]   = useState(null)
@@ -444,7 +460,7 @@ export default function Transactions() {
   const undoRef = useRef(null)
   const undoTimerRef = useRef(null)
   const tabSwipeRef = useRef(null)
-  const TABS = ['expenses', 'income', 'all']
+  const TABS = ['all', 'expenses', 'income']
   useEffect(() => () => clearTimeout(undoTimerRef.current), [])
 
   // ── Bulk selection ──
@@ -568,6 +584,18 @@ export default function Transactions() {
     commitExpenseDelete(undoRef.current.id, undoRef.current.backup)
     undoRef.current = null
     setUndoLabel(null)
+  }
+
+  const handleDeleteIncome = async (id) => {
+    const backup = income.find(i => i.id === id)
+    if (!backup) return
+    haptic(20)
+    setIncome(prev => prev.filter(i => i.id !== id))
+    showToast('Income deleted')
+    try { await API.delete('/income/' + id) } catch {
+      setIncome(prev => [...prev, backup].sort((a, b) => new Date(b.date) - new Date(a.date)))
+      showToast('Error deleting income', 'error')
+    }
   }
 
   const handleEditSave = async (form) => {
@@ -720,6 +748,18 @@ export default function Transactions() {
   const totalIncome    = filteredIncome.reduce((s, i) => s + safeNum(i.amount), 0)
   const net            = totalIncome - totalExpenses
 
+  // Current-month stats (match Dashboard view)
+  const _now = new Date()
+  const _cm = _now.getMonth() + 1, _cy = _now.getFullYear()
+  const monthExpenses = expenses.filter(e => {
+    const s = String(e.date).split('T')[0]; const [y, m] = s.split('-').map(Number)
+    return m === _cm && y === _cy
+  })
+  const monthIncome = income.filter(i => Number(i.month) === _cm && Number(i.year) === _cy)
+  const monthSpent  = monthExpenses.reduce((s, e) => s + safeNum(e.amount), 0)
+  const monthEarned = monthIncome.reduce((s, i) => s + safeNum(i.amount), 0)
+  const monthNet    = monthEarned - monthSpent
+
   // Recurring
   const recurringExpenses     = expenses.filter(e => e.is_recurring)
   const recurringIncome       = income.filter(i => i.is_recurring)
@@ -862,50 +902,57 @@ const onTabSwipeStart = (e) => {
 
   const renderIncomeRow = (tx, idx, total) => {
     const isSelected = selected.has(tx.id)
+    const rowContent = (
+      <div
+        key={tx.id}
+        onClick={selectMode ? () => toggleItem(tx.id) : undefined}
+        className={`relative flex items-center gap-3 px-4 py-4 transition
+          ${selectMode ? 'cursor-pointer' : ''}
+          ${isSelected
+            ? 'bg-violet-50 dark:bg-violet-900/20'
+            : 'bg-white dark:bg-gray-800'}
+          ${idx < total - 1 ? 'border-b border-gray-100 dark:border-gray-700/40' : ''}`}
+      >
+        {selectMode && isSelected && (
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-violet-500 rounded-r" />
+        )}
+        {selectMode ? (
+          <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition
+            ${isSelected ? 'bg-violet-600 border-violet-600' : 'border-gray-300 dark:border-gray-500'}`}>
+            {isSelected && (
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="2 6 5 9 10 3"/>
+              </svg>
+            )}
+          </div>
+        ) : (
+          <div className="w-1 self-stretch rounded-full shrink-0 bg-emerald-400" />
+        )}
+        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 bg-emerald-100 dark:bg-emerald-900/30">
+          {CAT_ICONS[tx.source] || '💰'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-gray-800 dark:text-white truncate leading-tight">
+            {tx.description || tx.source || 'Income'}
+          </p>
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <span className="text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">{tx.source || 'Income'}</span>
+            {tx.is_recurring && <span className="text-[11px] text-purple-500 font-semibold">↻ Recurring</span>}
+            <span className="text-[11px] text-gray-400">{fmtDate(tx.date || tx.created_at)}</span>
+          </div>
+        </div>
+        <span className="font-black text-sm tabular-nums text-emerald-600 dark:text-emerald-400 shrink-0">
+          +{sym}{safeNum(tx.amount).toFixed(2)}
+        </span>
+      </div>
+    )
+    if (selectMode) {
+      return <div key={tx.id} className="relative">{rowContent}</div>
+    }
     return (
-    <div
-      key={tx.id}
-      onClick={selectMode ? () => toggleItem(tx.id) : undefined}
-      className={`relative flex items-center gap-3 px-4 py-4 transition
-        ${selectMode ? 'cursor-pointer' : ''}
-        ${isSelected
-          ? 'bg-violet-50 dark:bg-violet-900/20'
-          : 'bg-white dark:bg-gray-800'}
-        ${idx < total - 1 ? 'border-b border-gray-100 dark:border-gray-700/40' : ''}`}
-    >
-      {selectMode && isSelected && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-violet-500 rounded-r" />
-      )}
-      {/* Checkbox OR green bar */}
-      {selectMode ? (
-        <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition
-          ${isSelected ? 'bg-violet-600 border-violet-600' : 'border-gray-300 dark:border-gray-500'}`}>
-          {isSelected && (
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="2 6 5 9 10 3"/>
-            </svg>
-          )}
-        </div>
-      ) : (
-        <div className="w-1 self-stretch rounded-full shrink-0 bg-emerald-400" />
-      )}
-      <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 bg-emerald-100 dark:bg-emerald-900/30">
-        {CAT_ICONS[tx.source] || '💰'}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-gray-800 dark:text-white truncate leading-tight">
-          {tx.description || tx.source || 'Income'}
-        </p>
-        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-          <span className="text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">{tx.source || 'Income'}</span>
-          {tx.is_recurring && <span className="text-[11px] text-purple-500 font-semibold">↻ Recurring</span>}
-          <span className="text-[11px] text-gray-400">{fmtDate(tx.date || tx.created_at)}</span>
-        </div>
-      </div>
-      <span className="font-black text-sm tabular-nums text-emerald-600 dark:text-emerald-400 shrink-0">
-        +{sym}{safeNum(tx.amount).toFixed(2)}
-      </span>
-    </div>
+      <SwipeRow key={tx.id} onDelete={() => handleDeleteIncome(tx.id)}>
+        {rowContent}
+      </SwipeRow>
     )
   }
 
@@ -1085,80 +1132,96 @@ const onTabSwipeStart = (e) => {
 
         {/* Overview */}
         {numModal && <NumberModal {...numModal} onClose={() => setNumModal(null)} />}
-        <div className="bg-linear-to-br from-sky-400 to-blue-600 rounded-2xl px-5 py-4 mb-5 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-violet-600 via-violet-700 to-purple-800 rounded-2xl px-5 py-4 mb-5 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 pointer-events-none">
             <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
             <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
           </div>
           <div className="relative mb-3">
-            <p className="text-white font-bold text-base">Transactions</p>
-            <p className="text-white/70 text-xs">{net >= 0 ? `+${fmtMoney(net, sym)} surplus` : `-${fmtMoney(Math.abs(net), sym)} deficit`} this period</p>
+            <p className="text-violet-200 text-xs font-medium">{_now.toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
+            <p className={`text-3xl font-bold tabular-nums mt-0.5 ${monthNet < 0 ? 'text-red-200' : 'text-white'}`}>
+              {monthNet >= 0 ? '+' : '-'}{fmtMoney(Math.abs(monthNet), sym)}
+            </p>
+            <p className="text-violet-300 text-xs mt-0.5">{monthNet >= 0 ? 'surplus this month' : 'over income this month'}</p>
           </div>
           <div className="relative grid grid-cols-3 gap-2">
-            <button onClick={() => setNumModal({ label: 'Total Income', value: '+' + fmtMoney(totalIncome, sym), sub: filteredIncome.length + ' entries' })}
-              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-white/70 text-[10px] mb-0.5">Income</p>
-              <p className="text-white font-bold text-sm tabular-nums truncate">+{fmtMoney(totalIncome, sym)}</p>
-              <p className="text-white/50 text-[10px]">{filteredIncome.length} entr{filteredIncome.length !== 1 ? 'ies' : 'y'}</p>
+            <button onClick={() => setNumModal({ label: 'Income this month', value: '+' + fmtMoney(monthEarned, sym), sub: monthIncome.length + ' entries' })}
+              className="bg-white/15 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-green-300 text-[10px] mb-0.5">Income</p>
+              <p className="text-white font-bold text-sm tabular-nums truncate">+{fmtMoney(monthEarned, sym)}</p>
+              <p className="text-white/50 text-[10px]">{monthIncome.length} entr{monthIncome.length !== 1 ? 'ies' : 'y'}</p>
             </button>
-            <button onClick={() => setNumModal({ label: 'Total Spent', value: '-' + fmtMoney(totalExpenses, sym), sub: filteredExpenses.length + ' expenses' })}
-              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-white/70 text-[10px] mb-0.5">Spent</p>
-              <p className="text-white font-bold text-sm tabular-nums truncate">-{fmtMoney(totalExpenses, sym)}</p>
-              <p className="text-white/50 text-[10px]">{filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}</p>
+            <button onClick={() => setNumModal({ label: 'Spent this month', value: '-' + fmtMoney(monthSpent, sym), sub: monthExpenses.length + ' expenses' })}
+              className="bg-white/15 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-red-300 text-[10px] mb-0.5">Spent</p>
+              <p className="text-white font-bold text-sm tabular-nums truncate">-{fmtMoney(monthSpent, sym)}</p>
+              <p className="text-white/50 text-[10px]">{monthExpenses.length} expense{monthExpenses.length !== 1 ? 's' : ''}</p>
             </button>
-            <button onClick={() => setNumModal({ label: 'Entries', value: String(filteredIncome.length + filteredExpenses.length), sub: 'total transactions' })}
-              className="bg-white/20 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-white/70 text-[10px] mb-0.5">Entries</p>
-              <p className="text-white font-bold text-sm tabular-nums">{filteredIncome.length + filteredExpenses.length}</p>
-              <p className="text-white/50 text-[10px]">total</p>
+            <button onClick={() => setNumModal({ label: 'All entries', value: String(expenses.length + income.length), sub: 'across all time' })}
+              className="bg-white/15 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
+              <p className="text-violet-200 text-[10px] mb-0.5">All time</p>
+              <p className="text-white font-bold text-sm tabular-nums">{expenses.length + income.length}</p>
+              <p className="text-white/50 text-[10px]">entries</p>
             </button>
           </div>
         </div>
 
-        {/* Recurring Commitments */}
+        {/* Recurring Commitments — collapsed by default */}
         {(recurringExpenses.length > 0 || recurringIncome.length > 0) && (
-          <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-5 py-4 mb-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-gray-800 dark:text-white font-bold text-base flex items-center gap-2">
-                  <span className="text-sky-500 text-lg">↻</span> Recurring Commitments
+          <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl mb-5 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setShowRecurring(v => !v)}
+              className="w-full flex items-center gap-3 px-5 py-4 text-left active:bg-gray-50 dark:active:bg-gray-700/50 transition-colors">
+              <span className="text-sky-500 text-base shrink-0">↻</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-gray-800 dark:text-white font-bold text-sm">Recurring Commitments</p>
+                <p className="text-gray-400 text-xs mt-0.5">
+                  {recurringExpenses.length + recurringIncome.length} item{recurringExpenses.length + recurringIncome.length !== 1 ? 's' : ''}
+                  <span className="mx-1.5 text-gray-300 dark:text-gray-600">·</span>
+                  <span className="text-red-400">-{fmtMoney(recurringExpenseTotal, sym)}</span>
+                  <span className="mx-1 text-gray-300 dark:text-gray-600">/</span>
+                  <span className="text-green-500">+{fmtMoney(recurringIncomeTotal, sym)}</span>
+                  <span className="ml-1 text-gray-400">mo</span>
                 </p>
-                <p className="text-gray-400 text-xs mt-0.5">{recurringExpenses.length + recurringIncome.length} item{recurringExpenses.length + recurringIncome.length !== 1 ? 's' : ''} scheduled</p>
               </div>
-              <button onClick={() => setShowRecurring(v => !v)}
-                className="text-xs bg-sky-50 dark:bg-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-600 dark:text-sky-400 font-semibold px-3 py-1.5 rounded-full transition">
-                {showRecurring ? 'Hide' : 'Details'}
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2.5">
-                <p className="text-red-400 text-[10px] mb-0.5">Monthly Out</p>
-                <p className="text-red-600 dark:text-red-400 font-bold text-sm tabular-nums">-{fmtMoney(recurringExpenseTotal, sym)}</p>
-                <p className="text-gray-400 text-[10px]">{recurringExpenses.length} expense{recurringExpenses.length !== 1 ? 's' : ''}</p>
-              </div>
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-3 py-2.5">
-                <p className="text-green-500 text-[10px] mb-0.5">Monthly In</p>
-                <p className="text-green-600 dark:text-green-400 font-bold text-sm tabular-nums">+{fmtMoney(recurringIncomeTotal, sym)}</p>
-                <p className="text-gray-400 text-[10px]">{recurringIncome.length} income{recurringIncome.length !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
+              <svg
+                width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                className={`text-gray-400 shrink-0 transition-transform duration-200 ${showRecurring ? 'rotate-180' : ''}`}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+
             {showRecurring && (
-              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 space-y-2">
-                {recurringExpenses.map(e => (
-                  <div key={e.id} className="flex items-center gap-2.5">
-                    <span className="text-base w-6 text-center shrink-0">{CAT_ICONS[e.category] || '📦'}</span>
-                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">{e.description || e.category}</span>
-                    <span className="text-xs font-semibold text-red-500 tabular-nums shrink-0">-{sym}{safeNum(e.amount).toFixed(2)}/{(e.recurring_frequency || 'mo').replace('monthly','mo').replace('weekly','wk').replace('daily','day')}</span>
+              <div className="px-5 pb-4 space-y-0 border-t border-gray-100 dark:border-gray-700">
+                <div className="grid grid-cols-2 gap-2 mt-3 mb-3">
+                  <div className="bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2.5">
+                    <p className="text-red-400 text-[10px] mb-0.5">Monthly Out</p>
+                    <p className="text-red-600 dark:text-red-400 font-bold text-sm tabular-nums">-{fmtMoney(recurringExpenseTotal, sym)}</p>
+                    <p className="text-gray-400 text-[10px]">{recurringExpenses.length} expense{recurringExpenses.length !== 1 ? 's' : ''}</p>
                   </div>
-                ))}
-                {recurringIncome.map(i => (
-                  <div key={i.id} className="flex items-center gap-2.5">
-                    <span className="text-base w-6 text-center shrink-0">💵</span>
-                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">{i.description || i.source || 'Income'}</span>
-                    <span className="text-xs font-semibold text-green-500 tabular-nums shrink-0">+{sym}{safeNum(i.amount).toFixed(2)}/{(i.recurring_frequency || 'mo').replace('monthly','mo').replace('weekly','wk').replace('daily','day')}</span>
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-3 py-2.5">
+                    <p className="text-green-500 text-[10px] mb-0.5">Monthly In</p>
+                    <p className="text-green-600 dark:text-green-400 font-bold text-sm tabular-nums">+{fmtMoney(recurringIncomeTotal, sym)}</p>
+                    <p className="text-gray-400 text-[10px]">{recurringIncome.length} income{recurringIncome.length !== 1 ? 's' : ''}</p>
                   </div>
-                ))}
+                </div>
+                <div className="space-y-2 pt-3 border-t border-gray-100 dark:border-gray-700">
+                  {recurringExpenses.map(e => (
+                    <div key={e.id} className="flex items-center gap-2.5">
+                      <span className="text-base w-6 text-center shrink-0">{CAT_ICONS[e.category] || '📦'}</span>
+                      <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">{e.description || e.category}</span>
+                      <span className="text-xs font-semibold text-red-500 tabular-nums shrink-0">-{sym}{safeNum(e.amount).toFixed(2)}/{(e.recurring_frequency || 'mo').replace('monthly','mo').replace('weekly','wk').replace('daily','day')}</span>
+                    </div>
+                  ))}
+                  {recurringIncome.map(i => (
+                    <div key={i.id} className="flex items-center gap-2.5">
+                      <span className="text-base w-6 text-center shrink-0">💵</span>
+                      <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">{i.description || i.source || 'Income'}</span>
+                      <span className="text-xs font-semibold text-green-500 tabular-nums shrink-0">+{sym}{safeNum(i.amount).toFixed(2)}/{(i.recurring_frequency || 'mo').replace('monthly','mo').replace('weekly','wk').replace('daily','day')}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -1168,9 +1231,9 @@ const onTabSwipeStart = (e) => {
         <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5"
           onTouchStart={onTabSwipeStart} onTouchEnd={onTabSwipeEnd}>
           {[
+            { key: 'all',      label: `📋 All`,       count: filteredExpenses.length + filteredIncome.length },
             { key: 'expenses', label: `💸 Expenses`, count: filteredExpenses.length },
             { key: 'income',   label: `💵 Income`,   count: filteredIncome.length },
-            { key: 'all',      label: `📋 All`,       count: filteredExpenses.length + filteredIncome.length },
           ].map(t => (
             <button key={t.key} onClick={() => { setTab(t.key); setCat('All') }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition ${
