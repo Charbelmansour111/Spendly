@@ -740,14 +740,14 @@ export default function Dashboard() {
   const fetchNotifs   = useCallback(async () => { try { const r = await API.get('/notifications'); setNotifs(r.data) } catch { /* noop */ } }, [])
   const fetchSubs     = useCallback(async () => { try { const r = await API.get('/subscriptions'); setSubs(r.data || []) } catch { /* noop */ } }, [])
   const fetchIncome   = useCallback(async () => {
-    try { const r = await API.get('/income?month=' + (selectedMonth + 1) + '&year=' + selectedYear); setIncomeList(r.data) } catch { /* noop */ }
-  }, [selectedMonth, selectedYear])
+    try { const r = await API.get('/income'); setIncomeList(r.data) } catch { /* noop */ }
+  }, [])
 
   useEffect(() => {
     if (!localStorage.getItem('token')) return
-    Promise.all([fetchExpenses(), fetchBudgets(), fetchSavings(), fetchTrends(), fetchNotifs(), fetchSubs()])
+    Promise.all([fetchExpenses(), fetchBudgets(), fetchSavings(), fetchTrends(), fetchNotifs(), fetchSubs(), fetchIncome()])
       .finally(() => setLoading(false))
-  }, [fetchExpenses, fetchBudgets, fetchSavings, fetchTrends, fetchNotifs, fetchSubs])
+  }, [fetchExpenses, fetchBudgets, fetchSavings, fetchTrends, fetchNotifs, fetchSubs, fetchIncome])
 
   useEffect(() => {
     if (!localStorage.getItem('token')) return
@@ -759,13 +759,25 @@ export default function Dashboard() {
         } catch { /* noop */ }
         try {
           const r2 = await API.post('/income/apply-recurring', { month: selectedMonth + 1, year: selectedYear })
-          if (r2.data.added > 0) showToast(r2.data.added + ' recurring income(s) added', 'warning')
+          if (r2.data.added > 0) { fetchIncome(); showToast(r2.data.added + ' recurring income(s) added', 'warning') }
         } catch { /* noop */ }
       }
-      fetchIncome()
     }
     run()
   }, [selectedMonth, selectedYear, isCurrentMonth, fetchIncome, fetchExpenses, showToast])
+
+  // Refresh expenses + income whenever user comes back to this tab / navigates back
+  useEffect(() => {
+    if (!localStorage.getItem('token')) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchExpenses()
+        fetchIncome()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [fetchExpenses, fetchIncome])
 
   // Fetch news on mount (newsLoading starts true via lazy init above)
   useEffect(() => {
@@ -831,7 +843,8 @@ export default function Dashboard() {
     return (m - 1) === selectedMonth && y === selectedYear
   })
   const total       = monthExpenses.reduce((s, e) => s + safeNum(e.amount), 0)
-  const totalIncome = incomeList.reduce((s, i) => s + safeNum(i.amount), 0)
+  const monthIncome = incomeList.filter(i => Number(i.month) === selectedMonth + 1 && Number(i.year) === selectedYear)
+  const totalIncome = monthIncome.reduce((s, i) => s + safeNum(i.amount), 0)
   const balance     = totalIncome - total
   const savingsRate = totalIncome > 0 ? Math.round((balance / totalIncome) * 100) : 0
   const unread      = notifications.filter(n => !n.is_read).length
@@ -961,7 +974,7 @@ export default function Dashboard() {
 
   if (loading) return (
     <Layout unreadCount={0}>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900"><DashboardSkeleton /></div>
+      <div className="min-h-screen"><DashboardSkeleton /></div>
     </Layout>
   )
 
@@ -1181,7 +1194,7 @@ export default function Dashboard() {
                     })()}
                   </div>
                   <div className="relative grid grid-cols-3 gap-2 mt-4">
-                    <button onClick={() => setModalData({ label: 'Income — ' + monthName, value: fmt(totalIncome, currencySymbol), sub: incomeList.length + ' source(s)' })}
+                    <button onClick={() => setModalData({ label: 'Income — ' + monthName, value: fmt(totalIncome, currencySymbol), sub: monthIncome.length + ' source(s)' })}
                       className="bg-white/15 rounded-2xl px-3 py-3 text-left active:scale-95 transition-transform">
                       <p className="text-green-300 text-xs mb-0.5">Income</p>
                       <p className="text-white font-bold text-sm tabular-nums truncate">{fmt(totalIncome, currencySymbol)}</p>

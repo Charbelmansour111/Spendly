@@ -103,14 +103,15 @@ export default function Wellness() {
     try {
       const [expRes, incRes, budRes, savRes, wellRes] = await Promise.allSettled([
         API.get('/expenses'),
-        API.get(`/income?month=${currentMonth}&year=${currentYear}`),
+        API.get('/income'),
         API.get('/budgets'),
         API.get('/savings'),
         API.get('/wellness'),
       ])
 
       const allExpenses = expRes.status === 'fulfilled' ? (expRes.value.data || []) : []
-      const incomeList  = incRes.status  === 'fulfilled' ? (incRes.value.data  || []) : []
+      const allIncome   = incRes.status  === 'fulfilled' ? (incRes.value.data  || []) : []
+      const incomeList  = allIncome.filter(i => Number(i.month) === currentMonth && Number(i.year) === currentYear)
       const budgetList  = budRes.status  === 'fulfilled' ? (budRes.value.data  || []) : []
       const savingsList = savRes.status  === 'fulfilled' ? (savRes.value.data  || []) : []
 

@@ -236,8 +236,7 @@ function SectionHeader({ icon, title, subtitle }) {
 
 export default function Reports() {
   const [expenses, setExpenses] = useState([])
-  const [income, setIncome] = useState([])
-  const [prevIncome, setPrevIncome] = useState([])
+  const [allIncome, setAllIncome] = useState([])
   const [trends, setTrends] = useState([])
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -282,13 +281,18 @@ export default function Reports() {
     setForecastLoading(true)
     Promise.all([
       API.get('/expenses'),
-      API.get('/income?month=' + (selectedMonth + 1) + '&year=' + selectedYear),
-      API.get('/income?month=' + (prevMonthNum + 1) + '&year=' + prevYearNum),
+      API.get('/income'),
       API.get('/expenses/trends'),
       API.get('/expenses/payment-method-stats?month=' + (selectedMonth + 1) + '&year=' + selectedYear),
       API.get('/expenses/forecast'),
     ])
-      .then(([e, i, pi, t, pm, fc]) => { setExpenses(e.data); setIncome(i.data); setPrevIncome(pi.data); setTrends(t.data); setPaymentStats(pm.data || []); setForecast(fc.data || null) })
+      .then(([e, i, t, pm, fc]) => {
+        setExpenses(e.data)
+        setAllIncome(i.data || [])
+        setTrends(t.data)
+        setPaymentStats(pm.data || [])
+        setForecast(fc.data || null)
+      })
       .catch(() => showToast('Error loading data', 'error'))
       .finally(() => { setLoading(false); setForecastLoading(false) })
   }, [selectedMonth, selectedYear, prevMonthNum, prevYearNum, showToast])
@@ -304,9 +308,14 @@ export default function Reports() {
   }
 
   // ── Derived ────────────────────────────────────────────
+  // Filter income client-side to avoid stale month/year API params
+  const income     = allIncome.filter(i => Number(i.month) === selectedMonth + 1 && Number(i.year) === selectedYear)
+  const prevIncome = allIncome.filter(i => Number(i.month) === prevMonthNum + 1 && Number(i.year) === prevYearNum)
+
   const monthExpenses = expenses.filter(e => {
-    const d = new Date(e.date)
-    return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear
+    const s = (e.date instanceof Date ? e.date.toISOString() : String(e.date)).split('T')[0]
+    const [y, m] = s.split('-').map(Number)
+    return (m - 1) === selectedMonth && y === selectedYear
   })
   const total       = monthExpenses.reduce((s, e) => s + safeNum(e.amount), 0)
   const totalIncome = income.reduce((s, i) => s + safeNum(i.amount), 0)
