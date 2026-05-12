@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
-import { CanvasBg } from '../components/AnimatedBackground'
 import API from '../utils/api'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
@@ -233,8 +232,7 @@ export default function NetWorth() {
 
   return (
     <Layout>
-      <CanvasBg variant="networth" />
-      <div className="max-w-2xl mx-auto px-4 py-6 pb-28 md:pb-8 relative" style={{ zIndex: 1 }}>
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-28 md:pb-8">
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
         {/* Header */}

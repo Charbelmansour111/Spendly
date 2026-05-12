@@ -1,5 +1,4 @@
 import Layout from '../components/Layout'
-import { CanvasBg } from '../components/AnimatedBackground'
 import VoiceAssistant from '../components/VoiceAssistant'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import API from '../utils/api'
@@ -1100,8 +1099,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <CanvasBg variant="dashboard" />
-      <div className="max-w-2xl mx-auto px-4 py-4 pb-8 relative" style={{ zIndex: 1 }}>
+      <div className="max-w-2xl mx-auto px-4 py-4 pb-8">
 
         {/* Month Selector */}
         <div className="flex items-center justify-between mb-4">

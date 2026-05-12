@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
-import { CanvasBg } from '../components/AnimatedBackground'
 import API from '../utils/api'
 import QuickScanModal from '../components/QuickScanModal'
 import SplitBillModal from '../components/SplitBillModal'
@@ -1058,8 +1057,7 @@ const onTabSwipeStart = (e) => {
         </div>
       )}
 
-      <CanvasBg variant="transactions" />
-      <div className="max-w-2xl mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
+      <div className="max-w-2xl mx-auto px-4 py-6">
 
         {/* Header */}
         <div className="flex justify-between items-center mb-5">

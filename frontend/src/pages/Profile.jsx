@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import Layout from '../components/Layout'
-import { CanvasBg } from '../components/AnimatedBackground'
 import API from '../utils/api'
 import { t } from '../i18n'
 import { useDarkMode } from '../hooks/useDarkMode'
@@ -154,8 +153,7 @@ export default function Profile() {
   return (
     <Layout>
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
-      <CanvasBg variant="profile" />
-      <div className="max-w-lg mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
+      <div className="max-w-lg mx-auto px-4 py-6">
 
         {/* Hero header */}
         <div className="relative rounded-3xl overflow-hidden mb-5" style={{ background: 'linear-gradient(135deg, #2e1065 0%, #1e1b4b 40%, #0f172a 100%)' }}>
