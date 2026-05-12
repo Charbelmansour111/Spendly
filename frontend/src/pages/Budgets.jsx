@@ -332,7 +332,8 @@ export default function Budgets() {
                         setNoIncomeModal(false)
                         setSuggestLoading(true)
                         try {
-                          const r = await API.post('/budgets/suggest', { totalBudget: amt })
+                          const prefs2 = (() => { try { return JSON.parse(localStorage.getItem('spendly_prefs') || '{}') } catch { return {} } })()
+                          const r = await API.post('/budgets/suggest', { totalBudget: amt, savingsTarget: prefs2.savingsTarget ?? 20 })
                           setSuggestModal({ suggestions: r.data.suggestions || [], monthlyIncome: null, fromNetWorth: true, totalUsed: amt })
                         } catch { showToast('Failed to generate suggestions', 'error') }
                         finally { setSuggestLoading(false) }
@@ -506,7 +507,8 @@ export default function Budgets() {
               onClick={async () => {
                 setSuggestLoading(true)
                 try {
-                  const r = await API.post('/budgets/suggest')
+                  const prefs = (() => { try { return JSON.parse(localStorage.getItem('spendly_prefs') || '{}') } catch { return {} } })()
+                  const r = await API.post('/budgets/suggest', { savingsTarget: prefs.savingsTarget ?? 20 })
                   if (r.data.noIncome) { setNoIncomeModal(true); return }
                   setSuggestModal({ suggestions: r.data.suggestions || [], monthlyIncome: r.data.monthlyIncome, fromNetWorth: r.data.fromNetWorth })
                 } catch { showToast('Failed to generate suggestions', 'error') }

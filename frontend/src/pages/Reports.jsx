@@ -272,7 +272,7 @@ export default function Reports() {
   const prevYearNum   = selectedMonth === 0 ? selectedYear - 1 : selectedYear
   const prevMonthName = new Date(prevYearNum, prevMonthNum, 1).toLocaleString('default', { month: 'long', year: 'numeric' })
 
-  useEffect(() => {
+  const fetchAll = useCallback(() => {
     const token = localStorage.getItem('token')
     if (!token) { window.location.href = '/login'; return }
     setLoading(true)
@@ -295,7 +295,15 @@ export default function Reports() {
       })
       .catch(() => showToast('Error loading data', 'error'))
       .finally(() => { setLoading(false); setForecastLoading(false) })
-  }, [selectedMonth, selectedYear, prevMonthNum, prevYearNum, showToast])
+  }, [selectedMonth, selectedYear, showToast])
+
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchAll() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [fetchAll])
 
   const prevMonth = () => {
     if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1) }

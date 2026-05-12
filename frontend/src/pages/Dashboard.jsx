@@ -1497,27 +1497,6 @@ export default function Dashboard() {
           )
         })()}
 
-        {/* Quick Access */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Quick Access</h3>
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { href: '/goals',         icon: '🏆', label: 'Goals',        color: 'from-amber-500/15 to-orange-500/10',   border: 'border-amber-500/20',   iconBg: 'bg-amber-500/15'   },
-              { href: '/reports',       icon: '📊', label: 'Reports',      color: 'from-blue-500/15 to-indigo-500/10',    border: 'border-blue-500/20',    iconBg: 'bg-blue-500/15'    },
-              { href: '/subscriptions', icon: '🔄', label: 'Subs',         color: 'from-violet-500/15 to-purple-500/10',  border: 'border-violet-500/20',  iconBg: 'bg-violet-500/15'  },
-              { href: '/net-worth',     icon: '💎', label: 'Net Worth',    color: 'from-emerald-500/15 to-teal-500/10',   border: 'border-emerald-500/20', iconBg: 'bg-emerald-500/15' },
-            ].map(item => (
-              <a key={item.href} href={item.href}
-                className={`bg-gradient-to-br ${item.color} border ${item.border} rounded-2xl p-3 flex flex-col items-center gap-2 active:scale-95 transition-transform text-center hover:brightness-105`}>
-                <div className={`w-9 h-9 ${item.iconBg} rounded-xl flex items-center justify-center text-lg`}>{item.icon}</div>
-                <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 leading-tight">{item.label}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-
         {/* Recent Transactions */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
           <div className="flex justify-between items-center mb-4">

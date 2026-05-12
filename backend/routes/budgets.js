@@ -36,18 +36,22 @@ router.post('/', authenticateToken, async (req, res) => {
 
 router.post('/suggest', authenticateToken, async (req, res) => {
   try {
-    const { totalBudget } = req.body || {};
+    const { totalBudget, savingsTarget = 20 } = req.body || {};
     const now = new Date();
+    const savingsPct = Math.max(0, Math.min(50, parseInt(savingsTarget) || 20));
 
-    // Monthly income (average of last 3 months)
+    // Monthly income — average of last 3 months from income table
     const incomeRow = (await pool.query(
-      `SELECT COALESCE(SUM(amount),0) as total FROM income
-       WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '3 months'`,
+      `SELECT COALESCE(AVG(monthly_total),0) as avg_income FROM (
+         SELECT SUM(amount) as monthly_total FROM income
+         WHERE user_id=$1 AND (year*12+month) >= (${now.getFullYear()}*12+${now.getMonth()+1}-3)
+         GROUP BY year, month
+       ) t`,
       [req.userId]
     )).rows[0];
-    const monthlyIncome = parseFloat(incomeRow?.total || 0) / 3;
+    const monthlyIncome = parseFloat(incomeRow?.avg_income || 0);
 
-    // Spending history (last 3 months)
+    // Spending history — last 3 months per category
     const catTotals = {};
     for (let i = 0; i < 3; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -65,44 +69,79 @@ router.post('/suggest', authenticateToken, async (req, res) => {
     }
 
     const hasBudgetRef = monthlyIncome > 0 || (totalBudget && parseFloat(totalBudget) > 0);
-    // No income at all and no manual amount — tell frontend to ask the user
     if (!hasBudgetRef) return res.json({ suggestions: [], noIncome: true });
 
-    const budget = totalBudget && parseFloat(totalBudget) > 0 ? parseFloat(totalBudget) : monthlyIncome;
+    const income = totalBudget && parseFloat(totalBudget) > 0 ? parseFloat(totalBudget) : monthlyIncome;
     const fromNetWorth = !!(totalBudget && parseFloat(totalBudget) > 0 && monthlyIncome === 0);
 
+    // Budget the user has left after saving their target %
+    const spendableBudget = income * (1 - savingsPct / 100);
+
+    // Classify categories into needs vs wants
+    const NEEDS = ['Food', 'Transport', 'Bills', 'Health', 'Education'];
+    const WANTS = ['Coffee', 'Shopping', 'Entertainment', 'Fitness', 'Travel', 'Gifts', 'Subscriptions', 'Other'];
+
+    // Determine lifestyle tier based on income level
+    let lifestyleTier, lifestyleNote;
+    if (income < 1500) {
+      lifestyleTier = 'tight'; lifestyleNote = 'Very tight budget — prioritize essentials strictly. Minimal discretionary spending.';
+    } else if (income < 3500) {
+      lifestyleTier = 'moderate'; lifestyleNote = 'Moderate income — cover essentials, allow small lifestyle spending, aggressively protect savings.';
+    } else if (income < 7000) {
+      lifestyleTier = 'comfortable'; lifestyleNote = 'Comfortable income — essentials are well-covered, can enjoy dining out, entertainment, and occasional travel. Still protect savings.';
+    } else {
+      lifestyleTier = 'high'; lifestyleNote = 'High income — can afford premium food, frequent dining, gym, travel, quality products. Savings come first, then enjoy freely.';
+    }
+
     const spendingLines = Object.keys(catTotals).length
-      ? 'Spending history (last 3 months avg):\n' + Object.entries(catTotals).map(([cat, amts]) => {
+      ? 'User spending history (3-month avg per category):\n' + Object.entries(catTotals).map(([cat, amts]) => {
           const avg = amts.reduce((s, a) => s + a, 0) / amts.length;
-          return `  ${cat}: $${avg.toFixed(2)}/month avg`;
+          const isNeed = NEEDS.includes(cat);
+          return `  ${cat} (${isNeed ? 'need' : 'want'}): $${avg.toFixed(2)}/mo avg`;
         }).join('\n')
-      : 'No spending history yet.';
+      : 'No prior spending data — suggest based on income level and lifestyle alone.';
 
     const incomeContext = fromNetWorth
-      ? `User has no recurring income. They want to spend from savings/net worth and set a total monthly budget of $${budget.toFixed(2)}.`
-      : `Monthly income: $${budget.toFixed(2)}.`;
+      ? `User is spending from savings/net worth. Total monthly spending budget: $${income.toFixed(2)}. Savings target is already set aside.`
+      : `Monthly income: $${income.toFixed(2)}. User wants to SAVE ${savingsPct}% ($${(income * savingsPct / 100).toFixed(2)}/mo). Spendable budget after savings: $${spendableBudget.toFixed(2)}.`;
 
     const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
-        max_tokens: 600,
-        temperature: 0.3,
+        max_tokens: 800,
+        temperature: 0.25,
         messages: [
           {
             role: 'system',
-            content: `You are a financial advisor. Suggest monthly budget limits for each spending category.
-Return ONLY a valid JSON array — no markdown, no explanation:
-[{"category":"Food","suggested_amount":350,"reasoning":"One sentence mentioning the real numbers"}]
+            content: `You are a professional personal finance advisor with deep knowledge of how real people budget their lives across different income levels.
+
+Return ONLY a valid JSON array, no markdown, no text outside:
+[{"category":"Food","suggested_amount":350,"reasoning":"One concise sentence with real numbers and why"}]
+
+Categories allowed: Food, Coffee, Transport, Shopping, Entertainment, Health, Fitness, Education, Bills, Travel, Gifts, Subscriptions, Other
+
 Rules:
-- Only use categories from: Food, Coffee, Transport, Shopping, Entertainment, Health, Fitness, Education, Bills, Travel, Gifts, Subscriptions, Other
-- Suggest 5–8 of the most relevant categories
-- Total of all suggested_amounts must NOT exceed the monthly budget/income
-- Use the 50/30/20 rule as a guide (needs/wants/savings)
-- Reference the actual budget number in each reasoning sentence`
+1. The SUM of all suggested_amounts MUST NOT exceed the spendable budget (income minus savings target)
+2. Always protect the savings target first — it is non-negotiable
+3. Suggest 5–9 categories relevant to the user's lifestyle and spending history
+4. Classify spending as "needs" (Food, Bills, Transport, Health, Education) and "wants" (rest)
+5. Needs should get roughly 50% of spendable budget, wants 50% — adjust based on history
+6. If user has HIGH income: allow more on dining, entertainment, subscriptions, travel — a high earner deserves quality of life while still saving
+7. If user has TIGHT income: cut wants drastically, only essential categories, minimal discretionary
+8. If user already spends on a category (from history), calibrate around that number — don't suggest amounts wildly different from reality unless they are overspending
+9. Each reasoning must mention the actual dollar amount and WHY it fits their income level and lifestyle`
           },
-          { role: 'user', content: `${incomeContext}\n\n${spendingLines}\n\nSuggest a monthly budget for each relevant category.` }
+          {
+            role: 'user',
+            content: `${incomeContext}
+Lifestyle tier: ${lifestyleTier} — ${lifestyleNote}
+
+${spendingLines}
+
+Give me a smart, realistic monthly budget that lets this person live well while hitting their ${savingsPct}% savings goal.`
+          }
         ]
       })
     });
