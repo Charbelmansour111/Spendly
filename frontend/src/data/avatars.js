@@ -186,12 +186,12 @@ export const WALLET_COLORS = [
   { id: 'gray',   label: 'Slate',         hex: '#6B7280', gradient: 'from-gray-500 to-gray-700' },
 ]
 
-// Helper: get avatar URL for a wallet
+// Helper: get avatar URL for a wallet — uses findAvatarById for correct DiceBear style
 export function getAvatarUrl(wallet) {
   if (!wallet) return `${DB}/personas/svg?seed=default&backgroundColor=transparent`
   if (wallet.avatar_photo) return wallet.avatar_photo
   if (wallet.avatar_type === 'dicebear' || !wallet.avatar_type) {
-    return `${DB}/personas/svg?seed=${wallet.avatar_value || 'default'}&backgroundColor=transparent`
+    return findAvatarById(wallet.avatar_value || 'spendly1')
   }
   return `${DB}/personas/svg?seed=${wallet.id}&backgroundColor=transparent`
 }

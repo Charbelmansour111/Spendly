@@ -5,6 +5,7 @@ const T = {
     nav_goals: 'Goals', nav_reports: 'Reports', nav_ai: 'AI Insights', nav_wellness: 'My Wellness',
     nav_networth: 'Net Worth',
     nav_subscriptions: 'Subscriptions',
+    nav_family: 'Family Overview',
     nav_profile: 'Profile', nav_notifications: 'Notifications', nav_dark: 'Dark Mode',
     nav_light: 'Light Mode', nav_logout: 'Logout', tab_home: 'Home', tab_ai: 'AI', tab_goals: 'Goals',
     // Common
@@ -80,7 +81,7 @@ const T = {
   ar: {
     nav_dashboard: 'لوحة التحكم', nav_transactions: 'المعاملات', nav_budgets: 'الميزانيات',
     nav_goals: 'الأهداف', nav_reports: 'التقارير', nav_ai: 'الذكاء الاصطناعي', nav_wellness: 'صحتي المالية',
-    nav_profile: 'الملف الشخصي', nav_notifications: 'الإشعارات', nav_dark: 'الوضع الداكن',
+    nav_family: 'نظرة عائلية', nav_profile: 'الملف الشخصي', nav_notifications: 'الإشعارات', nav_dark: 'الوضع الداكن',
     nav_light: 'الوضع الفاتح', nav_logout: 'تسجيل الخروج', tab_home: 'الرئيسية', tab_ai: 'الذكاء', tab_goals: 'الأهداف',
     save: 'حفظ', cancel: 'إلغاء', add: 'إضافة', delete: 'حذف', edit: 'تعديل', close: 'إغلاق',
     done: 'تم', confirm: 'تأكيد', yes: 'نعم', no: 'لا', back: 'رجوع',
@@ -142,7 +143,7 @@ const T = {
   fr: {
     nav_dashboard: 'Tableau de bord', nav_transactions: 'Transactions', nav_budgets: 'Budgets',
     nav_goals: 'Objectifs', nav_reports: 'Rapports', nav_ai: 'IA Insights', nav_wellness: 'Mon Bien-être',
-    nav_profile: 'Profil', nav_notifications: 'Notifications', nav_dark: 'Mode Sombre',
+    nav_family: 'Vue Famille', nav_profile: 'Profil', nav_notifications: 'Notifications', nav_dark: 'Mode Sombre',
     nav_light: 'Mode Clair', nav_logout: 'Déconnexion', tab_home: 'Accueil', tab_ai: 'IA', tab_goals: 'Objectifs',
     save: 'Enregistrer', cancel: 'Annuler', add: 'Ajouter', delete: 'Supprimer', edit: 'Modifier', close: 'Fermer',
     done: 'Terminé', confirm: 'Confirmer', yes: 'Oui', no: 'Non', back: 'Retour',
@@ -204,7 +205,7 @@ const T = {
   es: {
     nav_dashboard: 'Panel', nav_transactions: 'Transacciones', nav_budgets: 'Presupuestos',
     nav_goals: 'Objetivos', nav_reports: 'Informes', nav_ai: 'IA Insights', nav_wellness: 'Mi Bienestar',
-    nav_profile: 'Perfil', nav_notifications: 'Notificaciones', nav_dark: 'Modo Oscuro',
+    nav_family: 'Vista Familiar', nav_profile: 'Perfil', nav_notifications: 'Notificaciones', nav_dark: 'Modo Oscuro',
     nav_light: 'Modo Claro', nav_logout: 'Cerrar sesión', tab_home: 'Inicio', tab_ai: 'IA', tab_goals: 'Objetivos',
     save: 'Guardar', cancel: 'Cancelar', add: 'Agregar', delete: 'Eliminar', edit: 'Editar', close: 'Cerrar',
     done: 'Listo', confirm: 'Confirmar', yes: 'Sí', no: 'No', back: 'Atrás',
@@ -266,7 +267,7 @@ const T = {
   de: {
     nav_dashboard: 'Dashboard', nav_transactions: 'Transaktionen', nav_budgets: 'Budgets',
     nav_goals: 'Ziele', nav_reports: 'Berichte', nav_ai: 'KI-Einblicke', nav_wellness: 'Mein Wohlbefinden',
-    nav_profile: 'Profil', nav_notifications: 'Benachrichtigungen', nav_dark: 'Dunkelmodus',
+    nav_family: 'Familienübersicht', nav_profile: 'Profil', nav_notifications: 'Benachrichtigungen', nav_dark: 'Dunkelmodus',
     nav_light: 'Hellmodus', nav_logout: 'Abmelden', tab_home: 'Start', tab_ai: 'KI', tab_goals: 'Ziele',
     save: 'Speichern', cancel: 'Abbrechen', add: 'Hinzufügen', delete: 'Löschen', edit: 'Bearbeiten', close: 'Schließen',
     done: 'Fertig', confirm: 'Bestätigen', yes: 'Ja', no: 'Nein', back: 'Zurück',
@@ -328,7 +329,7 @@ const T = {
   it: {
     nav_dashboard: 'Dashboard', nav_transactions: 'Transazioni', nav_budgets: 'Budget',
     nav_goals: 'Obiettivi', nav_reports: 'Report', nav_ai: 'IA Insights', nav_wellness: 'Il Mio Benessere',
-    nav_profile: 'Profilo', nav_notifications: 'Notifiche', nav_dark: 'Modalità Scura',
+    nav_family: 'Vista Famiglia', nav_profile: 'Profilo', nav_notifications: 'Notifiche', nav_dark: 'Modalità Scura',
     nav_light: 'Modalità Chiara', nav_logout: 'Esci', tab_home: 'Home', tab_ai: 'IA', tab_goals: 'Obiettivi',
     save: 'Salva', cancel: 'Annulla', add: 'Aggiungi', delete: 'Elimina', edit: 'Modifica', close: 'Chiudi',
     done: 'Fatto', loading: 'Caricamento...', saving: 'Salvataggio...', save_changes: 'Salva modifiche', error: 'Errore',
@@ -369,7 +370,7 @@ const T = {
   pt: {
     nav_dashboard: 'Painel', nav_transactions: 'Transações', nav_budgets: 'Orçamentos',
     nav_goals: 'Objetivos', nav_reports: 'Relatórios', nav_ai: 'IA Insights', nav_wellness: 'Meu Bem-estar',
-    nav_profile: 'Perfil', nav_notifications: 'Notificações', nav_dark: 'Modo Escuro',
+    nav_family: 'Visão Familiar', nav_profile: 'Perfil', nav_notifications: 'Notificações', nav_dark: 'Modo Escuro',
     nav_light: 'Modo Claro', nav_logout: 'Sair', tab_home: 'Início', tab_ai: 'IA', tab_goals: 'Objetivos',
     save: 'Salvar', cancel: 'Cancelar', add: 'Adicionar', delete: 'Excluir', edit: 'Editar', close: 'Fechar',
     done: 'Pronto', loading: 'Carregando...', saving: 'Salvando...', save_changes: 'Salvar alterações', error: 'Erro',
@@ -406,7 +407,7 @@ const T = {
   ru: {
     nav_dashboard: 'Панель', nav_transactions: 'Транзакции', nav_budgets: 'Бюджеты',
     nav_goals: 'Цели', nav_reports: 'Отчёты', nav_ai: 'ИИ Инсайты', nav_wellness: 'Моё Благополучие',
-    nav_profile: 'Профиль', nav_notifications: 'Уведомления', nav_dark: 'Тёмный режим',
+    nav_family: 'Семейный обзор', nav_profile: 'Профиль', nav_notifications: 'Уведомления', nav_dark: 'Тёмный режим',
     nav_light: 'Светлый режим', nav_logout: 'Выйти', tab_home: 'Главная', tab_ai: 'ИИ', tab_goals: 'Цели',
     save: 'Сохранить', cancel: 'Отмена', add: 'Добавить', delete: 'Удалить', edit: 'Изменить', close: 'Закрыть',
     done: 'Готово', loading: 'Загрузка...', saving: 'Сохранение...', save_changes: 'Сохранить изменения', error: 'Ошибка',
@@ -443,7 +444,7 @@ const T = {
   tr: {
     nav_dashboard: 'Panel', nav_transactions: 'İşlemler', nav_budgets: 'Bütçeler',
     nav_goals: 'Hedefler', nav_reports: 'Raporlar', nav_ai: 'YZ Öngörüleri', nav_wellness: 'Sağlığım',
-    nav_profile: 'Profil', nav_notifications: 'Bildirimler', nav_dark: 'Karanlık Mod',
+    nav_family: 'Aile Görünümü', nav_profile: 'Profil', nav_notifications: 'Bildirimler', nav_dark: 'Karanlık Mod',
     nav_light: 'Aydınlık Mod', nav_logout: 'Çıkış', tab_home: 'Ana Sayfa', tab_ai: 'YZ', tab_goals: 'Hedefler',
     save: 'Kaydet', cancel: 'İptal', add: 'Ekle', delete: 'Sil', edit: 'Düzenle', close: 'Kapat',
     done: 'Tamam', loading: 'Yükleniyor...', saving: 'Kaydediliyor...', save_changes: 'Değişiklikleri kaydet', error: 'Hata',
@@ -480,7 +481,7 @@ const T = {
   nl: {
     nav_dashboard: 'Dashboard', nav_transactions: 'Transacties', nav_budgets: 'Budgetten',
     nav_goals: 'Doelen', nav_reports: 'Rapporten', nav_ai: 'AI Inzichten', nav_wellness: 'Mijn Welzijn',
-    nav_profile: 'Profiel', nav_notifications: 'Meldingen', nav_dark: 'Donkere modus',
+    nav_family: 'Familieoverzicht', nav_profile: 'Profiel', nav_notifications: 'Meldingen', nav_dark: 'Donkere modus',
     nav_light: 'Lichte modus', nav_logout: 'Uitloggen', tab_home: 'Home', tab_ai: 'AI', tab_goals: 'Doelen',
     save: 'Opslaan', cancel: 'Annuleren', add: 'Toevoegen', delete: 'Verwijderen', edit: 'Bewerken', close: 'Sluiten',
     done: 'Klaar', loading: 'Laden...', saving: 'Opslaan...', save_changes: 'Wijzigingen opslaan', error: 'Fout',
@@ -506,7 +507,7 @@ const T = {
   af: {
     nav_dashboard: 'Paneelbord', nav_transactions: 'Transaksies', nav_budgets: 'Begrotings',
     nav_goals: 'Doelwitte', nav_reports: 'Verslae', nav_ai: 'KI Insigte', nav_wellness: 'My Welstand',
-    nav_profile: 'Profiel', nav_notifications: 'Kennisgewings', nav_dark: 'Donker Modus',
+    nav_family: 'Gesinskoorsig', nav_profile: 'Profiel', nav_notifications: 'Kennisgewings', nav_dark: 'Donker Modus',
     nav_light: 'Ligte Modus', nav_logout: 'Uitlog', tab_home: 'Tuis', tab_ai: 'KI', tab_goals: 'Doelwitte',
     save: 'Stoor', cancel: 'Kanselleer', add: 'Voeg by', delete: 'Verwyder', edit: 'Redigeer', close: 'Sluit',
     done: 'Klaar', loading: 'Laai tans...', saving: 'Stoor...', save_changes: 'Stoor veranderinge', error: 'Fout',

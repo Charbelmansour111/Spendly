@@ -45,7 +45,7 @@ router.get('/', auth, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT id, user_id, name, color, avatar_type, avatar_value, avatar_photo,
-              is_total_wallet, display_order, created_at
+              is_total_wallet, display_order, wallet_email, created_at
        FROM wallets
        WHERE user_id=$1 AND is_active=TRUE
        ORDER BY is_total_wallet ASC, display_order ASC, created_at ASC`,
@@ -190,12 +190,12 @@ router.put('/:id', auth, async (req, res) => {
     const ok = await verifyOwnership(req.params.id, req.userId)
     if (!ok) return res.status(403).json({ message: 'Not your wallet' })
 
-    const { name, color, avatar_type, avatar_value, avatar_photo } = req.body
+    const { name, color, avatar_type, avatar_value, avatar_photo, wallet_email } = req.body
     const r = await pool.query(
-      `UPDATE wallets SET name=$1, color=$2, avatar_type=$3, avatar_value=$4, avatar_photo=$5, updated_at=NOW()
-       WHERE id=$6 AND user_id=$7
-       RETURNING id, user_id, name, color, avatar_type, avatar_value, avatar_photo, is_total_wallet, display_order`,
-      [name, color, avatar_type, avatar_value, avatar_photo || null, req.params.id, req.userId]
+      `UPDATE wallets SET name=$1, color=$2, avatar_type=$3, avatar_value=$4, avatar_photo=$5, wallet_email=$6, updated_at=NOW()
+       WHERE id=$7 AND user_id=$8
+       RETURNING id, user_id, name, color, avatar_type, avatar_value, avatar_photo, is_total_wallet, display_order, wallet_email`,
+      [name, color, avatar_type, avatar_value, avatar_photo || null, wallet_email || null, req.params.id, req.userId]
     )
     res.json(r.rows[0])
   } catch (e) {

@@ -236,6 +236,7 @@ async function migrate() {
     await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0`);
     await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`);
     await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()`);
+    await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS wallet_email VARCHAR(255)`);
     await pool.query(`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS wallet_id INTEGER REFERENCES wallets(id) ON DELETE SET NULL`);
 
     await pool.query(`

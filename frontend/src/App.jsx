@@ -15,6 +15,7 @@ const PAGE_TITLES = {
   '/wallets': 'Choose Wallet — Spendly',
   '/create-wallet': 'Create Wallet — Spendly',
   '/family': 'Family Overview — Spendly',
+  '/wallet/:id/profile': 'Wallet Profile — Spendly',
   '/dashboard': 'Dashboard — Spendly',
   '/transactions': 'Transactions — Spendly',
   '/budgets': 'Budgets — Spendly',
@@ -59,6 +60,7 @@ import Privacy from './pages/Privacy'
 import WalletSelect from './pages/WalletSelect'
 import CreateWallet from './pages/CreateWallet'
 import FamilyOverview from './pages/FamilyOverview'
+import WalletProfile from './pages/WalletProfile'
 import WalletGuard from './components/WalletGuard'
 
 function NetWorthGuarded() {
@@ -86,9 +88,10 @@ function App() {
           <Route path="/terms"                 element={<Terms />} />
           <Route path="/privacy"               element={<Privacy />} />
 
-          {/* Wallet selection (no wallet guard needed) */}
+          {/* Wallet selection + configuration (no wallet guard needed) */}
           <Route path="/wallets"               element={<WalletSelect />} />
           <Route path="/create-wallet"         element={<CreateWallet />} />
+          <Route path="/wallet/:id/profile"    element={<WalletProfile />} />
 
           {/* Wallet-guarded pages */}
           <Route path="/dashboard"             element={<WalletGuard><Dashboard /></WalletGuard>} />
