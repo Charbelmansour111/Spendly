@@ -236,22 +236,45 @@ function PhoneMockup() {
 
             </div>
 
-            {/* Bottom tab bar — pixel-perfect WalletApp style (border-b-2 active) */}
+            {/* Bottom tab bar — matches the actual app (Txns/Budgets/Home/Wellness/Profile) */}
             <div style={{
               position:'absolute', bottom:0, left:0, right:0,
               background:'rgba(255,255,255,0.98)',
               borderTop:'1px solid #f3f4f6',
               display:'flex',
-              paddingBottom:10,
+              paddingBottom:9,
             }}>
-              {[['📊','Dashboard',true],['💸','Txns',false],['📋','Reports',false],['📈','Net Worth',false]].map(([icon,label,active],i) => (
-                <div key={i} style={{
-                  flex:1, display:'flex', flexDirection:'column', alignItems:'center',
-                  paddingTop:8, paddingBottom:6,
-                  borderBottom: active ? '2px solid #7c3aed' : '2px solid transparent',
+              {[
+                {
+                  label:'Txns', active:false,
+                  icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                },
+                {
+                  label:'Budgets', active:false,
+                  icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                },
+                {
+                  label:'Home', active:true,
+                  icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="#7c3aed" stroke="none"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+                },
+                {
+                  label:'Wellness', active:false,
+                  icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                },
+                {
+                  label:'Profile', active:false,
+                  icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                },
+              ].map(({label, active, icon}) => (
+                <div key={label} style={{
+                  flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                  paddingTop:7, paddingBottom:4,
                 }}>
-                  <span style={{ fontSize:12, lineHeight:1, opacity: active ? 1 : 0.45 }}>{icon}</span>
-                  <span style={{ fontSize:6.5, fontWeight:600, marginTop:2.5, color: active ? '#7c3aed' : '#9ca3af' }}>{label}</span>
+                  <div style={{ width:26, height:26, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center',
+                    background: active ? 'rgba(124,58,237,0.1)' : 'transparent' }}>
+                    {icon}
+                  </div>
+                  <span style={{ fontSize:5.5, fontWeight:600, marginTop:2, color: active ? '#7c3aed' : '#9ca3af' }}>{label}</span>
                 </div>
               ))}
             </div>
