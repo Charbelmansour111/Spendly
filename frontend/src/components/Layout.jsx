@@ -39,7 +39,6 @@ const NAV_ITEMS = [
   { key: 'nav_transactions',    icon: 'transactions', href: '/transactions' },
   { key: 'nav_budgets',         icon: 'budget',       href: '/budgets' },
   { key: 'nav_goals',           icon: 'savings',      href: '/goals' },
-  { key: 'nav_family',          icon: 'family',       href: '/family' },
   { key: 'nav_subscriptions',   icon: 'subs',         href: '/subscriptions' },
   { key: 'nav_reports',         icon: 'reports',      href: '/reports' },
   { key: 'nav_wellness',        icon: 'wellness',     href: '/wellness' },

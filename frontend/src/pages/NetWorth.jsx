@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 
+const BASE = 'https://spendly-backend-et20.onrender.com/api'
+
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 const safeNum = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 
@@ -119,15 +121,20 @@ function PinModal({ onUnlock }) {
   )
 }
 
+const EMPTY = { items: [], totalAssets: 0, totalLiabilities: 0, netWorth: 0, cashBalance: 0, history: [] }
+
 export default function NetWorth() {
   const hasPinSet = !!localStorage.getItem('spendly_nw_pin')
   const [pinUnlocked, setPinUnlocked] = useState(false)
-  const [data, setData] = useState({ items: [], totalAssets: 0, totalLiabilities: 0, netWorth: 0, cashBalance: 0, history: [] })
-  const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState(null)
-  const [modal, setModal] = useState(null)
-  const [form, setForm] = useState({ name: '', category: '', amount: '' })
-  const [saving, setSaving] = useState(false)
+  const [data, setData]         = useState(EMPTY)
+  const [totalData, setTotalData] = useState(null)
+  const [view, setView]         = useState('mine') // 'mine' | 'all'
+  const [loading, setLoading]   = useState(true)
+  const [loadingAll, setLoadingAll] = useState(false)
+  const [toast, setToast]       = useState(null)
+  const [modal, setModal]       = useState(null)
+  const [form, setForm]         = useState({ name: '', category: '', amount: '' })
+  const [saving, setSaving]     = useState(false)
   const [deleteId, setDeleteId] = useState(null)
 
   const sym = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
@@ -138,7 +145,6 @@ export default function NetWorth() {
     try {
       const r = await API.get('/networth')
       setData(r.data)
-      // Save today's snapshot silently
       const { totalAssets, totalLiabilities, netWorth } = r.data
       API.post('/networth/snapshot', { totalAssets, totalLiabilities, netWorth }).catch(() => {})
     } catch {
@@ -148,11 +154,32 @@ export default function NetWorth() {
     }
   }, [])
 
+  const loadTotal = useCallback(async () => {
+    if (totalData) return
+    setLoadingAll(true)
+    try {
+      const token = localStorage.getItem('token')
+      const r = await fetch(`${BASE}/net-worth`, { headers: { Authorization: `Bearer ${token}` } })
+      const json = await r.json()
+      if (!json.message) setTotalData(json)
+      else showToast('No total net worth data yet', 'error')
+    } catch {
+      showToast('Failed to load total net worth', 'error')
+    } finally {
+      setLoadingAll(false)
+    }
+  }, [totalData])
+
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { window.location.href = '/login'; return }
     load()
   }, [load])
+
+  function handleViewSwitch(v) {
+    setView(v)
+    if (v === 'all') loadTotal()
+  }
 
   const openAdd = (type) => {
     const cats = type === 'asset' ? ASSET_CATEGORIES : LIABILITY_CATEGORIES
@@ -197,15 +224,15 @@ export default function NetWorth() {
     }
   }
 
-  const assets = data.items.filter(i => i.type === 'asset')
-  const liabilities = data.items.filter(i => i.type === 'liability')
-  const netWorth = data.netWorth
-  const cashBalance = safeNum(data.cashBalance)
-  const trend = data.history.length >= 2
+  const d           = view === 'all' && totalData ? totalData : data
+  const assets      = (d.items || []).filter(i => i.type === 'asset')
+  const liabilities = (d.items || []).filter(i => i.type === 'liability')
+  const netWorth    = safeNum(d.netWorth)
+  const cashBalance = safeNum(d.cashBalance)
+  const trend       = view === 'mine' && data.history.length >= 2
     ? netWorth - safeNum(data.history[1]?.net_worth)
     : null
-
-  const assetPct = data.totalAssets > 0 ? Math.min((data.totalAssets / Math.max(data.totalAssets + data.totalLiabilities, 1)) * 100, 100) : 0
+  const assetPct = d.totalAssets > 0 ? Math.min((d.totalAssets / Math.max(d.totalAssets + d.totalLiabilities, 1)) * 100, 100) : 0
 
   // Group by category
   const groupBy = (items) => {
@@ -236,10 +263,47 @@ export default function NetWorth() {
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
         {/* Header */}
-        <div className="mb-5">
+        <div className="mb-4">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Net Worth</h1>
           <p className="text-sm text-gray-400 mt-0.5">Your total financial picture</p>
         </div>
+
+        {/* View toggle */}
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-2xl mb-5">
+          <button
+            onClick={() => handleViewSwitch('mine')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+              view === 'mine'
+                ? 'bg-white dark:bg-gray-800 text-violet-600 dark:text-violet-400 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            My Wallet
+          </button>
+          <button
+            onClick={() => handleViewSwitch('all')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
+              view === 'all'
+                ? 'bg-white dark:bg-gray-800 text-violet-600 dark:text-violet-400 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            {loadingAll
+              ? <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-violet-500 rounded-full animate-spin" />
+              : '👨‍👩‍👧‍👦'}
+            All Wallets
+          </button>
+        </div>
+
+        {/* All-wallets info banner */}
+        {view === 'all' && (
+          <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/40 rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
+            <span className="text-lg shrink-0">ℹ️</span>
+            <p className="text-xs text-violet-700 dark:text-violet-300 leading-relaxed">
+              Showing combined net worth across all your wallets. Read-only — manage items inside each wallet.
+            </p>
+          </div>
+        )}
 
         {/* Hero card */}
         <div className={`bg-linear-to-br ${netWorth >= 0 ? 'from-emerald-500 to-teal-600' : 'from-rose-500 to-red-600'} rounded-3xl px-6 pt-6 pb-5 text-white mb-4 relative overflow-hidden`}>
@@ -261,23 +325,23 @@ export default function NetWorth() {
               </div>
               <div className="bg-white/15 rounded-2xl px-4 py-3">
                 <p className="text-white/70 text-xs mb-0.5">Total Liabilities</p>
-                <p className="text-white font-bold text-base tabular-nums">{fmtFull(data.totalLiabilities, sym)}</p>
+                <p className="text-white font-bold text-base tabular-nums">{fmtFull(d.totalLiabilities, sym)}</p>
               </div>
             </div>
 
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div className="bg-white/15 rounded-2xl px-4 py-3">
                 <p className="text-white/70 text-xs mb-0.5">Total Assets</p>
-                <p className="text-white font-bold text-base tabular-nums">{fmtFull(data.totalAssets, sym)}</p>
+                <p className="text-white font-bold text-base tabular-nums">{fmtFull(d.totalAssets, sym)}</p>
               </div>
               <div className="bg-white/15 rounded-2xl px-4 py-3">
                 <p className="text-white/70 text-xs mb-0.5">Assets excl. Cash</p>
-                <p className="text-white font-bold text-base tabular-nums">{fmtFull(safeNum(data.totalAssets) - cashBalance, sym)}</p>
+                <p className="text-white font-bold text-base tabular-nums">{fmtFull(safeNum(d.totalAssets) - cashBalance, sym)}</p>
               </div>
             </div>
 
             {/* Asset vs liability bar */}
-            {(data.totalAssets > 0 || data.totalLiabilities > 0) && (
+            {(d.totalAssets > 0 || d.totalLiabilities > 0) && (
               <div className="mt-4">
                 <div className="flex justify-between text-xs text-white/70 mb-1">
                   <span>Assets {Math.round(assetPct)}%</span>
@@ -291,8 +355,8 @@ export default function NetWorth() {
           </div>
         </div>
 
-        {/* History trend (if available) */}
-        {data.history.length >= 2 && (
+        {/* History trend (mine view only) */}
+        {view === 'mine' && data.history.length >= 2 && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm px-5 py-4 mb-4">
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Net Worth History</p>
             <div className="flex items-end gap-1.5 h-14">
@@ -320,29 +384,31 @@ export default function NetWorth() {
         {/* Assets section */}
         <Section
           title="Assets"
-          total={data.totalAssets}
+          total={d.totalAssets}
           sym={sym}
           items={assets}
           type="asset"
           groupBy={groupBy}
-          onAdd={() => openAdd('asset')}
-          onEdit={openEdit}
-          onDelete={setDeleteId}
+          onAdd={view === 'mine' ? () => openAdd('asset') : null}
+          onEdit={view === 'mine' ? openEdit : null}
+          onDelete={view === 'mine' ? setDeleteId : null}
           color="emerald"
+          readOnly={view === 'all'}
         />
 
         {/* Liabilities section */}
         <Section
           title="Liabilities"
-          total={data.totalLiabilities}
+          total={d.totalLiabilities}
           sym={sym}
           items={liabilities}
           type="liability"
           groupBy={groupBy}
-          onAdd={() => openAdd('liability')}
-          onEdit={openEdit}
-          onDelete={setDeleteId}
+          onAdd={view === 'mine' ? () => openAdd('liability') : null}
+          onEdit={view === 'mine' ? openEdit : null}
+          onDelete={view === 'mine' ? setDeleteId : null}
           color="rose"
+          readOnly={view === 'all'}
         />
 
         <p className="text-center text-xs text-gray-400 pb-2">Cash balance updates with every transaction · Debts sync automatically</p>
@@ -423,7 +489,7 @@ export default function NetWorth() {
   )
 }
 
-function Section({ title, total, sym, items, type, groupBy, onAdd, onEdit, onDelete, color }) {
+function Section({ title, total, sym, items, type, groupBy, onAdd, onEdit, onDelete, color, readOnly }) {
   const groups = groupBy(items)
   const colorMap = {
     emerald: { badge: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400', icon: 'text-emerald-500', btn: 'bg-emerald-500 hover:bg-emerald-600', header: 'text-emerald-600 dark:text-emerald-400' },
@@ -438,13 +504,15 @@ function Section({ title, total, sym, items, type, groupBy, onAdd, onEdit, onDel
           <p className="font-bold text-gray-900 dark:text-white text-sm">{title}</p>
           <p className={`text-xs font-semibold mt-0.5 ${c.header}`}>{fmtFull(total, sym)}</p>
         </div>
-        <button
-          onClick={onAdd}
-          className={`${c.btn} text-white text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5`}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Add
-        </button>
+        {!readOnly && onAdd && (
+          <button
+            onClick={onAdd}
+            className={`${c.btn} text-white text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add
+          </button>
+        )}
       </div>
 
       {items.length === 0 ? (
@@ -469,8 +537,8 @@ function Section({ title, total, sym, items, type, groupBy, onAdd, onEdit, onDel
                     <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{item.name}</p>
                   </div>
                   <p className={`text-sm font-bold tabular-nums shrink-0 ${item.source === 'computed' && safeNum(item.amount) < 0 ? 'text-rose-500' : 'text-gray-900 dark:text-white'}`}>{fmtFull(safeNum(item.amount), sym)}</p>
-                  {item.source === 'auto' || item.source === 'computed' ? (
-                    <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full shrink-0">{item.source === 'computed' ? 'auto' : 'auto'}</span>
+                  {(item.source === 'auto' || item.source === 'computed' || readOnly) ? (
+                    <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full shrink-0">auto</span>
                   ) : (
                     <div className="flex items-center gap-1 shrink-0">
                       <button onClick={() => onEdit(item)} className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">

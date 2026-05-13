@@ -249,6 +249,32 @@ router.post('/:id/verify-pin', auth, async (req, res) => {
     const r = await pool.query('SELECT pin, is_total_wallet FROM wallets WHERE id=$1 AND user_id=$2', [walletId, req.userId])
     if (!r.rows[0]) return res.status(404).json({ message: 'Wallet not found' })
 
+    // Total wallet: accept any personal wallet's PIN
+    if (r.rows[0].is_total_wallet) {
+      const personalR = await pool.query(
+        'SELECT pin FROM wallets WHERE user_id=$1 AND is_active=TRUE AND is_total_wallet=FALSE',
+        [req.userId]
+      )
+      let matched = false
+      for (const w of personalR.rows) {
+        if (await bcrypt.compare(String(pin), w.pin)) { matched = true; break }
+      }
+      if (!matched) {
+        const { attempts, lockedUntil } = recordAttempt(walletId)
+        const attemptsLeft = 5 - attempts
+        if (lockedUntil) return res.status(429).json({ message: 'Too many attempts. Locked for 5 minutes.', locked: true })
+        return res.status(401).json({ message: 'Incorrect PIN — try any of your wallet PINs', attemptsLeft })
+      }
+      resetAttempts(walletId)
+      const fp2 = req.headers['x-device-fp'] || 'unknown'
+      await pool.query(
+        `INSERT INTO wallet_sessions (user_id, wallet_id, device_fingerprint, last_active)
+         VALUES ($1,$2,$3,NOW()) ON CONFLICT DO NOTHING`,
+        [req.userId, walletId, fp2]
+      )
+      return res.json({ success: true })
+    }
+
     const match = await bcrypt.compare(String(pin), r.rows[0].pin)
     if (!match) {
       const { attempts, lockedUntil } = recordAttempt(walletId)

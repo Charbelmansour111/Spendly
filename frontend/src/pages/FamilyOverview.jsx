@@ -212,17 +212,21 @@ function TransactionsTab({ transactions, sym }) {
             {filtered.map(tx => {
               const walletColor = getWalletColor(tx.wallet_color)
               return (
-                <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
-                  <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700/70 flex items-center justify-center text-lg shrink-0">
+                <div key={tx.id} className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700/70 flex items-center justify-center text-xl shrink-0">
                     {CAT_ICONS[tx.category] || '📦'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 dark:text-white truncate">
-                      {tx.description || tx.category}
+                    {/* Category name — no description */}
+                    <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+                      {tx.category}
                     </p>
+                    {/* Wallet name prominently with colored dot */}
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className={`inline-block w-1.5 h-1.5 rounded-full bg-linear-to-br ${walletColor.gradient} shrink-0`} />
-                      <p className="text-xs text-gray-400 truncate">{tx.wallet_name} · {fmtDate(tx.date)}</p>
+                      <span className={`inline-block w-2 h-2 rounded-full bg-linear-to-br ${walletColor.gradient} shrink-0`} />
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{tx.wallet_name}</p>
+                      <span className="text-gray-300 dark:text-gray-600 text-xs">·</span>
+                      <p className="text-xs text-gray-400 shrink-0">{fmtDate(tx.date)}</p>
                     </div>
                   </div>
                   <p className="text-sm font-bold text-red-500 dark:text-red-400 tabular-nums shrink-0">
