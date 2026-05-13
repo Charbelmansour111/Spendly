@@ -574,21 +574,28 @@ export default function WalletApp() {
     if (!token) { navigate('/login'); return }
     if (!id) return
     setLoading(true)
+    setError('')
     const h = { Authorization: `Bearer ${token}` }
+
+    const safeGet = (url, fallback) =>
+      fetch(url, { headers: h })
+        .then(r => r.ok ? r.json().catch(() => fallback) : r.json().catch(() => fallback))
+        .catch(() => fallback)
+
     Promise.all([
-      fetch(`${BASE}/wallets/${id}/summary`,  { headers: h }).then(r => r.json()),
-      fetch(`${BASE}/wallets/${id}/expenses`, { headers: h }).then(r => r.json()),
-      fetch(`${BASE}/wallets/${id}/income`,   { headers: h }).then(r => r.json()),
-      fetch(`${BASE}/wallets/${id}/networth`, { headers: h }).then(r => r.json()),
+      safeGet(`${BASE}/wallets/${id}/summary`,  null),
+      safeGet(`${BASE}/wallets/${id}/expenses`, []),
+      safeGet(`${BASE}/wallets/${id}/income`,   []),
+      safeGet(`${BASE}/wallets/${id}/networth`, null),
     ])
       .then(([s, exp, inc, nw]) => {
         if (s?.message === 'Not your wallet') { navigate('/wallets'); return }
-        setSummary(Array.isArray(s) ? null : s)
+        setSummary(s && !s.message ? s : null)
         setExpenses(Array.isArray(exp) ? exp : [])
         setIncome(Array.isArray(inc) ? inc : [])
         if (nw && !nw.message) setNetworth(nw)
       })
-      .catch(() => setError('Failed to load wallet data'))
+      .catch(() => setError('Could not connect to server — check your connection'))
       .finally(() => setLoading(false))
   }, [id, token, navigate])
 

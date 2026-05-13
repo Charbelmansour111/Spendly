@@ -236,19 +236,22 @@ function PhoneMockup() {
 
             </div>
 
-            {/* Bottom tab bar — matching actual WalletApp tabs */}
+            {/* Bottom tab bar — pixel-perfect WalletApp style (border-b-2 active) */}
             <div style={{
               position:'absolute', bottom:0, left:0, right:0,
-              background:'rgba(255,255,255,0.97)', backdropFilter:'blur(12px)',
-              borderTop:'1px solid rgba(0,0,0,0.06)',
-              display:'flex', justifyContent:'space-around', alignItems:'center',
-              paddingTop:8, paddingBottom:14,
+              background:'rgba(255,255,255,0.98)',
+              borderTop:'1px solid #f3f4f6',
+              display:'flex',
+              paddingBottom:10,
             }}>
               {[['📊','Dashboard',true],['💸','Txns',false],['📋','Reports',false],['📈','Net Worth',false]].map(([icon,label,active],i) => (
-                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
-                  <span style={{ fontSize:14, lineHeight:1 }}>{icon}</span>
-                  <span style={{ fontSize:5.5, fontWeight:600, color: active ? '#7c3aed' : '#9ca3af' }}>{label}</span>
-                  {active && <div style={{ width:14, height:2, background:'#7c3aed', borderRadius:2, marginTop:1 }}/>}
+                <div key={i} style={{
+                  flex:1, display:'flex', flexDirection:'column', alignItems:'center',
+                  paddingTop:8, paddingBottom:6,
+                  borderBottom: active ? '2px solid #7c3aed' : '2px solid transparent',
+                }}>
+                  <span style={{ fontSize:12, lineHeight:1, opacity: active ? 1 : 0.45 }}>{icon}</span>
+                  <span style={{ fontSize:6.5, fontWeight:600, marginTop:2.5, color: active ? '#7c3aed' : '#9ca3af' }}>{label}</span>
                 </div>
               ))}
             </div>
