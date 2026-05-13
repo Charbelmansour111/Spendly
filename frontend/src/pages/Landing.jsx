@@ -77,109 +77,135 @@ function PhoneMockup() {
     <div className="relative" style={{ perspective: '1400px' }}>
       {/* Glow */}
       <div className="absolute -inset-12 rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse, rgba(124,58,237,0.12) 0%, transparent 70%)', filter: 'blur(40px)' }}/>
+        style={{ background: 'radial-gradient(ellipse, rgba(124,58,237,0.14) 0%, transparent 70%)', filter: 'blur(40px)' }}/>
 
       {/* Phone */}
       <div style={{ transform: 'rotateY(-12deg) rotateX(4deg)', transformStyle: 'preserve-3d', animation: 'float-y 6s ease-in-out infinite' }}>
-        <div className="relative w-60 rounded-[46px] border-[3px] border-gray-800 overflow-hidden"
-          style={{ background: '#111', height: 520, boxShadow: '0 60px 120px -20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04), inset 0 0 0 1px rgba(255,255,255,0.03)' }}>
 
-          {/* Side buttons */}
-          <div className="absolute -left-[3px] top-20 w-0.5 h-6 bg-gray-700 rounded-l"/>
-          <div className="absolute -left-[3px] top-32 w-0.5 h-10 bg-gray-700 rounded-l"/>
-          <div className="absolute -left-[3px] top-44 w-0.5 h-10 bg-gray-700 rounded-l"/>
-          <div className="absolute -right-[3px] top-32 w-0.5 h-14 bg-gray-700 rounded-r"/>
+        {/* Titanium-style frame */}
+        <div className="relative" style={{
+          width: 252, height: 546,
+          borderRadius: 54,
+          background: 'linear-gradient(145deg, #48484a 0%, #1c1c1e 40%, #2c2c2e 70%, #3a3a3c 100%)',
+          boxShadow: '0 70px 130px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.14), 6px 0 20px rgba(0,0,0,0.35)',
+          padding: 4,
+        }}>
+
+          {/* Side buttons — mute */}
+          <div className="absolute rounded-l-sm" style={{ left:-4, top:96, width:3, height:26, background:'linear-gradient(180deg,#4a4a4c,#2e2e30)' }}/>
+          {/* Volume up */}
+          <div className="absolute rounded-l-sm" style={{ left:-4, top:138, width:3, height:46, background:'linear-gradient(180deg,#4a4a4c,#2e2e30)' }}/>
+          {/* Volume down */}
+          <div className="absolute rounded-l-sm" style={{ left:-4, top:196, width:3, height:46, background:'linear-gradient(180deg,#4a4a4c,#2e2e30)' }}/>
+          {/* Power */}
+          <div className="absolute rounded-r-sm" style={{ right:-4, top:152, width:3, height:62, background:'linear-gradient(180deg,#4a4a4c,#2e2e30)' }}/>
 
           {/* Screen */}
-          <div className="absolute inset-[2px] rounded-[43px] overflow-hidden flex flex-col" style={{ background: '#f4f5f7' }}>
+          <div className="absolute overflow-hidden flex flex-col" style={{
+            inset: 4, borderRadius: 50, background: '#f4f5f7',
+          }}>
 
-            {/* Notch */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-gray-900 rounded-b-3xl z-20"/>
-
-            {/* Header */}
-            <div className="px-4 pt-7 pb-4 shrink-0" style={{ background: 'linear-gradient(135deg,#5b21b6,#4f46e5)' }}>
-              <div className="flex justify-between text-[7px] text-white/60 mb-2">
-                <span className="font-bold text-white/80">9:41</span>
-                <div className="flex items-center gap-0.5">
-                  <svg width="9" height="7" viewBox="0 0 24 16" fill="white" opacity="0.6">
-                    <rect x="0" y="8" width="5" height="8" rx="1"/><rect x="7" y="5" width="5" height="11" rx="1"/>
-                    <rect x="14" y="2" width="5" height="14" rx="1"/>
-                  </svg>
-                </div>
+            {/* Dynamic Island */}
+            <div style={{
+              position:'absolute', top:11, left:'50%', transform:'translateX(-50%)',
+              width:74, height:20, background:'#000', borderRadius:12, zIndex:20,
+              display:'flex', alignItems:'center', justifyContent:'flex-end', paddingRight:7,
+            }}>
+              {/* Camera + FaceID sensor */}
+              <div style={{ width:10, height:10, borderRadius:'50%', background:'#111', border:'1.5px solid #2a2a2a', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <div style={{ width:3, height:3, borderRadius:'50%', background:'rgba(100,180,255,0.2)' }}/>
               </div>
-              <p className="text-violet-200 text-[8.5px] mb-0.5 font-medium">Good morning 👋</p>
-              <p className="text-white font-black text-[22px] leading-none mb-1">
-                $12,840<span className="text-[13px] font-semibold text-violet-300">.50</span>
+            </div>
+
+            {/* Status bar */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingLeft:20, paddingRight:18, paddingTop:10, paddingBottom:4, flexShrink:0, marginTop:32 }}>
+              <span style={{ fontSize:7.5, fontWeight:700, color:'#1c1c1e' }}>9:41</span>
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                <svg width="11" height="8" viewBox="0 0 24 16" fill="#1c1c1e">
+                  <rect x="0" y="8" width="5" height="8" rx="1.5"/><rect x="7" y="5" width="5" height="11" rx="1.5"/>
+                  <rect x="14" y="2" width="5" height="14" rx="1.5"/><rect x="21" y="0" width="3" height="16" rx="1"/>
+                </svg>
+                <svg width="14" height="8" viewBox="0 0 28 14" fill="none">
+                  <rect x="0.5" y="0.5" width="23" height="13" rx="4" stroke="#1c1c1e" strokeWidth="1.2"/>
+                  <rect x="24" y="4" width="3" height="6" rx="1.5" fill="#1c1c1e"/>
+                  <rect x="2" y="2" width="17" height="10" rx="2.5" fill="#1c1c1e"/>
+                </svg>
+              </div>
+            </div>
+
+            {/* App header gradient */}
+            <div className="shrink-0 px-4 pb-3" style={{ background:'linear-gradient(135deg,#5b21b6,#4f46e5)', paddingTop:6 }}>
+              <p style={{ color:'rgba(221,214,254,0.8)', fontSize:8, marginBottom:2, fontWeight:500 }}>Good morning 👋</p>
+              <p style={{ color:'#fff', fontWeight:900, fontSize:22, lineHeight:1, marginBottom:4 }}>
+                $12,840<span style={{ fontSize:13, fontWeight:600, color:'#c4b5fd' }}>.50</span>
               </p>
-              <div className="flex items-center gap-1 mb-3">
+              <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:10 }}>
                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                <span className="text-green-300 text-[7.5px] font-bold">+8.2% vs last month</span>
+                <span style={{ color:'#86efac', fontSize:7, fontWeight:700 }}>+8.2% vs last month</span>
               </div>
-              <div className="flex gap-1.5">
-                {[['Income','+$5,200','text-green-300'],['Spent','-$2,360','text-rose-300'],['Saved','45%','text-white']].map(([l,v,c]) => (
-                  <div key={l} className="flex-1 rounded-xl px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.12)' }}>
-                    <p className="text-[6.5px] text-violet-200 mb-0.5">{l}</p>
-                    <p className={`text-[9px] font-bold ${c}`}>{v}</p>
+              <div style={{ display:'flex', gap:5 }}>
+                {[['Income','+$5,200','#86efac'],['Spent','-$2,360','#fca5a5'],['Saved','45%','#fff']].map(([l,v,c]) => (
+                  <div key={l} style={{ flex:1, borderRadius:12, padding:'5px 7px', background:'rgba(255,255,255,0.13)' }}>
+                    <p style={{ fontSize:6, color:'rgba(196,181,253,0.9)', marginBottom:2 }}>{l}</p>
+                    <p style={{ fontSize:8.5, fontWeight:700, color:c }}>{v}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-hidden px-2.5 pt-2.5 pb-14 space-y-2">
+            {/* Scrollable content */}
+            <div style={{ flex:1, overflow:'hidden', padding:'10px 10px 58px', display:'flex', flexDirection:'column', gap:8 }}>
 
-              {/* Spending bar chart */}
-              <div className="bg-white rounded-2xl p-2.5 shadow-sm">
-                <div className="flex justify-between items-center mb-1.5">
-                  <p className="text-[8px] font-bold text-gray-800">Monthly Spending</p>
-                  <p className="text-[7px] text-violet-500 font-semibold">May 2026</p>
+              {/* Monthly bar chart */}
+              <div style={{ background:'#fff', borderRadius:16, padding:10, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                  <p style={{ fontSize:7.5, fontWeight:700, color:'#111827' }}>Monthly Spending</p>
+                  <p style={{ fontSize:6.5, color:'#7c3aed', fontWeight:600 }}>May 2026</p>
                 </div>
-                <div className="flex items-end gap-0.5 h-10">
+                <div style={{ display:'flex', alignItems:'flex-end', gap:3, height:38 }}>
                   {[38,55,42,68,50,85,72].map((h, i) => (
-                    <div key={i} className="flex-1 rounded-t-sm transition-all"
-                      style={{ height: `${h}%`, background: i === 5 ? '#7c3aed' : i >= 4 ? '#a78bfa' : '#ddd6fe' }}/>
+                    <div key={i} style={{ flex:1, borderRadius:'3px 3px 0 0', height:`${h}%`,
+                      background: i === 5 ? '#7c3aed' : i >= 4 ? '#a78bfa' : '#ddd6fe' }}/>
                   ))}
                 </div>
-                <div className="flex justify-between mt-1">
+                <div style={{ display:'flex', marginTop:4 }}>
                   {['N','D','J','F','M','A','M'].map((m,i) => (
-                    <span key={i} className="flex-1 text-center text-[5.5px] text-gray-400">{m}</span>
+                    <span key={i} style={{ flex:1, textAlign:'center', fontSize:5.5, color:'#9ca3af' }}>{m}</span>
                   ))}
                 </div>
               </div>
 
-              {/* Category donut + legend */}
-              <div className="bg-white rounded-2xl p-2.5 shadow-sm">
-                <p className="text-[8px] font-bold text-gray-800 mb-2">Categories</p>
-                <div className="flex items-center gap-3">
-                  {/* Donut chart — r=18, C≈113.1 */}
-                  <svg viewBox="0 0 50 50" width="50" height="50" className="shrink-0">
-                    <g transform="rotate(-90 25 25)">
-                      <circle cx="25" cy="25" r="18" fill="none" stroke="#f3f4f6" strokeWidth="8"/>
-                      {/* Food 40% → 45.24 */}
-                      <circle cx="25" cy="25" r="18" fill="none" stroke="#7c3aed" strokeWidth="8"
-                        strokeDasharray="45.2 67.9" strokeLinecap="round"/>
-                      {/* Transport 25% → 28.28 */}
-                      <circle cx="25" cy="25" r="18" fill="none" stroke="#34d399" strokeWidth="8"
-                        strokeDasharray="28.3 84.8" strokeDashoffset="-45.2" strokeLinecap="round"/>
-                      {/* Shopping 20% → 22.62 */}
-                      <circle cx="25" cy="25" r="18" fill="none" stroke="#fb923c" strokeWidth="8"
-                        strokeDasharray="22.6 90.5" strokeDashoffset="-73.5" strokeLinecap="round"/>
-                      {/* Other 15% → 16.97 */}
-                      <circle cx="25" cy="25" r="18" fill="none" stroke="#f87171" strokeWidth="8"
-                        strokeDasharray="17.0 96.1" strokeDashoffset="-96.1" strokeLinecap="round"/>
+              {/* Spending Distribution — recharts-style donut with PIE_COLORS */}
+              <div style={{ background:'#fff', borderRadius:16, padding:10, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+                <p style={{ fontSize:7.5, fontWeight:700, color:'#111827', marginBottom:8 }}>Spending Distribution</p>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  {/* SVG donut matching recharts style (r=19, C≈119.4) */}
+                  <svg viewBox="0 0 60 60" width="60" height="60" style={{ flexShrink:0 }}>
+                    <g transform="rotate(-90 30 30)">
+                      <circle cx="30" cy="30" r="19" fill="none" stroke="#f3f4f6" strokeWidth="9.5"/>
+                      {/* Food 40% → fill=46.2, gap=73.2 */}
+                      <circle cx="30" cy="30" r="19" fill="none" stroke="#7C3AED" strokeWidth="9"
+                        strokeDasharray="46.2 73.2" strokeDashoffset="0" strokeLinecap="butt"/>
+                      {/* Transport 25% → offset=-47.2 */}
+                      <circle cx="30" cy="30" r="19" fill="none" stroke="#2563EB" strokeWidth="9"
+                        strokeDasharray="28.8 90.6" strokeDashoffset="-47.2" strokeLinecap="butt"/>
+                      {/* Shopping 20% → offset=-77.0 */}
+                      <circle cx="30" cy="30" r="19" fill="none" stroke="#059669" strokeWidth="9"
+                        strokeDasharray="23.1 96.3" strokeDashoffset="-77.0" strokeLinecap="butt"/>
+                      {/* Other 15% → offset=-101.1 */}
+                      <circle cx="30" cy="30" r="19" fill="none" stroke="#D97706" strokeWidth="9"
+                        strokeDasharray="17.3 102.1" strokeDashoffset="-101.1" strokeLinecap="butt"/>
                     </g>
-                    <text x="25" y="22" textAnchor="middle" fontSize="5.5" fontWeight="800" fill="#111827">$2.3k</text>
-                    <text x="25" y="29" textAnchor="middle" fontSize="4" fill="#9ca3af">spent</text>
+                    <text x="30" y="28" textAnchor="middle" fontSize="7" fontWeight="800" fill="#111827">$2.3k</text>
+                    <text x="30" y="36" textAnchor="middle" fontSize="4.5" fill="#9ca3af">spent</text>
                   </svg>
-                  {/* Legend */}
-                  <div className="flex-1 space-y-1">
-                    {[['Food','40%','#7c3aed'],['Transport','25%','#34d399'],['Shopping','20%','#fb923c'],['Other','15%','#f87171']].map(([cat,pct,col]) => (
-                      <div key={cat} className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ background: col }}/>
-                          <span className="text-[7px] text-gray-500">{cat}</span>
-                        </div>
-                        <span className="text-[7px] font-bold text-gray-800">{pct}</span>
+                  {/* Legend matching reports page */}
+                  <div style={{ flex:1, display:'flex', flexDirection:'column', gap:6 }}>
+                    {[['Food','40%','#7C3AED'],['Transport','25%','#2563EB'],['Shopping','20%','#059669'],['Other','15%','#D97706']].map(([cat,pct,col]) => (
+                      <div key={cat} style={{ display:'flex', alignItems:'center', gap:5 }}>
+                        <div style={{ width:7, height:7, borderRadius:'50%', background:col, flexShrink:0 }}/>
+                        <span style={{ fontSize:7, color:'#6b7280', flex:1 }}>{cat}</span>
+                        <span style={{ fontSize:7, fontWeight:700, color:'#374151' }}>{pct}</span>
                       </div>
                     ))}
                   </div>
@@ -187,37 +213,46 @@ function PhoneMockup() {
               </div>
 
               {/* Recent transactions */}
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div className="flex justify-between items-center px-2.5 pt-2 pb-1">
-                  <p className="text-[8px] font-bold text-gray-800">Recent</p>
-                  <p className="text-[7px] text-violet-500 font-semibold">See all →</p>
+              <div style={{ background:'#fff', borderRadius:16, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 10px 4px' }}>
+                  <p style={{ fontSize:7.5, fontWeight:700, color:'#111827' }}>Recent</p>
+                  <p style={{ fontSize:6.5, color:'#7c3aed', fontWeight:600 }}>See all →</p>
                 </div>
                 {[
                   { icon:'🍔', name:"McDonald's", cat:'Food', amt:'-$12.50', neg:true },
                   { icon:'🚗', name:'Uber', cat:'Transport', amt:'-$22.00', neg:true },
                   { icon:'💼', name:'Salary', cat:'Income', amt:'+$3,200', neg:false },
                 ].map((tx,i,a) => (
-                  <div key={i} className={`flex items-center gap-2 px-2.5 py-1.5 ${i<a.length-1?'border-b border-gray-50':''}`}>
-                    <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-[11px] shrink-0">{tx.icon}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[8px] font-semibold text-gray-800 truncate">{tx.name}</p>
-                      <p className="text-[6.5px] text-gray-400">{tx.cat}</p>
+                  <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 10px', borderTop: i>0 ? '1px solid #f9fafb' : 'none' }}>
+                    <div style={{ width:24, height:24, borderRadius:8, background:'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, flexShrink:0 }}>{tx.icon}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:7.5, fontWeight:600, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{tx.name}</p>
+                      <p style={{ fontSize:6, color:'#9ca3af' }}>{tx.cat}</p>
                     </div>
-                    <p className={`text-[8px] font-bold ${tx.neg?'text-rose-500':'text-emerald-600'}`}>{tx.amt}</p>
+                    <p style={{ fontSize:7.5, fontWeight:700, color: tx.neg ? '#f43f5e' : '#059669', whiteSpace:'nowrap' }}>{tx.amt}</p>
                   </div>
                 ))}
               </div>
+
             </div>
 
-            {/* Bottom nav */}
-            <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 pt-2 pb-3 flex justify-around items-center">
-              {[['🏠',true],['💳',false],['📊',false],['⚙️',false]].map(([icon,active],i) => (
-                <div key={i} className="flex flex-col items-center gap-0.5">
-                  <span className="text-sm">{icon}</span>
-                  {active && <div className="w-1 h-1 bg-violet-600 rounded-full"/>}
+            {/* Bottom tab bar — matching actual WalletApp tabs */}
+            <div style={{
+              position:'absolute', bottom:0, left:0, right:0,
+              background:'rgba(255,255,255,0.97)', backdropFilter:'blur(12px)',
+              borderTop:'1px solid rgba(0,0,0,0.06)',
+              display:'flex', justifyContent:'space-around', alignItems:'center',
+              paddingTop:8, paddingBottom:14,
+            }}>
+              {[['📊','Dashboard',true],['💸','Txns',false],['📋','Reports',false],['📈','Net Worth',false]].map(([icon,label,active],i) => (
+                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
+                  <span style={{ fontSize:14, lineHeight:1 }}>{icon}</span>
+                  <span style={{ fontSize:5.5, fontWeight:600, color: active ? '#7c3aed' : '#9ca3af' }}>{label}</span>
+                  {active && <div style={{ width:14, height:2, background:'#7c3aed', borderRadius:2, marginTop:1 }}/>}
                 </div>
               ))}
             </div>
+
           </div>
         </div>
       </div>

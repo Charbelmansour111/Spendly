@@ -260,7 +260,7 @@ function TransactionsTab({ expenses, income, sym }) {
 const PIE_COLORS = ['#7C3AED','#2563EB','#059669','#D97706','#DC2626','#DB2777','#0891B2','#65A30D','#7C3AED','#EA580C']
 
 // ── Reports Tab ───────────────────────────────────────────────────────────────
-function ReportsTab({ summary, sym, hex }) {
+function ReportsTab({ summary, expenses, sym, hex }) {
   const inc = parseFloat(summary?.total_income || 0)
   const exp = parseFloat(summary?.total_expenses || 0)
   const net = inc - exp
@@ -268,12 +268,48 @@ function ReportsTab({ summary, sym, hex }) {
   const spendPct = inc > 0 ? Math.min(Math.round((exp / inc) * 100), 100) : 0
   const now = new Date()
 
-  const pieData = (summary?.category_breakdown || []).map(cat => ({
+  // Compute category breakdown from full expenses array as fallback
+  const localCats = (expenses || []).length > 0
+    ? Object.entries(
+        (expenses || []).reduce((acc, e) => {
+          const cat = e.category || 'Other'
+          acc[cat] = (acc[cat] || 0) + parseFloat(e.amount || 0)
+          return acc
+        }, {})
+      ).map(([category, total]) => ({ category, total: String(total) }))
+        .sort((a, b) => parseFloat(b.total) - parseFloat(a.total))
+    : []
+
+  const catBreakdown = (summary?.category_breakdown?.length > 0)
+    ? summary.category_breakdown
+    : localCats
+
+  const usingAllTime = summary?.category_breakdown?.length === 0 && localCats.length > 0
+
+  // Compute monthly trend from expenses array as fallback
+  const localTrend = (expenses || []).length > 0
+    ? Object.entries(
+        (expenses || []).reduce((acc, e) => {
+          if (!e.date) return acc
+          const mo = String(e.date).slice(0, 7)
+          acc[mo] = (acc[mo] || 0) + parseFloat(e.amount || 0)
+          return acc
+        }, {})
+      ).map(([month, total]) => ({ month, total: String(total) }))
+        .sort((a, b) => a.month.localeCompare(b.month))
+        .slice(-6)
+    : []
+
+  const monthlyTrend = (summary?.monthly_trend?.length > 0)
+    ? summary.monthly_trend
+    : localTrend
+
+  const pieData = catBreakdown.map(cat => ({
     name: cat.category,
     value: parseFloat(cat.total)
   }))
 
-  const barData = (summary?.monthly_trend || []).map(m => ({
+  const barData = monthlyTrend.map(m => ({
     month: new Date(m.month + '-01').toLocaleString('default', { month: 'short', year: '2-digit' }),
     amount: parseFloat(m.total)
   }))
@@ -346,16 +382,19 @@ function ReportsTab({ summary, sym, hex }) {
       )}
 
       {/* Category breakdown bars */}
-      {(summary?.category_breakdown || []).length > 0 && (
+      {catBreakdown.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-bold text-gray-800 dark:text-white">Category Breakdown</p>
-            <span className="text-xs text-gray-400">{summary.category_breakdown.length} categories</span>
+            <span className="text-xs text-gray-400">
+              {usingAllTime ? 'All time' : 'This month'} · {catBreakdown.length} categories
+            </span>
           </div>
           <div className="space-y-3">
-            {summary.category_breakdown.map((cat, i) => {
+            {catBreakdown.map((cat, i) => {
               const total = parseFloat(cat.total)
-              const pct = exp > 0 ? Math.min((total / exp) * 100, 100) : 0
+              const catTotal = catBreakdown.reduce((s, c) => s + parseFloat(c.total), 0)
+              const pct = catTotal > 0 ? Math.min((total / catTotal) * 100, 100) : 0
               return (
                 <div key={cat.category} className="flex items-center gap-3">
                   <span className="text-lg w-7 text-center shrink-0">{CAT_ICONS[cat.category] || '📦'}</span>
@@ -392,7 +431,7 @@ function ReportsTab({ summary, sym, hex }) {
         </div>
       )}
 
-      {pieData.length === 0 && barData.length === 0 && (
+      {catBreakdown.length === 0 && barData.length === 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center border border-gray-100 dark:border-gray-700/50">
           <p className="text-4xl mb-3">📊</p>
           <p className="text-gray-500 dark:text-gray-400 font-medium">No report data yet</p>
@@ -632,7 +671,7 @@ export default function WalletApp() {
           <>
             {activeTab === 'dashboard'    && <DashboardTab    summary={summary} networth={networth} expenses={expenses} sym={sym} hex={color.hex} />}
             {activeTab === 'transactions' && <TransactionsTab expenses={expenses} income={income} sym={sym} />}
-            {activeTab === 'reports'      && <ReportsTab      summary={summary} sym={sym} hex={color.hex} />}
+            {activeTab === 'reports'      && <ReportsTab      summary={summary} expenses={expenses} sym={sym} hex={color.hex} />}
             {activeTab === 'networth'     && <NetWorthTab     networth={networth} sym={sym} />}
           </>
         )}
