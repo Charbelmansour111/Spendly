@@ -4,6 +4,8 @@ import { useDarkMode } from '../hooks/useDarkMode'
 import VoiceAssistant from './VoiceAssistant'
 import TourBanner from './TourBanner'
 import { t, isRTL } from '../i18n'
+import { useWallet } from '../context/WalletContext'
+import { getAvatarUrl, getWalletColor } from '../data/avatars'
 
 const Icons = {
   // Dashboard — 2×2 grid (clean, modern)
@@ -58,6 +60,38 @@ const TAB_ITEMS = [
 // Advisor nav disabled
 // const ADVISOR_NAV = [...]
 
+function MobileWalletBadge() {
+  const { activeWallet } = useWallet()
+  if (!activeWallet) return null
+  const color = getWalletColor(activeWallet.color)
+  return (
+    <a href="/wallets" className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700/60 rounded-full px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+      <div className={`w-4 h-4 rounded-full bg-linear-to-br ${color.gradient} overflow-hidden shrink-0`}>
+        <img src={getAvatarUrl(activeWallet)} alt="" className="w-full h-full object-cover" onError={e => { e.target.style.display='none' }} />
+      </div>
+      <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 max-w-15 truncate">{activeWallet.name}</span>
+    </a>
+  )
+}
+
+function WalletStrip() {
+  const { activeWallet } = useWallet()
+  if (!activeWallet) return null
+  const color = getWalletColor(activeWallet.color)
+  return (
+    <a href="/wallets" className="flex items-center gap-2.5 px-5 py-3 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition group">
+      <div className={`w-7 h-7 rounded-full bg-linear-to-br ${color.gradient} overflow-hidden shrink-0 ring-2 ring-white dark:ring-gray-800`}>
+        <img src={getAvatarUrl(activeWallet)} alt={activeWallet.name} className="w-full h-full object-cover" onError={e => { e.target.style.display='none' }} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{activeWallet.name}</p>
+        <p className="text-[10px] text-gray-400">{activeWallet.is_total_wallet ? 'Family Overview' : 'Active wallet'}</p>
+      </div>
+      <span className="text-gray-300 dark:text-gray-600 text-xs group-hover:text-violet-500 transition">⇄</span>
+    </a>
+  )
+}
+
 function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCount, onLogout, navItems }) {
   return (
     <div className="flex flex-col h-full">
@@ -86,6 +120,9 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
           </div>
         </div>
       </div>
+
+      {/* Active wallet strip */}
+      <WalletStrip />
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
@@ -227,6 +264,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
             </svg>
           </div>
           <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">Spendly</h1>
+          <MobileWalletBadge />
         </div>
         <div className="flex items-center gap-1">
           <button onClick={onBellClick} className="relative p-2 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">

@@ -1,15 +1,38 @@
 import axios from 'axios'
+import { getActiveWallet } from './walletSession'
 
-const API = axios.create({
-  baseURL: 'https://spendly-backend-et20.onrender.com/api'
-})
+const BASE = 'https://spendly-backend-et20.onrender.com/api'
 
-// Automatically attach token to every request
+const WALLET_REWRITES = [
+  '/expenses',
+  '/income',
+  '/budgets',
+  '/savings',
+  '/debts',
+  '/subscriptions',
+]
+
+function rewriteForWallet(url, walletId) {
+  if (!walletId || !url) return url
+  for (const prefix of WALLET_REWRITES) {
+    if (url === prefix || url.startsWith(prefix + '/') || url.startsWith(prefix + '?')) {
+      return url.replace(prefix, `/wallets/${walletId}${prefix}`)
+    }
+  }
+  return url
+}
+
+const API = axios.create({ baseURL: BASE })
+
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  if (token) config.headers.Authorization = `Bearer ${token}`
+
+  const wallet = getActiveWallet()
+  if (wallet?.id) {
+    config.url = rewriteForWallet(config.url, wallet.id)
   }
+
   return config
 })
 

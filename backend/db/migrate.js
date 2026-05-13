@@ -141,6 +141,7 @@ async function migrate() {
       )
     `);
 
+    // Push notifications
     await pool.query(`
       CREATE TABLE IF NOT EXISTS push_subscriptions (
         id SERIAL PRIMARY KEY,
@@ -151,6 +152,7 @@ async function migrate() {
       )
     `);
 
+    // User activity tracking
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_activity (
         user_id INTEGER PRIMARY KEY,
@@ -205,20 +207,151 @@ async function migrate() {
       )
     `);
 
+    // ── Wallet system ──────────────────────────────────────────────────────
     await pool.query(`
       CREATE TABLE IF NOT EXISTS wallets (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        name VARCHAR(100) NOT NULL,
-        type VARCHAR(30) DEFAULT 'checking',
-        balance DECIMAL(12,2) DEFAULT 0,
-        currency VARCHAR(10) DEFAULT 'USD',
-        color VARCHAR(20) DEFAULT '#6B7280',
-        emoji VARCHAR(10) DEFAULT '🏦',
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(50) NOT NULL,
+        pin VARCHAR(255) NOT NULL DEFAULT '',
+        color VARCHAR(20) DEFAULT 'violet',
+        avatar_type VARCHAR(20) DEFAULT 'dicebear',
+        avatar_value VARCHAR(255) DEFAULT 'user',
+        avatar_photo TEXT,
+        is_total_wallet BOOLEAN DEFAULT FALSE,
+        total_wallet_pin VARCHAR(255),
+        display_order INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Add wallet system columns if migrating from older simple wallets table
+    await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS pin VARCHAR(255) NOT NULL DEFAULT ''`);
+    await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS avatar_type VARCHAR(20) DEFAULT 'dicebear'`);
+    await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS avatar_value VARCHAR(255) DEFAULT 'user'`);
+    await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS avatar_photo TEXT`);
+    await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS is_total_wallet BOOLEAN DEFAULT FALSE`);
+    await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0`);
+    await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`);
+    await pool.query(`ALTER TABLE wallets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()`);
+    await pool.query(`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS wallet_id INTEGER REFERENCES wallets(id) ON DELETE SET NULL`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallet_expenses (
+        id SERIAL PRIMARY KEY,
+        wallet_id INTEGER REFERENCES wallets(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        amount DECIMAL(12,2) NOT NULL,
+        category VARCHAR(100),
+        description TEXT,
+        date DATE NOT NULL,
+        is_recurring BOOLEAN DEFAULT FALSE,
+        recurring_frequency VARCHAR(10) DEFAULT 'monthly',
+        expense_scope VARCHAR(20) DEFAULT 'monthly',
+        linked_date DATE,
+        payment_method VARCHAR(30) DEFAULT 'Card',
+        notes TEXT,
+        ai_verified BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    await pool.query(`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS wallet_id INTEGER REFERENCES wallets(id) ON DELETE SET NULL`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallet_income (
+        id SERIAL PRIMARY KEY,
+        wallet_id INTEGER REFERENCES wallets(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        amount DECIMAL(12,2) NOT NULL,
+        source VARCHAR(100),
+        description TEXT,
+        month INTEGER,
+        year INTEGER,
+        is_recurring BOOLEAN DEFAULT FALSE,
+        recurring_frequency VARCHAR(10) DEFAULT 'monthly',
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(wallet_id, source, month, year)
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallet_budgets (
+        id SERIAL PRIMARY KEY,
+        wallet_id INTEGER REFERENCES wallets(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        category VARCHAR(100),
+        amount DECIMAL(12,2),
+        period VARCHAR(20) DEFAULT 'monthly',
+        name VARCHAR(255),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallet_savings (
+        id SERIAL PRIMARY KEY,
+        wallet_id INTEGER REFERENCES wallets(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        name VARCHAR(255),
+        target_amount DECIMAL(12,2),
+        saved_amount DECIMAL(12,2) DEFAULT 0,
+        deadline DATE,
+        goal_type VARCHAR(50) DEFAULT 'Other',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallet_debts (
+        id SERIAL PRIMARY KEY,
+        wallet_id INTEGER REFERENCES wallets(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        name VARCHAR(255),
+        total_amount DECIMAL(12,2),
+        remaining_amount DECIMAL(12,2),
+        monthly_payment DECIMAL(12,2) DEFAULT 0,
+        interest_rate DECIMAL(5,2) DEFAULT 0,
+        category VARCHAR(100) DEFAULT 'Other',
+        due_date DATE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallet_subscriptions (
+        id SERIAL PRIMARY KEY,
+        wallet_id INTEGER REFERENCES wallets(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        name VARCHAR(255),
+        amount DECIMAL(12,2),
+        billing_cycle VARCHAR(20) DEFAULT 'monthly',
+        next_billing_date DATE,
+        category VARCHAR(50) DEFAULT 'Other',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallet_sessions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        wallet_id INTEGER REFERENCES wallets(id),
+        device_fingerprint TEXT,
+        last_active TIMESTAMP DEFAULT NOW(),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallet_pin_attempts (
+        id SERIAL PRIMARY KEY,
+        wallet_id INTEGER REFERENCES wallets(id) ON DELETE CASCADE,
+        attempts INTEGER DEFAULT 0,
+        locked_until TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
 
     console.log('DB migration complete');
   } catch (e) {

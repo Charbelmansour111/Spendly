@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 import { t } from '../i18n'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { requestNotificationPermission, isNotificationsEnabled, disableNotifications, unsubscribeFromPush, playSpendlyChime } from '../utils/notifications'
+import { useWallet } from '../context/WalletContext'
+import { getAvatarUrl, getWalletColor } from '../data/avatars'
+import { deleteWallet, lockWallet } from '../utils/walletSession'
 
 const CURRENCIES = ['USD','EUR','GBP','LBP','AED','SAR','CAD','AUD']
 const CURRENCY_SYMBOLS = { USD:'$',EUR:'€',GBP:'£',LBP:'L£',AED:'AED',SAR:'SAR',CAD:'C$',AUD:'A$' }
@@ -57,6 +61,8 @@ function Field({ label, hint, children }) {
 }
 
 export default function Profile() {
+  const location = useLocation()
+  const { wallets, refreshWallets, deactivateWallet } = useWallet()
   const [user, setUser] = useState(() => {
     const stored = localStorage.getItem('user')
     if (!stored) { window.location.href = '/login'; return null }
@@ -69,7 +75,13 @@ export default function Profile() {
   const [pwForm, setPwForm]       = useState({ current: '', newPw: '', confirm: '' })
   const [saving, setSaving]       = useState(false)
   const [toast, setToast]         = useState(null)
-  const [activeTab, setActiveTab] = useState('profile')
+  const [activeTab, setActiveTab] = useState(() => location?.state?.tab || 'profile')
+  const [walletChangePinId, setWalletChangePinId] = useState(null)
+  const [walletPinCurrent, setWalletPinCurrent] = useState('')
+  const [walletPinNew, setWalletPinNew] = useState('')
+  const [walletPinNewConfirm, setWalletPinNewConfirm] = useState('')
+  const [walletPinError, setWalletPinError] = useState('')
+  const [walletPinLoading, setWalletPinLoading] = useState(false)
   const [prefs, setPrefs]         = useState(() => {
     try { return JSON.parse(localStorage.getItem('spendly_prefs') || '{}') } catch { return {} }
   })
@@ -147,6 +159,7 @@ export default function Profile() {
     { key: 'prefs',    label: 'Preferences',  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
     { key: 'security', label: 'Security',     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
     { key: 'account',  label: 'Account',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> },
+    { key: 'wallets',  label: 'Wallets',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 12V7H5a2 2 0 010-4h11v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg> },
     { key: 'support',  label: 'Support',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
   ]
 
@@ -622,6 +635,135 @@ export default function Profile() {
               <button onClick={handleDeleteAccount}
                 className="w-full bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition text-sm">
                 {t('delete_account')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Wallets tab */}
+        {activeTab === 'wallets' && (
+          <div className="space-y-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex items-center gap-2">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><path d="M21 12V7H5a2 2 0 010-4h11v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+                  <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Your Wallets</p>
+                </div>
+                <a href="/create-wallet"
+                  className="text-xs font-bold text-violet-600 border border-violet-200 dark:border-violet-800 px-3 py-1.5 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
+                  + New Wallet
+                </a>
+              </div>
+
+              {wallets.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">No wallets yet.</p>
+              )}
+
+              <div className="space-y-3">
+                {wallets.map(w => {
+                  const color = getWalletColor(w.color)
+                  const isChangingPin = walletChangePinId === w.id
+                  return (
+                    <div key={w.id} className="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden">
+                      {/* Wallet row */}
+                      <div className="flex items-center gap-3 p-3">
+                        <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${color.gradient} overflow-hidden shrink-0 ring-2 ring-white dark:ring-gray-800`}>
+                          <img src={getAvatarUrl(w)} alt={w.name} className="w-full h-full object-cover" onError={e => { e.target.style.display='none' }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{w.name}</p>
+                          <p className="text-xs text-gray-400">{w.is_total_wallet ? 'Family Overview' : color.label}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => {
+                              setWalletChangePinId(isChangingPin ? null : w.id)
+                              setWalletPinCurrent(''); setWalletPinNew(''); setWalletPinNewConfirm(''); setWalletPinError('')
+                            }}
+                            className="text-[11px] font-bold text-violet-600 border border-violet-200 dark:border-violet-800 px-2 py-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition"
+                          >
+                            {isChangingPin ? 'Cancel' : 'PIN'}
+                          </button>
+                          {!w.is_total_wallet && (
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm(`Delete "${w.name}"? All its data will be removed.`)) return
+                                const token = localStorage.getItem('token')
+                                try {
+                                  await deleteWallet(w.id, token)
+                                  deactivateWallet()
+                                  await refreshWallets()
+                                  showToast('Wallet deleted')
+                                  window.location.href = '/wallets'
+                                } catch (e) { showToast(e.message, 'error') }
+                              }}
+                              className="text-[11px] font-bold text-red-500 border border-red-200 dark:border-red-800 px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Change PIN form */}
+                      {isChangingPin && (
+                        <div className="border-t border-gray-100 dark:border-gray-700 p-3 space-y-2.5 bg-gray-50 dark:bg-gray-700/30">
+                          <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Change PIN</p>
+                          {[
+                            { label: 'Current PIN', val: walletPinCurrent, set: setWalletPinCurrent, placeholder: '••••' },
+                            { label: 'New PIN (4–6 digits)', val: walletPinNew, set: setWalletPinNew, placeholder: '••••' },
+                            { label: 'Confirm New PIN', val: walletPinNewConfirm, set: setWalletPinNewConfirm, placeholder: '••••' },
+                          ].map(({ label, val, set, placeholder }) => (
+                            <div key={label}>
+                              <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">{label}</label>
+                              <input
+                                type="password"
+                                inputMode="numeric"
+                                placeholder={placeholder}
+                                value={val}
+                                maxLength={6}
+                                onChange={e => { set(e.target.value.replace(/\D/g, '').slice(0, 6)); setWalletPinError('') }}
+                                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                              />
+                            </div>
+                          ))}
+                          {walletPinError && <p className="text-xs text-red-500">{walletPinError}</p>}
+                          <button
+                            disabled={walletPinLoading || walletPinNew.length < 4 || walletPinNew !== walletPinNewConfirm || !walletPinCurrent}
+                            onClick={async () => {
+                              setWalletPinLoading(true); setWalletPinError('')
+                              try {
+                                const token = localStorage.getItem('token')
+                                const res = await fetch(`https://spendly-backend-et20.onrender.com/api/wallets/${w.id}/change-pin`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({ current_pin: walletPinCurrent, new_pin: walletPinNew }),
+                                })
+                                const data = await res.json()
+                                if (!res.ok) throw new Error(data.message)
+                                lockWallet()
+                                setWalletChangePinId(null)
+                                showToast('PIN changed — please unlock your wallet again')
+                                setTimeout(() => { window.location.href = '/wallets' }, 1500)
+                              } catch (e) { setWalletPinError(e.message) }
+                              setWalletPinLoading(false)
+                            }}
+                            className="w-full py-2.5 rounded-lg bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition disabled:opacity-50"
+                          >
+                            {walletPinLoading ? 'Saving…' : 'Save New PIN'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <button
+                onClick={() => { window.location.href = '/wallets' }}
+                className="w-full flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 py-3 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
+              >
+                Switch Wallet
               </button>
             </div>
           </div>

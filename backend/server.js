@@ -31,6 +31,13 @@ const aiRoutes = require('./routes/ai');
 const networthRoutes = require('./routes/networth');
 const pushRoutes = require('./routes/push');
 const { startScheduler } = require('./services/scheduler');
+const walletRoutes = require('./routes/wallets');
+const walletExpensesRoutes = require('./routes/walletExpenses');
+const walletIncomeRoutes = require('./routes/walletIncome');
+const walletBudgetsRoutes = require('./routes/walletBudgets');
+const walletSavingsRoutes = require('./routes/walletSavings');
+const walletDebtsRoutes = require('./routes/walletDebts');
+const walletSubscriptionsRoutes = require('./routes/walletSubscriptions');
 
 const app = express();
 
@@ -56,6 +63,13 @@ app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/networth', networthRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/wallets', walletRoutes);
+app.use('/api/wallets/:walletId/expenses', walletExpensesRoutes);
+app.use('/api/wallets/:walletId/income', walletIncomeRoutes);
+app.use('/api/wallets/:walletId/budgets', walletBudgetsRoutes);
+app.use('/api/wallets/:walletId/savings', walletSavingsRoutes);
+app.use('/api/wallets/:walletId/debts', walletDebtsRoutes);
+app.use('/api/wallets/:walletId/subscriptions', walletSubscriptionsRoutes);
 app.use('/api/advisor', require('./routes/advisor'));
 app.use('/api/support', require('./routes/support'));
 app.use('/api/categories', require('./routes/categories'));

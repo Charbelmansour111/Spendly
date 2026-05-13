@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { scheduleReminders } from './utils/notifications'
+import { WalletProvider } from './context/WalletContext'
 
 const PAGE_TITLES = {
   '/': 'Spendly',
@@ -11,6 +12,9 @@ const PAGE_TITLES = {
   '/account-type': 'Account Type — Spendly',
   '/terms': 'Terms of Service — Spendly',
   '/privacy': 'Privacy Policy — Spendly',
+  '/wallets': 'Choose Wallet — Spendly',
+  '/create-wallet': 'Create Wallet — Spendly',
+  '/family': 'Family Overview — Spendly',
   '/dashboard': 'Dashboard — Spendly',
   '/transactions': 'Transactions — Spendly',
   '/budgets': 'Budgets — Spendly',
@@ -20,10 +24,6 @@ const PAGE_TITLES = {
   '/net-worth': 'Net Worth — Spendly',
   '/wellness': 'Wellness — Spendly',
   '/profile': 'Profile — Spendly',
-  '/advisor/apply':     'Apply as Advisor — Spendly',
-  '/advisor/dashboard': 'Advisor Dashboard — Spendly',
-  '/advisors':          'Find an Advisor — Spendly',
-  '/admin/advisors':    'Admin — Spendly',
 }
 
 function RouteTitle() {
@@ -37,6 +37,7 @@ function ScrollToTop() {
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])
   return null
 }
+
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -55,11 +56,10 @@ import QuickAdd from './pages/QuickAdd'
 import Subscriptions from './pages/Subscriptions'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
-// Advisor feature disabled — re-enable when ready
-// import AdvisorApply from './pages/AdvisorApply'
-// import AdvisorDashboard from './pages/AdvisorDashboard'
-// import AdvisorDirectory from './pages/AdvisorDirectory'
-// import AdminAdvisors from './pages/AdminAdvisors'
+import WalletSelect from './pages/WalletSelect'
+import CreateWallet from './pages/CreateWallet'
+import FamilyOverview from './pages/FamilyOverview'
+import WalletGuard from './components/WalletGuard'
 
 function NetWorthGuarded() {
   const { key } = useLocation()
@@ -73,43 +73,48 @@ function App() {
 
   return (
     <BrowserRouter>
-      <RouteTitle />
-      <ScrollToTop />
-      <Routes>
-        <Route path="/"                      element={<Landing />} />
-        <Route path="/login"                 element={<Login />} />
-        <Route path="/register"              element={<Register />} />
-        <Route path="/verify-email"          element={<VerifyEmail />} />
-        <Route path="/forgot-password"       element={<ForgotPassword />} />
-        <Route path="/account-type"          element={<AccountType />} />
-        <Route path="/terms"                 element={<Terms />} />
-        <Route path="/privacy"               element={<Privacy />} />
+      <WalletProvider>
+        <RouteTitle />
+        <ScrollToTop />
+        <Routes>
+          <Route path="/"                      element={<Landing />} />
+          <Route path="/login"                 element={<Login />} />
+          <Route path="/register"              element={<Register />} />
+          <Route path="/verify-email"          element={<VerifyEmail />} />
+          <Route path="/forgot-password"       element={<ForgotPassword />} />
+          <Route path="/account-type"          element={<AccountType />} />
+          <Route path="/terms"                 element={<Terms />} />
+          <Route path="/privacy"               element={<Privacy />} />
 
-        {/* Personal */}
-        <Route path="/dashboard"             element={<Dashboard />} />
-        <Route path="/profile"               element={<Profile />} />
-        <Route path="/budgets"               element={<Budgets />} />
-        <Route path="/goals"                 element={<Goals />} />
-        <Route path="/savings"               element={<Navigate to="/goals" replace />} />
-        <Route path="/debts"                 element={<Navigate to="/goals" replace />} />
-        <Route path="/subscriptions"          element={<Subscriptions />} />
-        <Route path="/reports"               element={<Reports />} />
-        <Route path="/insights"              element={<Navigate to="/reports" replace />} />
-        <Route path="/wellness"              element={<Wellness />} />
-        <Route path="/transactions"          element={<Transactions />} />
-        <Route path="/net-worth"             element={<NetWorthGuarded />} />
-        <Route path="/quick-add"             element={<QuickAdd />} />
+          {/* Wallet selection (no wallet guard needed) */}
+          <Route path="/wallets"               element={<WalletSelect />} />
+          <Route path="/create-wallet"         element={<CreateWallet />} />
 
-        <Route path="/business"              element={<Navigate to="/dashboard" replace />} />
-        <Route path="/business/*"            element={<Navigate to="/dashboard" replace />} />
-        <Route path="/alerts"                element={<Navigate to="/budgets" replace />} />
+          {/* Wallet-guarded pages */}
+          <Route path="/dashboard"             element={<WalletGuard><Dashboard /></WalletGuard>} />
+          <Route path="/profile"               element={<WalletGuard><Profile /></WalletGuard>} />
+          <Route path="/budgets"               element={<WalletGuard><Budgets /></WalletGuard>} />
+          <Route path="/goals"                 element={<WalletGuard><Goals /></WalletGuard>} />
+          <Route path="/savings"               element={<Navigate to="/goals" replace />} />
+          <Route path="/debts"                 element={<Navigate to="/goals" replace />} />
+          <Route path="/subscriptions"         element={<WalletGuard><Subscriptions /></WalletGuard>} />
+          <Route path="/reports"               element={<WalletGuard><Reports /></WalletGuard>} />
+          <Route path="/insights"              element={<Navigate to="/reports" replace />} />
+          <Route path="/wellness"              element={<WalletGuard><Wellness /></WalletGuard>} />
+          <Route path="/transactions"          element={<WalletGuard><Transactions /></WalletGuard>} />
+          <Route path="/net-worth"             element={<WalletGuard><NetWorthGuarded /></WalletGuard>} />
+          <Route path="/quick-add"             element={<WalletGuard><QuickAdd /></WalletGuard>} />
+          <Route path="/family"                element={<WalletGuard><FamilyOverview /></WalletGuard>} />
 
-        {/* Advisor — disabled, redirect to dashboard */}
-        <Route path="/advisor/apply"         element={<Navigate to="/dashboard" replace />} />
-        <Route path="/advisor/dashboard"     element={<Navigate to="/dashboard" replace />} />
-        <Route path="/advisors"              element={<Navigate to="/dashboard" replace />} />
-        <Route path="/admin/advisors"        element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+          <Route path="/business"              element={<Navigate to="/dashboard" replace />} />
+          <Route path="/business/*"            element={<Navigate to="/dashboard" replace />} />
+          <Route path="/alerts"                element={<Navigate to="/budgets" replace />} />
+          <Route path="/advisor/apply"         element={<Navigate to="/dashboard" replace />} />
+          <Route path="/advisor/dashboard"     element={<Navigate to="/dashboard" replace />} />
+          <Route path="/advisors"              element={<Navigate to="/dashboard" replace />} />
+          <Route path="/admin/advisors"        element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </WalletProvider>
     </BrowserRouter>
   )
 }
