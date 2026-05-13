@@ -258,6 +258,122 @@ function TransactionsTab({ expenses, income, sym }) {
 }
 
 const PIE_COLORS = ['#7C3AED','#2563EB','#059669','#D97706','#DC2626','#DB2777','#0891B2','#65A30D','#7C3AED','#EA580C']
+const EXPENSE_CATS = ['Food','Coffee','Transport','Shopping','Entertainment','Health','Fitness','Education','Bills','Travel','Gifts','Subscriptions','Other']
+const INCOME_SOURCES = ['Salary','Freelance','Business','Investment','Rental','Other']
+
+// ── Add Transaction Modal ─────────────────────────────────────────────────────
+function AddModal({ walletId, token, hex, sym, onClose, onSaved }) {
+  const [type, setType]             = useState('expense')
+  const [amount, setAmount]         = useState('')
+  const [category, setCategory]     = useState('Food')
+  const [source, setSource]         = useState('Salary')
+  const [description, setDescription] = useState('')
+  const [date, setDate]             = useState(new Date().toISOString().slice(0, 10))
+  const [saving, setSaving]         = useState(false)
+  const [err, setErr]               = useState('')
+
+  const now = new Date()
+
+  async function handleSave() {
+    if (!amount || parseFloat(amount) <= 0) { setErr('Enter a valid amount'); return }
+    setSaving(true); setErr('')
+    try {
+      const h = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      if (type === 'expense') {
+        const r = await fetch(`${BASE}/wallets/${walletId}/expenses`, {
+          method: 'POST', headers: h,
+          body: JSON.stringify({ amount: parseFloat(amount), category, description, date }),
+        })
+        if (!r.ok) throw new Error()
+      } else {
+        const r = await fetch(`${BASE}/wallets/${walletId}/income`, {
+          method: 'POST', headers: h,
+          body: JSON.stringify({ amount: parseFloat(amount), source, description, month: now.getMonth() + 1, year: now.getFullYear() }),
+        })
+        if (!r.ok) throw new Error()
+      }
+      onSaved()
+    } catch { setErr('Failed to save — try again') }
+    finally   { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-900 w-full max-w-md rounded-t-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full"/>
+        </div>
+        <div className="px-5 pt-2 pb-10">
+          {/* Type toggle */}
+          <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-5">
+            {[['expense','💸 Expense'],['income','💰 Income']].map(([k,l]) => (
+              <button key={k} onClick={() => setType(k)}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition ${type===k ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+
+          {/* Amount */}
+          <div className="mb-4">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Amount</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-gray-300 pointer-events-none">{sym}</span>
+              <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
+                placeholder="0.00" min="0" step="0.01" autoFocus
+                className="w-full pl-10 pr-4 py-3.5 text-2xl font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 focus:outline-none focus:border-transparent focus:ring-2 tabular-nums"
+                style={{ '--tw-ring-color': hex + '80' }} />
+            </div>
+          </div>
+
+          {/* Category / Source */}
+          <div className="mb-4">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
+              {type === 'expense' ? 'Category' : 'Source'}
+            </label>
+            <select value={type === 'expense' ? category : source}
+              onChange={e => type === 'expense' ? setCategory(e.target.value) : setSource(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2"
+              style={{ '--tw-ring-color': hex + '80' }}>
+              {(type === 'expense' ? EXPENSE_CATS : INCOME_SOURCES).map(o => (
+                <option key={o} value={o}>{CAT_ICONS[o] || '📦'} {o}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Description */}
+          <div className="mb-4">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
+              Description <span className="text-gray-300 dark:text-gray-600 normal-case font-normal">(optional)</span>
+            </label>
+            <input type="text" value={description} onChange={e => setDescription(e.target.value)}
+              placeholder="Add a note…"
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2"
+              style={{ '--tw-ring-color': hex + '80' }} />
+          </div>
+
+          {/* Date (expense only) */}
+          {type === 'expense' && (
+            <div className="mb-5">
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Date</label>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2"
+                style={{ '--tw-ring-color': hex + '80' }} />
+            </div>
+          )}
+
+          {err && <p className="text-red-500 dark:text-red-400 text-sm mb-3">{err}</p>}
+
+          <button onClick={handleSave} disabled={saving}
+            className="w-full py-4 rounded-2xl text-white font-bold text-base transition active:scale-95 disabled:opacity-60"
+            style={{ background: `linear-gradient(135deg, ${hex}dd, ${hex})` }}>
+            {saving ? 'Saving…' : `Add ${type === 'expense' ? 'Expense' : 'Income'}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Reports Tab ───────────────────────────────────────────────────────────────
 function ReportsTab({ summary, expenses, sym, hex }) {
@@ -569,6 +685,8 @@ export default function WalletApp() {
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState('')
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [showAdd, setShowAdd]   = useState(false)
+  const [refresh, setRefresh]   = useState(0)
 
   useEffect(() => {
     if (!token) { navigate('/login'); return }
@@ -597,7 +715,7 @@ export default function WalletApp() {
       })
       .catch(() => setError('Could not connect to server — check your connection'))
       .finally(() => setLoading(false))
-  }, [id, token, navigate])
+  }, [id, token, navigate, refresh])
 
   const activeTabStyle = { color: color.hex, borderColor: color.hex }
 
@@ -684,13 +802,39 @@ export default function WalletApp() {
         )}
 
         {!loading && !summary && !error && (
-          <div className="text-center py-24 text-gray-400">
+          <div className="text-center py-20 text-gray-400">
             <p className="text-5xl mb-4">💼</p>
             <p className="font-semibold text-gray-600 dark:text-gray-300 text-lg">No data yet</p>
-            <p className="text-sm mt-2">Start adding income and expenses to this wallet.</p>
+            <p className="text-sm mt-2 mb-6">Tap + to add your first transaction to this wallet.</p>
+            <button onClick={() => setShowAdd(true)}
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-white font-semibold text-sm transition active:scale-95"
+              style={{ background: `linear-gradient(135deg, ${color.hex}cc, ${color.hex})` }}>
+              <span className="text-lg">+</span> Add Transaction
+            </button>
           </div>
         )}
       </main>
+
+      {/* ── FAB ── */}
+      {!loading && (
+        <button onClick={() => setShowAdd(true)}
+          className="fixed bottom-6 right-5 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white text-3xl font-light transition active:scale-95 z-20"
+          style={{ background: `linear-gradient(135deg, ${color.hex}cc, ${color.hex})`, boxShadow: `0 8px 30px ${color.hex}55` }}>
+          +
+        </button>
+      )}
+
+      {/* ── Add Modal ── */}
+      {showAdd && (
+        <AddModal
+          walletId={id}
+          token={token}
+          hex={color.hex}
+          sym={sym}
+          onClose={() => setShowAdd(false)}
+          onSaved={() => { setShowAdd(false); setRefresh(r => r + 1) }}
+        />
+      )}
     </div>
   )
 }
