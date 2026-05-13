@@ -4,14 +4,6 @@ import { useWallet } from '../context/WalletContext'
 import { verifyWalletPin } from '../utils/walletSession'
 import { getAvatarUrl, getWalletColor } from '../data/avatars'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function greeting() {
-  const h = new Date().getHours()
-  if (h < 12) return 'Good morning'
-  if (h < 17) return 'Good afternoon'
-  return 'Good evening'
-}
-
 // ── PIN numpad overlay ────────────────────────────────────────────────────────
 function PinPad({ wallet, onSuccess, onClose }) {
   const [digits, setDigits]   = useState([])
@@ -220,7 +212,6 @@ export default function WalletSelect() {
 
   const personalWallets = wallets.filter(w => !w.is_total_wallet)
   const familyWallet    = wallets.find(w => w.is_total_wallet)
-  const firstName       = user?.name?.split(' ')[0] || 'there'
 
   if (!token) return null
 
@@ -257,22 +248,13 @@ export default function WalletSelect() {
       {/* ── CONTENT ── */}
       <div className="flex-1 flex flex-col max-w-md mx-auto w-full px-4 py-5 gap-5">
 
-        {/* Greeting banner */}
-        {!loading && (
-          <div className="bg-linear-to-br from-violet-600 via-violet-600 to-purple-700 rounded-3xl p-5 relative overflow-hidden shadow-lg shadow-violet-200/50 dark:shadow-violet-900/30">
-            <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-white/8 pointer-events-none" />
-            <div className="absolute -bottom-4 -left-4 w-24 h-24 rounded-full bg-white/6 pointer-events-none" />
-            <div className="relative">
-              <p className="text-white/65 text-sm">{greeting()},</p>
-              <p className="text-white font-black text-2xl mt-0.5 tracking-tight">{firstName} 👋</p>
-              <p className="text-white/55 text-sm mt-2 leading-snug">
-                {wallets.length > 0
-                  ? `${personalWallets.length} wallet${personalWallets.length !== 1 ? 's' : ''} · Select one to continue`
-                  : 'Create your first wallet to get started'}
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Page heading */}
+        <div className="pt-1 pb-1">
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Choose a Wallet</h1>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+            {wallets.length > 0 ? 'Select a wallet to continue' : 'Create your first wallet to get started'}
+          </p>
+        </div>
 
         {/* Loading */}
         {loading && (
