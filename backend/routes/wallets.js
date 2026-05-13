@@ -52,8 +52,8 @@ router.get('/', auth, async (req, res) => {
   try {
     const r = await pool.query(SELECT_WALLETS, [req.userId])
     const rows = r.rows
-    const hasTotal    = rows.some(w => w.is_total_wallet === true)
-    const hasPersonal = rows.some(w => w.is_total_wallet !== true)
+    const hasTotal    = rows.some(w => !!w.is_total_wallet)
+    const hasPersonal = rows.some(w => !w.is_total_wallet)
 
     // Auto-create the total wallet for accounts that pre-date the feature
     if (hasPersonal && !hasTotal) {
@@ -83,7 +83,7 @@ router.post('/', auth, async (req, res) => {
 
     // Count existing personal wallets (IS NOT TRUE handles NULL columns too)
     const countR = await pool.query(
-      'SELECT COUNT(*) FROM wallets WHERE user_id=$1 AND is_active=TRUE AND is_total_wallet IS NOT TRUE',
+      'SELECT COUNT(*) FROM wallets WHERE user_id=$1 AND is_active=TRUE AND (is_total_wallet IS NULL OR is_total_wallet = FALSE)',
       [req.userId]
     )
     if (parseInt(countR.rows[0].count) >= 10) {
@@ -96,7 +96,7 @@ router.post('/', auth, async (req, res) => {
     const r = await pool.query(
       `INSERT INTO wallets (user_id, name, pin, color, avatar_type, avatar_value, avatar_photo, is_total_wallet, display_order)
        VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE,
-         (SELECT COALESCE(MAX(display_order),0)+1 FROM wallets WHERE user_id=$1 AND is_total_wallet IS NOT TRUE))
+         (SELECT COALESCE(MAX(display_order),0)+1 FROM wallets WHERE user_id=$1 AND (is_total_wallet IS NULL OR is_total_wallet = FALSE)))
        RETURNING id, user_id, name, color, avatar_type, avatar_value, avatar_photo, is_total_wallet, display_order, created_at`,
       [req.userId, name.trim(), pinHash, color || 'violet', avatar_type || 'dicebear', avatar_value || 'spendly1', avatar_photo || null]
     )
@@ -170,7 +170,7 @@ router.post('/verify-family-pin', auth, async (req, res) => {
 
     // IS NOT TRUE matches both FALSE and NULL — critical for legacy rows
     const personalR = await pool.query(
-      'SELECT pin FROM wallets WHERE user_id=$1 AND is_active=TRUE AND is_total_wallet IS NOT TRUE',
+      'SELECT pin FROM wallets WHERE user_id=$1 AND is_active=TRUE AND (is_total_wallet IS NULL OR is_total_wallet = FALSE)',
       [req.userId]
     )
     if (personalR.rows.length === 0)
@@ -239,7 +239,7 @@ router.get('/total/summary', auth, async (req, res) => {
     const year = now.getFullYear()
 
     const walletsR = await pool.query(
-      'SELECT id FROM wallets WHERE user_id=$1 AND is_active=TRUE AND is_total_wallet IS NOT TRUE',
+      'SELECT id FROM wallets WHERE user_id=$1 AND is_active=TRUE AND (is_total_wallet IS NULL OR is_total_wallet = FALSE)',
       [req.userId]
     )
     const walletIds = walletsR.rows.map(w => w.id)
@@ -308,7 +308,7 @@ router.get('/total/summary', auth, async (req, res) => {
 router.get('/total/transactions', auth, async (req, res) => {
   try {
     const walletsR = await pool.query(
-      'SELECT id FROM wallets WHERE user_id=$1 AND is_active=TRUE AND is_total_wallet IS NOT TRUE',
+      'SELECT id FROM wallets WHERE user_id=$1 AND is_active=TRUE AND (is_total_wallet IS NULL OR is_total_wallet = FALSE)',
       [req.userId]
     )
     const walletIds = walletsR.rows.map(w => w.id)
@@ -370,9 +370,9 @@ router.post('/:id/verify-pin', auth, async (req, res) => {
     if (!r.rows[0]) return res.status(404).json({ message: 'Wallet not found' })
 
     // Total wallet: accept any personal wallet's PIN (IS NOT TRUE handles NULL legacy rows)
-    if (r.rows[0].is_total_wallet === true) {
+    if (r.rows[0].is_total_wallet) {
       const personalR = await pool.query(
-        'SELECT pin FROM wallets WHERE user_id=$1 AND is_active=TRUE AND is_total_wallet IS NOT TRUE',
+        'SELECT pin FROM wallets WHERE user_id=$1 AND is_active=TRUE AND (is_total_wallet IS NULL OR is_total_wallet = FALSE)',
         [req.userId]
       )
       let matched = false
@@ -446,7 +446,7 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const r = await pool.query('SELECT is_total_wallet FROM wallets WHERE id=$1 AND user_id=$2', [req.params.id, req.userId])
     if (!r.rows[0]) return res.status(404).json({ message: 'Wallet not found' })
-    if (r.rows[0].is_total_wallet === true) return res.status(403).json({ message: 'Cannot delete the family wallet' })
+    if (r.rows[0].is_total_wallet) return res.status(403).json({ message: 'Cannot delete the family wallet' })
 
     await pool.query('UPDATE wallets SET is_active=FALSE, updated_at=NOW() WHERE id=$1 AND user_id=$2', [req.params.id, req.userId])
     res.json({ success: true })

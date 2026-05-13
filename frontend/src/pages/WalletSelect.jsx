@@ -243,11 +243,11 @@ export default function WalletSelect() {
   }
 
   function handleFamilyClick() {
-    const existing = wallets.find(w => w.is_total_wallet === true)
+    const existing = wallets.find(w => !!w.is_total_wallet)
     setPinTarget(existing || FAMILY_STUB)
   }
 
-  const personalWallets = wallets.filter(w => w.is_total_wallet !== true)
+  const personalWallets = wallets.filter(w => !w.is_total_wallet)
 
   if (!token) return null
 
