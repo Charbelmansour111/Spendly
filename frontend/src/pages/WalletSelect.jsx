@@ -31,7 +31,7 @@ const IconSun = () => (
 )
 
 // ── PIN numpad overlay ────────────────────────────────────────────────────────
-function PinPad({ wallet, onSuccess, onClose }) {
+function PinPad({ wallet, personalWallets = [], onSuccess, onClose }) {
   const [digits, setDigits] = useState([])
   const [error, setError]   = useState('')
   const [locked, setLocked] = useState(false)
@@ -40,7 +40,42 @@ function PinPad({ wallet, onSuccess, onClose }) {
 
   const token = localStorage.getItem('token')
   const color = getWalletColor(wallet.color)
-  const isFamily = wallet.is_total_wallet
+  const isFamily = !!wallet.is_total_wallet
+
+  // Try verify-family-pin endpoint; fall back to looping personal wallets
+  // with the existing verify-pin endpoint (works with any backend version).
+  async function verifyFamilyPin(pin) {
+    // Primary: dedicated endpoint (new backend)
+    try {
+      const res = await fetch(`${BASE}/wallets/verify-family-pin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ pin }),
+      })
+      // Only trust this path when endpoint actually exists (not a 404/HTML error)
+      if (res.status !== 404 && res.headers.get('content-type')?.includes('application/json')) {
+        const data = await res.json()
+        return { ok: res.ok, resolvedWallet: data.wallet || null, ...data }
+      }
+    } catch (_) { /* fall through */ }
+
+    // Fallback: loop each personal wallet using the always-available verify-pin endpoint
+    if (personalWallets.length === 0) {
+      return { ok: false, message: 'No wallets found to verify against' }
+    }
+    let lastErr = { ok: false, message: 'Incorrect PIN' }
+    for (const pw of personalWallets) {
+      try {
+        const r = await verifyWalletPin(pw.id, pin, token)
+        if (r.ok) return { ok: true, resolvedWallet: null }
+        if (r.locked) return { ok: false, locked: true, message: r.message }
+        lastErr = { ok: false, attemptsLeft: r.attemptsLeft, message: r.message }
+      } catch (_) {
+        lastErr = { ok: false, message: 'Network error — check your connection' }
+      }
+    }
+    return lastErr
+  }
 
   async function handleDigit(d) {
     if (locked || loading || digits.length >= 6) return
@@ -51,18 +86,8 @@ function PinPad({ wallet, onSuccess, onClose }) {
     if (next.length === 4) {
       setLoading(true)
       let result
-      if (wallet.id === '__family__') {
-        try {
-          const res = await fetch(`${BASE}/wallets/verify-family-pin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ pin: next.join('') }),
-          })
-          const data = await res.json()
-          result = { ok: res.ok, resolvedWallet: data.wallet, ...data }
-        } catch (_) {
-          result = { ok: false, message: 'Network error — try again' }
-        }
+      if (isFamily) {
+        result = await verifyFamilyPin(next.join(''))
       } else {
         result = await verifyWalletPin(wallet.id, next.join(''), token)
       }
@@ -78,8 +103,8 @@ function PinPad({ wallet, onSuccess, onClose }) {
           setError(result.message || 'Too many attempts. Try again later.')
         } else {
           setError(result.attemptsLeft != null
-            ? `Wrong PIN — ${result.attemptsLeft} attempt${result.attemptsLeft !== 1 ? 's' : ''} left`
-            : isFamily ? 'Try any of your wallet PINs' : 'Incorrect PIN')
+            ? `Incorrect PIN — ${result.attemptsLeft} attempt${result.attemptsLeft !== 1 ? 's' : ''} left`
+            : isFamily ? 'Incorrect PIN — try any wallet PIN' : 'Incorrect PIN')
         }
       }
     }
@@ -418,7 +443,12 @@ export default function WalletSelect() {
 
       {/* PIN overlay */}
       {pinTarget && (
-        <PinPad wallet={pinTarget} onSuccess={handlePinSuccess} onClose={() => setPinTarget(null)} />
+        <PinPad
+          wallet={pinTarget}
+          personalWallets={personalWallets}
+          onSuccess={handlePinSuccess}
+          onClose={() => setPinTarget(null)}
+        />
       )}
     </div>
   )
