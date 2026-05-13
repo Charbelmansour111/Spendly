@@ -7,10 +7,56 @@ const CATEGORIES = ['Food', 'Coffee', 'Transport', 'Shopping', 'Entertainment', 
 const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦' }
 const PERIODS = [{ value: 'monthly', label: 'Monthly' }, { value: 'weekly', label: 'Weekly' }, { value: 'daily', label: 'Daily' }]
 
+const haptic = (ms = 10) => navigator.vibrate?.(ms)
+
+function SwipeRow({ onDelete, children }) {
+  const [swiped, setSwiped] = useState(false)
+  const [startX, setStartX] = useState(null)
+  const [liveOffset, setLiveOffset] = useState(0)
+  const REVEAL = 76
+  const THRESHOLD = 60
+
+  const onTouchStart = e => setStartX(e.touches[0].clientX)
+  const onTouchMove = e => {
+    if (startX === null) return
+    const d = startX - e.touches[0].clientX
+    if (d > 0) setLiveOffset(Math.min(d, REVEAL + 20))
+    else if (d < -20 && swiped) { setSwiped(false); setLiveOffset(0) }
+  }
+  const onTouchEnd = () => {
+    if (liveOffset >= THRESHOLD) { haptic(12); setSwiped(true); setLiveOffset(REVEAL) }
+    else { setSwiped(false); setLiveOffset(0) }
+    setStartX(null)
+  }
+  const handleConfirmDelete = () => { haptic(20); setSwiped(false); setLiveOffset(0); onDelete() }
+  const handleSnapBack = () => { setSwiped(false); setLiveOffset(0) }
+  const displayOffset = swiped ? REVEAL : liveOffset
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl">
+      <div className="absolute inset-y-0 right-0 flex items-stretch" style={{ width: REVEAL, opacity: displayOffset > 4 ? 1 : 0 }}>
+        <button onClick={handleConfirmDelete}
+          className="flex-1 bg-red-500 active:bg-red-600 flex flex-col items-center justify-center gap-0.5 transition-colors rounded-r-2xl">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+          </svg>
+          <span className="text-[9px] text-white font-bold tracking-wide">Delete</span>
+        </button>
+      </div>
+      <div
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onClick={swiped ? handleSnapBack : undefined}
+        style={{ transform: `translateX(-${displayOffset}px)`, transition: startX === null ? 'transform 0.22s ease' : 'none' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
   return (
-    <div className={`fixed top-6 right-4 left-4 md:left-auto md:right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${
+    <div className={`fixed top-16 md:top-6 right-4 left-4 md:left-auto md:right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${
       type === 'error' ? 'bg-red-500' : 'bg-green-500'
     }`}>
       <span className="flex-1 min-w-0">{message}</span>
@@ -239,6 +285,13 @@ export default function Budgets() {
       showToast('🎯 Budget set!')
     } catch { showToast('Error saving budget', 'error') }
     finally { setSaving(false) }
+  }
+
+  const handleDeleteNoConfirm = async (id) => {
+    try {
+      await API.delete(`/budgets/${id}`)
+      fetchAll(); showToast('Budget removed')
+    } catch { showToast('Error deleting', 'error') }
   }
 
   const handleDelete = async (id) => {
@@ -618,7 +671,8 @@ export default function Budgets() {
               const lastMonthRollover = lastMonthSpent !== null ? b.limit - lastMonthSpent : null
 
               return (
-                <div key={b.id} className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border-l-4 ${
+                <SwipeRow key={b.id} onDelete={() => handleDeleteNoConfirm(b.id)}>
+                <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border-l-4 ${
                   isOver ? 'border-red-500' : isWarning ? 'border-orange-400' : 'border-green-500'
                 }`}>
                   <div className="flex items-start gap-3 mb-3 min-w-0">
@@ -644,7 +698,7 @@ export default function Budgets() {
                         }`}>{b.period}</span>
                       </p>
                     </div>
-                    <button onClick={() => handleDelete(b.id)} className="shrink-0 text-gray-300 hover:text-red-400 transition p-1">
+                    <button onClick={() => handleDelete(b.id)} className="hidden md:block shrink-0 text-gray-300 hover:text-red-400 transition p-1">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
                       </svg>
@@ -705,6 +759,7 @@ export default function Budgets() {
                     </div>
                   )}
                 </div>
+                </SwipeRow>
               )
             })}
           </div>

@@ -184,6 +184,33 @@ router.get('/total/summary', auth, async (req, res) => {
   }
 })
 
+// ── GET /api/wallets/total/transactions ──────────────────────────────────────
+router.get('/total/transactions', auth, async (req, res) => {
+  try {
+    const walletsR = await pool.query(
+      "SELECT id FROM wallets WHERE user_id=$1 AND is_active=TRUE AND is_total_wallet=FALSE",
+      [req.userId]
+    )
+    const walletIds = walletsR.rows.map(w => w.id)
+    if (walletIds.length === 0) return res.json([])
+
+    const r = await pool.query(
+      `SELECT we.id, we.wallet_id, w.name AS wallet_name, w.color AS wallet_color,
+              we.amount, we.category, we.description, we.date
+       FROM wallet_expenses we
+       JOIN wallets w ON we.wallet_id = w.id
+       WHERE we.user_id=$1 AND we.wallet_id = ANY($2)
+       ORDER BY we.date DESC, we.created_at DESC
+       LIMIT 30`,
+      [req.userId, walletIds]
+    )
+    res.json(r.rows)
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
 // ── PUT /api/wallets/:id ─────────────────────────────────────────────────────
 router.put('/:id', auth, async (req, res) => {
   try {

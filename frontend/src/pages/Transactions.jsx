@@ -39,7 +39,7 @@ function dayLabel(dateStr) {
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t) }, [onClose])
   return (
-    <div className={`fixed top-6 right-4 left-4 md:left-auto md:right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
+    <div className={`fixed top-16 md:top-6 right-4 left-4 md:left-auto md:right-6 z-50 px-5 py-4 rounded-2xl shadow-lg text-white text-sm font-semibold flex items-center gap-3 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
       <span className="flex-1 min-w-0 truncate">{message}</span>
       <button onClick={onClose} className="hover:opacity-70 shrink-0">✕</button>
     </div>
@@ -499,7 +499,6 @@ export default function Transactions() {
 
   // Filters
   const [search, setSearch]       = useState('')
-  const [showSearch, setShowSearch] = useState(false)
   const [catFilter, setCat]       = useState('All')
   const [sortBy, setSort]         = useState('newest')
   const [dateFrom, setDateFrom]   = useState('')
@@ -971,31 +970,19 @@ const onTabSwipeStart = (e) => {
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-4">
       {/* Compact toolbar row */}
       <div className="flex items-center gap-2 px-3 py-3">
-        {/* Search toggle */}
-        <button
-          onClick={() => { setShowSearch(v => { if (v) { setSearch(''); } return !v }); }}
-          className={`w-9 h-9 flex items-center justify-center rounded-xl border transition shrink-0
-            ${showSearch || search ? 'bg-violet-600 border-violet-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-violet-400'}`}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        </button>
-
-        {/* Animated search input */}
-        <div className={`flex-1 overflow-hidden transition-all duration-200 ${showSearch ? 'max-w-full opacity-100' : 'max-w-0 opacity-0 pointer-events-none'}`}>
-          <div className="relative">
-            <input
-              type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search transactions…" autoFocus={showSearch}
-              className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 text-gray-900 dark:text-white pr-8" />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            )}
-          </div>
+        {/* Search — always visible */}
+        <div className="flex-1 relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input
+            type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search transactions…"
+            className="w-full pl-8 pr-7 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 text-gray-900 dark:text-white transition" />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          )}
         </div>
-
-        {/* Spacer when search hidden */}
-        {!showSearch && <div className="flex-1" />}
 
         {/* Filter button */}
         <button onClick={() => setShowFilters(v => !v)}
