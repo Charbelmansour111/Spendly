@@ -252,30 +252,49 @@ export default function WalletSelect() {
           </div>
         )}
 
-        {/* FAMILY OVERVIEW — always on top if it exists */}
+        {/* FAMILY TOTAL — hero card always on top */}
         {!loading && familyWallet && (
           <div>
-            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2.5">Family Overview</p>
+            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Family Total</p>
             <button
               onClick={() => setPinTarget(familyWallet)}
-              className="w-full text-left rounded-2xl overflow-hidden border-2 border-purple-200 dark:border-purple-800/60 shadow-sm hover:shadow-md hover:border-purple-400 dark:hover:border-purple-600 transition-all duration-200 hover:-translate-y-0.5 bg-white dark:bg-gray-800"
+              className="w-full text-left rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-1 active:scale-[0.98]"
             >
-              <div className="h-1.5 w-full bg-linear-to-r from-purple-500 to-violet-600" />
-              <div className="p-4 flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center text-2xl shrink-0 ring-2 ring-purple-200 dark:ring-purple-800">
-                  👨‍👩‍👧‍👦
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-900 dark:text-white">Family Overview</p>
-                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">
-                    {personalWallets.length} wallet{personalWallets.length !== 1 ? 's' : ''} · Combined view
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span className="text-xs font-semibold px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full">
-                    Overview
+              <div className="bg-linear-to-br from-violet-600 via-purple-600 to-indigo-700 p-6 relative overflow-hidden">
+                {/* decorative circles */}
+                <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white/8 pointer-events-none" />
+                <div className="absolute -bottom-6 -left-4 w-28 h-28 rounded-full bg-white/6 pointer-events-none" />
+
+                {/* top row */}
+                <div className="relative flex items-start justify-between mb-5">
+                  <div className="w-16 h-16 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-3xl ring-2 ring-white/25 shrink-0">
+                    👨‍👩‍👧‍👦
+                  </div>
+                  <span className="text-[11px] font-bold bg-white/20 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shrink-0">
+                    🔒 PIN protected
                   </span>
-                  <span className="text-[10px] text-gray-400 flex items-center gap-1">🔒 PIN protected</span>
+                </div>
+
+                {/* name + count */}
+                <div className="relative">
+                  <p className="text-white font-black text-xl tracking-tight">Family Overview</p>
+                  <p className="text-white/60 text-sm mt-0.5">
+                    {personalWallets.length} wallet{personalWallets.length !== 1 ? 's' : ''} · All combined
+                  </p>
+
+                  {/* feature chips */}
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {[
+                      { icon: '📊', label: 'Dashboard' },
+                      { icon: '💸', label: 'Transactions' },
+                      { icon: '📈', label: 'Net Worth' },
+                      { icon: '📋', label: 'Report' },
+                    ].map(f => (
+                      <span key={f.label} className="flex items-center gap-1 text-[11px] font-semibold bg-white/15 text-white/90 px-2.5 py-1 rounded-full border border-white/20">
+                        {f.icon} {f.label}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </button>
