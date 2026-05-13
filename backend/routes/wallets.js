@@ -122,6 +122,48 @@ router.post('/', auth, async (req, res) => {
   }
 })
 
+// ── GET /api/wallets/total — get-or-create total wallet ──────────────────────
+router.get('/total', auth, async (req, res) => {
+  try {
+    const COLS = `id, user_id, name, color, avatar_type, avatar_value, avatar_photo,
+                  is_total_wallet, display_order, wallet_email, created_at`
+
+    // 1. Try to find existing active total wallet
+    let r = await pool.query(
+      `SELECT ${COLS} FROM wallets WHERE user_id=$1 AND is_active=TRUE AND is_total_wallet=TRUE`,
+      [req.userId]
+    )
+    if (r.rows.length > 0) return res.json(r.rows[0])
+
+    // 2. Reactivate a soft-deleted one if present
+    const dead = await pool.query(
+      'SELECT id FROM wallets WHERE user_id=$1 AND is_total_wallet=TRUE AND is_active=FALSE',
+      [req.userId]
+    )
+    if (dead.rows.length > 0) {
+      const reactivated = await pool.query(
+        `UPDATE wallets SET is_active=TRUE, updated_at=NOW() WHERE id=$1
+         RETURNING ${COLS}`,
+        [dead.rows[0].id]
+      )
+      return res.json(reactivated.rows[0])
+    }
+
+    // 3. Create brand new total wallet
+    const dummyPin = await bcrypt.hash('spendly-family-total', 10)
+    const ins = await pool.query(
+      `INSERT INTO wallets (user_id, name, pin, color, avatar_type, avatar_value, is_total_wallet, display_order)
+       VALUES ($1,'Family Overview',$2,'purple','dicebear','family',TRUE,999)
+       RETURNING ${COLS}`,
+      [req.userId, dummyPin]
+    )
+    res.status(201).json(ins.rows[0])
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
 // ── GET /api/wallets/total/summary ───────────────────────────────────────────
 router.get('/total/summary', auth, async (req, res) => {
   try {

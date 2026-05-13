@@ -187,11 +187,13 @@ export default function WalletSelect() {
   const navigate  = useNavigate()
   const location  = useLocation()
   const { wallets, loading, refreshWallets, activateWallet } = useWallet()
-  const [pinTarget, setPinTarget] = useState(null)
+  const [pinTarget,   setPinTarget]   = useState(null)
+  const [resolving,   setResolving]   = useState(false)
 
   const token = localStorage.getItem('token')
   const user  = JSON.parse(localStorage.getItem('user') || '{}')
   const from  = location.state?.from?.pathname || '/dashboard'
+  const BASE  = 'https://spendly-backend-et20.onrender.com/api'
 
   useEffect(() => {
     if (!token) { navigate('/login', { replace: true }); return }
@@ -208,6 +210,25 @@ export default function WalletSelect() {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     navigate('/login')
+  }
+
+  // Open the family total card — fetch/create total wallet if not yet in state
+  async function handleFamilyClick() {
+    const existing = wallets.find(w => w.is_total_wallet)
+    if (existing) { setPinTarget(existing); return }
+    setResolving(true)
+    try {
+      const res  = await fetch(`${BASE}/wallets/total`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (res.ok) {
+        await refreshWallets()
+        setPinTarget(data)
+      }
+    } catch (_) { /* ignore */ } finally {
+      setResolving(false)
+    }
   }
 
   const personalWallets = wallets.filter(w => !w.is_total_wallet)
@@ -264,15 +285,16 @@ export default function WalletSelect() {
           </div>
         )}
 
-        {/* ── FAMILY TOTAL ── always on top */}
-        {!loading && familyWallet && (
+        {/* ── FAMILY TOTAL ── always on top when personal wallets exist */}
+        {!loading && personalWallets.length > 0 && (
           <div>
             <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2.5 px-0.5">
               Family Total
             </p>
             <button
-              onClick={() => setPinTarget(familyWallet)}
-              className="w-full text-left rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-200 hover:-translate-y-1 active:scale-[0.98]"
+              onClick={handleFamilyClick}
+              disabled={resolving}
+              className="w-full text-left rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-200 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-70"
             >
               <div className="bg-linear-to-br from-violet-600 via-purple-600 to-indigo-700 p-6 relative overflow-hidden">
                 {/* Decorative circles */}
@@ -284,9 +306,12 @@ export default function WalletSelect() {
                   <div className="w-16 h-16 rounded-2xl bg-white/15 flex items-center justify-center text-3xl ring-2 ring-white/25 shrink-0">
                     👨‍👩‍👧‍👦
                   </div>
-                  <span className="text-[11px] font-bold bg-white/20 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shrink-0">
-                    🔒 Any wallet PIN
-                  </span>
+                  {resolving
+                    ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
+                    : <span className="text-[11px] font-bold bg-white/20 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shrink-0">
+                        🔒 Any wallet PIN
+                      </span>
+                  }
                 </div>
 
                 {/* Title + wallet count */}
