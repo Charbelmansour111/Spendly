@@ -3,6 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useWallet } from '../context/WalletContext'
 import { getAvatarUrl, getWalletColor } from '../data/avatars'
+import {
+  ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RTooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
+} from 'recharts'
 
 const BASE = 'https://spendly-backend-et20.onrender.com/api'
 const SYM = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
@@ -253,6 +257,8 @@ function TransactionsTab({ expenses, income, sym }) {
   )
 }
 
+const PIE_COLORS = ['#7C3AED','#2563EB','#059669','#D97706','#DC2626','#DB2777','#0891B2','#65A30D','#7C3AED','#EA580C']
+
 // ── Reports Tab ───────────────────────────────────────────────────────────────
 function ReportsTab({ summary, sym, hex }) {
   const inc = parseFloat(summary?.total_income || 0)
@@ -261,6 +267,16 @@ function ReportsTab({ summary, sym, hex }) {
   const rate = inc > 0 ? Math.round((Math.max(net, 0) / inc) * 100) : 0
   const spendPct = inc > 0 ? Math.min(Math.round((exp / inc) * 100), 100) : 0
   const now = new Date()
+
+  const pieData = (summary?.category_breakdown || []).map(cat => ({
+    name: cat.category,
+    value: parseFloat(cat.total)
+  }))
+
+  const barData = (summary?.monthly_trend || []).map(m => ({
+    month: new Date(m.month + '-01').toLocaleString('default', { month: 'short', year: '2-digit' }),
+    amount: parseFloat(m.total)
+  }))
 
   return (
     <div className="space-y-4">
@@ -298,8 +314,39 @@ function ReportsTab({ summary, sym, hex }) {
         </div>
       </div>
 
-      {/* Category breakdown */}
-      {summary?.category_breakdown?.length > 0 && (
+      {/* Donut chart — category distribution */}
+      {pieData.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
+          <p className="text-sm font-bold text-gray-800 dark:text-white mb-4">Spending Distribution</p>
+          <div className="flex items-center gap-4">
+            <div style={{ width: 140, height: 140, flexShrink: 0 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={38} outerRadius={62} paddingAngle={2} dataKey="value">
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RTooltip formatter={(v) => fmt(v, sym)} contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,.15)' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex-1 min-w-0 space-y-1.5">
+              {pieData.slice(0, 6).map((d, i) => (
+                <div key={d.name} className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  <span className="text-xs text-gray-600 dark:text-gray-400 truncate flex-1">{d.name}</span>
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300 tabular-nums shrink-0">{exp > 0 ? ((d.value / exp) * 100).toFixed(0) : 0}%</span>
+                </div>
+              ))}
+              {pieData.length > 6 && <p className="text-[10px] text-gray-400">+{pieData.length - 6} more</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category breakdown bars */}
+      {(summary?.category_breakdown || []).length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-bold text-gray-800 dark:text-white">Category Breakdown</p>
@@ -318,7 +365,7 @@ function ReportsTab({ summary, sym, hex }) {
                       <span className="text-gray-400 shrink-0 ml-2">{pct.toFixed(0)}%</span>
                     </div>
                     <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: `hsl(${260 - i * 22},65%,58%)` }} />
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: PIE_COLORS[i % PIE_COLORS.length] }} />
                     </div>
                   </div>
                   <span className="text-xs font-bold text-gray-600 dark:text-gray-400 tabular-nums w-20 text-right shrink-0">{fmt(total, sym)}</span>
@@ -329,36 +376,23 @@ function ReportsTab({ summary, sym, hex }) {
         </div>
       )}
 
-      {/* Monthly spending (horizontal bars) */}
-      {summary?.monthly_trend?.length > 0 && (
+      {/* Monthly spending bar chart */}
+      {barData.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
           <p className="text-sm font-bold text-gray-800 dark:text-white mb-4">Monthly Spending</p>
-          <div className="space-y-2.5">
-            {(() => {
-              const max = Math.max(...summary.monthly_trend.map(m => parseFloat(m.total)), 1)
-              return summary.monthly_trend.map(m => {
-                const pct = (parseFloat(m.total) / max) * 100
-                const label = new Date(m.month + '-01').toLocaleString('default', { month: 'short', year: '2-digit' })
-                return (
-                  <div key={m.month} className="flex items-center gap-3">
-                    <span className="text-xs text-gray-400 w-12 font-medium shrink-0">{label}</span>
-                    <div className="flex-1 h-6 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                      <div className="h-full rounded-lg flex items-center transition-all duration-700" style={{ width: `${Math.max(pct, 2)}%`, minWidth: 4, background: hex }}>
-                        {pct > 35 && <span className="text-white text-[9px] font-bold ml-2 truncate">{fmt(parseFloat(m.total), sym)}</span>}
-                      </div>
-                    </div>
-                    {pct <= 35 && (
-                      <span className="text-xs font-bold text-gray-500 dark:text-gray-400 w-20 text-right tabular-nums shrink-0">{fmt(parseFloat(m.total), sym)}</span>
-                    )}
-                  </div>
-                )
-              })
-            })()}
-          </div>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={barData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barCategoryGap="30%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={v => sym + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v)} tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={40} />
+              <RTooltip formatter={(v) => [fmt(v, sym), 'Spent']} contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,.15)' }} cursor={{ fill: 'rgba(0,0,0,.04)' }} />
+              <Bar dataKey="amount" fill={hex} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
 
-      {summary?.category_breakdown?.length === 0 && summary?.monthly_trend?.length === 0 && (
+      {pieData.length === 0 && barData.length === 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center border border-gray-100 dark:border-gray-700/50">
           <p className="text-4xl mb-3">📊</p>
           <p className="text-gray-500 dark:text-gray-400 font-medium">No report data yet</p>

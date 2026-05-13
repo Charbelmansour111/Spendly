@@ -321,7 +321,7 @@ router.get('/total/transactions', auth, async (req, res) => {
        JOIN wallets w ON we.wallet_id = w.id
        WHERE we.user_id=$1 AND we.wallet_id = ANY($2)
        ORDER BY we.date DESC, we.created_at DESC
-       LIMIT 30`,
+       LIMIT 200`,
       [req.userId, walletIds]
     )
     res.json(r.rows)
@@ -416,11 +416,99 @@ router.get('/total/income', auth, async (req, res) => {
        JOIN wallets w ON wi.wallet_id = w.id
        WHERE wi.user_id=$1 AND wi.wallet_id=ANY($2)
        ORDER BY wi.year DESC, wi.month DESC, wi.created_at DESC
-       LIMIT 50`,
+       LIMIT 200`,
       [req.userId, walletIds]
     )
     res.json(r.rows)
   } catch (e) { console.error(e); res.status(500).json({ message: 'Server error' }) }
+})
+
+// ── POST /api/wallets/total/advise ───────────────────────────────────────────
+router.post('/total/advise', auth, async (req, res) => {
+  try {
+    const now = new Date(); const month = now.getMonth() + 1; const year = now.getFullYear()
+    const walletsR = await pool.query(
+      'SELECT id, name FROM wallets WHERE user_id=$1 AND is_active=TRUE AND (is_total_wallet IS NULL OR is_total_wallet=FALSE)',
+      [req.userId]
+    )
+    const walletIds = walletsR.rows.map(w => w.id)
+    if (walletIds.length === 0) return res.json({ insights: [] })
+
+    const [incR, expR, catR, savR, trendR, bdR] = await Promise.all([
+      pool.query('SELECT COALESCE(SUM(amount),0) AS t FROM wallet_income WHERE user_id=$1 AND wallet_id=ANY($2) AND month=$3 AND year=$4', [req.userId, walletIds, month, year]),
+      pool.query('SELECT COALESCE(SUM(amount),0) AS t FROM wallet_expenses WHERE user_id=$1 AND wallet_id=ANY($2) AND EXTRACT(MONTH FROM date)=$3 AND EXTRACT(YEAR FROM date)=$4', [req.userId, walletIds, month, year]),
+      pool.query('SELECT category, COALESCE(SUM(amount),0) AS total FROM wallet_expenses WHERE user_id=$1 AND wallet_id=ANY($2) AND EXTRACT(MONTH FROM date)=$3 AND EXTRACT(YEAR FROM date)=$4 GROUP BY category ORDER BY total DESC LIMIT 8', [req.userId, walletIds, month, year]),
+      pool.query('SELECT COALESCE(SUM(saved_amount),0) AS t FROM wallet_savings WHERE user_id=$1 AND wallet_id=ANY($2)', [req.userId, walletIds]),
+      pool.query(`SELECT TO_CHAR(date,'YYYY-MM') AS mo, COALESCE(SUM(amount),0) AS total FROM wallet_expenses WHERE user_id=$1 AND wallet_id=ANY($2) AND date>=NOW()-INTERVAL '3 months' GROUP BY TO_CHAR(date,'YYYY-MM') ORDER BY mo`, [req.userId, walletIds]),
+      pool.query('SELECT w.name, COALESCE(SUM(e.amount),0) AS expenses FROM wallets w LEFT JOIN wallet_expenses e ON e.wallet_id=w.id AND EXTRACT(MONTH FROM e.date)=$3 AND EXTRACT(YEAR FROM e.date)=$4 WHERE w.user_id=$1 AND w.id=ANY($2) AND w.is_active=TRUE GROUP BY w.name', [req.userId, walletIds, month, year]),
+    ])
+
+    const income = parseFloat(incR.rows[0].t)
+    const expenses = parseFloat(expR.rows[0].t)
+    const savings = income - expenses
+    const savingsRate = income > 0 ? Math.round((Math.max(savings, 0) / income) * 100) : 0
+    const goalsTotal = parseFloat(savR.rows[0].t)
+    const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' })
+
+    const catLines = catR.rows.length
+      ? catR.rows.map(c => `  ${c.category}: $${parseFloat(c.total).toFixed(2)}`).join('\n')
+      : '  No spending data this month'
+
+    const walletLines = bdR.rows.map(w => `  ${w.name}: $${parseFloat(w.expenses).toFixed(2)} spent`).join('\n')
+
+    const trendLines = trendR.rows.length
+      ? trendR.rows.map(t => `  ${t.mo}: $${parseFloat(t.total).toFixed(2)}`).join('\n')
+      : '  No recent trend data'
+
+    const prompt = `Family finance summary for ${monthName}:
+- Total income: $${income.toFixed(2)}
+- Total expenses: $${expenses.toFixed(2)}
+- Net savings: $${savings.toFixed(2)} (${savingsRate}% savings rate)
+- Savings goals total: $${goalsTotal.toFixed(2)}
+- Wallets: ${walletsR.rows.length}
+
+Spending by category:
+${catLines}
+
+Per-wallet expenses:
+${walletLines}
+
+3-month trend:
+${trendLines}`
+
+    const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 900,
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a sharp family financial adviser. Analyze the data and return ONLY a valid JSON array — no markdown, no text outside the array:
+[{"title":"...","icon":"emoji","type":"positive|warning|danger","content":"2-3 sentence insight with specific numbers"}]
+Rules:
+1. Return exactly 4-5 insights
+2. Be specific — mention actual dollar amounts and percentages
+3. Types: "positive" for good news, "warning" for areas to watch, "danger" for urgent issues
+4. Cover: savings rate, top spending categories, wallet balance, trend, and one actionable tip
+5. Keep each content to 2-3 sentences max`
+          },
+          { role: 'user', content: prompt }
+        ]
+      })
+    })
+
+    const aiData = await aiRes.json()
+    const text = aiData.choices?.[0]?.message?.content?.trim() || '[]'
+    const jsonMatch = text.match(/\[[\s\S]*\]/)
+    const insights = jsonMatch ? JSON.parse(jsonMatch[0]) : []
+    res.json({ insights, monthName })
+  } catch (e) {
+    console.error('Advise error:', e)
+    res.status(500).json({ message: 'Failed to generate advice' })
+  }
 })
 
 // ── GET /api/wallets/:walletId/summary ───────────────────────────────────────

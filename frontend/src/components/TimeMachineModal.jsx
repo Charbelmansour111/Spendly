@@ -1,694 +1,1044 @@
-import { useState, useEffect, useRef } from 'react'
-import API from '../utils/api'
+import { useState, useEffect, useRef } from "react";
 
-const SYM = { USD:'$', EUR:'€', GBP:'£', LBP:'L£', AED:'AED', SAR:'SAR', CAD:'C$', AUD:'A$' }
+const fmtYear = y => y < 0 ? `${Math.abs(y)} BC` : `${y} AD`;
 
 const POPULAR = [
-  { year:-2560, label:'🏛️ Great Pyramid'   },
-  { year:-44,   label:'🗡️ Caesar Killed'    },
-  { year:1,     label:'📅 Year One'         },
-  { year:1066,  label:'⚔️ Battle Hastings'  },
-  { year:1347,  label:'💀 Black Death'      },
-  { year:1492,  label:'⛵ Columbus Sails'   },
-  { year:1776,  label:'🦅 USA Born'         },
-  { year:1929,  label:'💸 Great Crash'      },
-  { year:1969,  label:'🌙 Moon Landing'     },
-  { year:2008,  label:'🏦 Recession'        },
-  { year:2050,  label:'🤖 Robot World'      },
-  { year:2100,  label:'🚀 Far Future'       },
-]
+  { year:-2560, label:"Great Pyramid" },
+  { year:-44,   label:"Julius Caesar" },
+  { year:1066,  label:"Battle of Hastings" },
+  { year:1347,  label:"Black Death" },
+  { year:1492,  label:"Columbus Sails" },
+  { year:1776,  label:"USA Founded" },
+  { year:1929,  label:"Great Crash" },
+  { year:1969,  label:"Moon Landing" },
+  { year:2008,  label:"Financial Crisis" },
+  { year:2050,  label:"Near Future" },
+];
 
-const fmtYear = y => y < 0 ? `${Math.abs(y)} BC` : String(y)
-
-function getTheme(year) {
-  if (year <= -1000) return { bg:'from-amber-950 via-yellow-950 to-zinc-950', planet:['#92400e','#78350f'], accent:'#fbbf24' }
-  if (year <= 0)     return { bg:'from-stone-900 via-amber-950 to-zinc-950',  planet:['#78350f','#451a03'], accent:'#d97706' }
-  if (year <= 500)   return { bg:'from-red-950 via-stone-950 to-zinc-950',    planet:['#7f1d1d','#450a0a'], accent:'#fca5a5' }
-  if (year <= 1000)  return { bg:'from-slate-900 via-gray-950 to-zinc-950',   planet:['#374151','#111827'], accent:'#9ca3af' }
-  if (year <= 1400)  return { bg:'from-stone-900 via-gray-900 to-zinc-950',   planet:['#4b5563','#1f2937'], accent:'#d1d5db' }
-  if (year <= 1600)  return { bg:'from-teal-950 via-emerald-950 to-zinc-950', planet:['#134e4a','#064e3b'], accent:'#6ee7b7' }
-  if (year <= 1800)  return { bg:'from-indigo-950 via-blue-950 to-zinc-950',  planet:['#1e3a8a','#0c2461'], accent:'#93c5fd' }
-  if (year <= 1920)  return { bg:'from-amber-950 via-yellow-950 to-zinc-950', planet:['#92400e','#78350f'], accent:'#fbbf24' }
-  if (year <= 1940)  return { bg:'from-stone-900 via-gray-900 to-zinc-950',   planet:['#4b5563','#1f2937'], accent:'#9ca3af' }
-  if (year <= 1960)  return { bg:'from-sky-950 via-blue-950 to-zinc-950',     planet:['#0369a1','#0c4a6e'], accent:'#7dd3fc' }
-  if (year <= 1980)  return { bg:'from-orange-950 via-red-950 to-zinc-950',   planet:['#c2410c','#7c2d12'], accent:'#fb923c' }
-  if (year <= 2000)  return { bg:'from-fuchsia-950 via-purple-950 to-zinc-950',planet:['#7c3aed','#4c1d95'],accent:'#e879f9' }
-  if (year <= 2025)  return { bg:'from-cyan-950 via-blue-950 to-zinc-950',    planet:['#0891b2','#0c4a6e'], accent:'#67e8f9' }
-  if (year <= 2060)  return { bg:'from-violet-950 via-purple-950 to-zinc-950',planet:['#6d28d9','#2e1065'], accent:'#c084fc' }
-  return               { bg:'from-slate-950 via-gray-950 to-zinc-950',        planet:['#475569','#1e293b'], accent:'#94a3b8' }
+function getEra(year) {
+  if (year<=-1000) return { color:"#d97706", bg:"#78350f" };
+  if (year<=0)     return { color:"#dc2626", bg:"#7f1d1d" };
+  if (year<=1000)  return { color:"#64748b", bg:"#1e293b" };
+  if (year<=1400)  return { color:"#7c3aed", bg:"#2e1065" };
+  if (year<=1600)  return { color:"#0891b2", bg:"#0c4a6e" };
+  if (year<=1800)  return { color:"#16a34a", bg:"#14532d" };
+  if (year<=1900)  return { color:"#ca8a04", bg:"#713f12" };
+  if (year<=1945)  return { color:"#9333ea", bg:"#4c1d95" };
+  if (year<=1970)  return { color:"#2563eb", bg:"#1e3a8a" };
+  if (year<=1990)  return { color:"#db2777", bg:"#831843" };
+  if (year<=2010)  return { color:"#0891b2", bg:"#0c4a6e" };
+  if (year<=2025)  return { color:"#6366f1", bg:"#312e81" };
+  if (year<=2060)  return { color:"#8b5cf6", bg:"#2e1065" };
+  return             { color:"#475569", bg:"#0f172a" };
 }
 
-// Per-era animated scene layouts: sky, ground color, and positioned emoji objects
-const ERA_SCENES = [
-  { test: y => y <= -500,
-    sky:'#7c2d12', ground:'#b45309',
-    objs:[{e:'🏛️',x:40,y:20,s:76,a:'none'},{e:'☀️',x:78,y:8,s:40,a:'pulse'},{e:'🦅',x:58,y:12,s:30,a:'fly'},{e:'🌵',x:12,y:50,s:44,a:'sway'},{e:'⚱️',x:70,y:58,s:28,a:'bob'},{e:'🌙',x:22,y:10,s:26,a:'pulse2'}] },
-  { test: y => y <= 500,
-    sky:'#450a0a', ground:'#991b1b',
-    objs:[{e:'🏟️',x:38,y:16,s:80,a:'none'},{e:'⚔️',x:20,y:55,s:36,a:'bob'},{e:'🫒',x:68,y:46,s:40,a:'sway'},{e:'🌊',x:50,y:60,s:44,a:'wave'},{e:'🏺',x:78,y:55,s:30,a:'none'},{e:'🌟',x:88,y:10,s:24,a:'pulse'}] },
-  { test: y => y <= 1000,
-    sky:'#1c1917', ground:'#292524',
-    objs:[{e:'🏰',x:40,y:12,s:84,a:'none'},{e:'🌲',x:8,y:42,s:52,a:'sway'},{e:'🌲',x:78,y:44,s:44,a:'sway2'},{e:'🐴',x:24,y:58,s:40,a:'trot'},{e:'⚔️',x:64,y:60,s:32,a:'bob'},{e:'🌕',x:16,y:8,s:32,a:'pulse'}] },
-  { test: y => y <= 1400,
-    sky:'#18181b', ground:'#27272a',
-    objs:[{e:'🏰',x:42,y:12,s:80,a:'none'},{e:'⚔️',x:18,y:55,s:40,a:'bob'},{e:'🗡️',x:72,y:52,s:36,a:'bob2'},{e:'🌲',x:8,y:44,s:48,a:'sway'},{e:'🔥',x:60,y:60,s:32,a:'flicker'},{e:'🌑',x:80,y:8,s:28,a:'pulse2'}] },
-  { test: y => y <= 1600,
-    sky:'#172554', ground:'#164e63',
-    objs:[{e:'⛵',x:42,y:40,s:76,a:'sail'},{e:'🗺️',x:18,y:26,s:52,a:'bob'},{e:'🏛️',x:70,y:20,s:56,a:'none'},{e:'🌍',x:82,y:54,s:36,a:'spin'},{e:'🔭',x:12,y:56,s:32,a:'bob2'},{e:'⭐',x:55,y:8,s:26,a:'pulse'}] },
-  { test: y => y <= 1800,
-    sky:'#1e3a5f', ground:'#14532d',
-    objs:[{e:'🏰',x:38,y:16,s:72,a:'none'},{e:'🌾',x:14,y:50,s:44,a:'sway'},{e:'🐎',x:60,y:55,s:52,a:'trot'},{e:'🕯️',x:25,y:60,s:28,a:'flicker'},{e:'⚓',x:74,y:56,s:32,a:'bob'},{e:'🌙',x:84,y:8,s:28,a:'pulse2'}] },
-  { test: y => y <= 1900,
-    sky:'#27272a', ground:'#1c1917',
-    objs:[{e:'🏭',x:38,y:16,s:80,a:'none'},{e:'🚂',x:10,y:56,s:60,a:'trot'},{e:'⚙️',x:70,y:30,s:44,a:'spin'},{e:'💨',x:46,y:4,s:36,a:'float'},{e:'⛏️',x:76,y:58,s:28,a:'bob'},{e:'🌫️',x:55,y:8,s:32,a:'pulse2'}] },
-  { test: y => y <= 1945,
-    sky:'#1e1b4b', ground:'#14532d',
-    objs:[{e:'✈️',x:55,y:12,s:56,a:'fly'},{e:'🏠',x:26,y:40,s:56,a:'none'},{e:'🚗',x:60,y:58,s:44,a:'trot'},{e:'📻',x:16,y:56,s:32,a:'bob'},{e:'🌟',x:80,y:8,s:28,a:'pulse'},{e:'💣',x:42,y:62,s:24,a:'bob2'}] },
-  { test: y => y <= 1970,
-    sky:'#0c4a6e', ground:'#14532d',
-    objs:[{e:'🚀',x:48,y:6,s:72,a:'launch'},{e:'🏠',x:22,y:42,s:56,a:'none'},{e:'📺',x:68,y:50,s:44,a:'bob'},{e:'🚗',x:40,y:60,s:48,a:'trot'},{e:'⭐',x:14,y:12,s:28,a:'pulse'},{e:'📡',x:74,y:28,s:36,a:'bob2'}] },
-  { test: y => y <= 1990,
-    sky:'#4c1d95', ground:'#1a1a2e',
-    objs:[{e:'💾',x:44,y:22,s:68,a:'bob'},{e:'📼',x:18,y:46,s:52,a:'bob2'},{e:'🎸',x:68,y:40,s:56,a:'sway'},{e:'🕹️',x:52,y:58,s:40,a:'bob'},{e:'✨',x:14,y:12,s:28,a:'pulse'},{e:'📞',x:78,y:54,s:28,a:'bob2'}] },
-  { test: y => y <= 2010,
-    sky:'#0f172a', ground:'#1e3a5f',
-    objs:[{e:'💻',x:42,y:24,s:68,a:'bob'},{e:'📱',x:20,y:48,s:44,a:'bob2'},{e:'🌐',x:72,y:42,s:48,a:'spin'},{e:'🚗',x:55,y:60,s:40,a:'trot'},{e:'📡',x:78,y:18,s:36,a:'bob'},{e:'🌟',x:14,y:10,s:26,a:'pulse'}] },
-  { test: y => y <= 2030,
-    sky:'#0f172a', ground:'#1e293b',
-    objs:[{e:'🏙️',x:38,y:10,s:84,a:'none'},{e:'📱',x:20,y:48,s:44,a:'bob'},{e:'🚗',x:60,y:60,s:44,a:'trot'},{e:'✈️',x:72,y:10,s:36,a:'fly'},{e:'🌐',x:80,y:44,s:36,a:'spin'},{e:'🤖',x:16,y:46,s:40,a:'bob2'}] },
-  { test: y => y <= 2060,
-    sky:'#2e1065', ground:'#0f0f2e',
-    objs:[{e:'🤖',x:40,y:20,s:80,a:'bob'},{e:'🚁',x:68,y:10,s:52,a:'fly'},{e:'🏙️',x:18,y:34,s:68,a:'none'},{e:'⚡',x:14,y:16,s:32,a:'pulse'},{e:'🌐',x:76,y:50,s:36,a:'spin'},{e:'🛸',x:52,y:6,s:40,a:'sail'}] },
-  { test: () => true,
-    sky:'#020617', ground:'#0f0728',
-    objs:[{e:'🚀',x:48,y:4,s:68,a:'launch'},{e:'🛸',x:22,y:18,s:52,a:'fly'},{e:'🌌',x:68,y:28,s:64,a:'pulse'},{e:'🤖',x:35,y:50,s:48,a:'bob'},{e:'⭐',x:80,y:12,s:32,a:'pulse2'},{e:'🌙',x:12,y:8,s:28,a:'float'}] },
-]
+// ── SVG Scene Illustrations ─────────────────────────────────────────────────
+const SCENES = {
+  ancient: (
+    <svg viewBox="0 0 800 300" width="100%" height="100%" style={{display:"block"}}>
+      <defs>
+        <linearGradient id="sky1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f97316"/>
+          <stop offset="60%" stopColor="#fb923c"/>
+          <stop offset="100%" stopColor="#c2410c"/>
+        </linearGradient>
+        <linearGradient id="sand1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#d97706"/>
+          <stop offset="100%" stopColor="#92400e"/>
+        </linearGradient>
+      </defs>
+      {/* Sky */}
+      <rect width="800" height="300" fill="url(#sky1)"/>
+      {/* Sun */}
+      <circle cx="650" cy="70" r="45" fill="#fbbf24" opacity="0.9"/>
+      <circle cx="650" cy="70" r="60" fill="#fbbf24" opacity="0.15"/>
+      {/* Desert ground */}
+      <ellipse cx="400" cy="310" rx="500" ry="80" fill="url(#sand1)"/>
+      {/* Pyramid 1 big */}
+      <polygon points="400,60 560,260 240,260" fill="#b45309"/>
+      <polygon points="400,60 560,260 400,260" fill="#92400e"/>
+      {/* Pyramid 2 small left */}
+      <polygon points="180,140 270,260 90,260" fill="#b45309"/>
+      <polygon points="180,140 270,260 180,260" fill="#92400e"/>
+      {/* Pyramid 3 small right */}
+      <polygon points="650,160 720,260 580,260" fill="#b45309"/>
+      <polygon points="650,160 720,260 650,260" fill="#92400e"/>
+      {/* Sphinx silhouette */}
+      <rect x="100" y="230" width="60" height="25" rx="5" fill="#78350f"/>
+      <circle cx="160" cy="225" r="18" fill="#78350f"/>
+      {/* Nile shimmer */}
+      <ellipse cx="720" cy="270" rx="70" ry="12" fill="#0369a1" opacity="0.6"/>
+      {/* Hieroglyph lines on pyramid */}
+      <line x1="380" y1="140" x2="420" y2="140" stroke="#fbbf24" strokeWidth="2" opacity="0.4"/>
+      <line x1="370" y1="160" x2="430" y2="160" stroke="#fbbf24" strokeWidth="2" opacity="0.4"/>
+      <line x1="360" y1="180" x2="440" y2="180" stroke="#fbbf24" strokeWidth="2" opacity="0.4"/>
+      {/* Stars */}
+      {[{x:50,y:30},{x:120,y:20},{x:200,y:45},{x:550,y:25},{x:700,y:40}].map((s,i)=>(
+        <circle key={i} cx={s.x} cy={s.y} r="2.5" fill="white" opacity="0.7"/>
+      ))}
+      {/* Palm trees */}
+      <line x1="60" y1="260" x2="60" y2="200" stroke="#92400e" strokeWidth="5"/>
+      <ellipse cx="60" cy="198" rx="22" ry="12" fill="#16a34a"/>
+      <ellipse cx="48" cy="205" rx="18" ry="8" fill="#15803d" transform="rotate(-25,48,205)"/>
+      <ellipse cx="72" cy="205" rx="18" ry="8" fill="#15803d" transform="rotate(25,72,205)"/>
+    </svg>
+  ),
+  rome: (
+    <svg viewBox="0 0 800 300" width="100%" height="100%" style={{display:"block"}}>
+      <defs>
+        <linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1e3a8a"/>
+          <stop offset="100%" stopColor="#dc2626"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="300" fill="url(#sky2)"/>
+      {/* Moon */}
+      <circle cx="680" cy="55" r="35" fill="#fef9c3" opacity="0.9"/>
+      {/* Colosseum */}
+      <rect x="200" y="120" width="400" height="150" rx="8" fill="#b45309"/>
+      <ellipse cx="400" cy="120" rx="200" ry="40" fill="#92400e"/>
+      {/* Arches */}
+      {[0,1,2,3,4,5,6].map(i=>(
+        <path key={i} d={`M ${230+i*55} 270 L ${230+i*55} 180 Q ${257+i*55} 155 ${285+i*55} 180 L ${285+i*55} 270`} fill="#78350f"/>
+      ))}
+      {/* Columns */}
+      {[130,160,190,220].map((x,i)=>(
+        <g key={i}>
+          <rect x={x} y="150" width="12" height="130" fill="#d97706"/>
+          <rect x={x-4} y="145" width="20" height="10" fill="#ca8a04"/>
+        </g>
+      ))}
+      {/* Torches */}
+      <line x1="100" y1="200" x2="100" y2="260" stroke="#92400e" strokeWidth="4"/>
+      <ellipse cx="100" cy="195" rx="8" ry="12" fill="#f97316" opacity="0.9"/>
+      <ellipse cx="100" cy="192" rx="5" ry="8" fill="#fbbf24"/>
+      {/* Ground */}
+      <rect x="0" y="265" width="800" height="35" fill="#451a03"/>
+      {/* Stars */}
+      {[{x:30,y:20},{x:90,y:35},{x:500,y:15},{x:600,y:30},{x:750,y:20}].map((s,i)=>(
+        <circle key={i} cx={s.x} cy={s.y} r="2" fill="white" opacity="0.8"/>
+      ))}
+    </svg>
+  ),
+  medieval: (
+    <svg viewBox="0 0 800 300" width="100%" height="100%" style={{display:"block"}}>
+      <defs>
+        <linearGradient id="sky3" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0c1445"/>
+          <stop offset="100%" stopColor="#1e293b"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="300" fill="url(#sky3)"/>
+      {/* Moon */}
+      <circle cx="100" cy="60" r="38" fill="#fef3c7" opacity="0.85"/>
+      {/* Stars */}
+      {[{x:200,y:25},{x:320,y:15},{x:450,y:35},{x:560,y:20},{x:680,y:40},{x:750,y:18}].map((s,i)=>(
+        <circle key={i} cx={s.x} cy={s.y} r="2" fill="white" opacity="0.9"/>
+      ))}
+      {/* Castle main */}
+      <rect x="280" y="80" width="240" height="190" fill="#374151"/>
+      {/* Towers */}
+      <rect x="250" y="50" width="70" height="230" rx="4" fill="#4b5563"/>
+      <rect x="480" y="50" width="70" height="230" rx="4" fill="#4b5563"/>
+      {/* Battlements */}
+      {[0,1,2,3,4].map(i=>(<rect key={i} x={255+i*12} y={42} width="8" height="15" fill="#6b7280"/>))}
+      {[0,1,2,3,4].map(i=>(<rect key={i} x={485+i*12} y={42} width="8" height="15" fill="#6b7280"/>))}
+      {[0,1,2,3,4,5,6,7].map(i=>(<rect key={i} x={285+i*28} y={72} width="12" height="16" fill="#4b5563"/>))}
+      {/* Gate */}
+      <rect x="365" y="200" width="70" height="70" fill="#1f2937"/>
+      <path d="M 365 200 Q 400 170 435 200" fill="#111827"/>
+      {/* Windows with glow */}
+      <rect x="295" y="120" width="25" height="30" rx="2" fill="#fbbf24" opacity="0.8"/>
+      <rect x="480" y="120" width="25" height="30" rx="2" fill="#fbbf24" opacity="0.8"/>
+      {/* Moat */}
+      <ellipse cx="400" cy="290" rx="250" ry="20" fill="#0369a1" opacity="0.5"/>
+      {/* Trees */}
+      {[60,140,620,700].map((x,i)=>(
+        <g key={i}>
+          <rect x={x} y="200" width="10" height="80" fill="#422006"/>
+          <ellipse cx={x+5} cy="195" rx="28" ry="38" fill="#14532d"/>
+          <ellipse cx={x+5} cy="185" rx="20" ry="28" fill="#166534"/>
+        </g>
+      ))}
+      {/* Ground */}
+      <rect x="0" y="268" width="800" height="32" fill="#1c1917"/>
+    </svg>
+  ),
+  renaissance: (
+    <svg viewBox="0 0 800 300" width="100%" height="100%" style={{display:"block"}}>
+      <defs>
+        <linearGradient id="sky4" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0ea5e9"/>
+          <stop offset="70%" stopColor="#7dd3fc"/>
+          <stop offset="100%" stopColor="#bae6fd"/>
+        </linearGradient>
+        <linearGradient id="sea4" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0369a1"/>
+          <stop offset="100%" stopColor="#0c4a6e"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="300" fill="url(#sky4)"/>
+      {/* Ocean */}
+      <rect x="0" y="200" width="800" height="100" fill="url(#sea4)"/>
+      {/* Waves */}
+      {[0,1,2,3].map(i=>(
+        <path key={i} d={`M ${i*200} 210 Q ${i*200+50} 200 ${i*200+100} 210 Q ${i*200+150} 220 ${i*200+200} 210`}
+          fill="none" stroke="#38bdf8" strokeWidth="2" opacity="0.5"/>
+      ))}
+      {/* Ship hull */}
+      <path d="M 280 220 Q 400 260 520 220 L 500 200 Q 400 230 300 200 Z" fill="#92400e"/>
+      {/* Deck */}
+      <rect x="310" y="190" width="180" height="15" rx="3" fill="#a16207"/>
+      {/* Mast 1 */}
+      <line x1="370" y1="60" x2="370" y2="205" stroke="#78350f" strokeWidth="5"/>
+      {/* Sail 1 */}
+      <path d="M 370 65 Q 440 100 370 140 Z" fill="#fef9c3" opacity="0.95"/>
+      <path d="M 370 65 Q 300 100 370 140 Z" fill="#fef3c7" opacity="0.85"/>
+      {/* Mast 2 */}
+      <line x1="440" y1="90" x2="440" y2="205" stroke="#78350f" strokeWidth="4"/>
+      <path d="M 440 95 Q 490 118 440 145 Z" fill="#fef9c3" opacity="0.9"/>
+      {/* Flag */}
+      <line x1="370" y1="60" x2="370" y2="40" stroke="#78350f" strokeWidth="2"/>
+      <polygon points="370,40 395,48 370,56" fill="#dc2626"/>
+      {/* Clouds */}
+      {[{x:80,y:40},{x:600,y:55}].map((c,i)=>(
+        <g key={i}>
+          <ellipse cx={c.x} cy={c.y} rx="60" ry="22" fill="white" opacity="0.85"/>
+          <ellipse cx={c.x-25} cy={c.y+5} rx="35" ry="18" fill="white" opacity="0.85"/>
+          <ellipse cx={c.x+30} cy={c.y+5} rx="35" ry="16" fill="white" opacity="0.8"/>
+        </g>
+      ))}
+      {/* Compass rose */}
+      <circle cx="700" cy="80" r="30" fill="rgba(255,255,255,0.15)" stroke="white" strokeWidth="1"/>
+      <text x="700" y="58" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">N</text>
+      <text x="700" y="116" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">S</text>
+      <text x="676" y="85" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">W</text>
+      <text x="724" y="85" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">E</text>
+    </svg>
+  ),
+  victorian: (
+    <svg viewBox="0 0 800 300" width="100%" height="100%" style={{display:"block"}}>
+      <defs>
+        <linearGradient id="sky5" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1c1917"/>
+          <stop offset="100%" stopColor="#292524"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="300" fill="url(#sky5)"/>
+      {/* Smog / fog */}
+      <ellipse cx="400" cy="150" rx="420" ry="100" fill="#d97706" opacity="0.06"/>
+      {/* Factory 1 */}
+      <rect x="80" y="100" width="120" height="180" fill="#292524"/>
+      <rect x="90" y="80" width="30" height="30" fill="#3c3432"/>
+      {/* Factory chimneys */}
+      {[100,130,160].map((x,i)=>(
+        <g key={i}>
+          <rect x={x} y={30+i*10} width="18" height={80-i*10} fill="#1c1917"/>
+          <ellipse cx={x+9} cy={30+i*10} rx="12" ry="6" fill="#292524"/>
+          {/* Smoke */}
+          <ellipse cx={x+9} cy={18+i*10} rx="10" ry="8" fill="#78716c" opacity="0.5"/>
+          <ellipse cx={x+15} cy={5+i*10} rx="14" ry="10" fill="#57534e" opacity="0.4"/>
+        </g>
+      ))}
+      {/* Buildings */}
+      {[300,420,560,660].map((x,i)=>(
+        <g key={i}>
+          <rect x={x} y={80+i%2*30} width={80+i*5} height={220-i%2*30} fill={i%2===0?"#1c1917":"#292524"}/>
+          {/* Windows */}
+          {[0,1,2].map(row=>
+            [0,1].map(col=>(
+              <rect key={`${row}-${col}`} x={x+10+col*30} y={100+i%2*30+row*35} width="18" height="22" rx="2"
+                fill={Math.random()>0.4?"#fbbf24":"#1c1917"} opacity="0.9"/>
+            ))
+          )}
+        </g>
+      ))}
+      {/* Street lamps */}
+      {[50,240,490,740].map((x,i)=>(
+        <g key={i}>
+          <line x1={x} y1="160" x2={x} y2="275" stroke="#78716c" strokeWidth="4"/>
+          <ellipse cx={x} cy="155" rx="12" ry="8" fill="#fbbf24" opacity="0.8"/>
+          <ellipse cx={x} cy="155" rx="20" ry="15" fill="#fbbf24" opacity="0.15"/>
+        </g>
+      ))}
+      {/* Steam train */}
+      <rect x="30" y="255" width="120" height="30" rx="5" fill="#292524"/>
+      <circle cx="60" cy="285" r="12" fill="#1c1917" stroke="#78716c" strokeWidth="2"/>
+      <circle cx="110" cy="285" r="12" fill="#1c1917" stroke="#78716c" strokeWidth="2"/>
+      <rect x="35" y="235" width="50" height="25" rx="4" fill="#1c1917"/>
+      <ellipse cx="42" cy="232" rx="8" ry="6" fill="#57534e"/>
+      {/* Ground */}
+      <rect x="0" y="270" width="800" height="30" fill="#0c0a09"/>
+      <line x1="0" y1="272" x2="800" y2="272" stroke="#78716c" strokeWidth="2" strokeDasharray="20,10"/>
+    </svg>
+  ),
+  space: (
+    <svg viewBox="0 0 800 300" width="100%" height="100%" style={{display:"block"}}>
+      <defs>
+        <linearGradient id="sky6" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#020617"/>
+          <stop offset="100%" stopColor="#0c4a6e"/>
+        </linearGradient>
+        <radialGradient id="moon6" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#fef9c3"/>
+          <stop offset="100%" stopColor="#d97706"/>
+        </radialGradient>
+      </defs>
+      <rect width="800" height="300" fill="url(#sky6)"/>
+      {/* Stars */}
+      {Array.from({length:60},(_,i)=>({x:Math.sin(i*77)*400+400,y:Math.cos(i*53)*150+80})).map((s,i)=>(
+        <circle key={i} cx={s.x} cy={s.y} r={i%5===0?2.5:1.5} fill="white"
+          opacity={i%3===0?0.9:0.5}/>
+      ))}
+      {/* Moon */}
+      <circle cx="620" cy="90" r="70" fill="url(#moon6)"/>
+      {/* Moon craters */}
+      <circle cx="600" cy="75" r="12" fill="#b45309" opacity="0.4"/>
+      <circle cx="640" cy="105" r="8" fill="#b45309" opacity="0.3"/>
+      <circle cx="615" cy="110" r="5" fill="#b45309" opacity="0.35"/>
+      {/* Saturn */}
+      <ellipse cx="150" cy="80" rx="40" ry="28" fill="#d97706"/>
+      <ellipse cx="150" cy="80" rx="65" ry="16" fill="none" stroke="#ca8a04" strokeWidth="8" opacity="0.7"/>
+      {/* Rocket */}
+      <g transform="translate(360,20)">
+        <polygon points="30,0 50,60 10,60" fill="#e2e8f0"/>
+        <rect x="12" y="55" width="36" height="80" fill="#cbd5e1"/>
+        <rect x="12" y="55" width="36" height="80" fill="#6366f1" opacity="0.3"/>
+        {/* Window */}
+        <circle cx="30" cy="85" r="10" fill="#0ea5e9" opacity="0.9"/>
+        {/* Fins */}
+        <polygon points="12,130 0,160 12,150" fill="#94a3b8"/>
+        <polygon points="48,130 60,160 48,150" fill="#94a3b8"/>
+        {/* Flame */}
+        <ellipse cx="30" cy="168" rx="14" ry="22" fill="#f97316" opacity="0.9"/>
+        <ellipse cx="30" cy="162" rx="8" ry="14" fill="#fbbf24"/>
+      </g>
+      {/* Astronaut */}
+      <g transform="translate(200,150)">
+        <circle cx="20" cy="15" r="18" fill="#e2e8f0"/>
+        <circle cx="20" cy="15" r="12" fill="#bfdbfe" opacity="0.8"/>
+        <rect x="8" y="30" width="24" height="30" rx="6" fill="#e2e8f0"/>
+        <rect x="2" y="32" width="10" height="22" rx="5" fill="#e2e8f0"/>
+        <rect x="30" y="32" width="10" height="22" rx="5" fill="#e2e8f0"/>
+        <rect x="10" y="55" width="10" height="20" rx="5" fill="#e2e8f0"/>
+        <rect x="22" y="55" width="10" height="20" rx="5" fill="#e2e8f0"/>
+        {/* USA flag */}
+        <rect x="30" y="34" width="18" height="12" fill="#dc2626"/>
+        <rect x="30" y="34" width="18" height="4" fill="#dc2626"/>
+        <rect x="30" y="38" width="18" height="4" fill="white"/>
+        <rect x="30" y="42" width="18" height="4" fill="#dc2626"/>
+        <rect x="30" y="34" width="8" height="6" fill="#1e3a8a"/>
+      </g>
+      {/* Earth horizon */}
+      <ellipse cx="400" cy="310" rx="500" ry="80" fill="#0369a1" opacity="0.4"/>
+    </svg>
+  ),
+  modern: (
+    <svg viewBox="0 0 800 300" width="100%" height="100%" style={{display:"block"}}>
+      <defs>
+        <linearGradient id="sky7" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0f172a"/>
+          <stop offset="100%" stopColor="#1e1b4b"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="300" fill="url(#sky7)"/>
+      {/* Stars */}
+      {[{x:50,y:20},{x:150,y:40},{x:600,y:15},{x:720,y:35},{x:400,y:25}].map((s,i)=>(
+        <circle key={i} cx={s.x} cy={s.y} r="2" fill="white" opacity="0.6"/>
+      ))}
+      {/* Buildings skyline */}
+      {[
+        {x:0,  w:80, h:240, c:"#1e293b"},
+        {x:60, w:60, h:200, c:"#0f172a"},
+        {x:100,w:90, h:260, c:"#1e293b"},
+        {x:170,w:50, h:180, c:"#0f172a"},
+        {x:200,w:100,h:280, c:"#312e81"},
+        {x:280,w:70, h:220, c:"#1e293b"},
+        {x:330,w:80, h:295, c:"#4338ca"},
+        {x:400,w:60, h:200, c:"#1e293b"},
+        {x:440,w:110,h:270, c:"#1e293b"},
+        {x:530,w:70, h:230, c:"#312e81"},
+        {x:580,w:90, h:285, c:"#1e1b4b"},
+        {x:650,w:60, h:200, c:"#0f172a"},
+        {x:690,w:80, h:250, c:"#1e293b"},
+        {x:750,w:60, h:220, c:"#1e293b"},
+      ].map((b,i)=>(
+        <g key={i}>
+          <rect x={b.x} y={300-b.h} width={b.w} height={b.h} fill={b.c}/>
+          {/* Windows grid */}
+          {Array.from({length:Math.floor(b.h/30)},(_,row)=>
+            Array.from({length:Math.floor(b.w/20)},(_,col)=>(
+              <rect key={`${row}-${col}`}
+                x={b.x+4+col*18} y={300-b.h+8+row*28}
+                width="10" height="14" rx="1"
+                fill={(row+col+i)%3===0?"#6366f1":(row+col)%4===0?"#fbbf24":"#1e293b"}
+                opacity={(row+col+i)%3===0?0.9:0.7}/>
+            ))
+          )}
+        </g>
+      ))}
+      {/* Reflection in water */}
+      <rect x="0" y="268" width="800" height="32" fill="#0c4a6e" opacity="0.7"/>
+      {[330,440,580].map((x,i)=>(
+        <line key={i} x1={x+40} y1="268" x2={x+40} y2="300" stroke="#6366f1" strokeWidth="2" opacity="0.5"/>
+      ))}
+      {/* Flying cars / drones (futuristic) */}
+      <ellipse cx="200" cy="120" rx="25" ry="8" fill="#6366f1" opacity="0.7"/>
+      <ellipse cx="200" cy="117" rx="15" ry="5" fill="#818cf8"/>
+      <ellipse cx="560" cy="90" rx="20" ry="7" fill="#6366f1" opacity="0.6"/>
+    </svg>
+  ),
+  future: (
+    <svg viewBox="0 0 800 300" width="100%" height="100%" style={{display:"block"}}>
+      <defs>
+        <linearGradient id="sky8" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#020617"/>
+          <stop offset="50%" stopColor="#2e1065"/>
+          <stop offset="100%" stopColor="#4c1d95"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="300" fill="url(#sky8)"/>
+      {/* Galaxy swirl */}
+      {Array.from({length:80},(_,i)=>({
+        x:400+Math.cos(i*0.4)*i*2.2,
+        y:150+Math.sin(i*0.4)*i*1.1,
+        r:Math.max(0.5,2-i*0.02)
+      })).map((s,i)=>(
+        <circle key={i} cx={s.x} cy={s.y} r={s.r} fill={i%3===0?"#a78bfa":i%3===1?"#818cf8":"white"} opacity={0.7-i*0.006}/>
+      ))}
+      {/* Giant planet */}
+      <circle cx="650" cy="100" r="80" fill="#7c3aed" opacity="0.6"/>
+      <ellipse cx="650" cy="100" rx="110" ry="22" fill="none" stroke="#a78bfa" strokeWidth="6" opacity="0.5"/>
+      <circle cx="650" cy="100" r="80" fill="none" stroke="#6d28d9" strokeWidth="2" opacity="0.4"/>
+      {/* Space station */}
+      <rect x="60" y="60" width="120" height="30" rx="8" fill="#475569"/>
+      <rect x="110" y="40" width="20" height="70" rx="4" fill="#475569"/>
+      <rect x="30" y="68" width="50" height="14" rx="3" fill="#6366f1" opacity="0.8"/>
+      <rect x="170" y="68" width="50" height="14" rx="3" fill="#6366f1" opacity="0.8"/>
+      {/* Solar panels */}
+      <rect x="10" y="66" width="22" height="18" fill="#fbbf24" opacity="0.8"/>
+      <rect x="218" y="66" width="22" height="18" fill="#fbbf24" opacity="0.8"/>
+      {/* Flying saucer */}
+      <ellipse cx="300" cy="180" rx="50" ry="16" fill="#374151"/>
+      <ellipse cx="300" cy="173" rx="28" ry="18" fill="#4b5563"/>
+      <ellipse cx="300" cy="170" rx="14" ry="10" fill="#7dd3fc" opacity="0.8"/>
+      {/* Beam */}
+      <path d="M 280 186 L 240 260 L 320 260 Z" fill="#7dd3fc" opacity="0.15"/>
+      {/* Neon city below */}
+      {[0,80,160,260,360,460,540,640,700].map((x,i)=>(
+        <rect key={i} x={x} y={220+i%3*15} width={60+i%2*20} height={80-i%3*10} rx="4"
+          fill={["#1e1b4b","#2e1065","#312e81"][i%3]}/>
+      ))}
+      {/* Neon lights */}
+      {[40,180,380,560,680].map((x,i)=>(
+        <line key={i} x1={x} y1="220" x2={x} y2="300" stroke={["#a78bfa","#818cf8","#c084fc"][i%3]}
+          strokeWidth="2" opacity="0.6"/>
+      ))}
+      <rect x="0" y="290" width="800" height="10" fill="#0f0728"/>
+    </svg>
+  ),
+  roaring20s: (
+    <svg viewBox="0 0 800 300" width="100%" height="100%" style={{display:"block"}}>
+      <defs>
+        <linearGradient id="sky9" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#18181b"/>
+          <stop offset="100%" stopColor="#27272a"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="300" fill="url(#sky9)"/>
+      {/* Art deco buildings */}
+      {[
+        {x:100,w:100,h:250,c:"#3f3f46"},{x:180,w:80,h:200,c:"#27272a"},
+        {x:250,w:120,h:280,c:"#52525b"},{x:360,w:80,h:220,c:"#3f3f46"},
+        {x:430,w:100,h:260,c:"#27272a"},{x:520,w:90,h:230,c:"#52525b"},
+        {x:600,w:80,h:200,c:"#3f3f46"},{x:670,w:100,h:245,c:"#27272a"},
+      ].map((b,i)=>(
+        <g key={i}>
+          <rect x={b.x} y={300-b.h} width={b.w} height={b.h} fill={b.c}/>
+          {/* Art deco top */}
+          <polygon points={`${b.x},${300-b.h} ${b.x+b.w/2},${300-b.h-25} ${b.x+b.w},${300-b.h}`} fill="#ca8a04"/>
+          {/* Gold stripe */}
+          <rect x={b.x} y={300-b.h+5} width={b.w} height="4" fill="#ca8a04" opacity="0.6"/>
+          {/* Windows */}
+          {Array.from({length:6},(_,r)=>Array.from({length:3},(_,c)=>(
+            <rect key={`${r}${c}`} x={b.x+8+c*(b.w/3-2)} y={300-b.h+20+r*38} width={b.w/3-10} height="22"
+              fill={(r+c)%2===0?"#fbbf24":"#a16207"} opacity="0.7"/>
+          )))}
+        </g>
+      ))}
+      {/* Marquee lights on ground */}
+      {Array.from({length:20},(_,i)=>(
+        <circle key={i} cx={20+i*38} cy="285" r="5" fill="#fbbf24" opacity={i%2===0?0.9:0.3}/>
+      ))}
+      {/* Jazz club sign */}
+      <rect x="310" y="230" width="180" height="40" rx="6" fill="#ca8a04"/>
+      <text x="400" y="256" textAnchor="middle" fill="#18181b" fontSize="16" fontWeight="900">JAZZ CLUB</text>
+      {/* Ground */}
+      <rect x="0" y="275" width="800" height="25" fill="#09090b"/>
+      {/* Cars silhouette */}
+      <rect x="50" y="263" width="80" height="18" rx="6" fill="#09090b"/>
+      <circle cx="68" cy="281" r="7" fill="#27272a" stroke="#52525b" strokeWidth="2"/>
+      <circle cx="112" cy="281" r="7" fill="#27272a" stroke="#52525b" strokeWidth="2"/>
+      <rect x="600" y="260" width="90" height="20" rx="6" fill="#09090b"/>
+      <circle cx="618" cy="280" r="7" fill="#27272a" stroke="#52525b" strokeWidth="2"/>
+      <circle cx="670" cy="280" r="7" fill="#27272a" stroke="#52525b" strokeWidth="2"/>
+    </svg>
+  ),
+};
 
-const ANIM_MAP = {
-  'none':    'none',
-  'pulse':   'tmEPulse 2.2s ease-in-out infinite',
-  'pulse2':  'tmEPulse 3.1s 0.8s ease-in-out infinite',
-  'sway':    'tmESway 2.8s ease-in-out infinite',
-  'sway2':   'tmESway 3.4s 0.7s ease-in-out infinite',
-  'bob':     'tmEBob 2.4s ease-in-out infinite',
-  'bob2':    'tmEBob 3.0s 0.5s ease-in-out infinite',
-  'fly':     'tmEFly 4.0s ease-in-out infinite',
-  'trot':    'tmETrot 3.5s linear infinite',
-  'spin':    'tmESpin 6s linear infinite',
-  'float':   'tmEFloat 3.5s ease-in-out infinite',
-  'flicker': 'tmEFlicker 0.6s ease-in-out infinite',
-  'launch':  'tmELaunch 3.0s ease-in-out infinite',
-  'wave':    'tmEWave 2.5s ease-in-out infinite',
-  'sail':    'tmESail 4.5s ease-in-out infinite',
+function getScene(year) {
+  if (year <= -1000) return SCENES.ancient;
+  if (year <= 0)     return SCENES.rome;
+  if (year <= 1400)  return SCENES.medieval;
+  if (year <= 1700)  return SCENES.renaissance;
+  if (year <= 1950)  return year <= 1930 ? SCENES.roaring20s : SCENES.victorian;
+  if (year <= 1975)  return SCENES.space;
+  if (year <= 2030)  return SCENES.modern;
+  return SCENES.future;
 }
 
-const SCENE_ANIM = `
-@keyframes tmEPulse   { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.55;transform:scale(1.12)} }
-@keyframes tmESway    { 0%,100%{transform:rotate(-5deg)} 50%{transform:rotate(5deg)} }
-@keyframes tmEBob     { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-@keyframes tmEFly     { 0%{transform:translate(-18px,6px)} 50%{transform:translate(18px,-8px)} 100%{transform:translate(-18px,6px)} }
-@keyframes tmETrot    { 0%{transform:translateX(-8px)} 100%{transform:translateX(8px)} }
-@keyframes tmESpin    { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-@keyframes tmEFloat   { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-14px) scale(1.06)} }
-@keyframes tmEFlicker { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.9)} }
-@keyframes tmELaunch  { 0%,100%{transform:translateY(6px) rotate(-8deg)} 50%{transform:translateY(-18px) rotate(0deg)} }
-@keyframes tmEWave    { 0%,100%{transform:scaleX(1)} 50%{transform:scaleX(1.18) scaleY(.88)} }
-@keyframes tmESail    { 0%,100%{transform:translateX(0) rotate(-3deg)} 50%{transform:translateX(14px) rotate(3deg)} }
-@keyframes tmCamPan   { 0%{transform:translateX(0) scale(1.04)} 50%{transform:translateX(-3%) scale(1.04)} 100%{transform:translateX(0) scale(1.04)} }
-@keyframes tmZoomYear { 0%{transform:scale(0.05) rotate(0deg);opacity:0} 25%{opacity:1} 65%{transform:scale(2.5) rotate(180deg);opacity:1} 100%{transform:scale(9) rotate(360deg);opacity:0} }
-@keyframes tmPlanetDrop { 0%{transform:translateY(-130px) scale(0.1);opacity:0} 65%{transform:translateY(8px) scale(1.06);opacity:1} 100%{transform:translateY(0) scale(1);opacity:1} }
-@keyframes tmAvatarIn { 0%{transform:translateX(-110vw)} 78%{transform:translateX(6px)} 88%{transform:translateX(-4px)} 100%{transform:translateX(0)} }
-@keyframes tmBounce   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
-@keyframes tmBubblePop{ 0%{transform:scale(0.55) translateY(10px);opacity:0} 78%{transform:scale(1.03) translateY(-1px);opacity:1} 100%{transform:scale(1) translateY(0);opacity:1} }
-@keyframes tmSlideUp  { from{transform:translateY(26px);opacity:0} to{transform:translateY(0);opacity:1} }
-@keyframes tmStreak   { 0%{transform:translateX(-100%);opacity:0} 15%{opacity:.7} 85%{opacity:.7} 100%{transform:translateX(200%);opacity:0} }
-@keyframes tmStarFlicker { 0%,100%{opacity:var(--so)} 50%{opacity:calc(var(--so)*0.15)} }
-@keyframes tmPulse    { 0%,100%{opacity:.5} 50%{opacity:1} }
-@keyframes tmFilmMove { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
-`
-
-// ── Stars ──────────────────────────────────────────────────────────────────
-function makeStars(seed) {
-  let s = seed
-  const r = () => { s = (s * 9301 + 49297) % 233280; return s / 233280 }
-  return Array.from({ length: 55 }, () => ({ x: r() * 100, y: r() * 100, rad: r() * 1.4 + 0.4, op: r() * 0.45 + 0.12, dur: r() * 3 + 2 }))
+// Multiple scenes per era for rotation
+function getScenes(year) {
+  if (year <= -1000) return [SCENES.ancient, SCENES.rome, SCENES.renaissance];
+  if (year <= 0)     return [SCENES.rome, SCENES.ancient, SCENES.medieval];
+  if (year <= 1400)  return [SCENES.medieval, SCENES.rome, SCENES.renaissance];
+  if (year <= 1700)  return [SCENES.renaissance, SCENES.medieval, SCENES.victorian];
+  if (year <= 1900)  return [SCENES.victorian, SCENES.roaring20s, SCENES.renaissance];
+  if (year <= 1950)  return [SCENES.roaring20s, SCENES.victorian, SCENES.modern];
+  if (year <= 1975)  return [SCENES.space, SCENES.modern, SCENES.roaring20s];
+  if (year <= 2030)  return [SCENES.modern, SCENES.space, SCENES.future];
+  return               [SCENES.future, SCENES.space, SCENES.modern];
 }
 
-const ERA_PHOTOS = [
-  { test: y => y <= -500,  url: 'https://picsum.photos/seed/egypt-desert/900/600' },
-  { test: y => y <= 500,   url: 'https://picsum.photos/seed/roman-ruins/900/600' },
-  { test: y => y <= 1000,  url: 'https://picsum.photos/seed/medieval-forest/900/600' },
-  { test: y => y <= 1400,  url: 'https://picsum.photos/seed/dark-castle/900/600' },
-  { test: y => y <= 1600,  url: 'https://picsum.photos/seed/ocean-voyage/900/600' },
-  { test: y => y <= 1800,  url: 'https://picsum.photos/seed/colonial-country/900/600' },
-  { test: y => y <= 1900,  url: 'https://picsum.photos/seed/steam-factory/900/600' },
-  { test: y => y <= 1945,  url: 'https://picsum.photos/seed/wartime-city/900/600' },
-  { test: y => y <= 1970,  url: 'https://picsum.photos/seed/space-race-60s/900/600' },
-  { test: y => y <= 1990,  url: 'https://picsum.photos/seed/neon-eighties/900/600' },
-  { test: y => y <= 2010,  url: 'https://picsum.photos/seed/urban-night-2k/900/600' },
-  { test: y => y <= 2030,  url: 'https://picsum.photos/seed/modern-metropolis/900/600' },
-  { test: y => y <= 2060,  url: 'https://picsum.photos/seed/cyber-future/900/600' },
-  { test: () => true,       url: 'https://picsum.photos/seed/deep-cosmos/900/600' },
-]
+// ── Scripts ─────────────────────────────────────────────────────────────────
+function getScript(year, amount, sym) {
+  const a = amount, y = year, label = fmtYear(y);
+  if (y<=-2000) return { eraName:"Ancient Egypt", lines:[
+    { text:`In ${label}, ${sym}${a} had the buying power of roughly ${sym}${Math.round(a*1800).toLocaleString()} today. A pyramid worker's entire year of wages.`, mood:"shocked", serious:true },
+    { text:`Egyptian workers were paid in BEER. Up to 10 jugs a day! Your ${sym}${a} would've been a lifetime supply of ancient craft brew. 🍺`, mood:"happy" },
+    { text:`Pharaohs buried their gold thinking they could take it to the afterlife. Spoiler: they couldn't. But grave robbers were very grateful! 😄`, mood:"happy" },
+    { text:`Ancient Egyptians had ZERO coins — your ${sym}${a} bill would've been completely useless, just a weird papyrus rectangle! They traded grain and copper by weight instead. 😲`, mood:"shocked" },
+  ], question:`If you could spend ${sym}${a} in ancient Egypt — a pyramid tour, a fancy linen robe, or 10 jugs of royal beer — what do you pick? 🤔` };
 
-// ── Era Scene ──────────────────────────────────────────────────────────────
-function EraScene({ year, aiEmoji }) {
-  const def = ERA_SCENES.find(s => s.test(year)) || ERA_SCENES[ERA_SCENES.length - 1]
-  const objs = def.objs.map((o, i) => ({ ...o, e: aiEmoji?.[i] || o.e }))
-  const photo = ERA_PHOTOS.find(p => p.test(year)) || ERA_PHOTOS[ERA_PHOTOS.length - 1]
+  if (y<=0) return { eraName:"Classical Antiquity", lines:[
+    { text:`In ${label}, ${sym}${a} had the buying power of ${sym}${Math.round(a*400).toLocaleString()} today. A Roman soldier earned about that in a full month.`, mood:"shocked", serious:true },
+    { text:`Romans had fast food restaurants called "thermopolia" — hot food counters built into the street. ${sym}${a} bought you lunch every day for a whole month! 🍜`, mood:"happy" },
+    { text:`Julius Caesar was SO in debt before he got famous — billions in today's money. He literally invented "fake it till you make it" for the whole Roman Empire! 😂`, mood:"happy" },
+    { text:`Romans used crushed mouse brains as toothpaste. The LUXURY version was powdered oyster shells. Your ${sym}${a} could've bought the fancy option! 🦷😅`, mood:"shocked" },
+  ], question:`You're a Roman citizen with ${sym}${a}. Do you spend it on gladiator tickets, a fancy toga, wine for a week, or invest in a merchant ship to Britannia? 🏛️` };
 
+  if (y<=1400) return { eraName:"The Middle Ages", lines:[
+    { text:`In ${label}, ${sym}${a} could feed a peasant family for an entire year. A knight's full armor cost the equivalent of a house in today's money.`, mood:"shocked", serious:true },
+    { text:`Medieval people thought bathing was DANGEROUS for your health. So nobody did. Your ${sym}${a} could've bought enough perfume to survive being near anyone! 😅`, mood:"happy" },
+    { text:`A knight's horse was worth more than his armor, sword AND house combined — basically a medieval Ferrari that ate hay and occasionally threw you off! 🐴😂`, mood:"happy" },
+    { text:`Medieval peasants had NO idea what year it was. The calendar was a mess, monks kept getting it wrong, and time was genuinely optional. Very chill. ☁️`, mood:"shocked" },
+  ], question:`${sym}${a} in medieval times — sword, a year of food, a fancy hat (status symbol!), or bribe a monk to write you into a history book forever? 🗡️` };
+
+  if (y<=1700) return { eraName:"Age of Discovery", lines:[
+    { text:`In ${label}, ${sym}${a} was serious wealth — equal to about ${sym}${Math.round(a*120).toLocaleString()} today. Enough to fund a small merchant voyage or buy a fine horse.`, mood:"shocked", serious:true },
+    { text:`During the 1637 tulip mania, ONE tulip bulb sold for the price of a luxury house. Your ${sym}${a} in flowers could've made you a millionaire... or bankrupted you overnight! 🌷😂`, mood:"happy" },
+    { text:`Columbus got rejected by THREE countries before Spain said yes. He was basically the world's first startup founder getting ghosted by venture capitalists! 😂`, mood:"happy" },
+    { text:`Nutmeg was literally worth its weight in gold. A pouch of pepper was like carrying a bag of cash. Your ${sym}${a} in spices would be absolutely wild today. 🌶️`, mood:"shocked" },
+  ], question:`${sym}${a} in ${label} — invest in Columbus's voyage, buy a warehouse of pepper, commission a Renaissance painting, or play the tulip market? 🌍` };
+
+  if (y<=1900) return { eraName:"Victorian Era", lines:[
+    { text:`In ${label}, ${sym}${a} had the buying power of about ${sym}${Math.round(a*32).toLocaleString()} today. The average factory worker earned just a few dollars a week.`, mood:"shocked", serious:true },
+    { text:`In the 1800s you could literally MAIL a live person by parcel post! Some parents shipped their children to grandma's house via postal service. ${sym}${a} covered a LOT of postage! 📮😂`, mood:"happy" },
+    { text:`Victorian doctors prescribed cocaine for toothaches, heroin for coughs, and arsenic for "glowing skin." The wellness industry was... extremely different. 😅`, mood:"happy" },
+    { text:`The first big stock bubble in America — two guys tried to corner the ENTIRE gold market in 1869. They almost pulled it off. ${sym}${a} in gold back then would be wild today! 💰`, mood:"shocked" },
+  ], question:`Victorian spending quiz: ${sym}${a} — invest in a railway company (the crypto of the era!), buy a telegraph machine, hire a butler for a week, or get a steam-powered gadget? 🚂` };
+
+  if (y<=1945) return { eraName: y<=1929?"The Roaring Twenties":"World War Era", lines:[
+    { text:`In ${label}, ${sym}${a} had the buying power of about ${sym}${Math.round(a*18).toLocaleString()} today. ${y<1930?"The 1920s were booming — everyone felt rich until suddenly they weren't.":"Wartime rationing meant money couldn't always buy what you needed."}`, mood:"shocked", serious:true },
+    { text:`During Prohibition, illegal whiskey cost more than a full meal! Your ${sym}${a} in a speakeasy would've made you VERY popular with the entire neighborhood! 🥃`, mood:"happy" },
+    { text:`Monopoly was invented during the Great Depression because people couldn't afford REAL real estate. The ultimate "let's pretend we're rich" invention in history! 🎲😂`, mood:"happy" },
+    { text:`The 1929 crash dropped the market 89% over 3 years. Your ${sym}${a} became ${sym}${Math.round(a*0.11)} — like a magic trick, but evil and not fun at all! 😱`, mood:"shocked" },
+  ], question:`It's ${label} and you have ${sym}${a}. Do you put it in stocks (right before the crash!), hide it under your mattress, buy gold, or open a speakeasy? 🎰` };
+
+  if (y<=1970) return { eraName:"The Space Age", lines:[
+    { text:`In ${label}, ${sym}${a} had the buying power of about ${sym}${Math.round(a*11).toLocaleString()} today. A brand new Ford Mustang cost just $2,600 — the American Dream was real!`, mood:"shocked", serious:true },
+    { text:`NASA's entire moon program cost $25 billion — but split across all Americans that's only $150 each. Your ${sym}${a} literally helped put a man on the moon! 🌙`, mood:"happy" },
+    { text:`The Beatles were taxed at 95% income tax. NINETY FIVE PERCENT. That's why George Harrison wrote "Taxman." Your ${sym}${a} would've left them just ${sym}${(amount*0.05).toFixed(2)}! 😂`, mood:"happy" },
+    { text:`In 1969 a color TV cost $500. A black-and-white TV was $150. Your ${sym}${a} could get you a ticket to the moon era in style — with change left over for a burger! 📺`, mood:"shocked" },
+  ], question:`It's ${label} and you have ${sym}${a}. Do you buy Apple stock (doesn't exist yet!), invest in Beatlemania merch, open a savings account at 5%, or go to Woodstock? 🎸` };
+
+  if (y<=1990) return { eraName:"The Eighties", lines:[
+    { text:`In ${label}, ${sym}${a} had the buying power of about ${sym}${Math.round(a*3.5).toLocaleString()} today. Big hair, shoulder pads, and even bigger financial risks.`, mood:"shocked", serious:true },
+    { text:`In 1983 a mobile phone cost $3,995 — that's $12,000 today — and all it could do was make calls. Your ${sym}${a} was ${Math.round((amount/3995)*100)}% of a brick phone! You were basically rich! 📱😂`, mood:"happy" },
+    { text:`In the 80s, "junk bonds" were the hottest investment. Michael Milken made $550 million in ONE year selling them, then went to jail. Finance has always been a reality show! 🎬`, mood:"happy" },
+    { text:`The 1987 Black Monday crash dropped stocks 22% in ONE day. Your ${sym}${a} became ${sym}${Math.round(a*0.78)} before breakfast. The most terrifying morning in Wall Street history! 📉😱`, mood:"shocked" },
+  ], question:`1980s money dilemma: ${sym}${a} — early Apple stock, invest in Blockbuster Video (BOOMING!), buy a mobile brick phone to flex, or put it all on junk bonds? 💾` };
+
+  if (y<=2010) return { eraName: y<=2000?"The Nineties":"The 2000s", lines:[
+    { text:`In ${label}, ${sym}${a} had the buying power of about ${sym}${Math.round(a*2.2).toLocaleString()} today. ${y<2000?"The dotcom era was minting millionaires daily — until it wasn't.":"The 2008 crisis erased $11 trillion in household wealth almost overnight."}`, mood:"shocked", serious:true },
+    { text:`In 1997, ${sym}${a} bought 1,000 Amazon shares at IPO. Today those shares are worth over ${sym}${(amount*6800).toLocaleString()}. That's not investing, that's a TIME MACHINE! ✨`, mood:"happy" },
+    { text:`Pets.com spent $2 million on a Super Bowl ad and went bankrupt 9 months later. Your ${sym}${a} was basically their entire marketing strategy decision. 🐾😂`, mood:"happy" },
+    { text:`Bitcoin launched in January 2009 worth essentially $0. ${sym}${a} then bought you thousands of coins. Today that's... well. Let's just say it hurts to think about. 😱`, mood:"shocked" },
+  ], question:`${y<2000?"90s":"00s"} money challenge: ${sym}${a} — invest in Amazon IPO, buy Pets.com stock (great idea definitely), get early Bitcoin, or stuff it in a Y2K bunker? 💻` };
+
+  if (y<=2025) return { eraName:"The Digital Era", lines:[
+    { text:`Today, ${sym}${a} has 40% less buying power than it did in 2000. Housing costs have tripled. But your pocket computer is 1 million times more powerful than a 1969 NASA mainframe.`, mood:"shocked", serious:true },
+    { text:`${sym}${a} of Tesla stock in 2010 is worth over ${sym}${Math.round(amount*250).toLocaleString()} today. Meanwhile a savings account earned you about ${sym}${Math.round(amount*0.08)}. Choices were made. 📈😅`, mood:"happy" },
+    { text:`Someone paid $69 million for a JPEG in 2021. Not a painting — a JPEG. Your ${sym}${a} could've bought 0.00014% of that JPEG. Art is truly subjective! 🖼️😂`, mood:"happy" },
+    { text:`The world's 8 richest people own as much as the bottom 3.8 BILLION combined. If Bezos dropped ${sym}${a}, physics says it's not worth his time to pick it up. Wild! 😬`, mood:"shocked" },
+  ], question:`Modern money quiz: ${sym}${a} right now — index fund (boring but smart), crypto and hope, pay off debt, or YOLO on a meme stock? What's actually your move? 📊` };
+
+  return { eraName: y<=2060?"Near Future":"Deep Future", lines:[
+    { text:`By ${label}, ${sym}${a} may be worth dramatically less — or MORE. AI-driven deflation vs climate inflation. Economists literally cannot agree which way this goes.`, mood:"shocked", serious:true },
+    { text:`By 2050, AI might do 40% of current jobs. But "Prompt Engineer" wasn't a job in 2005 either. New jobs we can't even imagine yet are coming! 🤖`, mood:"happy" },
+    { text:`Some futurists think money itself will be obsolete by ${Math.min(y,2100)}. Your ${sym}${a} might become a museum exhibit: "primitive exchange token, circa 21st century." 😂`, mood:"happy" },
+    { text:`${sym}${a} invested today at 7% annually until ${Math.min(y,2075)} = ${sym}${Math.round(amount*Math.pow(1.07,Math.min(y-2025,50))).toLocaleString()}. Compound interest is literally a superpower. 🚀`, mood:"shocked" },
+  ], question:`Future vision: by ${label}, will ${sym}${a} buy MORE, LESS, or the SAME? And would you rather have it in cash, crypto, real estate, or brain-uploaded memories? 🤔` };
+}
+
+// ── Typewriter ──────────────────────────────────────────────────────────────
+function Typewriter({ text, speed=13 }) {
+  const [val, setVal] = useState("");
+  const [done, setDone] = useState(false);
+  useEffect(()=>{
+    setVal(""); setDone(false);
+    if (!text) return;
+    let i=0;
+    const id=setInterval(()=>{ i++; setVal(text.slice(0,i)); if(i>=text.length){clearInterval(id);setDone(true);} },speed);
+    return ()=>clearInterval(id);
+  },[text]);
+  return <>{val}{!done&&<span style={{animation:"cur 0.55s ease infinite",color:"#818cf8"}}>|</span>}</>;
+}
+
+// ── Voice ───────────────────────────────────────────────────────────────────
+let _wd=null, _curSerious=false;
+function speak(text, onDone, muted) {
+  const clean=text.replace(/[^\x00-\x7F]/g,"").replace(/\s+/g," ").trim();
+  if (muted||!window.speechSynthesis||!clean){ setTimeout(()=>onDone?.(),Math.min(clean.length*28+400,8000)); return; }
+  window.speechSynthesis.cancel();
+  if(_wd){clearInterval(_wd);_wd=null;}
+  setTimeout(()=>{
+    const utt=new SpeechSynthesisUtterance(clean);
+    utt.pitch=1.6; utt.volume=1; utt.rate=_curSerious?0.92:1.18;
+    const go=()=>{
+      const vs=window.speechSynthesis.getVoices();
+      const pick=vs.find(v=>/samantha/i.test(v.name))||vs.find(v=>/karen/i.test(v.name))
+        ||vs.find(v=>/victoria/i.test(v.name))||vs.find(v=>/zira/i.test(v.name))
+        ||vs.find(v=>v.lang==="en-US"&&v.localService)||vs.find(v=>v.lang.startsWith("en"));
+      if(pick) utt.voice=pick;
+      _wd=setInterval(()=>{ if(window.speechSynthesis.paused) window.speechSynthesis.resume(); },3500);
+      utt.onend=()=>{ clearInterval(_wd);_wd=null; setTimeout(()=>onDone?.(),200); };
+      utt.onerror=e=>{ clearInterval(_wd);_wd=null; if(e.error!=="interrupted") setTimeout(()=>onDone?.(),200); };
+      window.speechSynthesis.speak(utt);
+    };
+    window.speechSynthesis.getVoices().length>0?go():window.speechSynthesis.addEventListener("voiceschanged",go,{once:true});
+  },90);
+}
+
+// ── FinBot ──────────────────────────────────────────────────────────────────
+function FinBot({ mood="neutral", talking=false, pointing=false, swapping=false }) {
   return (
-    <div style={{ position: 'relative', height: 330, overflow: 'hidden', borderRadius: 0 }}>
-      {/* Film perforations top */}
-      <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', height: 18, background: '#0a0a0a', zIndex: 5, position: 'relative', borderBottom: '1px solid #222' }}>
-        {[...Array(12)].map((_, i) => <div key={i} style={{ width: 11, height: 8, background: '#2a2a2a', borderRadius: 3, border: '1px solid #111' }} />)}
-      </div>
-
-      {/* Scene */}
-      <div style={{
-        position: 'relative', height: 294, overflow: 'hidden',
-        background: `linear-gradient(180deg, ${def.sky} 0%, ${def.sky} 65%, ${def.ground} 100%)`,
-        animation: 'tmCamPan 18s ease-in-out infinite',
-      }}>
-        {/* Real photo background */}
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 0,
-          backgroundImage: `url("${photo.url}")`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          opacity: 0.55,
-          filter: 'saturate(0.7) brightness(0.6)',
-        }} />
-
-        {/* Stars for dark/night scenes */}
-        {[...Array(20)].map((_, i) => (
-          <div key={i} style={{
-            position: 'absolute', borderRadius: '50%', background: 'white',
-            width: 2, height: 2,
-            left: `${(i * 13 + 7) % 95}%`,
-            top: `${(i * 7 + 3) % 45}%`,
-            opacity: def.sky.startsWith('#0') || def.sky.startsWith('#1') || def.sky.startsWith('#2') ? 0.6 : 0.1,
-            zIndex: 1,
-          }} />
-        ))}
-
-        {/* Animated emoji objects */}
-        {objs.map((obj, i) => (
-          <div key={i} style={{
-            position: 'absolute',
-            left: `${obj.x}%`,
-            top: `${obj.y}%`,
-            fontSize: obj.s,
-            lineHeight: 1,
-            animation: ANIM_MAP[obj.a] || 'none',
-            filter: 'drop-shadow(0 3px 10px rgba(0,0,0,0.7))',
-            zIndex: i + 2,
-            userSelect: 'none',
-          }}>
-            {obj.e}
-          </div>
-        ))}
-
-        {/* Scan lines film effect */}
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20,
-          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px)',
-        }} />
-        {/* Vignette */}
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 21,
-          background: 'radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.55) 100%)',
-        }} />
-      </div>
-
-      {/* Film perforations bottom */}
-      <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', height: 18, background: '#0a0a0a', zIndex: 5, position: 'relative', borderTop: '1px solid #222' }}>
-        {[...Array(12)].map((_, i) => <div key={i} style={{ width: 11, height: 8, background: '#2a2a2a', borderRadius: 3, border: '1px solid #111' }} />)}
-      </div>
-    </div>
-  )
-}
-
-// ── Planet ─────────────────────────────────────────────────────────────────
-function Planet({ year, colors, eraName, size = 160 }) {
-  const [c1, c2] = colors || ['#6366f1', '#4f46e5']
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative" style={{ width: size, height: size }}>
-        <div className="absolute inset-0 rounded-full opacity-25 blur-2xl" style={{ background: `radial-gradient(circle,${c1},${c2})` }} />
-        <div className="absolute inset-0 rounded-full overflow-hidden" style={{
-          background: `radial-gradient(circle at 32% 28%,${c1} 0%,${c2} 55%,#050510 100%)`,
-          animation: 'tmPlanetDrop 0.85s cubic-bezier(0.34,1.45,0.64,1) both',
-        }}>
-          <svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 w-full h-full opacity-10">
-            <ellipse cx={size * 0.5} cy={size * 0.42} rx={size * 0.44} ry={size * 0.1} fill="none" stroke="white" strokeWidth="1.5" />
-            <ellipse cx={size * 0.5} cy={size * 0.58} rx={size * 0.34} ry={size * 0.07} fill="none" stroke="white" strokeWidth="1" />
-          </svg>
-          <div className="absolute rounded-full" style={{ top: '12%', left: '17%', width: '28%', height: '20%', background: 'white', filter: 'blur(7px)', opacity: 0.18 }} />
-        </div>
-        <div className="absolute inset-0 flex items-center justify-center" style={{ animation: 'tmPlanetDrop 0.85s cubic-bezier(0.34,1.45,0.64,1) both' }}>
-          <span className="text-white font-black select-none drop-shadow-2xl" style={{ fontSize: size * 0.22, textShadow: '0 3px 22px rgba(0,0,0,0.95)' }}>
-            {fmtYear(year)}
-          </span>
-        </div>
-      </div>
-      {eraName && (
-        <div className="text-center px-3 py-1 rounded-full text-[11px] font-bold tracking-widest uppercase"
-          style={{ background: `${c1}22`, color: c1, border: `1px solid ${c1}44`, animation: 'tmSlideUp 0.4s 0.75s ease both', opacity: 0 }}>
-          {eraName}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── SpendlyBot ─────────────────────────────────────────────────────────────
-function SpendlyBot({ mood = 'neutral', walking = false, talking = false, teaching = false }) {
-  return (
-    <svg viewBox="0 0 80 110" width="80" height="98" style={{ overflow: 'visible', flexShrink: 0 }}>
-      <line x1="40" y1="3" x2="40" y2="13" stroke="#a5b4fc" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="40" cy="3" r="4" fill="#818cf8">
-        <animate attributeName="r" values="4;5.5;4" dur="1.8s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="1;0.3;1" dur="1.8s" repeatCount="indefinite" />
+    <svg viewBox="0 0 110 145" width={84} height={108}
+      style={{overflow:"visible",flexShrink:0,filter:"drop-shadow(0 6px 22px rgba(99,102,241,0.55))"}}>
+      <line x1="55" y1="4" x2="55" y2="16" stroke="#a5b4fc" strokeWidth="2.5" strokeLinecap="round"/>
+      <circle cx="55" cy="4" r="4.5" fill="#818cf8">
+        <animate attributeName="r" values="4.5;6.5;4.5" dur="1.8s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="1;0.3;1" dur="1.8s" repeatCount="indefinite"/>
       </circle>
-      <rect x="16" y="11" width="48" height="36" rx="10" fill="#4f46e5" />
-      <rect x="19" y="14" width="16" height="7" rx="3.5" fill="#6366f1" opacity="0.4" />
-      {mood === 'shocked' ? <>
-        <ellipse cx="30" cy="27" rx="9" ry="10" fill="#e0e7ff" /><ellipse cx="50" cy="27" rx="9" ry="10" fill="#e0e7ff" />
-        <circle cx="30" cy="29" r="4.5" fill="#1e1b4b" /><circle cx="50" cy="29" r="4.5" fill="#1e1b4b" />
-        <circle cx="28.5" cy="27" r="1.5" fill="white" /><circle cx="48.5" cy="27" r="1.5" fill="white" />
-      </> : mood === 'laughing' ? <>
-        <path d="M21 22 Q30 15 39 22" fill="none" stroke="#c7d2fe" strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M41 22 Q50 15 59 22" fill="none" stroke="#c7d2fe" strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M24 27 Q30 33 36 27" fill="#c7d2fe" /><path d="M44 27 Q50 33 56 27" fill="#c7d2fe" />
-      </> : <>
-        <rect x="21" y="21" width="17" height="12" rx="5" fill="#e0e7ff" />
-        <rect x="42" y="21" width="17" height="12" rx="5" fill="#e0e7ff" />
-        <rect x="26" y="24" rx="3" width={talking ? '5' : '6'} height={talking ? '6' : '7'} fill="#1e1b4b">
-          {talking && <animate attributeName="height" values="6;2;6" dur="0.22s" repeatCount="indefinite" />}
+      <rect x="18" y="15" width="74" height="46" rx="13" fill="#4f46e5"/>
+      <rect x="21" y="18" width="26" height="9" rx="4.5" fill="white" opacity="0.1"/>
+      {mood==="shocked"?<>
+        <ellipse cx="40" cy="32" rx="11" ry="12" fill="#e0e7ff"/>
+        <ellipse cx="70" cy="32" rx="11" ry="12" fill="#e0e7ff"/>
+        <circle cx="40" cy="34" r="5.5" fill="#1e1b4b"/>
+        <circle cx="70" cy="34" r="5.5" fill="#1e1b4b"/>
+        <circle cx="38" cy="32" r="2" fill="white"/>
+        <circle cx="68" cy="32" r="2" fill="white"/>
+      </>:mood==="happy"?<>
+        <path d="M28 27 Q40 19 52 27" fill="none" stroke="#c7d2fe" strokeWidth="3.5" strokeLinecap="round"/>
+        <path d="M58 27 Q70 19 82 27" fill="none" stroke="#c7d2fe" strokeWidth="3.5" strokeLinecap="round"/>
+        <path d="M30 34 Q40 43 50 34" fill="#c7d2fe"/>
+        <path d="M60 34 Q70 43 80 34" fill="#c7d2fe"/>
+      </>:<>
+        <rect x="28" y="24" width="23" height="15" rx="7" fill="#e0e7ff"/>
+        <rect x="59" y="24" width="23" height="15" rx="7" fill="#e0e7ff"/>
+        <rect x={talking?"32":"33"} y="27" rx="4.5" width={talking?"12":"13"} height={talking?"9":"10"} fill="#1e1b4b">
+          {talking&&<animate attributeName="height" values="9;2;9" dur="0.22s" repeatCount="indefinite"/>}
         </rect>
-        <rect x="47" y="24" rx="3" width={talking ? '5' : '6'} height={talking ? '6' : '7'} fill="#1e1b4b">
-          {talking && <animate attributeName="height" values="6;2;6" dur="0.22s" begin="0.11s" repeatCount="indefinite" />}
+        <rect x={talking?"63":"64"} y="27" rx="4.5" width={talking?"12":"13"} height={talking?"9":"10"} fill="#1e1b4b">
+          {talking&&<animate attributeName="height" values="9;2;9" dur="0.22s" begin="0.11s" repeatCount="indefinite"/>}
         </rect>
       </>}
-      {mood === 'laughing'
-        ? <path d="M24 39 Q40 50 56 39" fill="#312e81" stroke="#a5b4fc" strokeWidth="1.5" />
-        : mood === 'shocked'
-          ? <ellipse cx="40" cy="40" rx="7" ry="5" fill="#312e81" />
-          : talking
-            ? <ellipse cx="40" cy="40" rx="6" ry="4" fill="#312e81"><animate attributeName="ry" values="4;1.5;4" dur="0.22s" repeatCount="indefinite" /></ellipse>
-            : <path d="M29 40 Q40 45 51 40" fill="none" stroke="#a5b4fc" strokeWidth="2" strokeLinecap="round" />}
-      <rect x="20" y="49" width="40" height="27" rx="8" fill="#4338ca" />
-      <rect x="26" y="54" width="28" height="16" rx="4" fill="#1e1b4b" />
-      <text x="40" y="66" textAnchor="middle" fill="#818cf8" fontSize="11" fontWeight="bold" fontFamily="monospace">$</text>
-      {/* Left arm */}
-      <rect x="7" y="51" width="13" height="21" rx="6.5" fill="#4338ca">
-        {walking && <animateTransform attributeName="transform" type="rotate" values="22,13,51; -22,13,51; 22,13,51" dur="0.38s" repeatCount="indefinite" />}
-      </rect>
-      {/* Right arm — normal or teaching pose */}
-      {teaching ? (
+      {mood==="happy"
+        ?<path d="M35 54 Q55 66 75 54" fill="#312e81" stroke="#a5b4fc" strokeWidth="1.5"/>
+        :mood==="shocked"
+          ?<ellipse cx="55" cy="55" rx="9" ry="7" fill="#312e81"/>
+          :talking
+            ?<ellipse cx="55" cy="55" rx="8" ry="5" fill="#312e81"><animate attributeName="ry" values="5;1.5;5" dur="0.22s" repeatCount="indefinite"/></ellipse>
+            :<path d="M40 55 Q55 61 70 55" fill="none" stroke="#a5b4fc" strokeWidth="2" strokeLinecap="round"/>}
+      <rect x="20" y="63" width="70" height="37" rx="12" fill="#4338ca"/>
+      <rect x="29" y="69" width="52" height="22" rx="6" fill="#1e1b4b"/>
+      <text x="55" y="84" textAnchor="middle" fill="#818cf8" fontSize="13" fontWeight="900" fontFamily="monospace">FIN</text>
+      <rect x="5" y="65" width="15" height="24" rx="7.5" fill="#4338ca"/>
+      {(pointing||swapping)?(
         <g>
-          {/* Raised arm */}
-          <rect x="60" y="30" width="13" height="21" rx="6.5" fill="#4338ca">
-            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
+          <rect x="90" y="46" width="15" height="24" rx="7.5" fill="#4338ca">
+            <animateTransform attributeName="transform" type="rotate"
+              values={swapping?"-55,97,65;-5,97,65;-55,97,65":"-38,97,65;-20,97,65;-38,97,65"}
+              dur={swapping?"0.45s":"2.2s"} repeatCount="indefinite"/>
           </rect>
-          {/* Ruler stick */}
-          <rect x="63.5" y="8" width="5" height="24" rx="2.5" fill="#fbbf24">
-            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
-          </rect>
-          {/* Ruler tip arrow */}
-          <polygon points="66,3 61,9 71,9" fill="#f59e0b">
-            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
-          </polygon>
-          {/* Ruler tick marks */}
-          <line x1="60" y1="14" x2="64" y2="14" stroke="#f59e0b" strokeWidth="1.5">
-            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
+          <line x1="96" y1="18" x2="91" y2="48" stroke="#fbbf24" strokeWidth="3.5" strokeLinecap="round">
+            <animateTransform attributeName="transform" type="rotate"
+              values={swapping?"-55,97,65;-5,97,65;-55,97,65":"-38,97,65;-20,97,65;-38,97,65"}
+              dur={swapping?"0.45s":"2.2s"} repeatCount="indefinite"/>
           </line>
-          <line x1="60" y1="19" x2="62" y2="19" stroke="#f59e0b" strokeWidth="1.5">
-            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
-          </line>
-          <line x1="60" y1="24" x2="64" y2="24" stroke="#f59e0b" strokeWidth="1.5">
-            <animateTransform attributeName="transform" type="rotate" values="-10,66,51; 10,66,51; -10,66,51" dur="1.8s" repeatCount="indefinite" />
-          </line>
+          <circle cx="96" cy="16" r="5.5" fill="#f59e0b">
+            <animateTransform attributeName="transform" type="rotate"
+              values={swapping?"-55,97,65;-5,97,65;-55,97,65":"-38,97,65;-20,97,65;-38,97,65"}
+              dur={swapping?"0.45s":"2.2s"} repeatCount="indefinite"/>
+            <animate attributeName="r" values="5.5;8;5.5" dur={swapping?"0.45s":"1s"} repeatCount="indefinite"/>
+          </circle>
+          <circle cx="96" cy="16" r="11" fill="#fbbf24" opacity="0.18">
+            <animateTransform attributeName="transform" type="rotate"
+              values={swapping?"-55,97,65;-5,97,65;-55,97,65":"-38,97,65;-20,97,65;-38,97,65"}
+              dur={swapping?"0.45s":"2.2s"} repeatCount="indefinite"/>
+            <animate attributeName="r" values="11;16;11" dur={swapping?"0.45s":"1s"} repeatCount="indefinite"/>
+          </circle>
         </g>
-      ) : (
-        <rect x="60" y="51" width="13" height="21" rx="6.5" fill="#4338ca">
-          {walking && <animateTransform attributeName="transform" type="rotate" values="-22,66,51; 22,66,51; -22,66,51" dur="0.38s" repeatCount="indefinite" />}
-        </rect>
+      ):(
+        <rect x="90" y="65" width="15" height="24" rx="7.5" fill="#4338ca"/>
       )}
-      <rect x="25" y="76" width="13" height="24" rx="6.5" fill="#3730a3">
-        {walking && <animateTransform attributeName="transform" type="rotate" values="26,31,76; -26,31,76; 26,31,76" dur="0.38s" repeatCount="indefinite" />}
-      </rect>
-      <rect x="42" y="76" width="13" height="24" rx="6.5" fill="#3730a3">
-        {walking && <animateTransform attributeName="transform" type="rotate" values="-26,48,76; 26,48,76; -26,48,76" dur="0.38s" repeatCount="indefinite" />}
-      </rect>
+      <rect x="28" y="100" width="16" height="30" rx="8" fill="#3730a3"/>
+      <rect x="66" y="100" width="16" height="30" rx="8" fill="#3730a3"/>
     </svg>
-  )
+  );
 }
 
-// ── Typewriter (display only — voice drives pacing) ────────────────────────
-function Typewriter({ text, speed = 22 }) {
-  const [val, setVal] = useState('')
-  const [done, setDone] = useState(false)
-  useEffect(() => {
-    setVal(''); setDone(false)
-    if (!text) return
-    let i = 0
-    const id = setInterval(() => {
-      i++; setVal(text.slice(0, i))
-      if (i >= text.length) { clearInterval(id); setDone(true) }
-    }, speed)
-    return () => clearInterval(id)
-  }, [text]) // eslint-disable-line
-  return <>{val}{!done && <span style={{ animation: 'tmPulse 0.5s ease infinite' }}>▌</span>}</>
-}
+// ── Main ────────────────────────────────────────────────────────────────────
+export default function App() {
+  const sym="$";
+  const [phase,     setPhase]     = useState("input");
+  const [yearInput, setYearInput] = useState("");
+  const [amtInput,  setAmtInput]  = useState("100");
+  const [err,       setErr]       = useState("");
+  const [muted,     setMuted]     = useState(false);
+  const [year,      setYear]      = useState(0);
+  const [script,    setScript]    = useState(null);
+  const [scenes,    setScenes]    = useState([]);
+  const [lineIdx,   setLineIdx]   = useState(-1);
+  const [sceneIdx,  setSceneIdx]  = useState(0);
+  const [talking,   setTalking]   = useState(false);
+  const [mood,      setMood]      = useState("neutral");
+  const [swapping,  setSwapping]  = useState(false);
+  const [showQ,     setShowQ]     = useState(false);
 
-// ── Voice helpers ──────────────────────────────────────────────────────────
-function stripEmoji(str) {
-  return str.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27FF}\u{FE00}-\u{FE0F}]/gu, '').replace(/\s+/g, ' ').trim()
-}
+  const mutedRef  = useRef(false);
+  const scriptRef = useRef(null);
+  const lineIdxRef= useRef(-1);
+  const sceneTick = useRef(null);
+  const swapRef   = useRef(null);
 
-let _watchdog = null
-function speak(text, onDone, muted) {
-  if (muted || !window.speechSynthesis) { setTimeout(() => onDone?.(), text.length * 42 + 400); return }
-  window.speechSynthesis.cancel()
-  if (_watchdog) { clearInterval(_watchdog); _watchdog = null }
+  useEffect(()=>{ mutedRef.current=muted; },[muted]);
+  useEffect(()=>{ scriptRef.current=script; },[script]);
+  useEffect(()=>{ lineIdxRef.current=lineIdx; },[lineIdx]);
+  useEffect(()=>()=>{
+    window.speechSynthesis?.cancel();
+    if(_wd){clearInterval(_wd);_wd=null;}
+    if(sceneTick.current) clearInterval(sceneTick.current);
+    if(swapRef.current) clearTimeout(swapRef.current);
+  },[]);
 
-  // Small delay so cancel() flushes before speaking
-  setTimeout(() => {
-    const clean = stripEmoji(text)
-    if (!clean) { onDone?.(); return }
-    const utt = new SpeechSynthesisUtterance(clean)
-    utt.rate = 0.84
-    utt.pitch = 1.1
+  // Scene swap every 5s
+  useEffect(()=>{
+    if(phase!=="story"&&phase!=="question") return;
+    if(sceneTick.current) clearInterval(sceneTick.current);
+    sceneTick.current=setInterval(()=>{
+      setSwapping(true);
+      if(swapRef.current) clearTimeout(swapRef.current);
+      swapRef.current=setTimeout(()=>setSwapping(false),550);
+      setSceneIdx(i=>(i+1)%3);
+    },5000);
+    return ()=>clearInterval(sceneTick.current);
+  },[phase]);
 
-    const trySpeak = () => {
-      const voices = window.speechSynthesis.getVoices()
-      const pick = voices.find(v => /samantha|google uk english female|karen|victoria|fiona|moira/i.test(v.name))
-        || voices.find(v => v.lang === 'en-US' && v.localService)
-        || voices.find(v => v.lang.startsWith('en-') && v.localService)
-        || voices.find(v => v.lang.startsWith('en'))
-      if (pick) utt.voice = pick
+  // Narration
+  useEffect(()=>{
+    if(phase!=="story"||lineIdx<0||!scriptRef.current) return;
+    const lines=scriptRef.current.lines;
+    if(lineIdx>=lines.length){ setPhase("question"); setTimeout(()=>setShowQ(true),400); return; }
+    const line=lines[lineIdx];
+    _curSerious=!!line.serious;
+    setMood(line.mood||"neutral");
+    setTalking(true);
+    speak(line.text,()=>{
+      setTalking(false);
+      setTimeout(()=>setLineIdx(lineIdxRef.current+1),600);
+    },mutedRef.current);
+  },[lineIdx,phase]);
 
-      // Chrome bug: speechSynthesis pauses silently after ~15s — keep it alive
-      _watchdog = setInterval(() => { if (window.speechSynthesis.paused) window.speechSynthesis.resume() }, 4500)
+  const parseYear=raw=>{ const bc=raw.match(/^(\d+)\s*bc$/i); return bc?-parseInt(bc[1]):parseInt(raw); };
 
-      utt.onend = () => { clearInterval(_watchdog); _watchdog = null; setTimeout(() => onDone?.(), 180) }
-      utt.onerror = e => { clearInterval(_watchdog); _watchdog = null; if (e.error !== 'interrupted') setTimeout(() => onDone?.(), 180) }
+  const travel=()=>{
+    const y=parseYear(yearInput.trim());
+    if(isNaN(y)||y<-4000||y>4025){ setErr("Enter a year between 4000 BC and 4025"); return; }
+    const a=parseFloat(amtInput)||100;
+    setErr(""); setYear(y); setPhase("loading");
+    setTimeout(()=>{
+      const s=getScript(y,a,sym);
+      setScript(s); setScenes(getScenes(y));
+      setSceneIdx(0); setLineIdx(-1); setShowQ(false);
+      setPhase("story");
+      setTimeout(()=>setLineIdx(0),500);
+    },1200);
+  };
 
-      window.speechSynthesis.speak(utt)
-    }
+  const reset=()=>{
+    window.speechSynthesis?.cancel();
+    if(_wd){clearInterval(_wd);_wd=null;}
+    if(sceneTick.current){clearInterval(sceneTick.current);sceneTick.current=null;}
+    setPhase("input"); setScript(null); setLineIdx(-1);
+    setTalking(false); setMood("neutral"); setSwapping(false); setShowQ(false);
+    lineIdxRef.current=-1;
+  };
 
-    // Voices may not be loaded yet on first call
-    if (window.speechSynthesis.getVoices().length > 0) {
-      trySpeak()
-    } else {
-      window.speechSynthesis.addEventListener('voiceschanged', trySpeak, { once: true })
-    }
-  }, 100)
-}
+  const era=getEra(year);
+  const totalLines=script?.lines?.length||4;
+  const pct=phase==="question"?100:lineIdx>=0?Math.round((lineIdx/totalLines)*100):0;
+  const isSerious=script?.lines?.[lineIdx]?.serious;
 
-// ── Main component ─────────────────────────────────────────────────────────
-export default function TimeMachineModal({ onClose, defaultAmount, currency = 'USD' }) {
-  const sym = SYM[currency] || '$'
+  return(
+    <div style={{minHeight:"100vh",
+      background:"linear-gradient(160deg,#0f0c29 0%,#1e1b4b 50%,#0f172a 100%)",
+      fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
+      <style>{`
+        *{box-sizing:border-box}
+        @keyframes cur{0%,100%{opacity:1}50%{opacity:0}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes up{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+        @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+        @keyframes botIn{from{transform:translateX(-36px);opacity:0}to{transform:translateX(0);opacity:1}}
+        @keyframes qPop{0%{transform:scale(0.88);opacity:0}80%{transform:scale(1.02)}100%{transform:scale(1);opacity:1}}
+        @keyframes sceneFlash{0%{opacity:1}40%{opacity:0.3}100%{opacity:1}}
+        input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+        input::placeholder{color:rgba(165,180,252,0.3)}
+      `}</style>
 
-  const [phase, setPhase]       = useState('input')   // input | warping | arriving | story | done
-  const [yearInput, setYearInput] = useState('')
-  const [amtInput, setAmtInput]   = useState(defaultAmount ? String(Math.round(defaultAmount)) : '')
-  const [sketch, setSketch]       = useState(null)
-  const [lines, setLines]         = useState([])
-  const [lineIdx, setLineIdx]     = useState(-1)
-  const [walking, setWalking]     = useState(false)
-  const [talking, setTalking]     = useState(false)
-  const [mood, setMood]           = useState('neutral')
-  const [err, setErr]             = useState('')
-  const [muted, setMuted]         = useState(() => localStorage.getItem('spendly_tm_muted') === 'true')
-
-  const starsRef   = useRef(makeStars(42))
-  const mutedRef   = useRef(muted)
-  const linesRef   = useRef([])
-  const lineIdxRef = useRef(-1)
-
-  useEffect(() => { mutedRef.current = muted }, [muted])
-  useEffect(() => { linesRef.current = lines }, [lines])
-  useEffect(() => { lineIdxRef.current = lineIdx }, [lineIdx])
-
-  // Cancel speech on unmount
-  useEffect(() => () => { window.speechSynthesis?.cancel(); if (_watchdog) { clearInterval(_watchdog); _watchdog = null } }, [])
-
-  // ── Voice drives line advancement ─────────────────────────────────────
-  useEffect(() => {
-    if (phase !== 'story' || lineIdx < 0 || !linesRef.current[lineIdx]) return
-    const line = linesRef.current[lineIdx]
-    setTalking(true)
-    setMood(line.mood)
-
-    speak(line.text, () => {
-      setTalking(false)
-      setTimeout(() => {
-        const next = lineIdxRef.current + 1
-        if (next >= linesRef.current.length) {
-          setPhase('done')
-        } else {
-          setLineIdx(next)
-        }
-      }, 650)
-    }, mutedRef.current)
-  }, [lineIdx, phase]) // eslint-disable-line
-
-  const theme = sketch ? getTheme(sketch.year) : getTheme(1970)
-
-  // ── Travel ────────────────────────────────────────────────────────────
-  const travel = async () => {
-    const raw = yearInput.trim()
-    // Support "44 BC", "44bc", "-44"
-    let y
-    const bcMatch = raw.match(/^(\d+)\s*bc$/i)
-    if (bcMatch) y = -parseInt(bcMatch[1])
-    else y = parseInt(raw)
-
-    if (isNaN(y) || y < -2000 || y > 4025) {
-      setErr('Enter a year between 2000 BC and 4025 (e.g. -44 or "44 BC")')
-      return
-    }
-    const a = parseFloat(amtInput) || 100
-    setErr('')
-    setPhase('warping')
-    starsRef.current = makeStars(Math.abs(y))
-
-    try {
-      const { data } = await API.post('/insights/time-machine', { year: y, amount: a, currency })
-      const MOODS = ['shocked', 'neutral', 'neutral', 'laughing', 'shocked', 'laughing']
-      const linesData = [
-        { text: data.line1, mood: MOODS[0] },
-        { text: data.line2, mood: MOODS[1] },
-        { text: data.line3, mood: MOODS[2] },
-        { text: data.line4, mood: MOODS[3] },
-        { text: data.line5, mood: MOODS[4] },
-        { text: data.line6, mood: MOODS[5] },
-      ].filter(l => l.text)
-
-      // Warp animation plays for 2.6s minimum
-      setTimeout(() => {
-        setSketch(data)
-        setLines(linesData)
-        setPhase('arriving')
-        // Planet lands → start story
-        setTimeout(() => {
-          setPhase('story')
-          setWalking(true)
-          setTimeout(() => { setWalking(false); setLineIdx(0) }, 1500)
-        }, 2000)
-      }, 2650)
-    } catch {
-      setTimeout(() => { setPhase('input'); setErr('Time travel failed! Try again.') }, 2650)
-    }
-  }
-
-  const toggleMute = () => {
-    const next = !muted
-    setMuted(next)
-    localStorage.setItem('spendly_tm_muted', String(next))
-    if (next) { window.speechSynthesis?.cancel(); if (_watchdog) { clearInterval(_watchdog); _watchdog = null } }
-  }
-
-  const reset = () => {
-    window.speechSynthesis?.cancel()
-    if (_watchdog) { clearInterval(_watchdog); _watchdog = null }
-    setPhase('input'); setSketch(null); setLines([]); setLineIdx(-1)
-    setWalking(false); setTalking(false); setMood('neutral')
-    lineIdxRef.current = -1
-  }
-
-  // ── Render ────────────────────────────────────────────────────────────
-  return (
-    <div className={`fixed inset-0 z-50 flex flex-col overflow-hidden bg-linear-to-br ${theme.bg}`}>
-      <style>{SCENE_ANIM}</style>
-
-      {/* Starfield */}
-      {phase !== 'input' && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {starsRef.current.map((s, i) => (
-            <div key={i} className="absolute rounded-full bg-white"
-              style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.rad * 2, height: s.rad * 2, '--so': s.op, animation: `tmStarFlicker ${s.dur}s ${i * 0.06}s ease-in-out infinite` }} />
-          ))}
+      {/* top bar */}
+      <div style={{width:"100%",maxWidth:500,margin:"0 auto",
+        display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 16px 0"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:40,height:40,borderRadius:11,background:"rgba(99,102,241,0.2)",
+            border:"1px solid rgba(99,102,241,0.35)",display:"flex",alignItems:"center",
+            justifyContent:"center",fontSize:20}}>🕰️</div>
+          <div>
+            <div style={{color:"white",fontWeight:800,fontSize:15,letterSpacing:"-0.3px"}}>Time Machine</div>
+            <div style={{color:"rgba(165,180,252,0.5)",fontSize:11}}>powered by FinBot</div>
+          </div>
         </div>
-      )}
-
-      {/* Top controls */}
-      <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-        <button onClick={toggleMute} title={muted ? 'Unmute' : 'Mute'}
-          className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition">
-          {muted
-            ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-            : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>}
-        </button>
-        <button onClick={() => { window.speechSynthesis?.cancel(); onClose() }}
-          className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white text-sm font-bold transition">✕</button>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setMuted(m=>!m)} style={{width:36,height:36,borderRadius:10,
+            border:"1px solid rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.06)",
+            color:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>
+            {muted?"🔇":"🔊"}</button>
+          {(phase==="story"||phase==="question")&&(
+            <button onClick={reset} style={{width:36,height:36,borderRadius:10,
+              border:"1px solid rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.06)",
+              color:"rgba(255,255,255,0.7)",cursor:"pointer",display:"flex",
+              alignItems:"center",justifyContent:"center",fontSize:17}}>✕</button>
+          )}
+        </div>
       </div>
 
-      {/* ══ INPUT ══ */}
-      {phase === 'input' && (
-        <div className="flex-1 flex flex-col items-center justify-center px-6 gap-5 overflow-y-auto py-8">
-          <div className="text-center">
-            <div className="text-6xl mb-3">🕰️</div>
-            <h2 className="text-white font-black text-2xl mb-1">Time Machine</h2>
-            <p className="text-white/50 text-sm">From 2000 BC to year 4025 — enter any year.</p>
-          </div>
-          <div className="w-full max-w-sm space-y-3">
-            <div>
-              <label className="text-white/50 text-xs font-bold uppercase tracking-wider mb-1.5 block">Your amount</label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 font-semibold text-sm">{sym}</span>
-                <input value={amtInput} onChange={e => setAmtInput(e.target.value)} type="number" placeholder="100"
-                  className="w-full bg-white/10 border border-white/20 rounded-xl pl-8 pr-4 py-3 text-white placeholder-white/25 text-lg font-bold focus:outline-none focus:border-white/50 transition" />
+      <div style={{width:"100%",maxWidth:500,margin:"0 auto",padding:"0 16px 32px"}}>
+
+        {/* INPUT */}
+        {phase==="input"&&(
+          <div style={{animation:"fadeIn 0.5s ease"}}>
+            <div style={{textAlign:"center",padding:"24px 0 20px"}}>
+              <div style={{fontSize:54,marginBottom:10,display:"inline-block",animation:"pulse 2.5s ease infinite"}}>🕰️</div>
+              <h1 style={{color:"white",fontSize:24,fontWeight:900,margin:"0 0 8px",letterSpacing:"-0.5px"}}>Travel Through Time</h1>
+              <p style={{color:"rgba(165,180,252,0.5)",fontSize:13.5,margin:0,lineHeight:1.6}}>
+                Discover what your money was worth<br/>across 6,000 years of history ✨
+              </p>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div>
+                <label style={{color:"rgba(165,180,252,0.6)",fontSize:11,fontWeight:700,
+                  textTransform:"uppercase",letterSpacing:"1.2px",display:"block",marginBottom:7}}>Your Amount</label>
+                <div style={{position:"relative"}}>
+                  <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",
+                    color:"rgba(165,180,252,0.45)",fontWeight:700,fontSize:17,pointerEvents:"none"}}>{sym}</span>
+                  <input value={amtInput} onChange={e=>setAmtInput(e.target.value)} type="number" placeholder="100"
+                    style={{width:"100%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(99,102,241,0.3)",
+                      borderRadius:13,paddingLeft:32,paddingRight:16,paddingTop:14,paddingBottom:14,
+                      color:"white",fontSize:20,fontWeight:800,outline:"none"}}/>
+                </div>
+              </div>
+              <div>
+                <label style={{color:"rgba(165,180,252,0.6)",fontSize:11,fontWeight:700,
+                  textTransform:"uppercase",letterSpacing:"1.2px",display:"block",marginBottom:7}}>Destination Year</label>
+                <input value={yearInput} onChange={e=>{setYearInput(e.target.value);setErr("");}}
+                  placeholder="e.g.  -44  ·  1929  ·  2075  ·  44 BC"
+                  style={{width:"100%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(99,102,241,0.3)",
+                    borderRadius:13,padding:"14px 16px",color:"white",fontSize:16,fontWeight:600,outline:"none"}}
+                  onKeyDown={e=>e.key==="Enter"&&travel()}/>
+                {err&&<p style={{color:"#f87171",fontSize:12.5,marginTop:6}}>⚠ {err}</p>}
+              </div>
+              <button onClick={travel} style={{background:"linear-gradient(135deg,#6366f1,#4338ca)",border:"none",
+                borderRadius:13,padding:"15px",color:"white",fontSize:15,fontWeight:800,cursor:"pointer",
+                boxShadow:"0 8px 28px rgba(99,102,241,0.45)",marginTop:2}}>
+                🚀 Launch Time Machine
+              </button>
+            </div>
+            <div style={{marginTop:22}}>
+              <p style={{color:"rgba(165,180,252,0.28)",fontSize:11,textTransform:"uppercase",
+                letterSpacing:"1.2px",textAlign:"center",marginBottom:10}}>Popular Destinations</p>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center"}}>
+                {POPULAR.map(p=>(
+                  <button key={p.year} onClick={()=>setYearInput(String(p.year))} style={{
+                    background:"rgba(99,102,241,0.09)",border:"1px solid rgba(99,102,241,0.22)",
+                    borderRadius:20,padding:"6px 12px",color:"rgba(165,180,252,0.6)",
+                    fontSize:12,cursor:"pointer",fontWeight:500}}>
+                    {fmtYear(p.year)} · {p.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div>
-              <label className="text-white/50 text-xs font-bold uppercase tracking-wider mb-1.5 block">Destination year (e.g. -44 or 1969)</label>
-              <input value={yearInput} onChange={e => { setYearInput(e.target.value); setErr('') }}
-                placeholder="e.g. -44 or 1969 or 2075"
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/25 text-lg font-bold focus:outline-none focus:border-white/50 transition"
-                onKeyDown={e => e.key === 'Enter' && travel()} />
-              {err && <p className="text-red-400 text-xs mt-1.5">{err}</p>}
-            </div>
-            <button onClick={travel}
-              className="w-full bg-violet-600 hover:bg-violet-500 text-white font-black py-3.5 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-lg shadow-violet-900/50">
-              🚀 Launch Time Machine
-            </button>
           </div>
-          <div className="w-full max-w-sm">
-            <p className="text-white/25 text-xs uppercase tracking-wider text-center mb-2">Popular destinations</p>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {POPULAR.map(p => (
-                <button key={p.year} onClick={() => setYearInput(String(p.year))}
-                  className="bg-white/8 hover:bg-white/15 border border-white/12 text-white/55 hover:text-white text-xs px-3 py-1.5 rounded-full transition">
-                  {p.label}
-                </button>
+        )}
+
+        {/* LOADING */}
+        {phase==="loading"&&(
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+            justifyContent:"center",minHeight:"65vh",gap:20,animation:"fadeIn 0.4s ease"}}>
+            <div style={{position:"relative"}}>
+              <div style={{width:64,height:64,borderRadius:"50%",
+                border:"3px solid rgba(99,102,241,0.15)",borderTop:"3px solid #6366f1",
+                animation:"spin 0.85s linear infinite"}}/>
+              <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>🕰️</div>
+            </div>
+            <div style={{textAlign:"center"}}>
+              <div style={{color:"white",fontWeight:800,fontSize:18,marginBottom:5}}>
+                Travelling to {fmtYear(parseYear(yearInput)||0)}
+              </div>
+              <div style={{color:"rgba(165,180,252,0.45)",fontSize:13}}>FinBot is preparing your briefing…</div>
+            </div>
+          </div>
+        )}
+
+        {/* STORY + QUESTION */}
+        {(phase==="story"||phase==="question")&&script&&(
+          <div style={{animation:"fadeIn 0.4s ease"}}>
+            {/* era badge */}
+            <div style={{display:"flex",justifyContent:"center",padding:"12px 0 8px"}}>
+              <div style={{display:"inline-flex",alignItems:"center",gap:8,
+                background:"rgba(99,102,241,0.12)",border:`1px solid ${era.color}44`,borderRadius:30,padding:"6px 16px"}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:era.color,boxShadow:`0 0 8px ${era.color}`}}/>
+                <span style={{color:"white",fontWeight:700,fontSize:13}}>{script.eraName}</span>
+                <span style={{color:"rgba(255,255,255,0.28)",fontSize:11}}>·</span>
+                <span style={{color:"rgba(255,255,255,0.42)",fontSize:12}}>{fmtYear(year)}</span>
+              </div>
+            </div>
+
+            {/* progress */}
+            <div style={{height:3,background:"rgba(255,255,255,0.08)",borderRadius:3,marginBottom:12,overflow:"hidden"}}>
+              <div style={{height:"100%",borderRadius:3,
+                background:`linear-gradient(90deg,${era.color},#a78bfa)`,
+                width:`${pct}%`,transition:"width 0.9s ease"}}/>
+            </div>
+
+            {/* SVG Scene Panel */}
+            <div style={{position:"relative",borderRadius:18,overflow:"hidden",
+              height:240,marginBottom:12,border:"1px solid rgba(255,255,255,0.1)",
+              boxShadow:"0 20px 50px rgba(0,0,0,0.6)",
+              animation:swapping?"sceneFlash 0.45s ease":"none"}}>
+              {scenes[sceneIdx]}
+              {/* gradient overlay */}
+              <div style={{position:"absolute",inset:0,
+                background:"linear-gradient(to top,rgba(0,0,0,0.55) 0%,transparent 55%)",
+                pointerEvents:"none"}}/>
+              {/* scene dots */}
+              <div style={{position:"absolute",bottom:10,left:"50%",transform:"translateX(-50%)",display:"flex",gap:5}}>
+                {[0,1,2].map(i=>(
+                  <div key={i} onClick={()=>setSceneIdx(i)} style={{height:5,borderRadius:3,cursor:"pointer",
+                    width:i===sceneIdx?20:5,
+                    background:i===sceneIdx?"white":"rgba(255,255,255,0.3)",transition:"all 0.3s"}}/>
+                ))}
+              </div>
+              <div style={{position:"absolute",top:12,right:14,color:"white",fontWeight:900,fontSize:16,
+                textShadow:"0 2px 12px rgba(0,0,0,0.9)"}}>{fmtYear(year)}</div>
+              <div style={{position:"absolute",top:12,left:14,background:"rgba(0,0,0,0.55)",
+                borderRadius:8,padding:"3px 10px",color:"white",fontSize:12,fontWeight:700,
+                border:"1px solid rgba(255,255,255,0.14)"}}>
+                {sym}{parseFloat(amtInput||100).toFixed(0)}
+              </div>
+            </div>
+
+            {/* bot + bubble */}
+            <div style={{display:"flex",alignItems:"flex-end",gap:10,marginBottom:8}}>
+              <div style={{flexShrink:0,
+                animation:phase==="story"&&lineIdx===0?"botIn 0.6s cubic-bezier(0.16,1,0.3,1) both":undefined}}>
+                <FinBot mood={mood} talking={talking} pointing={phase==="story"} swapping={swapping}/>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                {phase==="story"&&lineIdx>=0&&script.lines[lineIdx]&&(
+                  <div key={lineIdx} style={{
+                    background:isSerious?"white":"linear-gradient(135deg,#fef9c3,#fef3c7)",
+                    borderRadius:"16px 16px 16px 4px",padding:"12px 14px",
+                    boxShadow:"0 6px 24px rgba(0,0,0,0.3)",animation:"up 0.32s ease both"}}>
+                    <div style={{fontSize:10,fontWeight:800,textTransform:"uppercase",
+                      letterSpacing:"1px",color:isSerious?era.color:"#b45309",marginBottom:4,
+                      display:"flex",alignItems:"center",gap:5}}>
+                      <span style={{width:5,height:5,borderRadius:"50%",
+                        background:isSerious?era.color:"#f59e0b",display:"inline-block"}}/>
+                      FinBot {!isSerious&&"✨"}
+                    </div>
+                    <p style={{margin:0,fontSize:13.5,color:isSerious?"#1e1b4b":"#78350f",
+                      lineHeight:1.6,fontWeight:500}}>
+                      <Typewriter text={script.lines[lineIdx].text} speed={15}/>
+                    </p>
+                  </div>
+                )}
+                {phase==="question"&&showQ&&(
+                  <div style={{background:"linear-gradient(135deg,rgba(124,58,237,0.2),rgba(99,102,241,0.2))",
+                    border:"2px solid #818cf8",borderRadius:"16px 16px 16px 4px",padding:"13px 14px",
+                    animation:"qPop 0.5s cubic-bezier(0.16,1,0.3,1) both"}}>
+                    <div style={{fontSize:10,fontWeight:800,textTransform:"uppercase",
+                      letterSpacing:"1px",color:"#a78bfa",marginBottom:5}}>
+                      🤔 FinBot's Challenge for You
+                    </div>
+                    <p style={{margin:0,fontSize:13.5,color:"#e0e7ff",lineHeight:1.65,fontWeight:600}}>
+                      {script.question}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* pills */}
+            <div style={{display:"flex",gap:5,justifyContent:"center",marginBottom:12}}>
+              {script.lines.map((_,i)=>(
+                <div key={i} style={{height:5,borderRadius:3,transition:"all 0.4s",
+                  width:i===lineIdx?22:6,
+                  background:i<lineIdx?era.color:i===lineIdx?"#a78bfa":"rgba(255,255,255,0.12)"}}/>
               ))}
+              <div style={{height:5,width:phase==="question"?22:6,borderRadius:3,transition:"all 0.4s",
+                background:phase==="question"?"#fbbf24":"rgba(255,255,255,0.12)"}}/>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* ══ WARPING ══ */}
-      {phase === 'warping' && (
-        <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
-          {[...Array(14)].map((_, i) => (
-            <div key={i} className="absolute h-px bg-white/35"
-              style={{ width: '75%', left: '12.5%', top: `${10 + i * 6}%`, animation: `tmStreak ${0.6 + i * 0.07}s ${i * 0.05}s linear infinite` }} />
-          ))}
-          <div className="relative z-10" style={{ animation: 'tmZoomYear 2.5s ease-in-out forwards' }}>
-            <span className="text-white font-black text-8xl drop-shadow-2xl tracking-tighter">{fmtYear(parseInt(yearInput) || 0)}</span>
-          </div>
-          <p className="text-white/40 text-sm mt-5 z-10 tracking-widest uppercase" style={{ animation: 'tmPulse 0.7s ease infinite' }}>
-            Entering the vortex…
-          </p>
-        </div>
-      )}
-
-      {/* ══ ARRIVING ══ */}
-      {phase === 'arriving' && sketch && (
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <Planet year={sketch.year} colors={sketch.planetColors || theme.planet} eraName={sketch.eraName} size={172} />
-        </div>
-      )}
-
-      {/* ══ STORY + DONE ══ */}
-      {(phase === 'story' || phase === 'done') && sketch && (
-        <div className="flex-1 flex flex-col overflow-hidden">
-
-          {/* Planet chip */}
-          <div className="flex justify-center pt-4 pb-1 shrink-0">
-            <Planet year={sketch.year} colors={sketch.planetColors || theme.planet} eraName={sketch.eraName} size={76} />
-          </div>
-
-          {/* Era scene — always visible, animating throughout */}
-          <div className="shrink-0 mx-3 rounded-xl overflow-hidden shadow-2xl border border-white/10">
-            <EraScene year={sketch.year} aiEmoji={sketch.sceneEmoji} />
-          </div>
-
-          {/* Speech bubbles — show last 2 */}
-          <div className="flex-1 px-4 pt-2 pb-1 flex flex-col justify-end gap-2 overflow-hidden">
-            {lines.slice(Math.max(0, lineIdx - 1), lineIdx + 1).map((line, i, arr) => (
-              <div key={lineIdx - (arr.length - 1 - i)}
-                className="bg-white rounded-2xl px-4 py-3 shadow-xl max-w-[90%] self-start"
-                style={{ borderBottomLeftRadius: 4, animation: 'tmBubblePop 0.3s ease both' }}>
-                <p className="text-gray-800 text-sm font-medium leading-snug">
-                  {i === arr.length - 1
-                    ? <Typewriter text={line.text} />
-                    : line.text}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Progress dots */}
-          <div className="flex justify-center gap-1.5 pb-1 shrink-0">
-            {lines.map((_, i) => (
-              <div key={i} className="rounded-full transition-all duration-300"
-                style={{ width: i === lineIdx ? 16 : 6, height: 6, background: i <= lineIdx ? 'white' : 'rgba(255,255,255,0.2)' }} />
-            ))}
-          </div>
-
-          {/* Bot + value chip */}
-          <div className="shrink-0 flex items-end gap-3 px-4 pb-2">
-            <div style={{ animation: walking ? 'tmAvatarIn 1.5s cubic-bezier(0.16,1,0.3,1) forwards' : 'tmBounce 2.2s ease-in-out infinite' }}>
-              <SpendlyBot mood={mood} walking={walking} talking={talking} teaching={!walking && phase === 'story'} />
-            </div>
-            {phase === 'done' && sketch.adjustedAmount && (
-              <div className="flex-1 bg-white/10 border border-white/20 rounded-2xl p-3" style={{ animation: 'tmSlideUp 0.45s ease both' }}>
-                <p className="text-white/45 text-[11px] font-semibold mb-0.5">{sym}{parseFloat(amtInput || 100).toFixed(0)} in {fmtYear(sketch.year)}</p>
-                <p className="text-white font-black text-2xl tabular-nums">≈ {sym}{parseFloat(sketch.adjustedAmount).toFixed(2)}</p>
-                <p className="text-white/35 text-[10px] mt-0.5">{sketch.year < sketch.currentYear ? 'CPI-adjusted buying power' : 'Projected buying power'}</p>
+            {phase==="question"&&showQ&&(
+              <div style={{display:"flex",gap:10,animation:"up 0.4s 0.3s ease both",opacity:0}}>
+                <button onClick={reset} style={{flex:1,background:"rgba(255,255,255,0.07)",
+                  border:"1px solid rgba(255,255,255,0.12)",borderRadius:13,padding:"13px",
+                  color:"rgba(255,255,255,0.85)",fontSize:14,fontWeight:700,cursor:"pointer"}}>
+                  🕰️ New Year
+                </button>
+                <button onClick={reset} style={{flex:1,background:"linear-gradient(135deg,#6366f1,#4338ca)",
+                  border:"none",borderRadius:13,padding:"13px",color:"white",fontSize:14,fontWeight:800,
+                  cursor:"pointer",boxShadow:"0 4px 18px rgba(99,102,241,0.4)"}}>
+                  Done ✓
+                </button>
               </div>
             )}
           </div>
-
-          {/* Done actions */}
-          {phase === 'done' && (
-            <div className="shrink-0 px-4 pb-5 space-y-3" style={{ animation: 'tmSlideUp 0.45s 0.2s ease both', opacity: 0 }}>
-              {sketch.recommendations?.length > 0 && (
-                <div>
-                  <p className="text-white/25 text-[11px] uppercase tracking-wider text-center mb-2">Also explore</p>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {sketch.recommendations.map((r, i) => (
-                      <button key={i} onClick={() => { setYearInput(String(r.year)); reset() }}
-                        className="bg-white/10 hover:bg-white/20 border border-white/18 text-white/65 hover:text-white text-xs px-3 py-1.5 rounded-full transition">
-                        {fmtYear(r.year)}: {r.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <button onClick={reset} className="flex-1 bg-white/14 hover:bg-white/24 text-white text-sm font-semibold py-3 rounded-xl transition">🕰️ New Year</button>
-                <button onClick={onClose} className="flex-1 bg-white text-indigo-900 font-bold text-sm py-3 rounded-xl hover:bg-indigo-50 transition">Done</button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
-  )
+  );
 }
