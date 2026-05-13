@@ -246,7 +246,7 @@ export default function WalletSelect() {
   const [pinTarget, setPinTarget] = useState(null)
 
   const token = localStorage.getItem('token')
-  const from  = location.state?.from?.pathname || '/dashboard'
+  const from  = location.state?.from?.pathname
 
   useEffect(() => {
     if (!token) { navigate('/login', { replace: true }); return }
@@ -258,7 +258,11 @@ export default function WalletSelect() {
     activateWallet(target)
     setPinTarget(null)
     if (resolvedWallet) refreshWallets()
-    navigate(target.is_total_wallet ? '/family' : from, { replace: true })
+    if (target.is_total_wallet) {
+      navigate('/family', { replace: true })
+    } else {
+      navigate(from || `/wallet/${target.id}/app`, { replace: true })
+    }
   }
 
   function handleSignOut() {

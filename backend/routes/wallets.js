@@ -331,6 +331,148 @@ router.get('/total/transactions', auth, async (req, res) => {
   }
 })
 
+// ── GET /api/wallets/total/networth ─────────────────────────────────────────
+router.get('/total/networth', auth, async (req, res) => {
+  try {
+    const walletsR = await pool.query(
+      'SELECT id FROM wallets WHERE user_id=$1 AND is_active=TRUE AND (is_total_wallet IS NULL OR is_total_wallet=FALSE)',
+      [req.userId]
+    )
+    const walletIds = walletsR.rows.map(w => w.id)
+    const globalItemsR = await pool.query(
+      'SELECT * FROM net_worth_items WHERE user_id=$1 ORDER BY type, category, name',
+      [req.userId]
+    )
+    if (walletIds.length === 0) {
+      const gi = globalItemsR.rows
+      const ta = gi.filter(i => i.type === 'asset').reduce((s, i) => s + parseFloat(i.amount), 0)
+      const tl = gi.filter(i => i.type === 'liability').reduce((s, i) => s + parseFloat(i.amount), 0)
+      return res.json({ items: gi, totalAssets: ta, totalLiabilities: tl, netWorth: ta - tl, cashBalance: 0 })
+    }
+    const [incR, expR, savR, debtR] = await Promise.all([
+      pool.query('SELECT COALESCE(SUM(amount),0) AS t FROM wallet_income WHERE user_id=$1 AND wallet_id=ANY($2)', [req.userId, walletIds]),
+      pool.query('SELECT COALESCE(SUM(amount),0) AS t FROM wallet_expenses WHERE user_id=$1 AND wallet_id=ANY($2)', [req.userId, walletIds]),
+      pool.query('SELECT COALESCE(SUM(saved_amount),0) AS t FROM wallet_savings WHERE user_id=$1 AND wallet_id=ANY($2)', [req.userId, walletIds]),
+      pool.query('SELECT COALESCE(SUM(remaining_amount),0) AS t FROM wallet_debts WHERE user_id=$1 AND wallet_id=ANY($2) AND remaining_amount>0', [req.userId, walletIds]),
+    ])
+    const cash = parseFloat(incR.rows[0].t) - parseFloat(expR.rows[0].t)
+    const savTotal = parseFloat(savR.rows[0].t)
+    const debtTotal = parseFloat(debtR.rows[0].t)
+    const walletAssets = [
+      { id: 'wc_cash', name: 'Combined Cash Balance', category: 'Cash & Bank', amount: cash, type: 'asset', source: 'computed' },
+      ...(savTotal > 0 ? [{ id: 'wc_sav', name: 'Combined Savings Goals', category: 'Savings', amount: savTotal, type: 'asset', source: 'auto' }] : []),
+    ]
+    const walletLiabs = debtTotal > 0
+      ? [{ id: 'wc_debt', name: 'Combined Debts', category: 'Personal Loan', amount: debtTotal, type: 'liability', source: 'auto' }]
+      : []
+    const allItems = [...walletAssets, ...globalItemsR.rows, ...walletLiabs]
+    const ta = allItems.filter(i => i.type === 'asset').reduce((s, i) => s + parseFloat(i.amount), 0)
+    const tl = allItems.filter(i => i.type === 'liability').reduce((s, i) => s + parseFloat(i.amount), 0)
+    res.json({ items: allItems, totalAssets: ta, totalLiabilities: tl, netWorth: ta - tl, cashBalance: cash })
+  } catch (e) { console.error(e); res.status(500).json({ message: 'Server error' }) }
+})
+
+// ── GET /api/wallets/total/breakdown ─────────────────────────────────────────
+router.get('/total/breakdown', auth, async (req, res) => {
+  try {
+    const now = new Date(); const month = now.getMonth() + 1; const year = now.getFullYear()
+    const walletsR = await pool.query(
+      `SELECT id, name, color, avatar_type, avatar_value, avatar_photo
+       FROM wallets WHERE user_id=$1 AND is_active=TRUE AND (is_total_wallet IS NULL OR is_total_wallet=FALSE)
+       ORDER BY display_order ASC, created_at ASC`,
+      [req.userId]
+    )
+    const wallets = walletsR.rows
+    if (wallets.length === 0) return res.json([])
+    const results = await Promise.all(wallets.map(async w => {
+      const [incR, expR, savR] = await Promise.all([
+        pool.query('SELECT COALESCE(SUM(amount),0) AS t FROM wallet_income WHERE wallet_id=$1 AND user_id=$2 AND month=$3 AND year=$4', [w.id, req.userId, month, year]),
+        pool.query('SELECT COALESCE(SUM(amount),0) AS t FROM wallet_expenses WHERE wallet_id=$1 AND user_id=$2 AND EXTRACT(MONTH FROM date)=$3 AND EXTRACT(YEAR FROM date)=$4', [w.id, req.userId, month, year]),
+        pool.query('SELECT COALESCE(SUM(saved_amount),0) AS t FROM wallet_savings WHERE wallet_id=$1 AND user_id=$2', [w.id, req.userId]),
+      ])
+      return {
+        id: w.id, name: w.name, color: w.color, avatar_type: w.avatar_type, avatar_value: w.avatar_value, avatar_photo: w.avatar_photo,
+        income: parseFloat(incR.rows[0].t), expenses: parseFloat(expR.rows[0].t), savings: parseFloat(savR.rows[0].t),
+      }
+    }))
+    res.json(results)
+  } catch (e) { console.error(e); res.status(500).json({ message: 'Server error' }) }
+})
+
+// ── GET /api/wallets/total/income ─────────────────────────────────────────────
+router.get('/total/income', auth, async (req, res) => {
+  try {
+    const walletsR = await pool.query(
+      'SELECT id FROM wallets WHERE user_id=$1 AND is_active=TRUE AND (is_total_wallet IS NULL OR is_total_wallet=FALSE)',
+      [req.userId]
+    )
+    const walletIds = walletsR.rows.map(w => w.id)
+    if (walletIds.length === 0) return res.json([])
+    const r = await pool.query(
+      `SELECT wi.id, wi.wallet_id, w.name AS wallet_name, w.color AS wallet_color,
+              wi.amount, wi.source, wi.description, wi.month, wi.year,
+              (wi.year::text || '-' || LPAD(wi.month::text,2,'0') || '-01')::date AS date
+       FROM wallet_income wi
+       JOIN wallets w ON wi.wallet_id = w.id
+       WHERE wi.user_id=$1 AND wi.wallet_id=ANY($2)
+       ORDER BY wi.year DESC, wi.month DESC, wi.created_at DESC
+       LIMIT 50`,
+      [req.userId, walletIds]
+    )
+    res.json(r.rows)
+  } catch (e) { console.error(e); res.status(500).json({ message: 'Server error' }) }
+})
+
+// ── GET /api/wallets/:walletId/summary ───────────────────────────────────────
+router.get('/:walletId/summary', auth, async (req, res) => {
+  try {
+    const { walletId } = req.params
+    if (!(await verifyOwnership(walletId, req.userId)))
+      return res.status(403).json({ message: 'Not your wallet' })
+    const now = new Date(); const month = now.getMonth() + 1; const year = now.getFullYear()
+    const [incR, expR, catR, savR, trendR, allIncR] = await Promise.all([
+      pool.query('SELECT COALESCE(SUM(amount),0) AS t FROM wallet_income WHERE wallet_id=$1 AND user_id=$2 AND month=$3 AND year=$4', [walletId, req.userId, month, year]),
+      pool.query('SELECT COALESCE(SUM(amount),0) AS t FROM wallet_expenses WHERE wallet_id=$1 AND user_id=$2 AND EXTRACT(MONTH FROM date)=$3 AND EXTRACT(YEAR FROM date)=$4', [walletId, req.userId, month, year]),
+      pool.query('SELECT category, COALESCE(SUM(amount),0) AS total FROM wallet_expenses WHERE wallet_id=$1 AND user_id=$2 AND EXTRACT(MONTH FROM date)=$3 AND EXTRACT(YEAR FROM date)=$4 GROUP BY category ORDER BY total DESC', [walletId, req.userId, month, year]),
+      pool.query('SELECT COALESCE(SUM(saved_amount),0) AS t FROM wallet_savings WHERE wallet_id=$1 AND user_id=$2', [walletId, req.userId]),
+      pool.query(`SELECT TO_CHAR(date,'YYYY-MM') AS month, COALESCE(SUM(amount),0) AS total FROM wallet_expenses WHERE wallet_id=$1 AND user_id=$2 AND date >= NOW()-INTERVAL '6 months' GROUP BY TO_CHAR(date,'YYYY-MM') ORDER BY month`, [walletId, req.userId]),
+      pool.query('SELECT COALESCE(SUM(amount),0) AS t FROM wallet_income WHERE wallet_id=$1 AND user_id=$2', [walletId, req.userId]),
+    ])
+    res.json({
+      total_income: parseFloat(incR.rows[0].t),
+      total_expenses: parseFloat(expR.rows[0].t),
+      total_savings: parseFloat(savR.rows[0].t),
+      all_time_income: parseFloat(allIncR.rows[0].t),
+      category_breakdown: catR.rows,
+      monthly_trend: trendR.rows,
+    })
+  } catch (e) { console.error(e); res.status(500).json({ message: 'Server error' }) }
+})
+
+// ── GET /api/wallets/:walletId/networth ──────────────────────────────────────
+router.get('/:walletId/networth', auth, async (req, res) => {
+  try {
+    const { walletId } = req.params
+    if (!(await verifyOwnership(walletId, req.userId)))
+      return res.status(403).json({ message: 'Not your wallet' })
+    const [incR, expR, savR, debtR] = await Promise.all([
+      pool.query('SELECT COALESCE(SUM(amount),0) AS t FROM wallet_income WHERE wallet_id=$1 AND user_id=$2', [walletId, req.userId]),
+      pool.query('SELECT COALESCE(SUM(amount),0) AS t FROM wallet_expenses WHERE wallet_id=$1 AND user_id=$2', [walletId, req.userId]),
+      pool.query('SELECT id, name, target_amount, saved_amount, goal_type FROM wallet_savings WHERE wallet_id=$1 AND user_id=$2 ORDER BY created_at DESC', [walletId, req.userId]),
+      pool.query('SELECT id, name, category, remaining_amount FROM wallet_debts WHERE wallet_id=$1 AND user_id=$2 AND remaining_amount>0 ORDER BY created_at DESC', [walletId, req.userId]),
+    ])
+    const cash = parseFloat(incR.rows[0].t) - parseFloat(expR.rows[0].t)
+    const assets = [
+      { id: 'cash', name: 'Cash Balance', category: 'Cash & Bank', amount: cash, type: 'asset', source: 'computed' },
+      ...savR.rows.map(g => ({ id: `sav_${g.id}`, name: g.name, category: 'Savings', amount: parseFloat(g.saved_amount || 0), type: 'asset', source: 'auto' })),
+    ]
+    const liabilities = debtR.rows.map(d => ({ id: `debt_${d.id}`, name: d.name, category: d.category || 'Personal Loan', amount: parseFloat(d.remaining_amount || 0), type: 'liability', source: 'auto' }))
+    const ta = assets.reduce((s, i) => s + parseFloat(i.amount), 0)
+    const tl = liabilities.reduce((s, i) => s + parseFloat(i.amount), 0)
+    res.json({ items: [...assets, ...liabilities], totalAssets: ta, totalLiabilities: tl, netWorth: ta - tl, cashBalance: cash, savings: savR.rows, debts: debtR.rows })
+  } catch (e) { console.error(e); res.status(500).json({ message: 'Server error' }) }
+})
+
 // ── PUT /api/wallets/:id ─────────────────────────────────────────────────────
 router.put('/:id', auth, async (req, res) => {
   try {
