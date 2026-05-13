@@ -4,6 +4,11 @@ import { useWallet } from '../context/WalletContext'
 import { verifyWalletPin } from '../utils/walletSession'
 import { getAvatarUrl, getWalletColor } from '../data/avatars'
 
+const BASE = 'https://spendly-backend-et20.onrender.com/api'
+
+// Synthetic placeholder used when the total wallet hasn't loaded yet
+const FAMILY_STUB = { id: '__family__', is_total_wallet: true, name: 'Family Overview', color: 'purple' }
+
 // ── PIN numpad overlay ────────────────────────────────────────────────────────
 function PinPad({ wallet, onSuccess, onClose }) {
   const [digits, setDigits]   = useState([])
@@ -24,10 +29,26 @@ function PinPad({ wallet, onSuccess, onClose }) {
 
     if (next.length === 4) {
       setLoading(true)
-      const result = await verifyWalletPin(wallet.id, next.join(''), token)
+      let result
+      if (wallet.id === '__family__') {
+        // Dedicated endpoint: verifies PIN against any personal wallet, returns total wallet
+        try {
+          const res = await fetch(`${BASE}/wallets/verify-family-pin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ pin: next.join('') }),
+          })
+          const data = await res.json()
+          result = { ok: res.ok, resolvedWallet: data.wallet, ...data }
+        } catch (_) {
+          result = { ok: false, message: 'Network error — try again' }
+        }
+      } else {
+        result = await verifyWalletPin(wallet.id, next.join(''), token)
+      }
       setLoading(false)
       if (result.ok) {
-        onSuccess()
+        onSuccess(result.resolvedWallet || null)
       } else {
         setDigits([])
         setShake(true)
@@ -38,7 +59,7 @@ function PinPad({ wallet, onSuccess, onClose }) {
         } else {
           setError(result.attemptsLeft != null
             ? `Wrong PIN — ${result.attemptsLeft} attempt${result.attemptsLeft !== 1 ? 's' : ''} left`
-            : isFamily ? 'No wallet matches this PIN' : 'Incorrect PIN')
+            : isFamily ? 'Incorrect PIN — use any of your wallet PINs' : 'Incorrect PIN')
         }
       }
     }
@@ -187,23 +208,24 @@ export default function WalletSelect() {
   const navigate  = useNavigate()
   const location  = useLocation()
   const { wallets, loading, refreshWallets, activateWallet } = useWallet()
-  const [pinTarget,   setPinTarget]   = useState(null)
-  const [resolving,   setResolving]   = useState(false)
+  const [pinTarget, setPinTarget] = useState(null)
 
   const token = localStorage.getItem('token')
   const user  = JSON.parse(localStorage.getItem('user') || '{}')
   const from  = location.state?.from?.pathname || '/dashboard'
-  const BASE  = 'https://spendly-backend-et20.onrender.com/api'
 
   useEffect(() => {
     if (!token) { navigate('/login', { replace: true }); return }
     refreshWallets()
   }, [token, navigate, refreshWallets])
 
-  function handlePinSuccess() {
-    activateWallet(pinTarget)
+  // resolvedWallet is passed back when family stub resolves to a real wallet
+  function handlePinSuccess(resolvedWallet) {
+    const target = resolvedWallet || pinTarget
+    activateWallet(target)
     setPinTarget(null)
-    navigate(pinTarget.is_total_wallet ? '/family' : from, { replace: true })
+    if (resolvedWallet) refreshWallets()
+    navigate(target.is_total_wallet ? '/family' : from, { replace: true })
   }
 
   function handleSignOut() {
@@ -212,23 +234,10 @@ export default function WalletSelect() {
     navigate('/login')
   }
 
-  // Open the family total card — fetch/create total wallet if not yet in state
-  async function handleFamilyClick() {
+  // Always open PIN pad immediately; backend resolves the wallet on success
+  function handleFamilyClick() {
     const existing = wallets.find(w => w.is_total_wallet)
-    if (existing) { setPinTarget(existing); return }
-    setResolving(true)
-    try {
-      const res  = await fetch(`${BASE}/wallets/total`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (res.ok) {
-        await refreshWallets()
-        setPinTarget(data)
-      }
-    } catch (_) { /* ignore */ } finally {
-      setResolving(false)
-    }
+    setPinTarget(existing || FAMILY_STUB)
   }
 
   const personalWallets = wallets.filter(w => !w.is_total_wallet)
@@ -293,8 +302,7 @@ export default function WalletSelect() {
             </p>
             <button
               onClick={handleFamilyClick}
-              disabled={resolving}
-              className="w-full text-left rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-200 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-70"
+              className="w-full text-left rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-200 hover:-translate-y-1 active:scale-[0.98]"
             >
               <div className="bg-linear-to-br from-violet-600 via-purple-600 to-indigo-700 p-6 relative overflow-hidden">
                 {/* Decorative circles */}
@@ -306,12 +314,9 @@ export default function WalletSelect() {
                   <div className="w-16 h-16 rounded-2xl bg-white/15 flex items-center justify-center text-3xl ring-2 ring-white/25 shrink-0">
                     👨‍👩‍👧‍👦
                   </div>
-                  {resolving
-                    ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
-                    : <span className="text-[11px] font-bold bg-white/20 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shrink-0">
-                        🔒 Any wallet PIN
-                      </span>
-                  }
+                  <span className="text-[11px] font-bold bg-white/20 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shrink-0">
+                    🔒 Any wallet PIN
+                  </span>
                 </div>
 
                 {/* Title + wallet count */}

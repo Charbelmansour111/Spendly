@@ -164,6 +164,85 @@ router.get('/total', auth, async (req, res) => {
   }
 })
 
+// ── POST /api/wallets/verify-family-pin ──────────────────────────────────────
+// Verify PIN against any personal wallet; get-or-create total wallet; return it
+router.post('/verify-family-pin', auth, async (req, res) => {
+  try {
+    const { pin } = req.body
+    if (!pin) return res.status(400).json({ message: 'PIN required' })
+
+    const lockKey = `family_${req.userId}`
+    if (isLocked(lockKey)) {
+      const s = getPinState(lockKey)
+      const remaining = Math.ceil((s.lockedUntil - Date.now()) / 1000 / 60)
+      return res.status(429).json({ message: `Too many attempts. Try again in ${remaining} minute(s).`, locked: true })
+    }
+
+    const personalR = await pool.query(
+      'SELECT pin FROM wallets WHERE user_id=$1 AND is_active=TRUE AND is_total_wallet=FALSE',
+      [req.userId]
+    )
+    if (personalR.rows.length === 0)
+      return res.status(400).json({ message: 'No wallets found' })
+
+    let matched = false
+    for (const w of personalR.rows) {
+      if (await bcrypt.compare(String(pin), w.pin)) { matched = true; break }
+    }
+
+    if (!matched) {
+      const { attempts, lockedUntil } = recordAttempt(lockKey)
+      const attemptsLeft = 5 - attempts
+      if (lockedUntil) return res.status(429).json({ message: 'Too many attempts. Locked for 5 minutes.', locked: true })
+      return res.status(401).json({ message: 'Incorrect PIN — use any of your wallet PINs', attemptsLeft })
+    }
+
+    resetAttempts(lockKey)
+
+    const COLS = `id, user_id, name, color, avatar_type, avatar_value, avatar_photo,
+                  is_total_wallet, display_order, wallet_email, created_at`
+
+    // Find existing active total wallet
+    let totalR = await pool.query(
+      `SELECT ${COLS} FROM wallets WHERE user_id=$1 AND is_active=TRUE AND is_total_wallet=TRUE`,
+      [req.userId]
+    )
+
+    let totalWallet
+    if (totalR.rows.length > 0) {
+      totalWallet = totalR.rows[0]
+    } else {
+      // Reactivate soft-deleted one
+      const dead = await pool.query(
+        'SELECT id FROM wallets WHERE user_id=$1 AND is_total_wallet=TRUE AND is_active=FALSE',
+        [req.userId]
+      )
+      if (dead.rows.length > 0) {
+        const reactivated = await pool.query(
+          `UPDATE wallets SET is_active=TRUE, updated_at=NOW() WHERE id=$1 RETURNING ${COLS}`,
+          [dead.rows[0].id]
+        )
+        totalWallet = reactivated.rows[0]
+      } else {
+        // Create brand new
+        const dummyPin = await bcrypt.hash('spendly-family-total', 10)
+        const ins = await pool.query(
+          `INSERT INTO wallets (user_id, name, pin, color, avatar_type, avatar_value, is_total_wallet, display_order)
+           VALUES ($1,'Family Overview',$2,'purple','dicebear','family',TRUE,999)
+           RETURNING ${COLS}`,
+          [req.userId, dummyPin]
+        )
+        totalWallet = ins.rows[0]
+      }
+    }
+
+    res.json({ success: true, wallet: totalWallet })
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
 // ── GET /api/wallets/total/summary ───────────────────────────────────────────
 router.get('/total/summary', auth, async (req, res) => {
   try {
