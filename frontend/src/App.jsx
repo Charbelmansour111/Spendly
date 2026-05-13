@@ -62,7 +62,6 @@ import CreateWallet from './pages/CreateWallet'
 import FamilyOverview from './pages/FamilyOverview'
 import WalletProfile from './pages/WalletProfile'
 import WalletGuard from './components/WalletGuard'
-import WalletApp from './pages/WalletApp'
 
 function NetWorthGuarded() {
   const { key } = useLocation()
@@ -93,7 +92,7 @@ function App() {
           <Route path="/wallets"               element={<WalletSelect />} />
           <Route path="/create-wallet"         element={<CreateWallet />} />
           <Route path="/wallet/:id/profile"    element={<WalletProfile />} />
-          <Route path="/wallet/:id/app"       element={<WalletApp />} />
+          <Route path="/wallet/:id/app"        element={<Navigate to="/wallets" replace />} />
 
           {/* Wallet-guarded pages */}
           <Route path="/dashboard"             element={<WalletGuard><Dashboard /></WalletGuard>} />

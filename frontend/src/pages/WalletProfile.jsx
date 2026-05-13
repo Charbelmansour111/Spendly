@@ -202,7 +202,15 @@ export default function WalletProfile() {
           Back to wallets
         </button>
 
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Wallet Profile</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Wallet Profile</h1>
+          <button
+            onClick={() => navigate('/family')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold transition active:scale-95 shadow-sm shadow-violet-200 dark:shadow-violet-900/40"
+          >
+            <span>👨‍👩‍👧‍👦</span> Family Overview
+          </button>
+        </div>
 
         {/* Live preview card */}
         <div className={`rounded-2xl p-5 bg-linear-to-br ${colorGrad} mb-6 flex items-center gap-4 shadow-lg`}>
