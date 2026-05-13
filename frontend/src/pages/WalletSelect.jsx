@@ -261,7 +261,7 @@ export default function WalletSelect() {
     if (target.is_total_wallet) {
       navigate('/family', { replace: true })
     } else {
-      navigate(`/wallet/${target.id}/profile`, { replace: true })
+      navigate(from || '/dashboard', { replace: true })
     }
   }
 

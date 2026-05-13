@@ -15,23 +15,17 @@ function getDeviceFingerprint() {
 
 export function getActiveWallet() {
   try {
-    const session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null')
-    if (session) return session
-
     const remembered = JSON.parse(localStorage.getItem(REMEMBER_KEY) || 'null')
     if (remembered && remembered.expiresAt > Date.now()) return remembered.wallet
   } catch (_e) { /* corrupted storage */ }
   return null
 }
 
-export function setActiveWallet(wallet, rememberDays = 0) {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(wallet))
-  if (rememberDays > 0) {
-    localStorage.setItem(REMEMBER_KEY, JSON.stringify({
-      wallet,
-      expiresAt: Date.now() + rememberDays * 24 * 60 * 60 * 1000,
-    }))
-  }
+export function setActiveWallet(wallet, rememberDays = 30) {
+  localStorage.setItem(REMEMBER_KEY, JSON.stringify({
+    wallet,
+    expiresAt: Date.now() + rememberDays * 24 * 60 * 60 * 1000,
+  }))
 }
 
 export function clearActiveWallet() {
@@ -40,7 +34,7 @@ export function clearActiveWallet() {
 }
 
 export function lockWallet() {
-  sessionStorage.removeItem(SESSION_KEY)
+  localStorage.removeItem(REMEMBER_KEY)
 }
 
 export async function verifyWalletPin(walletId, pin, token) {

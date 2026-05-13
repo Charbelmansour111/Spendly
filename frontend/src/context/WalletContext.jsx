@@ -24,7 +24,7 @@ export function WalletProvider({ children }) {
     if (localStorage.getItem('token')) refreshWallets()
   }, [refreshWallets])
 
-  function activateWallet(wallet, rememberDays = 0) {
+  function activateWallet(wallet, rememberDays = 30) {
     persistWallet(wallet, rememberDays)
     setActiveWalletState(wallet)
   }
