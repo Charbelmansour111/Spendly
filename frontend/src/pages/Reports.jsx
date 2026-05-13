@@ -8,7 +8,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Ba
 import { METHOD_ICONS, METHOD_COLORS } from '../utils/paymentMethods'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
-const COLORS = ['#4F46E5', '#7C3AED', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6']
+const COLORS = ['#7C3AED', '#2563EB', '#059669', '#D97706', '#EC4899', '#F59E0B', '#10B981', '#3B82F6']
 const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦' }
 
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
@@ -804,13 +804,15 @@ export default function Reports() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
                   <SectionHeader icon="🍕" title="Spending by Category" />
-                  <ResponsiveContainer width="100%" height={220}>
+                  <ResponsiveContainer width="100%" height={240}>
                     <PieChart>
-                      <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
+                      <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={56} outerRadius={88} paddingAngle={2}>
                         {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                       </Pie>
                       <Tooltip formatter={v => fmt(v, sym)} />
-                      <Legend iconSize={10} wrapperStyle={{ fontSize: '11px' }} />
+                      <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
+                      <text x="50%" y="44%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 11, fill: '#9ca3af', fontWeight: 600 }}>Total</text>
+                      <text x="50%" y="56%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 14, fill: '#7C3AED', fontWeight: 800 }}>{fmt(total, sym)}</text>
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
