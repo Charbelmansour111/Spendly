@@ -48,7 +48,7 @@ function StatCard({ label, value, icon, color, sub }) {
 }
 
 // ── Dashboard Tab ─────────────────────────────────────────────────────────────
-function DashboardTab({ summary, networth, expenses, sym, hex }) {
+function DashboardTab({ summary, networth, expenses, sym, hex, onAdd }) {
   const inc = parseFloat(summary?.total_income || 0)
   const exp = parseFloat(summary?.total_expenses || 0)
   const net = inc - exp
@@ -145,7 +145,7 @@ function DashboardTab({ summary, networth, expenses, sym, hex }) {
       )}
 
       {/* Recent expenses */}
-      {expenses.length > 0 && (
+      {expenses.length > 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700/50">
           <div className="px-4 pt-4 pb-2.5 border-b border-gray-50 dark:border-gray-700/50 flex items-center justify-between">
             <p className="text-sm font-bold text-gray-800 dark:text-white">Recent Expenses</p>
@@ -165,6 +165,17 @@ function DashboardTab({ summary, networth, expenses, sym, hex }) {
               </div>
             ))}
           </div>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 text-center border border-gray-100 dark:border-gray-700/50 border-dashed">
+          <p className="text-4xl mb-3">💼</p>
+          <p className="font-semibold text-gray-600 dark:text-gray-300">No transactions yet</p>
+          <p className="text-sm text-gray-400 mt-1 mb-4">Tap + to add your first expense or income.</p>
+          <button onClick={onAdd}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-white font-semibold text-sm transition active:scale-95"
+            style={{ background: `linear-gradient(135deg, ${hex}cc, ${hex})` }}>
+            <span className="text-lg leading-none">+</span> Add Transaction
+          </button>
         </div>
       )}
     </div>
@@ -792,26 +803,13 @@ export default function WalletApp() {
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm">{error}</div>
         )}
 
-        {!loading && summary && (
+        {!loading && (
           <>
-            {activeTab === 'dashboard'    && <DashboardTab    summary={summary} networth={networth} expenses={expenses} sym={sym} hex={color.hex} />}
+            {activeTab === 'dashboard'    && <DashboardTab    summary={summary} networth={networth} expenses={expenses} sym={sym} hex={color.hex} onAdd={() => setShowAdd(true)} />}
             {activeTab === 'transactions' && <TransactionsTab expenses={expenses} income={income} sym={sym} />}
             {activeTab === 'reports'      && <ReportsTab      summary={summary} expenses={expenses} sym={sym} hex={color.hex} />}
             {activeTab === 'networth'     && <NetWorthTab     networth={networth} sym={sym} />}
           </>
-        )}
-
-        {!loading && !summary && !error && (
-          <div className="text-center py-20 text-gray-400">
-            <p className="text-5xl mb-4">💼</p>
-            <p className="font-semibold text-gray-600 dark:text-gray-300 text-lg">No data yet</p>
-            <p className="text-sm mt-2 mb-6">Tap + to add your first transaction to this wallet.</p>
-            <button onClick={() => setShowAdd(true)}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-white font-semibold text-sm transition active:scale-95"
-              style={{ background: `linear-gradient(135deg, ${color.hex}cc, ${color.hex})` }}>
-              <span className="text-lg">+</span> Add Transaction
-            </button>
-          </div>
         )}
       </main>
 
