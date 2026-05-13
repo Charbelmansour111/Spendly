@@ -3,6 +3,7 @@ import Layout from '../components/Layout'
 import API from '../utils/api'
 import MoneyDefender from '../components/MoneyDefender'
 import TimeMachineModal from '../components/TimeMachineModal'
+import { useWallet } from '../context/WalletContext'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 
@@ -55,6 +56,7 @@ const BREAKDOWN_ICONS = {
 }
 
 export default function Wellness() {
+  const { activeWallet } = useWallet()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [note, setNote] = useState('')
@@ -101,9 +103,10 @@ export default function Wellness() {
   const fetchData = useCallback(async () => {
     try { await API.post('/income/apply-recurring', { month: currentMonth, year: currentYear }) } catch { /* noop */ }
     try {
+      const walletId = activeWallet && !activeWallet.is_total_wallet ? activeWallet.id : null
       const [expRes, incRes, budRes, savRes, wellRes] = await Promise.allSettled([
-        API.get('/expenses'),
-        API.get('/income'),
+        walletId ? API.get(`/wallets/${walletId}/expenses`) : API.get('/expenses'),
+        walletId ? API.get(`/wallets/${walletId}/income`) : API.get('/income'),
         API.get('/budgets'),
         API.get('/savings'),
         API.get('/wellness'),
@@ -193,7 +196,7 @@ export default function Wellness() {
       if (wellData?.mood?.mood) setSelectedMood(wellData.mood.mood)
     } catch (e) { console.log('Error fetching wellness', e) }
     setLoading(false)
-  }, [currentMonth, currentYear, currencySymbol])
+  }, [currentMonth, currentYear, currencySymbol, activeWallet])
 
   useEffect(() => {
     const token = localStorage.getItem('token')

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
+import { useWallet } from '../context/WalletContext'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, LineChart, Line, CartesianGrid } from 'recharts'
@@ -235,6 +236,7 @@ function SectionHeader({ icon, title, subtitle }) {
 }
 
 export default function Reports() {
+  const { activeWallet } = useWallet()
   const [expenses, setExpenses] = useState([])
   const [allIncome, setAllIncome] = useState([])
   const [trends, setTrends] = useState([])
@@ -279,23 +281,23 @@ export default function Reports() {
     setAiSummary('')
     aiRequested.current = false
     setForecastLoading(true)
-    Promise.all([
-      API.get('/expenses'),
-      API.get('/income'),
+    const walletId = activeWallet && !activeWallet.is_total_wallet ? activeWallet.id : null
+    Promise.allSettled([
+      walletId ? API.get(`/wallets/${walletId}/expenses`) : API.get('/expenses'),
+      walletId ? API.get(`/wallets/${walletId}/income`) : API.get('/income'),
       API.get('/expenses/trends'),
       API.get('/expenses/payment-method-stats?month=' + (selectedMonth + 1) + '&year=' + selectedYear),
       API.get('/expenses/forecast'),
     ])
       .then(([e, i, t, pm, fc]) => {
-        setExpenses(e.data)
-        setAllIncome(i.data || [])
-        setTrends(t.data)
-        setPaymentStats(pm.data || [])
-        setForecast(fc.data || null)
+        setExpenses(e.status === 'fulfilled' ? (e.value.data || []) : [])
+        setAllIncome(i.status === 'fulfilled' ? (i.value.data || []) : [])
+        setTrends(t.status === 'fulfilled' ? (t.value.data || []) : [])
+        setPaymentStats(pm.status === 'fulfilled' ? (pm.value.data || []) : [])
+        setForecast(fc.status === 'fulfilled' ? (fc.value.data || null) : null)
       })
-      .catch(() => showToast('Error loading data', 'error'))
       .finally(() => { setLoading(false); setForecastLoading(false) })
-  }, [selectedMonth, selectedYear, showToast])
+  }, [selectedMonth, selectedYear, activeWallet])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
