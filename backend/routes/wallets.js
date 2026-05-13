@@ -41,17 +41,34 @@ async function verifyOwnership(walletId, userId) {
 }
 
 // ── GET /api/wallets ─────────────────────────────────────────────────────────
+const SELECT_WALLETS = `
+  SELECT id, user_id, name, color, avatar_type, avatar_value, avatar_photo,
+         is_total_wallet, display_order, wallet_email, created_at
+  FROM wallets
+  WHERE user_id=$1 AND is_active=TRUE
+  ORDER BY is_total_wallet DESC, display_order ASC, created_at ASC`
+
 router.get('/', auth, async (req, res) => {
   try {
-    const r = await pool.query(
-      `SELECT id, user_id, name, color, avatar_type, avatar_value, avatar_photo,
-              is_total_wallet, display_order, wallet_email, created_at
-       FROM wallets
-       WHERE user_id=$1 AND is_active=TRUE
-       ORDER BY is_total_wallet ASC, display_order ASC, created_at ASC`,
-      [req.userId]
-    )
-    res.json(r.rows)
+    const r = await pool.query(SELECT_WALLETS, [req.userId])
+    const rows = r.rows
+    const hasTotal    = rows.some(w => w.is_total_wallet)
+    const hasPersonal = rows.some(w => !w.is_total_wallet)
+
+    // Auto-create the total wallet for accounts that pre-date the feature
+    if (hasPersonal && !hasTotal) {
+      const dummyPin = await bcrypt.hash('spendly-family-total', 10)
+      await pool.query(
+        `INSERT INTO wallets (user_id, name, pin, color, avatar_type, avatar_value, is_total_wallet, display_order)
+         VALUES ($1,'Family Overview',$2,'purple','dicebear','family',TRUE,999)
+         ON CONFLICT DO NOTHING`,
+        [req.userId, dummyPin]
+      )
+      const r2 = await pool.query(SELECT_WALLETS, [req.userId])
+      return res.json(r2.rows)
+    }
+
+    res.json(rows)
   } catch (e) {
     console.error(e)
     res.status(500).json({ message: 'Server error' })
