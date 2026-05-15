@@ -1,43 +1,276 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'motion/react'
 import Layout from '../components/Layout'
-import API from '../utils/api'
-import { t } from '../i18n'
-import { useDarkMode } from '../hooks/useDarkMode'
-import { requestNotificationPermission, isNotificationsEnabled, disableNotifications, unsubscribeFromPush, playFinaChime } from '../utils/notifications'
 import { useWallet } from '../context/WalletContext'
 import { getAvatarUrl, getWalletColor } from '../data/avatars'
 import { deleteWallet, lockWallet } from '../utils/walletSession'
 
-const CURRENCIES = ['USD','EUR','GBP','LBP','AED','SAR','CAD','AUD']
-const CURRENCY_SYMBOLS = { USD:'$',EUR:'€',GBP:'£',LBP:'L£',AED:'AED',SAR:'SAR',CAD:'C$',AUD:'A$' }
-const INCOME_FREQS = ['Monthly','Bi-weekly','Weekly','Irregular']
-const LANGUAGES = [
-  { code: 'en-US', label: 'English (US)' },
-  { code: 'en-GB', label: 'English (UK)' },
-  { code: 'ar-SA', label: 'العربية – السعودية' },
-  { code: 'ar-LB', label: 'العربية – لبنان' },
-  { code: 'ar-JO', label: 'العربية – الأردن' },
-  { code: 'ar-SY', label: 'العربية – سوريا' },
-  { code: 'ar-BH', label: 'العربية – البحرين' },
-  { code: 'ar-AE', label: 'العربية – الإمارات' },
-  { code: 'ar-EG', label: 'العربية – مصر' },
-  { code: 'ar-KW', label: 'العربية – الكويت' },
-  { code: 'ar-IQ', label: 'العربية – العراق' },
-  { code: 'ar-MA', label: 'العربية – المغرب' },
-  { code: 'es-ES', label: 'Español (España)' },
-  { code: 'es-MX', label: 'Español (México)' },
-  { code: 'fr-FR', label: 'Français' },
-  { code: 'de-DE', label: 'Deutsch' },
-  { code: 'it-IT', label: 'Italiano' },
-  { code: 'pt-PT', label: 'Português' },
-  { code: 'nl-NL', label: 'Nederlands' },
-  { code: 'pl-PL', label: 'Polski' },
-  { code: 'ru-RU', label: 'Русский' },
-  { code: 'tr-TR', label: 'Türkçe' },
-  { code: 'af-ZA', label: 'Afrikaans' },
+// ── Pricing data ──────────────────────────────────────────────────────────────
+const PLANS = [
+  {
+    id: 'free',
+    name: 'Free',
+    desc: 'Great for getting started with personal finance tracking.',
+    monthly: 0,
+    yearly: 0,
+    popular: false,
+    current: true,
+    features: [
+      '1 wallet',
+      'Manual expense & income entry',
+      'Basic budgets',
+      'Monthly reports',
+      'Core dashboard',
+    ],
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    desc: 'For power users who want AI insights and unlimited tracking.',
+    monthly: 9.99,
+    yearly: 89,
+    popular: true,
+    current: false,
+    features: [
+      'Unlimited wallets',
+      'AI chat insights',
+      'Advanced reports & analytics',
+      'Goals & debt tracker',
+      'Subscriptions tracker',
+      'Voice "Hey Fina"',
+      'PDF export',
+    ],
+  },
+  {
+    id: 'family',
+    name: 'Family',
+    desc: 'Shared finance for couples and families with unified overview.',
+    monthly: 19.99,
+    yearly: 179,
+    popular: false,
+    current: false,
+    features: [
+      'Everything in Pro',
+      'Family Overview wallet',
+      'Multi-member tracking',
+      'Shared budgets & goals',
+      'Family net worth',
+      'Priority support',
+    ],
+  },
 ]
 
+// ── Pricing section ───────────────────────────────────────────────────────────
+function PricingSection() {
+  const [yearly, setYearly] = useState(false)
+  const [selected, setSelected] = useState(null)
+  const [animating, setAnimating] = useState(null)
+
+  const handleSelect = (id) => {
+    setAnimating(id)
+    setSelected(id)
+    setTimeout(() => setAnimating(null), 500)
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl" style={{ background: 'linear-gradient(160deg,#0f0a1e 0%,#1a0d3a 40%,#0d1a3a 100%)' }}>
+      {/* Background glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-150 h-75 rounded-full opacity-20 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse,#7c3aed,transparent 70%)' }} />
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{ backgroundImage: 'radial-gradient(circle,white 1px,transparent 1px)', backgroundSize: '24px 24px' }} />
+
+      <div className="relative px-5 pt-8 pb-8">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <p className="text-xs font-bold text-violet-400 uppercase tracking-widest mb-2">Choose Your Plan</p>
+          <h3 className="text-2xl font-bold text-white leading-tight">Simple, transparent pricing</h3>
+          <p className="text-white/50 text-sm mt-1.5">No hidden fees. Cancel anytime.</p>
+        </div>
+
+        {/* Billing toggle */}
+        <div className="flex justify-center mb-6">
+          <div className="relative flex items-center bg-white/10 rounded-full p-1 gap-1">
+            {['Monthly','Yearly'].map((label, i) => {
+              const active = yearly === (i === 1)
+              return (
+                <button key={label} onClick={() => setYearly(i === 1)}
+                  className="relative px-5 py-2 rounded-full text-sm font-semibold transition-colors z-10"
+                  style={{ color: active ? 'white' : 'rgba(255,255,255,0.5)' }}>
+                  {active && (
+                    <motion.span layoutId="billingPill"
+                      className="absolute inset-0 rounded-full"
+                      style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)' }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
+                  )}
+                  <span className="relative">{label}</span>
+                  {label === 'Yearly' && (
+                    <span className="relative ml-1.5 text-[10px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">-25%</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Plan cards */}
+        <div className="space-y-3">
+          {PLANS.map(plan => {
+            const price = yearly ? plan.yearly : plan.monthly
+            const isSelected = selected === plan.id || (selected === null && plan.current)
+            const isAnimating = animating === plan.id
+
+            return (
+              <motion.div key={plan.id}
+                onClick={() => handleSelect(plan.id)}
+                animate={isAnimating ? { scale: [1, 0.97, 1.02, 1] } : { scale: 1 }}
+                transition={{ duration: 0.4, ease: 'easeOut' }}
+                className="relative cursor-pointer rounded-2xl overflow-hidden"
+                style={{
+                  background: plan.popular
+                    ? 'linear-gradient(135deg,rgba(109,40,217,0.25),rgba(91,21,182,0.15))'
+                    : 'rgba(255,255,255,0.05)',
+                  border: `1.5px solid ${isSelected ? '#7c3aed' : plan.popular ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                  boxShadow: isSelected
+                    ? '0 0 0 1px rgba(124,58,237,0.4), 0 8px 32px rgba(124,58,237,0.2)'
+                    : plan.popular
+                    ? '0 4px 24px rgba(109,40,217,0.15)'
+                    : 'none',
+                }}>
+
+                {plan.popular && (
+                  <div className="absolute top-0 right-0 text-[10px] font-black text-white bg-violet-600 px-3 py-1 rounded-bl-xl tracking-wider">
+                    POPULAR
+                  </div>
+                )}
+
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="font-bold text-white text-base">{plan.name}</p>
+                        {plan.current && (
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Current</span>
+                        )}
+                      </div>
+                      <p className="text-white/45 text-xs leading-relaxed">{plan.desc}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="flex items-baseline gap-0.5">
+                        {price === 0
+                          ? <span className="text-2xl font-black text-white">Free</span>
+                          : <>
+                              <span className="text-sm font-bold text-white/60 mt-1">$</span>
+                              <span className="text-2xl font-black text-white">{price % 1 === 0 ? price : price.toFixed(2)}</span>
+                            </>
+                        }
+                      </div>
+                      {price > 0 && <p className="text-white/40 text-[10px]">/ {yearly ? 'year' : 'month'}</p>}
+                    </div>
+                  </div>
+
+                  {/* Feature list */}
+                  <AnimatePresence initial={false}>
+                    {isSelected && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                        className="overflow-hidden">
+                        <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
+                          {plan.features.map(f => (
+                            <div key={f} className="flex items-center gap-2">
+                              <div className="w-4 h-4 rounded-full bg-violet-500/20 border border-violet-500/40 flex items-center justify-center shrink-0">
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              </div>
+                              <p className="text-white/70 text-xs">{f}</p>
+                            </div>
+                          ))}
+                          {!plan.current && (
+                            <motion.button
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.15 }}
+                              whileTap={{ scale: 0.97 }}
+                              className="w-full mt-3 py-2.5 rounded-xl font-bold text-sm transition"
+                              style={{
+                                background: plan.popular
+                                  ? 'linear-gradient(135deg,#7c3aed,#6d28d9)'
+                                  : 'rgba(255,255,255,0.1)',
+                                color: 'white',
+                                border: plan.popular ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                              }}>
+                              Upgrade to {plan.name}
+                            </motion.button>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Selection indicator */}
+                  {!isSelected && (
+                    <div className="flex items-center gap-1.5 mt-3">
+                      <div className="w-3.5 h-3.5 rounded-full border border-white/20 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                      </div>
+                      <p className="text-white/30 text-xs">Tap to view features</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
+
+        <p className="text-center text-white/25 text-[11px] mt-5">Billed securely via Stripe · Encrypted · Cancel anytime</p>
+      </div>
+    </div>
+  )
+}
+
+// ── Accordion section ─────────────────────────────────────────────────────────
+function Section({ title, icon, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-600 dark:text-violet-400 shrink-0">
+            {icon}
+          </div>
+          <p className="font-bold text-gray-800 dark:text-white text-sm">{title}</p>
+        </div>
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-gray-400 dark:text-gray-500">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </motion.div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease: 'easeInOut' }}
+            className="overflow-hidden">
+            <div className="border-t border-gray-100 dark:border-gray-700 px-5 py-4">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
 function Toast({ message, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t) }, [onClose])
   return (
@@ -48,610 +281,167 @@ function Toast({ message, type, onClose }) {
   )
 }
 
-function Field({ label, hint, children }) {
-  return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</label>
-        {hint && <span className="text-xs text-gray-400 font-normal normal-case tracking-normal">{hint}</span>}
-      </div>
-      {children}
-    </div>
-  )
-}
-
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function Profile() {
-  const location = useLocation()
   const { wallets, refreshWallets, deactivateWallet } = useWallet()
-  const [user, setUser] = useState(() => {
+  const [user] = useState(() => {
     const stored = localStorage.getItem('user')
     if (!stored) { window.location.href = '/login'; return null }
     return JSON.parse(stored)
   })
-  const [form, setForm] = useState(() => {
-    const u = JSON.parse(localStorage.getItem('user') || '{}')
-    return { name: u.name || '', email: u.email || '', currency: u.currency || 'USD' }
-  })
-  const [pwForm, setPwForm]       = useState({ current: '', newPw: '', confirm: '' })
-  const [saving, setSaving]       = useState(false)
-  const [toast, setToast]         = useState(null)
-  const [activeTab, setActiveTab] = useState(() => location?.state?.tab || 'profile')
-  const [walletChangePinId, setWalletChangePinId] = useState(null)
-  const [walletPinCurrent, setWalletPinCurrent] = useState('')
-  const [walletPinNew, setWalletPinNew] = useState('')
+  const [photo, setPhoto]   = useState(() => localStorage.getItem('fina_profile_photo') || '')
+  const fileInputRef        = useRef(null)
+  const [toast, setToast]   = useState(null)
+  const [walletChangePinId, setWalletChangePinId]   = useState(null)
+  const [walletPinCurrent, setWalletPinCurrent]     = useState('')
+  const [walletPinNew, setWalletPinNew]             = useState('')
   const [walletPinNewConfirm, setWalletPinNewConfirm] = useState('')
-  const [walletPinError, setWalletPinError] = useState('')
-  const [walletPinLoading, setWalletPinLoading] = useState(false)
-  const [prefs, setPrefs]         = useState(() => {
-    try { return JSON.parse(localStorage.getItem('fina_prefs') || '{}') } catch { return {} }
-  })
-  const [prefsSaved, setPrefsSaved] = useState(false)
-  const [micLang, setMicLang]     = useState(() => localStorage.getItem('fina_lang_mic') || 'en-US')
-  const [appLang, setAppLang]     = useState(() => localStorage.getItem('fina_lang_app') || localStorage.getItem('fina_lang_response') || 'en-US')
-  const [photo, setPhoto]         = useState(() => localStorage.getItem('fina_profile_photo') || '')
-  const fileInputRef              = useRef(null)
-  const [supportForm, setSupportForm] = useState({ subject: 'General question', message: '' })
-  const [supportSending, setSupportSending] = useState(false)
-  const [supportSent, setSupportSent] = useState(false)
-  const [notifEnabled, setNotifEnabled] = useState(() => isNotificationsEnabled())
-  const [shortcutCopied, setShortcutCopied] = useState(false)
-  const [dark, toggleDark] = useDarkMode()
-  const [nwPin, setNwPin] = useState(() => localStorage.getItem('fina_nw_pin') || '')
-  const [nwPinInput, setNwPinInput] = useState('')
-  const [nwPinConfirm, setNwPinConfirm] = useState('')
-  const [nwPinMode, setNwPinMode] = useState(null) // 'set' | 'remove'
+  const [walletPinError, setWalletPinError]         = useState('')
+  const [walletPinLoading, setWalletPinLoading]     = useState(false)
 
-  const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700/60 text-gray-900 dark:text-white text-sm transition"
   const showToast = (msg, type = 'success') => setToast({ message: msg, type })
-  const FREQ_KEYS = { Monthly: 'monthly_freq', 'Bi-weekly': 'biweekly_freq', Weekly: 'weekly_freq', Irregular: 'irregular_freq' }
+  const prefs = (() => { try { return JSON.parse(localStorage.getItem('fina_prefs') || '{}') } catch { return {} } })()
+  const appLang = localStorage.getItem('fina_lang_app') || 'en-US'
+  const totalWallets = wallets.filter(w => !w.is_total_wallet).length
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0]
     if (!file) return
     if (file.size > 2 * 1024 * 1024) { showToast('Image must be under 2MB', 'error'); return }
     const reader = new FileReader()
-    reader.onload = (ev) => {
-      setPhoto(ev.target.result)
-      localStorage.setItem('fina_profile_photo', ev.target.result)
-      showToast('Photo updated!')
-    }
+    reader.onload = (ev) => { setPhoto(ev.target.result); localStorage.setItem('fina_profile_photo', ev.target.result); showToast('Photo updated!') }
     reader.readAsDataURL(file)
-  }
-
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      await API.put('/profile', form)
-      localStorage.setItem('currency', form.currency)
-      const updated = { ...user, ...form }
-      localStorage.setItem('user', JSON.stringify(updated))
-      setUser(updated)
-      showToast(t('save_changes') + ' ✓')
-    } catch { showToast(t('server_error'), 'error') }
-    setSaving(false)
-  }
-
-  const handleChangePassword = async () => {
-    if (pwForm.newPw !== pwForm.confirm) { showToast('Passwords do not match', 'error'); return }
-    if (pwForm.newPw.length < 6) { showToast('Password must be at least 6 characters', 'error'); return }
-    try {
-      await API.put('/profile/password', { current_password: pwForm.current, new_password: pwForm.newPw })
-      setPwForm({ current: '', newPw: '', confirm: '' })
-      showToast(t('change_password') + ' ✓')
-    } catch (e) { showToast(e.response?.data?.message || t('server_error'), 'error') }
-  }
-
-  const handleDeleteAccount = async () => {
-    const confirmed = window.prompt('Type DELETE to confirm account deletion:')
-    if (confirmed !== 'DELETE') return
-    try {
-      await API.delete('/profile')
-      localStorage.clear()
-      window.location.href = '/register'
-    } catch { showToast(t('server_error'), 'error') }
   }
 
   if (!user) return null
 
   const initials = user?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?'
-  const TABS = [
-    { key: 'profile',  label: 'Profile',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> },
-    { key: 'prefs',    label: 'Preferences',  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
-    { key: 'security', label: 'Security',     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
-    { key: 'account',  label: 'Account',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> },
-    { key: 'wallets',  label: 'Wallets',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 12V7H5a2 2 0 010-4h11v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg> },
-    { key: 'support',  label: 'Support',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
-  ]
 
   return (
     <Layout>
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       <div className="max-w-lg mx-auto px-4 py-6">
 
-        {/* Hero header */}
-        <div className="relative rounded-3xl overflow-hidden mb-5" style={{ background: 'linear-gradient(135deg, #2e1065 0%, #1e1b4b 40%, #0f172a 100%)' }}>
-          {/* Decorative orbs */}
-          <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full opacity-25" style={{ background: 'radial-gradient(circle, #818cf8, transparent)' }} />
-          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #a78bfa, transparent)' }} />
-          <div className="absolute top-1/2 right-16 w-14 h-14 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #c4b5fd, transparent)' }} />
-          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
+        {/* ── Hero ── */}
+        <div className="relative rounded-3xl overflow-hidden mb-5 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700">
+          {/* Subtle violet top accent */}
+          <div className="h-1.5 bg-linear-to-r from-violet-500 via-purple-500 to-indigo-500" />
 
-          <div className="relative p-6">
-            <div className="flex items-center gap-4">
-              {/* Avatar */}
+          <div className="px-6 pt-5 pb-6">
+            {/* Avatar row */}
+            <div className="flex items-center gap-4 mb-5">
               <div className="relative shrink-0">
-                <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-xl ring-4 ring-white/25">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg ring-2 ring-violet-200 dark:ring-violet-800">
                   {photo
                     ? <img src={photo} alt="Profile" className="w-full h-full object-cover" />
-                    : <div className="w-full h-full bg-white/20 flex items-center justify-center text-2xl font-black text-white">{initials}</div>
+                    : <div className="w-full h-full bg-linear-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-2xl font-black text-white">{initials}</div>
                   }
                 </div>
                 <button onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-1.5 -right-1.5 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4B5563" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                    <circle cx="12" cy="13" r="4"/>
+                  className="absolute -bottom-1.5 -right-1.5 w-7 h-7 bg-white dark:bg-gray-700 rounded-full flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition border border-gray-200 dark:border-gray-600">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
                   </svg>
                 </button>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
               </div>
 
               <div className="flex-1 min-w-0">
-                <h1 className="text-xl font-bold text-white leading-tight truncate">{user?.name}</h1>
-                <p className="text-white/65 text-sm truncate mt-0.5">{user?.email}</p>
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <span className="inline-flex items-center gap-1 text-xs bg-white/15 hover:bg-white/20 transition px-2.5 py-1 rounded-full font-semibold text-white">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="inline-flex items-center gap-1 text-xs bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 px-2.5 py-1 rounded-full font-bold">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     Personal Plan
                   </span>
-                  <span className="inline-flex items-center gap-1 text-xs bg-white/15 hover:bg-white/20 transition px-2.5 py-1 rounded-full font-semibold text-white">
-                    {CURRENCY_SYMBOLS[user?.currency] || '$'} {user?.currency || 'USD'}
-                  </span>
                 </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300 font-medium truncate">{user?.email}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Fina member</p>
               </div>
             </div>
 
-            {/* Stats row */}
-            <div className="flex justify-around mt-5 pt-5 border-t border-white/15">
+            {/* Stats strip */}
+            <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Currency', val: user?.currency || 'USD' },
-                { label: 'Savings Target', val: (prefs.savingsTarget ?? 20) + '%' },
+                { label: 'Wallets', val: totalWallets },
+                { label: 'Savings Goal', val: (prefs.savingsTarget ?? 20) + '%' },
                 { label: 'Language', val: (appLang || 'en-US').split('-')[0].toUpperCase() },
               ].map(s => (
-                <div key={s.label} className="text-center">
-                  <p className="text-white font-bold text-sm">{s.val}</p>
-                  <p className="text-white/50 text-xs mt-0.5">{s.label}</p>
+                <div key={s.label} className="bg-gray-50 dark:bg-gray-700/40 rounded-xl px-3 py-2.5 text-center">
+                  <p className="text-base font-black text-gray-800 dark:text-white">{s.val}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5 font-medium">{s.label}</p>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Tab bar */}
-        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5 gap-1">
-          {TABS.map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                activeTab === tab.key
-                  ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600 dark:text-violet-400'
-                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-              }`}>
-              {tab.icon}
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          ))}
-        </div>
+        {/* ── Sections ── */}
+        <div className="space-y-3">
 
-        {/* Profile tab */}
-        {activeTab === 'profile' && (
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Personal Information</p>
-              </div>
-              <Field label={t('full_name')}>
-                <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={cls} />
-              </Field>
-              <Field label={t('email')}>
-                <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={cls} />
-              </Field>
-              <Field label={t('currency')}>
-                <select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} className={cls}>
-                  {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c]} {c}</option>)}
-                </select>
-              </Field>
-              <button onClick={handleSave} disabled={saving}
-                className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 active:scale-95 transition disabled:opacity-60 flex items-center justify-center gap-2">
-                {saving
-                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t('saving')}</>
-                  : t('save_changes')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Preferences tab */}
-        {activeTab === 'prefs' && (
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-5">
-              <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">App Preferences</p>
+          {/* Profile section */}
+          <Section
+            defaultOpen={true}
+            title="Profile"
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>}>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between py-2 border-b border-gray-50 dark:border-gray-700/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">Email</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-white">{user?.email}</p>
+                  </div>
+                </div>
+                <a href="/settings" className="text-xs text-violet-600 font-semibold border border-violet-200 dark:border-violet-800 px-2.5 py-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
+                  Edit
+                </a>
               </div>
 
-              <Field label={t('income_frequency')}>
-                <div className="grid grid-cols-2 gap-2">
-                  {INCOME_FREQS.map(f => (
-                    <button key={f} type="button" onClick={() => setPrefs(p => ({ ...p, incomeFreq: f }))}
-                      className={`py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
-                        (prefs.incomeFreq || 'Monthly') === f
-                          ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                          : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300'
-                      }`}>
-                      {t(FREQ_KEYS[f] || f)}
-                    </button>
-                  ))}
+              <div className="flex items-center justify-between py-2 border-b border-gray-50 dark:border-gray-700/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">Security</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-white">Password & PIN</p>
+                  </div>
                 </div>
-              </Field>
+                <a href="/settings" className="text-xs text-violet-600 font-semibold border border-violet-200 dark:border-violet-800 px-2.5 py-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
+                  Manage
+                </a>
+              </div>
 
-              <Field label={t('savings_target')} hint={t('savings_target_hint')}>
-                <div className="flex items-center gap-3 mt-1">
-                  <input type="range" min="0" max="80" step="5"
-                    value={prefs.savingsTarget ?? 20}
-                    onChange={e => setPrefs(p => ({ ...p, savingsTarget: parseInt(e.target.value) }))}
-                    className="flex-1 accent-violet-600" />
-                  <span className="text-lg font-bold text-violet-600 w-12 text-right tabular-nums">{prefs.savingsTarget ?? 20}%</span>
-                </div>
-                <p className="text-xs text-gray-400 mt-1">{t('savings_rec')}</p>
-              </Field>
-
-              <Field label={t('app_language')} hint={t('app_lang_hint')}>
-                <select value={appLang} onChange={e => setAppLang(e.target.value)} className={cls}>
-                  {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-                </select>
-              </Field>
-
-              <Field label={t('mic_language')} hint={t('mic_lang_hint')}>
-                <select value={micLang} onChange={e => setMicLang(e.target.value)} className={cls}>
-                  {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-                </select>
-              </Field>
-
-              {/* Push notifications */}
-              <div className="flex items-center justify-between py-1">
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">🔔 Notifications</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Daily reminders, budget warnings & more</p>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">Session</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-white">Sign out of Fina</p>
+                  </div>
                 </div>
                 <button
-                  type="button"
-                  onClick={async () => {
-                    if (notifEnabled) {
-                      disableNotifications()
-                      unsubscribeFromPush()
-                      setNotifEnabled(false)
-                    } else {
-                      const granted = await requestNotificationPermission()
-                      setNotifEnabled(granted)
-                      if (granted) playFinaChime()
-                    }
-                  }}
-                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifEnabled ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
-              </div>
-
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-4 py-3">
-                <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">⚠️ {t('currency_warning')}</p>
-              </div>
-
-              <button onClick={() => {
-                localStorage.setItem('fina_prefs', JSON.stringify(prefs))
-                localStorage.setItem('fina_lang_app', appLang)
-                localStorage.setItem('fina_lang_mic', micLang)
-                setPrefsSaved(true)
-                setTimeout(() => { setPrefsSaved(false); window.location.reload() }, 1200)
-              }}
-                className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 active:scale-95 transition">
-                {prefsSaved ? '✓ ' + t('saved_label') : t('save_preferences')}
-              </button>
-            </div>
-
-            {/* Appearance */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
-              <p className="text-sm font-bold text-gray-700 dark:text-white mb-4">Appearance</p>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Dark Mode</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Switch between light and dark theme</p>
-                </div>
-                <button onClick={toggleDark}
-                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${dark ? 'bg-violet-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${dark ? 'translate-x-6' : 'translate-x-0'}`} />
+                  onClick={() => { if (window.confirm('Sign out?')) { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login' } }}
+                  className="text-xs text-red-500 font-semibold border border-red-200 dark:border-red-800 px-2.5 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                  Sign out
                 </button>
               </div>
             </div>
+          </Section>
 
-          </div>
-        )}
-
-        {/* Security tab */}
-        {activeTab === 'security' && (
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Change Password</p>
-              </div>
-              <Field label={t('current_password')}>
-                <input type="password" placeholder="••••••••" value={pwForm.current}
-                  onChange={e => setPwForm({ ...pwForm, current: e.target.value })} className={cls} />
-              </Field>
-              <Field label={t('new_password')}>
-                <input type="password" placeholder="••••••••" value={pwForm.newPw}
-                  onChange={e => setPwForm({ ...pwForm, newPw: e.target.value })} className={cls} />
-                {pwForm.newPw.length > 0 && (
-                  <div className="flex items-center gap-2 mt-1.5">
-                    {[1,2,3,4].map(i => (
-                      <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${
-                        pwForm.newPw.length >= i * 3
-                          ? i <= 1 ? 'bg-red-400' : i <= 2 ? 'bg-orange-400' : i <= 3 ? 'bg-yellow-400' : 'bg-green-500'
-                          : 'bg-gray-200 dark:bg-gray-700'
-                      }`} />
-                    ))}
-                    <span className="text-xs text-gray-400 shrink-0">
-                      {pwForm.newPw.length < 4 ? 'Weak' : pwForm.newPw.length < 7 ? 'Fair' : pwForm.newPw.length < 10 ? 'Good' : 'Strong'}
-                    </span>
-                  </div>
-                )}
-              </Field>
-              <Field label={t('confirm_password')}>
-                <input type="password" placeholder="••••••••" value={pwForm.confirm}
-                  onChange={e => setPwForm({ ...pwForm, confirm: e.target.value })} className={cls} />
-                {pwForm.confirm.length > 0 && pwForm.newPw !== pwForm.confirm && (
-                  <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
-                )}
-              </Field>
-              <button onClick={handleChangePassword}
-                disabled={!pwForm.current || !pwForm.newPw || !pwForm.confirm || pwForm.newPw !== pwForm.confirm}
-                className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
-                {t('change_password')}
-              </button>
-            </div>
-
-            {/* Net Worth PIN */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Net Worth PIN</p>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    {nwPin ? 'PIN is active' : 'No PIN set'}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {nwPin ? 'Your Net Worth page is protected' : 'Protect your Net Worth page with a 4-digit PIN'}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  {nwPin && (
-                    <button onClick={() => { setNwPinInput(''); setNwPinConfirm(''); setNwPinMode('remove') }}
-                      className="text-xs font-bold text-red-500 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-                      Remove
-                    </button>
-                  )}
-                  <button onClick={() => { setNwPinInput(''); setNwPinConfirm(''); setNwPinMode('set') }}
-                    className="text-xs font-bold text-violet-600 border border-violet-200 dark:border-violet-800 px-3 py-1.5 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
-                    {nwPin ? 'Change' : 'Set PIN'}
-                  </button>
-                </div>
-              </div>
-
-              {nwPinMode === 'set' && (
-                <div className="space-y-3 pt-1">
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">New 4-digit PIN</label>
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      maxLength={4}
-                      placeholder="••••"
-                      value={nwPinInput}
-                      onChange={e => setNwPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                      className={cls}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">Confirm PIN</label>
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      maxLength={4}
-                      placeholder="••••"
-                      value={nwPinConfirm}
-                      onChange={e => setNwPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                      className={cls}
-                    />
-                    {nwPinConfirm.length === 4 && nwPinInput !== nwPinConfirm && (
-                      <p className="text-xs text-red-500 mt-1">PINs do not match</p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => setNwPinMode(null)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition">Cancel</button>
-                    <button
-                      disabled={nwPinInput.length !== 4 || nwPinInput !== nwPinConfirm}
-                      onClick={() => {
-                        localStorage.setItem('fina_nw_pin', nwPinInput)
-                        setNwPin(nwPinInput)
-                        setNwPinMode(null)
-                        showToast('Net Worth PIN set')
-                      }}
-                      className="flex-1 py-3 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition disabled:opacity-50">
-                      Save PIN
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {nwPinMode === 'remove' && (
-                <div className="space-y-3 pt-1">
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">Enter current PIN to confirm</label>
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      maxLength={4}
-                      placeholder="••••"
-                      value={nwPinInput}
-                      onChange={e => setNwPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                      className={cls}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => setNwPinMode(null)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition">Cancel</button>
-                    <button
-                      disabled={nwPinInput.length !== 4}
-                      onClick={() => {
-                        if (nwPinInput !== nwPin) { showToast('Incorrect PIN', 'error'); return }
-                        localStorage.removeItem('fina_nw_pin')
-                        setNwPin('')
-                        setNwPinMode(null)
-                        showToast('PIN removed')
-                      }}
-                      className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition disabled:opacity-50">
-                      Remove PIN
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Account tab */}
-        {activeTab === 'account' && (
-          <div className="space-y-4">
-            {/* Plan card */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">{t('your_plan')}</p>
-              </div>
-              <div className="flex items-center gap-4 p-4 bg-linear-to-br from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 rounded-xl border border-violet-200 dark:border-violet-800/40">
-                <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center shrink-0">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-violet-700 dark:text-violet-300">Personal Plan</p>
-                  <p className="text-xs text-violet-500 dark:text-violet-400 mt-0.5">{t('personal_plan')}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tutorial */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">App Tutorial</p>
-              </div>
-              <p className="text-xs text-gray-400 mb-4 leading-relaxed">
-                Replay the interactive tour to rediscover features, tips, and the voice assistant.
-              </p>
-              <button onClick={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.removeItem(`fina_onboarded_${uid}`); window.location.href = '/dashboard' }}
-                className="w-full flex items-center justify-center gap-2 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/40 text-violet-700 dark:text-violet-300 py-3 rounded-xl font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/40 transition text-sm">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Replay Tutorial
-              </button>
-            </div>
-
-            {/* Hey Fina shortcut */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
-                <span className="text-sm">🎙️</span>
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Hey Fina</p>
-                <span className="ml-auto text-[10px] bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-300 px-2 py-0.5 rounded-full font-bold tracking-wide">QUICK ADD</span>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-4">
-                Add expenses from outside the app with your voice. Open the shortcut and say{' '}
-                <span className="font-semibold text-gray-700 dark:text-gray-200">"I spent $15 on a burger"</span>{' '}
-                — Fina parses it and adds it instantly.
-              </p>
-              <button
-                onClick={() => {
-                  navigator.clipboard?.writeText(window.location.origin + '/quick-add').catch(() => {})
-                  setShortcutCopied(true)
-                  setTimeout(() => setShortcutCopied(false), 2200)
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-violet-600 text-white py-3 rounded-xl font-semibold hover:bg-violet-700 active:scale-95 transition text-sm mb-4">
-                {shortcutCopied ? (
-                  <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Link Copied!</>
-                ) : (
-                  <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy Shortcut Link</>
-                )}
-              </button>
-              <div className="space-y-2.5">
-                <div className="flex gap-3 p-3 bg-gray-50 dark:bg-gray-700/40 rounded-xl">
-                  <span className="text-base shrink-0 mt-0.5">🍎</span>
-                  <div>
-                    <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-0.5">iPhone / iOS</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Shortcuts app → <span className="font-semibold">+</span> → Add Action → <span className="font-semibold">Open URLs</span> → paste the link above. Name it "Hey Fina". Then say <span className="font-semibold">"Hey Siri, Hey Fina"</span>.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3 p-3 bg-gray-50 dark:bg-gray-700/40 rounded-xl">
-                  <span className="text-base shrink-0 mt-0.5">🤖</span>
-                  <div>
-                    <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-0.5">Android</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Install Fina (Add to Home Screen) → long-press app icon → tap <span className="font-semibold">Quick Add</span> shortcut. Or say <span className="font-semibold">"Hey Google, open Fina Quick Add"</span>.</p>
-                  </div>
-                </div>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center pt-0.5">
-                  True background wake word requires a native app. This is the best PWA alternative.
-                </p>
-              </div>
-            </div>
-
-            {/* Sign out */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Session</p>
-              </div>
-              <button onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login' }}
-                className="w-full flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 py-3 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                Sign Out
-              </button>
-            </div>
-
-            {/* Danger zone */}
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-1">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                <p className="text-sm font-bold text-red-600">{t('delete_account')}</p>
-              </div>
-              <p className="text-xs text-red-400 mb-4 leading-relaxed">{t('delete_warning')}</p>
-              <button onClick={handleDeleteAccount}
-                className="w-full bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition text-sm">
-                {t('delete_account')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Wallets tab */}
-        {activeTab === 'wallets' && (
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
-                <div className="flex items-center gap-2">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><path d="M21 12V7H5a2 2 0 010-4h11v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-                  <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Your Wallets</p>
-                </div>
-                <a href="/create-wallet"
-                  className="text-xs font-bold text-violet-600 border border-violet-200 dark:border-violet-800 px-3 py-1.5 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
-                  + New Wallet
+          {/* Wallets section */}
+          <Section
+            defaultOpen={false}
+            title="Wallets"
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 12V7H5a2 2 0 010-4h11v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>}>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-gray-400 font-medium">{wallets.length} wallet{wallets.length !== 1 ? 's' : ''}</p>
+                <a href="/create-wallet" className="text-xs font-bold text-violet-600 border border-violet-200 dark:border-violet-800 px-3 py-1.5 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
+                  + New
                 </a>
               </div>
 
@@ -659,13 +449,12 @@ export default function Profile() {
                 <p className="text-sm text-gray-400 text-center py-4">No wallets yet.</p>
               )}
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {wallets.map(w => {
                   const color = getWalletColor(w.color)
                   const isChangingPin = walletChangePinId === w.id
                   return (
                     <div key={w.id} className="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden">
-                      {/* Wallet row */}
                       <div className="flex items-center gap-3 p-3">
                         <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${color.gradient} overflow-hidden shrink-0 ring-2 ring-white dark:ring-gray-800`}>
                           <img src={getAvatarUrl(w)} alt={w.name} className="w-full h-full object-cover" onError={e => { e.target.style.display='none' }} />
@@ -676,12 +465,8 @@ export default function Profile() {
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
-                            onClick={() => {
-                              setWalletChangePinId(isChangingPin ? null : w.id)
-                              setWalletPinCurrent(''); setWalletPinNew(''); setWalletPinNewConfirm(''); setWalletPinError('')
-                            }}
-                            className="text-[11px] font-bold text-violet-600 border border-violet-200 dark:border-violet-800 px-2 py-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition"
-                          >
+                            onClick={() => { setWalletChangePinId(isChangingPin ? null : w.id); setWalletPinCurrent(''); setWalletPinNew(''); setWalletPinNewConfirm(''); setWalletPinError('') }}
+                            className="text-[11px] font-bold text-violet-600 border border-violet-200 dark:border-violet-800 px-2 py-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
                             {isChangingPin ? 'Cancel' : 'PIN'}
                           </button>
                           {!w.is_total_wallet && (
@@ -697,32 +482,26 @@ export default function Profile() {
                                   window.location.href = '/wallets'
                                 } catch (e) { showToast(e.message, 'error') }
                               }}
-                              className="text-[11px] font-bold text-red-500 border border-red-200 dark:border-red-800 px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition"
-                            >
+                              className="text-[11px] font-bold text-red-500 border border-red-200 dark:border-red-800 px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition">
                               Delete
                             </button>
                           )}
                         </div>
                       </div>
 
-                      {/* Change PIN form */}
                       {isChangingPin && (
                         <div className="border-t border-gray-100 dark:border-gray-700 p-3 space-y-2.5 bg-gray-50 dark:bg-gray-700/30">
                           <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Change PIN</p>
                           {[
-                            { label: 'Current PIN', val: walletPinCurrent, set: setWalletPinCurrent, placeholder: '••••' },
-                            { label: 'New PIN (4–6 digits)', val: walletPinNew, set: setWalletPinNew, placeholder: '••••' },
-                            { label: 'Confirm New PIN', val: walletPinNewConfirm, set: setWalletPinNewConfirm, placeholder: '••••' },
-                          ].map(({ label, val, set, placeholder }) => (
+                            { label: 'Current PIN', val: walletPinCurrent, set: setWalletPinCurrent },
+                            { label: 'New PIN (4–6 digits)', val: walletPinNew, set: setWalletPinNew },
+                            { label: 'Confirm New PIN', val: walletPinNewConfirm, set: setWalletPinNewConfirm },
+                          ].map(({ label, val, set }) => (
                             <div key={label}>
                               <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">{label}</label>
                               <input
-                                type="password"
-                                inputMode="numeric"
-                                placeholder={placeholder}
-                                value={val}
-                                maxLength={6}
-                                onChange={e => { set(e.target.value.replace(/\D/g, '').slice(0, 6)); setWalletPinError('') }}
+                                type="password" inputMode="numeric" placeholder="••••" value={val} maxLength={6}
+                                onChange={e => { set(e.target.value.replace(/\D/g,'').slice(0,6)); setWalletPinError('') }}
                                 className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                               />
                             </div>
@@ -743,13 +522,12 @@ export default function Profile() {
                                 if (!res.ok) throw new Error(data.message)
                                 lockWallet()
                                 setWalletChangePinId(null)
-                                showToast('PIN changed — please unlock your wallet again')
+                                showToast('PIN changed — unlock your wallet again')
                                 setTimeout(() => { window.location.href = '/wallets' }, 1500)
                               } catch (e) { setWalletPinError(e.message) }
                               setWalletPinLoading(false)
                             }}
-                            className="w-full py-2.5 rounded-lg bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition disabled:opacity-50"
-                          >
+                            className="w-full py-2.5 rounded-lg bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition disabled:opacity-50">
                             {walletPinLoading ? 'Saving…' : 'Save New PIN'}
                           </button>
                         </div>
@@ -761,77 +539,21 @@ export default function Profile() {
 
               <button
                 onClick={() => { window.location.href = '/wallets' }}
-                className="w-full flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 py-3 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
-              >
+                className="w-full flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 py-3 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm">
                 Switch Wallet
               </button>
             </div>
-          </div>
-        )}
+          </Section>
 
-        {/* Support tab */}
-        {activeTab === 'support' && (
-          <div className="space-y-4">
-            {supportSent ? (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 flex flex-col items-center text-center gap-3">
-                <div className="w-14 h-14 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-                <p className="text-base font-bold text-gray-800 dark:text-white">Message sent!</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">We'll get back to you as soon as possible.</p>
-                <button onClick={() => { setSupportSent(false); setSupportForm({ subject: 'General question', message: '' }) }}
-                  className="mt-2 text-violet-600 text-sm font-semibold hover:underline">
-                  Send another message
-                </button>
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
-                <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Contact Support</p>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                  Have a question, found a bug, or want to suggest a feature? We'd love to hear from you.
-                </p>
-                <Field label="Subject">
-                  <select value={supportForm.subject} onChange={e => setSupportForm(f => ({ ...f, subject: e.target.value }))} className={cls}>
-                    {['General question', 'Bug report', 'Feature idea', 'Account issue', 'Other'].map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Message">
-                  <textarea rows={5} placeholder="Describe your issue or idea in detail..."
-                    value={supportForm.message}
-                    onChange={e => setSupportForm(f => ({ ...f, message: e.target.value }))}
-                    className={cls + ' resize-none'} />
-                </Field>
-                <button
-                  disabled={supportSending || supportForm.message.trim().length < 10}
-                  onClick={async () => {
-                    setSupportSending(true)
-                    try {
-                      await API.post('/support/ticket', { subject: supportForm.subject, message: supportForm.message, user_email: user.email })
-                      setSupportSent(true)
-                    } catch {
-                      window.open(`mailto:charbel.mansourb@gmail.com?subject=${encodeURIComponent('[Fina] ' + supportForm.subject)}&body=${encodeURIComponent(supportForm.message)}`)
-                      setSupportSent(true)
-                    }
-                    setSupportSending(false)
-                  }}
-                  className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-2">
-                  {supportSending
-                    ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Sending…</>
-                    : 'Send Message'}
-                </button>
-                <p className="text-xs text-center text-gray-400">
-                  You can also email us directly at{' '}
-                  <a href="mailto:charbel.mansourb@gmail.com" className="text-violet-500 hover:underline">charbel.mansourb@gmail.com</a>
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+          {/* Your Plan section */}
+          <Section
+            defaultOpen={false}
+            title="Your Plan"
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>}>
+            <PricingSection />
+          </Section>
+
+        </div>
 
       </div>
     </Layout>

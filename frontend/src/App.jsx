@@ -25,6 +25,7 @@ const PAGE_TITLES = {
   '/net-worth': 'Net Worth — Fina',
   '/wellness': 'Wellness — Fina',
   '/profile': 'Profile — Fina',
+  '/settings': 'Settings — Fina',
 }
 
 function RouteTitle() {
@@ -43,6 +44,7 @@ import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Profile from './pages/Profile'
+import Settings from './pages/Settings'
 import VerifyEmail from './pages/VerifyEmail'
 import ForgotPassword from './pages/ForgotPassword'
 import AccountType from './pages/AccountType'
@@ -97,6 +99,7 @@ function App() {
           {/* Wallet-guarded pages */}
           <Route path="/dashboard"             element={<WalletGuard><Dashboard /></WalletGuard>} />
           <Route path="/profile"               element={<WalletGuard><Profile /></WalletGuard>} />
+          <Route path="/settings"              element={<WalletGuard><Settings /></WalletGuard>} />
           <Route path="/budgets"               element={<WalletGuard><Budgets /></WalletGuard>} />
           <Route path="/goals"                 element={<WalletGuard><Goals /></WalletGuard>} />
           <Route path="/savings"               element={<Navigate to="/goals" replace />} />

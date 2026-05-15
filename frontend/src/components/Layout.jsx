@@ -29,6 +29,7 @@ const Icons = {
   debt: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.1:0}/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2M12 12v4M10 14h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   subs: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.1:0}/><path d="M9 7h6M9 11h6M9 15h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   family: (a) => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="7" r="3" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.15:0}/><circle cx="17" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.12:0}/><path d="M2 20c0-3 3.1-5 7-5s7 2 7 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M16 15c2.5.3 5 1.5 5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
+  settings: (a) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" fill={a?'currentColor':'none'} fillOpacity={a?0.18:0}/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" strokeWidth="1.8"/></svg>),
   logout: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>),
   hamburger: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
   close: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
@@ -43,7 +44,7 @@ const NAV_ITEMS = [
   { key: 'nav_reports',         icon: 'reports',      href: '/reports' },
   { key: 'nav_wellness',        icon: 'wellness',     href: '/wellness' },
   { key: 'nav_networth',        icon: 'networth',     href: '/net-worth' },
-  { key: 'nav_profile',         icon: 'profile',      href: '/profile' },
+  { key: 'nav_settings',        icon: 'settings',     href: '/settings',  label: 'Settings' },
 ]
 
 const TAB_ITEMS = [
@@ -139,7 +140,7 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
               <span className={isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500'}>
                 {Icons[item.icon]?.(isActive)}
               </span>
-              <span className="truncate flex-1">{t(item.key)}</span>
+              <span className="truncate flex-1">{item.label ?? t(item.key)}</span>
               {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white/70 shrink-0" />}
             </a>
           )
@@ -148,6 +149,15 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
 
       {/* Bottom actions */}
       <div className="px-3 py-3 border-t border-gray-100 dark:border-gray-700/60 space-y-0.5">
+        {/* Profile link */}
+        <a href="/profile"
+          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition ${current === '/profile' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}>
+          <span className={current === '/profile' ? 'text-white' : 'text-gray-400 dark:text-gray-500'}>
+            {Icons.profile(current === '/profile')}
+          </span>
+          <span>Profile</span>
+          {current === '/profile' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white/70 shrink-0" />}
+        </a>
         <button onClick={onBellClick}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition">
           <span className="relative text-gray-400 dark:text-gray-500">
