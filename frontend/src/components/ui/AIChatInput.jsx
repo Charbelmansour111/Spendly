@@ -64,7 +64,7 @@ export function AIChatInput({
         setPlaceholderIndex(prev => (prev + 1) % PLACEHOLDERS.length)
         setShowPlaceholder(true)
       }, 400)
-    }, 3000)
+    }, 2800)
     return () => clearInterval(interval)
   }, [isActive, input])
 
