@@ -1,11 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const _auth = require('../middleware/auth');
-const authenticateToken = typeof _auth === 'function' ? _auth : _auth.authenticateToken;
-console.log('[onboarding] authenticateToken type:', typeof authenticateToken);
+const jwt = require('jsonwebtoken');
 
-router.get('/', authenticateToken, async (req, res) => {
+function auth(req, res, next) {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'No token provided' });
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(403).json({ message: 'Invalid token' });
+    req.userId = decoded.id || decoded.userId;
+    next();
+  });
+}
+
+router.get('/', auth, async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT * FROM user_onboarding WHERE user_id = $1',
@@ -17,7 +25,7 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   const {
     life_situation, housing, education, pays_tuition,
     dependents, employment_status, financial_priority, monthly_income_estimate
