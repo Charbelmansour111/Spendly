@@ -885,7 +885,7 @@ export default function Dashboard() {
     return acc
   }, []).sort((a, b) => b.value - a.value)
 
-  const recentExpenses = [...monthExpenses].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5)
+  const recentExpenses = [...monthExpenses].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3)
 
   // Financial tips computed from real user data
   const tips = (() => {

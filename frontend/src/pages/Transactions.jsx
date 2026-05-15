@@ -515,14 +515,14 @@ export default function Transactions() {
     return () => document.body.classList.remove('modal-open')
   }, [showRecatSheet])
 
-  const [visibleDayGroups, setVisibleDayGroups] = useState(3)
+  const [visibleCount, setVisibleCount] = useState(8)
 
-  // Reset visible count when filters/tab change (derived-state pattern — safe to call during render)
+  // Reset visible count when filters/tab change
   const filterKey = `${tab}|${catFilter}|${sortBy}|${dateFrom}|${dateTo}|${search}`
   const [lastFilterKey, setLastFilterKey] = useState(filterKey)
   if (filterKey !== lastFilterKey) {
     setLastFilterKey(filterKey)
-    setVisibleDayGroups(3)
+    setVisibleCount(8)
   }
 
   useEffect(() => {
@@ -1042,14 +1042,21 @@ const onTabSwipeStart = (e) => {
 
   const renderGrouped = (grouped, isIncome, options = {}) => {
     const { rowRenderer, showTotal = true } = options
-    const entries = Object.entries(grouped)
-    const visible = entries.slice(0, visibleDayGroups)
-    const hasMore = entries.length > visibleDayGroups
+    const allTxs = Object.values(grouped).flat()
+    const totalCount = allTxs.length
+    const visibleTxs = allTxs.slice(0, visibleCount)
+    const hasMore = totalCount > visibleCount
     const renderRow = rowRenderer || ((tx, idx, total) =>
       isIncome ? renderIncomeRow(tx, idx, total) : renderExpenseRow(tx, idx, total))
+    const reGrouped = {}
+    visibleTxs.forEach(tx => {
+      const label = dayLabel(tx.date)
+      if (!reGrouped[label]) reGrouped[label] = []
+      reGrouped[label].push(tx)
+    })
     return (
       <div className="space-y-4">
-        {visible.map(([label, txs]) => (
+        {Object.entries(reGrouped).map(([label, txs]) => (
           <div key={label}>
             <div className="flex items-center gap-3 mb-2 px-1">
               <p className="text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">{label}</p>
@@ -1071,7 +1078,7 @@ const onTabSwipeStart = (e) => {
         {hasMore && (
           <div className="flex justify-center py-4">
             <button
-              onClick={() => setVisibleDayGroups(p => p + 3)}
+              onClick={() => setVisibleCount(p => p + 8)}
               className="px-6 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-violet-600 dark:text-violet-400 text-sm font-semibold rounded-2xl shadow-sm hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 active:scale-95 transition">
               Load more
             </button>

@@ -1019,10 +1019,15 @@ export default function Reports() {
         {/* ── MONTHLY RECAP TAB ───────────────────────────── */}
         {activeTab === 'recap' && (() => {
           const rate = parseFloat(savingsRate)
-          const score = rate >= 20 ? { grade: 'A', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-900/20', label: 'Excellent' }
-            : rate >= 10 ? { grade: 'B', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', label: 'Good' }
-            : rate >= 0  ? { grade: 'C', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20', label: 'Average' }
-            : { grade: 'F', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20', label: 'Over Budget' }
+          const score = rate >= 20
+            ? { grade: 'A', color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20', label: 'Excellent',      heroGrad: 'from-emerald-500 to-green-600' }
+            : rate >= 10
+            ? { grade: 'B', color: 'text-blue-500',    bg: 'bg-blue-50 dark:bg-blue-900/20',       label: 'Good',           heroGrad: 'from-blue-500 to-indigo-600' }
+            : rate >= 5
+            ? { grade: 'C', color: 'text-amber-500',   bg: 'bg-amber-50 dark:bg-amber-900/20',     label: 'Average',        heroGrad: 'from-amber-400 to-yellow-500' }
+            : rate >= 0
+            ? { grade: 'D', color: 'text-orange-500',  bg: 'bg-orange-50 dark:bg-orange-900/20',   label: 'Below Average',  heroGrad: 'from-orange-500 to-red-500' }
+            : { grade: 'F', color: 'text-red-500',     bg: 'bg-red-50 dark:bg-red-900/20',         label: 'Over Budget',    heroGrad: 'from-red-600 to-rose-700' }
           const topCat   = categoryData[0]
           const worstCat = categoryData.reduce((worst, c) => {
             const diff = (prevCategoryData[c.name] || 0) > 0 ? c.value - prevCategoryData[c.name] : 0
@@ -1037,7 +1042,7 @@ export default function Reports() {
             <div className="space-y-5">
 
               {/* Hero score */}
-              <div className="bg-linear-to-br from-slate-700 to-slate-900 rounded-2xl px-5 py-4 text-white">
+              <div className={`bg-linear-to-br ${score.heroGrad} rounded-2xl px-5 py-4 text-white`}>
                 <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mb-2">{monthName} Summary</p>
                 <div className="flex items-center gap-5">
                   <div className={`w-16 h-16 rounded-2xl ${score.bg} flex items-center justify-center shrink-0`}>
