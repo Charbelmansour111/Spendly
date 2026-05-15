@@ -3,15 +3,15 @@ import { motion } from 'motion/react'
 import { TestimonialsColumn } from '../components/ui/TestimonialsColumn'
 
 const testimonials = [
-  { text: "Fina completely changed how I think about spending. I saved $400 in my first month just by seeing where my money was actually going.", image: "https://randomuser.me/api/portraits/women/1.jpg", name: "Sofia Martinez", role: "Freelance Designer" },
-  { text: "The AI advisor is like having a financial coach in my pocket. It told me I was overspending on subscriptions — it was right.", image: "https://randomuser.me/api/portraits/men/2.jpg", name: "James Okafor", role: "Software Engineer" },
-  { text: "I finally paid off my credit card using Fina's budgeting tools. The visual progress bars kept me motivated every single day.", image: "https://randomuser.me/api/portraits/women/3.jpg", name: "Priya Nair", role: "Graduate Student" },
-  { text: "Receipt scanning is a game changer. No more manual entry — I just photograph my receipts and Fina does the rest.", image: "https://randomuser.me/api/portraits/men/4.jpg", name: "Lucas Ferreira", role: "Small Business Owner" },
-  { text: "I've tried every budgeting app. Fina is the only one I've actually stuck with for more than two weeks. The UI is just beautiful.", image: "https://randomuser.me/api/portraits/women/5.jpg", name: "Amara Diallo", role: "Marketing Manager" },
-  { text: "The wellness score is genius. Seeing my financial health go from 54 to 81 in three months felt like leveling up in a game.", image: "https://randomuser.me/api/portraits/men/6.jpg", name: "Daniel Choi", role: "Product Manager" },
-  { text: "As someone who travels a lot, multi-currency support is essential. Fina handles it perfectly without any fuss.", image: "https://randomuser.me/api/portraits/women/7.jpg", name: "Lena Bauer", role: "Digital Nomad" },
-  { text: "I asked the AI 'can I afford a vacation in June?' and it gave me an actual data-driven answer. Mind blown.", image: "https://randomuser.me/api/portraits/men/8.jpg", name: "Tariq Hassan", role: "Teacher" },
-  { text: "The PDF export saved me hours during tax season. My accountant was impressed with how organized everything was.", image: "https://randomuser.me/api/portraits/women/9.jpg", name: "Claire Dubois", role: "Entrepreneur" },
+  { text: "فينا غيّرت طريقتي بالتعامل مع مصاريفي. وفّرت أكثر من ٥٠٠ دولار بالشهر الأوّل بس لأنّي شفت وين رح مصاري فعلياً.", image: "https://randomuser.me/api/portraits/women/44.jpg", name: "نور الخوري", role: "معلمة — بيروت" },
+  { text: "The AI advisor is like having a financial coach in my pocket. It told me I was overspending on subscriptions — and it was completely right.", image: "https://randomuser.me/api/portraits/men/32.jpg", name: "Tarek Karam", role: "Software Engineer — Beirut" },
+  { text: "I tracked my spending across Lebanon and Dubai at the same time. Multi-currency support is absolutely flawless.", image: "https://randomuser.me/api/portraits/women/68.jpg", name: "Maya Nassar", role: "Marketing Consultant — Jounieh" },
+  { text: "المساعد الذكي مثل مستشار مالي بجيبي. قلّي إنّي مبذّر على الاشتراكات، وكان محق تماماً. وفّرت ٣٠٠ دولار بشهر واحد.", image: "https://randomuser.me/api/portraits/men/55.jpg", name: "جورج سعادة", role: "مطوّر — طرابلس" },
+  { text: "The wellness score went from 58 to 86 in two months. Watching it climb every week kept me genuinely motivated to save more.", image: "https://randomuser.me/api/portraits/women/26.jpg", name: "Rima Haddad", role: "Pharmacist — Byblos" },
+  { text: "As a restaurant owner I needed something simple. Fina gives me a crystal-clear picture of where every dollar goes.", image: "https://randomuser.me/api/portraits/men/41.jpg", name: "Omar Abboud", role: "Restaurant Owner — Hamra" },
+  { text: "I finally paid off my loan six months early thanks to Fina's goal tracking. The progress bar became my daily motivation.", image: "https://randomuser.me/api/portraits/women/17.jpg", name: "Sophie Laurent", role: "Graphic Designer — Paris" },
+  { text: "Receipt scanning saves me so much time. I photograph my receipts and Fina categorizes everything instantly — no manual entry.", image: "https://randomuser.me/api/portraits/men/76.jpg", name: "Ahmed Al-Rashidi", role: "Sales Manager — Dubai" },
+  { text: "Exporting the full year as a PDF for my accountant took one click. Clean, professional, and saved me hours at tax time.", image: "https://randomuser.me/api/portraits/men/62.jpg", name: "Marco Russo", role: "Freelance Architect — Milan" },
 ]
 
 const firstColumn = testimonials.slice(0, 3)
