@@ -1,4 +1,22 @@
 import { useEffect, useState } from 'react'
+import { motion } from 'motion/react'
+import { TestimonialsColumn } from '../components/ui/TestimonialsColumn'
+
+const testimonials = [
+  { text: "Fina completely changed how I think about spending. I saved $400 in my first month just by seeing where my money was actually going.", image: "https://randomuser.me/api/portraits/women/1.jpg", name: "Sofia Martinez", role: "Freelance Designer" },
+  { text: "The AI advisor is like having a financial coach in my pocket. It told me I was overspending on subscriptions — it was right.", image: "https://randomuser.me/api/portraits/men/2.jpg", name: "James Okafor", role: "Software Engineer" },
+  { text: "I finally paid off my credit card using Fina's budgeting tools. The visual progress bars kept me motivated every single day.", image: "https://randomuser.me/api/portraits/women/3.jpg", name: "Priya Nair", role: "Graduate Student" },
+  { text: "Receipt scanning is a game changer. No more manual entry — I just photograph my receipts and Fina does the rest.", image: "https://randomuser.me/api/portraits/men/4.jpg", name: "Lucas Ferreira", role: "Small Business Owner" },
+  { text: "I've tried every budgeting app. Fina is the only one I've actually stuck with for more than two weeks. The UI is just beautiful.", image: "https://randomuser.me/api/portraits/women/5.jpg", name: "Amara Diallo", role: "Marketing Manager" },
+  { text: "The wellness score is genius. Seeing my financial health go from 54 to 81 in three months felt like leveling up in a game.", image: "https://randomuser.me/api/portraits/men/6.jpg", name: "Daniel Choi", role: "Product Manager" },
+  { text: "As someone who travels a lot, multi-currency support is essential. Fina handles it perfectly without any fuss.", image: "https://randomuser.me/api/portraits/women/7.jpg", name: "Lena Bauer", role: "Digital Nomad" },
+  { text: "I asked the AI 'can I afford a vacation in June?' and it gave me an actual data-driven answer. Mind blown.", image: "https://randomuser.me/api/portraits/men/8.jpg", name: "Tariq Hassan", role: "Teacher" },
+  { text: "The PDF export saved me hours during tax season. My accountant was impressed with how organized everything was.", image: "https://randomuser.me/api/portraits/women/9.jpg", name: "Claire Dubois", role: "Entrepreneur" },
+]
+
+const firstColumn = testimonials.slice(0, 3)
+const secondColumn = testimonials.slice(3, 6)
+const thirdColumn = testimonials.slice(6, 9)
 
 const STYLE = `
 @keyframes float-y{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
@@ -470,39 +488,31 @@ function Landing() {
         </div>
       </section>
 
-      {/* ── UP AND RUNNING IN 3 STEPS ─────────────────────────── */}
-      <section id="how" className="bg-gray-950 py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-violet-400 text-xs font-bold uppercase tracking-widest mb-3">Simple by design</p>
-            <h2 className="text-4xl font-extrabold text-white tracking-tight mb-3">Up and running in 3 steps</h2>
-            <p className="text-gray-400 max-w-sm mx-auto">No bank connections. No setup. Just create an account and start tracking.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 relative">
-            {/* Connector line */}
-            <div className="hidden sm:block absolute top-10 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)] h-px"
-              style={{ background: 'linear-gradient(90deg, rgba(124,58,237,0.6), rgba(109,40,217,0.6))' }}/>
-            {[
-              { step:'01', icon:'✍️', title:'Create your account', desc:'Sign up free in under 30 seconds — no credit card, no bank connection required.', color:'from-violet-600 to-violet-700' },
-              { step:'02', icon:'📲', title:'Log your first expense', desc:'Type it, say it, or scan a receipt. Your financial picture starts building immediately.', color:'from-indigo-600 to-indigo-700' },
-              { step:'03', icon:'🤖', title:'Get AI-powered insights', desc:'Ask your AI advisor anything about your money and watch your financial habits transform.', color:'from-purple-600 to-purple-700' },
-            ].map((s,i) => (
-              <div key={i} className="relative flex flex-col items-center text-center rounded-2xl p-7 border border-white/8 bg-white/4 hover:bg-white/8 transition group">
-                <div className={`w-16 h-16 bg-linear-to-br ${s.color} rounded-2xl flex items-center justify-center text-2xl mb-5 shadow-lg shadow-violet-900/40 group-hover:scale-105 transition-transform`}>
-                  {s.icon}
-                </div>
-                <span className="absolute top-5 left-5 text-xs font-black text-violet-500">{s.step}</span>
-                <h3 className="font-bold text-white text-base mb-2">{s.title}</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">{s.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-10">
-            <a href="/register"
-              className="inline-flex items-center gap-2 px-8 py-4 font-bold rounded-xl text-white text-base active:scale-95 transition"
-              style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', boxShadow: '0 8px 30px rgba(124,58,237,0.4)' }}>
-              Get started — it's free →
-            </a>
+      {/* ── TESTIMONIALS ──────────────────────────────────────── */}
+      <section className="bg-white py-24 px-6 relative overflow-hidden">
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            viewport={{ once: true }}
+            className="flex flex-col items-center text-center max-w-xl mx-auto mb-12"
+          >
+            <div className="border border-violet-200 bg-violet-50 text-violet-700 text-xs font-bold px-4 py-1.5 rounded-full mb-5 uppercase tracking-widest">
+              Testimonials
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-4">
+              Real people. Real results.
+            </h2>
+            <p className="text-gray-500 text-base leading-relaxed">
+              See how Fina is helping thousands of people take control of their finances.
+            </p>
+          </motion.div>
+
+          <div className="flex justify-center gap-6 mask-[linear-gradient(to_bottom,transparent,black_20%,black_80%,transparent)] max-h-180 overflow-hidden">
+            <TestimonialsColumn testimonials={firstColumn} duration={15} />
+            <TestimonialsColumn testimonials={secondColumn} className="hidden md:block" duration={19} />
+            <TestimonialsColumn testimonials={thirdColumn} className="hidden lg:block" duration={17} />
           </div>
         </div>
       </section>
