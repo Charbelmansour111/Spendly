@@ -1677,6 +1677,25 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* 6-Month Trend */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
+          <h3 className="font-semibold text-gray-800 dark:text-white text-sm mb-4">6-Month Trend</h3>
+          {trendsData.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">No trend data yet.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={trendsData}>
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="#9CA3AF" />
+                <YAxis tick={{ fontSize: 10 }} stroke="#9CA3AF" />
+                <Tooltip formatter={v => currencySymbol + safeNum(v).toFixed(2)} />
+                <Line type="monotone" dataKey="income"   stroke="#10B981" strokeWidth={2} dot={{ r: 3 }} name="Income" />
+                <Line type="monotone" dataKey="spending" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} name="Spent" />
+                <Line type="monotone" dataKey="balance"  stroke="#4F46E5" strokeWidth={2} dot={{ r: 3 }} name="Balance" />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
         {/* Income this month */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
           <div className="flex justify-between items-center mb-3">
@@ -1768,22 +1787,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 6-Month Trend */}
-        {trendsData.length > 1 && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
-            <h3 className="font-semibold text-gray-800 dark:text-white text-sm mb-4">6-Month Trend</h3>
-            <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={trendsData}>
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="#9CA3AF" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#9CA3AF" />
-                <Tooltip formatter={v => currencySymbol + safeNum(v).toFixed(2)} />
-                <Line type="monotone" dataKey="income"   stroke="#10B981" strokeWidth={2} dot={{ r: 3 }} name="Income" />
-                <Line type="monotone" dataKey="spending" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} name="Spent" />
-                <Line type="monotone" dataKey="balance"  stroke="#4F46E5" strokeWidth={2} dot={{ r: 3 }} name="Balance" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
 
       </div>
 
