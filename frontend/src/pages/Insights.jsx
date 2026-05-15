@@ -361,7 +361,7 @@ export default function Insights() {
         </div>
 
         {/* Chat Box */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm flex flex-col flex-1 overflow-hidden mb-3" style={{ minHeight: 320 }}>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm flex flex-col flex-1 mb-3" style={{ minHeight: 320 }}>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map((msg, i) => {
               if (msg.role === 'confirm') {
@@ -448,21 +448,22 @@ export default function Insights() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
-          <div className="border-t border-gray-100 dark:border-gray-700/60 p-3">
-            <AIChatInput
-              input={input}
-              setInput={setInput}
-              loading={loading}
-              listening={listening}
-              onSend={() => sendMessage()}
-              onStartMic={startMic}
-              onStopMic={stopMic}
-              micLangMode={micLangMode}
-              onToggleMicLang={toggleMicLang}
-              onKeyDown={handleKeyDown}
-            />
-          </div>
+        </div>
+
+        {/* AI Chat Input */}
+        <div className="mb-3">
+          <AIChatInput
+            input={input}
+            setInput={setInput}
+            loading={loading}
+            listening={listening}
+            onSend={() => sendMessage()}
+            onStartMic={startMic}
+            onStopMic={stopMic}
+            micLangMode={micLangMode}
+            onToggleMicLang={toggleMicLang}
+            onKeyDown={handleKeyDown}
+          />
         </div>
 
         {/* Quick Questions — horizontal scroll, clean pills */}
