@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import API from '../utils/api'
 import ReceiptScanner from '../components/ReceiptScanner'
 import { DashboardSkeleton } from '../components/Skeleton'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import Onboarding from '../components/Onboarding'
 import OnboardingQuestions from '../components/OnboardingQuestions'
 import MonthlyWrap from '../components/MonthlyWrap'
@@ -14,6 +14,7 @@ import { requestNotificationPermission, isNotificationsEnabled } from '../utils/
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
 const CATEGORY_COLORS = { Food: '#F97316', Transport: '#3B82F6', Shopping: '#EC4899', Subscriptions: '#8B5CF6', Entertainment: '#10B981', Other: '#6B7280' }
+const CAT_PALETTE = ['#7C3AED','#2563EB','#059669','#D97706','#EC4899','#F59E0B','#10B981','#3B82F6','#EF4444','#8B5CF6','#14B8A6','#F97316','#6B7280']
 
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 
@@ -714,6 +715,14 @@ export default function Dashboard() {
     !localStorage.getItem('fina_notif_asked') && !isNotificationsEnabled()
   )
 
+  const [showMonthSelector, setShowMonthSelector] = useState(() =>
+    localStorage.getItem('fina_show_month_selector') === 'true'
+  )
+  const toggleMonthSelector = () => setShowMonthSelector(v => {
+    localStorage.setItem('fina_show_month_selector', !v)
+    return !v
+  })
+
   // Monthly Wrap
   const [showWrap, setShowWrap] = useState(false)
   const _now = new Date()
@@ -1131,21 +1140,33 @@ export default function Dashboard() {
                 {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening' })()}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} 👋
               </h1>
             </div>
+            {/* Month selector toggle */}
+            <button
+              onClick={toggleMonthSelector}
+              title={showMonthSelector ? 'Hide month selector' : 'Browse other months'}
+              className={`mt-1 p-2 rounded-xl border transition ${showMonthSelector ? 'border-violet-300 bg-violet-50 dark:bg-violet-900/20 text-violet-600' : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:border-violet-300 hover:text-violet-500'}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </button>
           </div>
         )}
 
-        {/* Month Selector */}
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={prevMonth} className="w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-violet-50 hover:text-violet-600 transition font-bold text-lg">&lsaquo;</button>
-          <div className="text-center">
-            <p className="font-semibold text-gray-800 dark:text-white text-sm">{monthName}</p>
-            {isCurrentMonth && <span className="text-xs text-violet-500 font-medium">Current month</span>}
+        {/* Month Selector — hidden by default, user-controlled */}
+        {showMonthSelector && (
+          <div className="flex items-center justify-between mb-4 bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-sm border border-gray-100 dark:border-gray-700">
+            <button onClick={prevMonth} className="w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-violet-50 hover:text-violet-600 transition font-bold text-lg">&lsaquo;</button>
+            <div className="text-center">
+              <p className="font-semibold text-gray-800 dark:text-white text-sm">{monthName}</p>
+              {isCurrentMonth && <span className="text-xs text-violet-500 font-medium">Current month</span>}
+            </div>
+            <button onClick={nextMonth} disabled={isCurrentMonth}
+              className={`w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center transition font-bold text-lg ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-violet-50 hover:text-violet-600'}`}>
+              &rsaquo;
+            </button>
           </div>
-          <button onClick={nextMonth} disabled={isCurrentMonth}
-            className={`w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center transition font-bold text-lg ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-violet-50 hover:text-violet-600'}`}>
-            &rsaquo;
-          </button>
-        </div>
+        )}
 
         {/* ── Swipeable Carousel ────────────────────────────── */}
         <div className="mb-5">
@@ -1594,43 +1615,62 @@ export default function Dashboard() {
         {/* Spending by Category */}
         {categoryData.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
-            <h3 className="font-semibold text-gray-800 dark:text-white text-sm mb-4">Spending by Category</h3>
-            <div className="space-y-3">
-              {categoryData.slice(0, 5).map((cat, i) => {
-                const pct = total > 0 ? (cat.value / total) * 100 : 0
-                const budget = budgets.find(b => b.category === cat.name)
-                const budgetPct = budget ? Math.min((cat.value / safeNum(budget.amount)) * 100, 100) : 0
-                const isOver = budget && cat.value > safeNum(budget.amount)
-                return (
-                  <div key={i}>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{CATEGORY_ICONS[cat.name] || '📦'}</span>
-                        <span className="text-sm text-gray-700 dark:text-gray-200 font-medium">{cat.name}</span>
-                        {isOver && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-semibold">Over!</span>}
-                      </div>
-                      <div className="text-right">
-                        <span className="text-sm font-bold text-gray-800 dark:text-white tabular-nums">{currencySymbol}{cat.value.toFixed(2)}</span>
-                        <span className="text-xs text-gray-400 ml-1">({Math.round(pct)}%)</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-                      {budget ? (
-                        <div className={`h-1.5 rounded-full transition-all ${isOver ? 'bg-red-500' : 'bg-violet-500'}`}
-                          style={{ width: budgetPct + '%' }} />
-                      ) : (
-                        <div className="h-1.5 rounded-full bg-violet-300 dark:bg-violet-700 transition-all"
-                          style={{ width: pct + '%' }} />
-                      )}
-                    </div>
-                    {budget && (
-                      <p className="text-xs text-gray-400 mt-0.5">Budget: {currencySymbol}{safeNum(budget.amount).toFixed(2)}</p>
-                    )}
-                  </div>
-                )
-              })}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Spending by Category</h3>
+              <a href="/budgets" className="text-violet-600 text-xs font-semibold hover:underline">Budgets →</a>
             </div>
-            <a href="/budgets" className="mt-3 block text-center text-violet-600 text-xs font-semibold hover:underline">Manage Budgets</a>
+            <div className="flex items-center gap-5">
+              {/* Donut chart */}
+              <div className="shrink-0" style={{ width: 130, height: 130 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%" cy="50%"
+                      innerRadius={38} outerRadius={60}
+                      paddingAngle={2}
+                      strokeWidth={0}
+                    >
+                      {categoryData.map((_, i) => (
+                        <Cell key={i} fill={CAT_PALETTE[i % CAT_PALETTE.length]} />
+                      ))}
+                    </Pie>
+                    <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }}>Total</text>
+                    <text x="50%" y="60%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 12, fill: '#7C3AED', fontWeight: 800 }}>{currencySymbol}{total >= 1000 ? (total / 1000).toFixed(1) + 'k' : total.toFixed(0)}</text>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Category list with percentages */}
+              <div className="flex-1 space-y-2.5 min-w-0">
+                {categoryData.slice(0, 5).map((cat, i) => {
+                  const pct = total > 0 ? Math.round((cat.value / total) * 100) : 0
+                  const color = CAT_PALETTE[i % CAT_PALETTE.length]
+                  const budget = budgets.find(b => b.category === cat.name)
+                  const isOver = budget && cat.value > safeNum(budget.amount)
+                  return (
+                    <div key={cat.name} className="flex items-center gap-2.5">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1 mb-0.5">
+                          <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{cat.name}</span>
+                          {isOver && <span className="text-[9px] bg-red-100 text-red-600 px-1 rounded-full font-bold shrink-0">Over</span>}
+                        </div>
+                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1">
+                          <div className="h-1 rounded-full" style={{ width: pct + '%', backgroundColor: color }} />
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-bold text-gray-800 dark:text-white tabular-nums">{pct}%</span>
+                        <p className="text-[10px] text-gray-400 tabular-nums">{currencySymbol}{cat.value.toFixed(0)}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         )}
 
