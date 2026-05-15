@@ -42,7 +42,7 @@ function InstallModal({ platform, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className={`bg-gradient-to-br ${color} px-6 pt-8 pb-6 text-white`}>
+        <div className={`bg-linear-to-br ${color} px-6 pt-8 pb-6 text-white`}>
           <div className="flex justify-between items-start mb-4">
             <span className="text-2xl">{platform === 'ios' ? '🍎' : '🤖'}</span>
             <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition">
@@ -470,6 +470,43 @@ function Landing() {
         </div>
       </section>
 
+      {/* ── UP AND RUNNING IN 3 STEPS ─────────────────────────── */}
+      <section id="how" className="bg-gray-950 py-24 px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-violet-400 text-xs font-bold uppercase tracking-widest mb-3">Simple by design</p>
+            <h2 className="text-4xl font-extrabold text-white tracking-tight mb-3">Up and running in 3 steps</h2>
+            <p className="text-gray-400 max-w-sm mx-auto">No bank connections. No setup. Just create an account and start tracking.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 relative">
+            {/* Connector line */}
+            <div className="hidden sm:block absolute top-10 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)] h-px"
+              style={{ background: 'linear-gradient(90deg, rgba(124,58,237,0.6), rgba(109,40,217,0.6))' }}/>
+            {[
+              { step:'01', icon:'✍️', title:'Create your account', desc:'Sign up free in under 30 seconds — no credit card, no bank connection required.', color:'from-violet-600 to-violet-700' },
+              { step:'02', icon:'📲', title:'Log your first expense', desc:'Type it, say it, or scan a receipt. Your financial picture starts building immediately.', color:'from-indigo-600 to-indigo-700' },
+              { step:'03', icon:'🤖', title:'Get AI-powered insights', desc:'Ask your AI advisor anything about your money and watch your financial habits transform.', color:'from-purple-600 to-purple-700' },
+            ].map((s,i) => (
+              <div key={i} className="relative flex flex-col items-center text-center rounded-2xl p-7 border border-white/8 bg-white/4 hover:bg-white/8 transition group">
+                <div className={`w-16 h-16 bg-linear-to-br ${s.color} rounded-2xl flex items-center justify-center text-2xl mb-5 shadow-lg shadow-violet-900/40 group-hover:scale-105 transition-transform`}>
+                  {s.icon}
+                </div>
+                <span className="absolute top-5 left-5 text-xs font-black text-violet-500">{s.step}</span>
+                <h3 className="font-bold text-white text-base mb-2">{s.title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <a href="/register"
+              className="inline-flex items-center gap-2 px-8 py-4 font-bold rounded-xl text-white text-base active:scale-95 transition"
+              style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', boxShadow: '0 8px 30px rgba(124,58,237,0.4)' }}>
+              Get started — it's free →
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ── STATS ─────────────────────────────────────────────── */}
       <section className="border-y border-gray-100 bg-gray-50/70">
         <div className="max-w-4xl mx-auto px-6 py-10 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
@@ -482,30 +519,6 @@ function Landing() {
             <div key={i}>
               <p className={`text-3xl font-extrabold ${s.color} tracking-tight`}>{s.value}</p>
               <p className="text-sm text-gray-500 mt-1 font-medium">{s.sub}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS ──────────────────────────────────────── */}
-      <section id="how" className="max-w-4xl mx-auto px-6 py-24">
-        <div className="text-center mb-14">
-          <p className="text-violet-600 text-xs font-bold uppercase tracking-widest mb-3">Simple by design</p>
-          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-3">Up and running in 3 steps</h2>
-          <p className="text-gray-500 max-w-sm mx-auto">No bank connections. No setup. Just create an account and start tracking.</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 relative">
-          <div className="hidden sm:block absolute top-8 left-[calc(16.67%+1.5rem)] right-[calc(16.67%+1.5rem)] border-t-2 border-dashed border-violet-200"/>
-          {[
-            { step:'01', icon:'✍️', title:'Create your account', desc:'Sign up free in under 30 seconds — no credit card, no bank connection required.' },
-            { step:'02', icon:'📲', title:'Log your first expense', desc:'Type it, say it, or scan a receipt. Your financial picture starts building immediately.' },
-            { step:'03', icon:'🤖', title:'Get AI-powered insights', desc:'Ask your AI advisor anything about your money and watch your financial habits transform.' },
-          ].map((s,i) => (
-            <div key={i} className="relative flex flex-col items-center text-center bg-white border border-gray-100 rounded-2xl p-7 shadow-sm hover:shadow-md hover:border-violet-200 transition">
-              <div className="w-14 h-14 bg-violet-50 border border-violet-100 rounded-2xl flex items-center justify-center text-2xl mb-4">{s.icon}</div>
-              <span className="absolute top-5 left-5 text-xs font-black text-violet-300">{s.step}</span>
-              <h3 className="font-bold text-gray-900 text-base mb-2">{s.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{s.desc}</p>
             </div>
           ))}
         </div>
