@@ -747,6 +747,21 @@ export default function Dashboard() {
   const showToast  = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
   const askConfirm = (msg, fn) => setConfirm({ message: msg, onConfirm: fn })
 
+  // Fire reminder notifications for today
+  useEffect(() => {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return
+    const todayStr = new Date().toISOString().split('T')[0]
+    try {
+      const all = JSON.parse(localStorage.getItem('fina_reminders') || '[]')
+      const due = all.filter(r => r.date === todayStr && !r.notified)
+      due.forEach(r => new Notification('Fina Reminder 🔔', { body: r.text, icon: '/favicon.ico' }))
+      if (due.length > 0) {
+        const updated = all.map(r => due.find(d => d.id === r.id) ? { ...r, notified: true } : r)
+        localStorage.setItem('fina_reminders', JSON.stringify(updated))
+      }
+    } catch { /* noop */ }
+  }, [])
+
   const fetchExpenses = useCallback(async () => { try { const r = await API.get('/expenses'); setExpenses(r.data) } catch { /* noop */ } }, [])
   const fetchBudgets  = useCallback(async () => { try { const r = await API.get('/budgets'); setBudgets(r.data) } catch { /* noop */ } }, [])
   const fetchSavings  = useCallback(async () => { try { const r = await API.get('/savings'); setSavings(r.data) } catch { /* noop */ } }, [])

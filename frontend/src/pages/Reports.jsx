@@ -50,6 +50,11 @@ function renderMarkdown(text) {
 
 function HeatmapCalendar({ year, month, monthExpenses, monthIncome, sym, fmt, monthName }) {
   const [selectedDay, setSelectedDay] = useState(null)
+  const [reminders, setReminders] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('fina_reminders') || '[]') } catch { return [] }
+  })
+  const [reminderText, setReminderText] = useState('')
+
   const today = new Date()
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month
   const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -72,11 +77,34 @@ function HeatmapCalendar({ year, month, monthExpenses, monthIncome, sym, fmt, mo
     return 'bg-red-300 dark:bg-red-700/60 text-red-900 dark:text-red-200'
   }
 
+  const dateStr = (day) =>
+    `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
+  const hasReminder = (day) => reminders.some(r => r.date === dateStr(day))
+
+  const addReminder = () => {
+    if (!reminderText.trim() || !selectedDay) return
+    const updated = [...reminders, { id: Date.now().toString(), date: dateStr(selectedDay), text: reminderText.trim(), notified: false }]
+    setReminders(updated)
+    localStorage.setItem('fina_reminders', JSON.stringify(updated))
+    setReminderText('')
+    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission()
+  }
+
+  const deleteReminder = (id) => {
+    const updated = reminders.filter(r => r.id !== id)
+    setReminders(updated)
+    localStorage.setItem('fina_reminders', JSON.stringify(updated))
+  }
+
   const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
 
   const dayExpenses = selectedDay ? monthExpenses.filter(e => new Date(e.date).getDate() === selectedDay) : []
   const dayIncome   = selectedDay ? (monthIncome || []).filter(i => new Date(i.created_at).getDate() === selectedDay) : []
   const hasActivity = dayExpenses.length > 0 || dayIncome.length > 0
+  const selectedDateStr = selectedDay ? dateStr(selectedDay) : null
+  const dayReminders = selectedDateStr ? reminders.filter(r => r.date === selectedDateStr) : []
+  const isFutureDay = selectedDay ? (isCurrentMonth && selectedDay > today.getDate()) : false
 
   return (
     <div>
@@ -88,16 +116,15 @@ function HeatmapCalendar({ year, month, monthExpenses, monthIncome, sym, fmt, mo
       <div className="grid grid-cols-7 gap-1">
         {cells.map((day, i) => {
           if (!day) return <div key={`b${i}`} />
-          const isFuture = isCurrentMonth && day > today.getDate()
-          const isToday  = isCurrentMonth && day === today.getDate()
+          const isToday    = isCurrentMonth && day === today.getDate()
           const isSelected = selectedDay === day
-          const spend = spendMap[day] || 0
+          const spend      = spendMap[day] || 0
+          const hasRem     = hasReminder(day)
           return (
             <button key={day}
-              onClick={() => !isFuture && setSelectedDay(isSelected ? null : day)}
-              className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-px transition-all select-none
+              onClick={() => setSelectedDay(isSelected ? null : day)}
+              className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-px transition-all select-none cursor-pointer active:scale-95
                 ${intensity(day)}
-                ${isFuture ? 'opacity-25 cursor-default' : 'cursor-pointer active:scale-95'}
                 ${isToday ? 'ring-2 ring-violet-500 ring-offset-1 dark:ring-offset-gray-800' : ''}
                 ${isSelected ? 'ring-2 ring-violet-600 scale-105' : ''}
               `}>
@@ -107,6 +134,7 @@ function HeatmapCalendar({ year, month, monthExpenses, monthIncome, sym, fmt, mo
                   {sym}{spend >= 1000 ? (spend / 1000).toFixed(1) + 'k' : Math.round(spend)}
                 </span>
               )}
+              {hasRem && <span className="w-1 h-1 rounded-full bg-violet-500 mt-px" />}
             </button>
           )
         })}
@@ -119,66 +147,106 @@ function HeatmapCalendar({ year, month, monthExpenses, monthIncome, sym, fmt, mo
           <div key={i} className={`w-5 h-5 rounded-md ${c}`} />
         ))}
         <span className="text-[10px] text-gray-400">High</span>
+        <span className="flex items-center gap-1 ml-2 text-[10px] text-gray-400">
+          <span className="w-2 h-2 rounded-full bg-violet-500 inline-block" /> Reminder
+        </span>
       </div>
 
       {/* Day detail panel */}
       {selectedDay && (
-        <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4">
-          <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-3">{monthName} {selectedDay}</p>
+        <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4 space-y-4">
+          <p className="text-xs font-bold text-gray-700 dark:text-gray-200">{monthName} {selectedDay}</p>
 
-          {!hasActivity ? (
-            <div className="text-center py-5">
-              <p className="text-2xl mb-1">📭</p>
-              <p className="text-sm text-gray-400">No transactions that day</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Expenses */}
-              {dayExpenses.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold text-red-400 uppercase tracking-wide mb-2">
-                    Spending · {fmt(dayExpenses.reduce((s,e) => s + safeNum(e.amount), 0), sym)}
-                  </p>
-                  <div className="space-y-2">
-                    {dayExpenses.map(e => (
-                      <div key={e.id} className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-red-50 dark:bg-red-900/30 rounded-xl flex items-center justify-center text-sm shrink-0">
-                          {CAT_ICONS[e.category] || '📦'}
+          {/* Transactions — only past/today */}
+          {!isFutureDay && (
+            !hasActivity ? (
+              <div className="text-center py-3">
+                <p className="text-2xl mb-1">📭</p>
+                <p className="text-sm text-gray-400">No transactions that day</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {dayExpenses.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-red-400 uppercase tracking-wide mb-2">
+                      Spending · {fmt(dayExpenses.reduce((s,e) => s + safeNum(e.amount), 0), sym)}
+                    </p>
+                    <div className="space-y-2">
+                      {dayExpenses.map(e => (
+                        <div key={e.id} className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-red-50 dark:bg-red-900/30 rounded-xl flex items-center justify-center text-sm shrink-0">
+                            {CAT_ICONS[e.category] || '📦'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{e.description || e.category}</p>
+                            <p className="text-[10px] text-gray-400">{e.category}</p>
+                          </div>
+                          <p className="text-xs font-bold text-red-500 tabular-nums shrink-0">-{fmt(e.amount, sym)}</p>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{e.description || e.category}</p>
-                          <p className="text-[10px] text-gray-400">{e.category}</p>
-                        </div>
-                        <p className="text-xs font-bold text-red-500 tabular-nums shrink-0">-{fmt(e.amount, sym)}</p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-
-              {/* Income */}
-              {dayIncome.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide mb-2">
-                    Income · {fmt(dayIncome.reduce((s,i) => s + safeNum(i.amount), 0), sym)}
-                  </p>
-                  <div className="space-y-2">
-                    {dayIncome.map(inc => (
-                      <div key={inc.id} className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-sm shrink-0">
-                          💰
+                )}
+                {dayIncome.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide mb-2">
+                      Income · {fmt(dayIncome.reduce((s,i) => s + safeNum(i.amount), 0), sym)}
+                    </p>
+                    <div className="space-y-2">
+                      {dayIncome.map(inc => (
+                        <div key={inc.id} className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-sm shrink-0">💰</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{inc.source || 'Income'}</p>
+                          </div>
+                          <p className="text-xs font-bold text-emerald-500 tabular-nums shrink-0">+{fmt(inc.amount, sym)}</p>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{inc.source || 'Income'}</p>
-                        </div>
-                        <p className="text-xs font-bold text-emerald-500 tabular-nums shrink-0">+{fmt(inc.amount, sym)}</p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )
           )}
+
+          {/* Reminders section — always shown */}
+          <div className="bg-violet-50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-800/30 rounded-2xl p-3">
+            <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wide mb-2">
+              🔔 Reminders
+            </p>
+
+            {dayReminders.length > 0 && (
+              <div className="space-y-2 mb-3">
+                {dayReminders.map(r => (
+                  <div key={r.id} className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-xl px-3 py-2">
+                    <p className="flex-1 text-xs text-gray-700 dark:text-gray-200">{r.text}</p>
+                    <button onClick={() => deleteReminder(r.id)} className="text-gray-300 hover:text-red-400 transition shrink-0">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={reminderText}
+                onChange={e => setReminderText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addReminder()}
+                placeholder="Add a reminder…"
+                className="flex-1 text-xs bg-white dark:bg-gray-800 border border-violet-200 dark:border-violet-700/50 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-violet-400 text-gray-800 dark:text-white placeholder-gray-400"
+              />
+              <button
+                onClick={addReminder}
+                disabled={!reminderText.trim()}
+                className="bg-violet-600 hover:bg-violet-700 disabled:opacity-30 text-white text-xs font-semibold px-3 py-2 rounded-xl transition"
+              >
+                Save
+              </button>
+            </div>
+            <p className="text-[10px] text-violet-400 mt-1.5">You'll get a notification on this date when the app is open.</p>
+          </div>
         </div>
       )}
     </div>
