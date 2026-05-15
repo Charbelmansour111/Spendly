@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
+import { AIChatInput } from '../components/ui/AIChatInput'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 
@@ -447,49 +448,20 @@ export default function Insights() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input — animated expanded chat input */}
-          <div className="border-t border-gray-100 dark:border-gray-700 p-3">
-            <div className="flex gap-2 items-end">
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={listening ? (micLangMode === 'ar' ? '…بيسمعك' : 'Listening…') : 'Ask anything about your finances…'}
-                  className="w-full px-4 py-3 pr-10 border border-gray-200 dark:border-gray-600 rounded-2xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm transition shadow-sm"
-                  dir={micLangMode === 'ar' && input && /[؀-ۿ]/.test(input) ? 'rtl' : 'ltr'}
-                />
-                {listening && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-0.5 items-end">
-                    {[4,7,5].map((h, i) => (
-                      <span key={i} className="w-0.5 bg-red-500 rounded-full animate-pulse" style={{ height: `${h}px`, animationDelay: `${i*0.12}s` }} />
-                    ))}
-                  </span>
-                )}
-              </div>
-              <button onClick={toggleMicLang} title={micLangMode === 'ar' ? 'EN mic' : 'AR mic'}
-                className={`shrink-0 w-10 h-10 rounded-2xl transition text-xs font-bold ${
-                  micLangMode === 'ar' ? 'bg-green-100 dark:bg-green-900/30 text-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
-                {micLangMode === 'ar' ? 'ع' : 'EN'}
-              </button>
-              <button onClick={listening ? stopMic : startMic} disabled={loading}
-                className={`shrink-0 w-10 h-10 rounded-2xl transition flex items-center justify-center ${
-                  listening ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-violet-100 hover:text-violet-600'}`}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-              </button>
-              <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
-                className="shrink-0 w-10 h-10 bg-violet-600 text-white rounded-2xl font-bold hover:bg-violet-700 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shadow-sm">
-                {loading
-                  ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                }
-              </button>
-            </div>
+          {/* Input */}
+          <div className="border-t border-gray-100 dark:border-gray-700/60 p-3">
+            <AIChatInput
+              input={input}
+              setInput={setInput}
+              loading={loading}
+              listening={listening}
+              onSend={() => sendMessage()}
+              onStartMic={startMic}
+              onStopMic={stopMic}
+              micLangMode={micLangMode}
+              onToggleMicLang={toggleMicLang}
+              onKeyDown={handleKeyDown}
+            />
           </div>
         </div>
 
