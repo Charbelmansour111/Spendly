@@ -1,8 +1,8 @@
-const STORAGE_KEY = 'spendly_notif_enabled'
+const STORAGE_KEY = 'fina_notif_enabled'
 const VAPID_PUBLIC_KEY = 'BH0cwQ-D5FPAwRtR_WOKDzmVdSLFDPPZzsCgnuKqLuh2CoGu9R5V93w3xm2BcF5AyuJ0LJip89-nvI_adpqhcmI'
 
-// Spendly signature chime
-export function playSpendlyChime() {
+// Fina signature chime
+export function playFinaChime() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)()
     const master = ctx.createGain()
