@@ -25,14 +25,14 @@ const IOS_STEPS = [
   { icon: '📤', text: 'Tap the Share icon at the bottom of the screen' },
   { icon: '📲', text: 'Scroll down and tap "Add to Home Screen"' },
   { icon: '✅', text: 'Tap "Add" in the top-right corner to confirm' },
-  { icon: '🎉', text: 'Spendly now appears on your home screen!' },
+  { icon: '🎉', text: 'Fina now appears on your home screen!' },
 ]
 const ANDROID_STEPS = [
   { icon: '🌐', text: 'Open this page in Chrome' },
   { icon: '⋮', text: 'Tap the three-dot menu in the top-right corner' },
   { icon: '📲', text: 'Tap "Add to Home screen" or "Install app"' },
   { icon: '✅', text: 'Tap "Install" or "Add" to confirm' },
-  { icon: '🎉', text: 'Spendly is installed on your home screen!' },
+  { icon: '🎉', text: 'Fina is installed on your home screen!' },
 ]
 
 function InstallModal({ platform, onClose }) {
@@ -50,7 +50,7 @@ function InstallModal({ platform, onClose }) {
             </button>
           </div>
           <h2 className="text-xl font-bold mb-1">{title}</h2>
-          <p className="text-white/70 text-sm">Follow these steps to install Spendly as an app.</p>
+          <p className="text-white/70 text-sm">Follow these steps to install Fina as an app.</p>
         </div>
         <div className="px-6 py-5 space-y-4">
           {steps.map((s, i) => (
@@ -379,7 +379,7 @@ function Landing() {
             <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-sm shadow-violet-200">
               <Mark size={15}/>
             </div>
-            <span className="text-[17px] font-extrabold text-gray-900 tracking-tight">Spendly</span>
+            <span className="text-[17px] font-extrabold text-gray-900 tracking-tight">Fina</span>
           </a>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-500">
             <a href="#features" className="hover:text-gray-900 transition">Features</a>
@@ -458,7 +458,7 @@ function Landing() {
                 <div className="flex items-center gap-0.5 mb-0.5">
                   {[1,2,3,4,5].map(i => <span key={i} className="text-amber-400 text-sm">★</span>)}
                 </div>
-                <p className="text-xs text-gray-500 font-medium"><span className="text-gray-900 font-bold">10,000+</span> people trust Spendly</p>
+                <p className="text-xs text-gray-500 font-medium"><span className="text-gray-900 font-bold">10,000+</span> people trust Fina</p>
               </div>
             </div>
           </div>
@@ -565,7 +565,7 @@ function Landing() {
           <div className="relative flex flex-col lg:flex-row items-center gap-10">
             <div className="flex-1 text-center lg:text-left">
               <p className="text-violet-300 text-xs font-bold uppercase tracking-widest mb-3">Install the app</p>
-              <h2 className="text-2xl font-extrabold mb-3">Take Spendly everywhere you go</h2>
+              <h2 className="text-2xl font-extrabold mb-3">Take Fina everywhere you go</h2>
               <p className="text-white/55 text-base mb-6 max-w-md mx-auto lg:mx-0 leading-relaxed">
                 Install it on your phone for instant access, offline support, and push notifications — no App Store account needed.
               </p>
@@ -626,14 +626,14 @@ function Landing() {
             <div className="w-6 h-6 bg-violet-600 rounded-md flex items-center justify-center">
               <Mark size={11}/>
             </div>
-            <span className="font-bold text-white/50 text-sm">Spendly</span>
+            <span className="font-bold text-white/50 text-sm">Fina</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-white/25">
             <a href="/login" className="hover:text-white/50 transition">Sign in</a>
             <a href="/register" className="hover:text-white/50 transition">Get started</a>
             <a href="/terms" className="hover:text-white/50 transition">Terms</a>
             <a href="/privacy" className="hover:text-white/50 transition">Privacy</a>
-            <span>© 2026 Spendly</span>
+            <span>© 2026 Fina</span>
           </div>
         </div>
       </footer>
@@ -649,7 +649,7 @@ function Landing() {
                   <Mark size={18}/>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-900 text-sm">Install Spendly</p>
+                  <p className="font-bold text-gray-900 text-sm">Install Fina</p>
                   <p className="text-gray-400 text-xs mt-0.5">Add to your home screen for the full app experience.</p>
                 </div>
                 <button onClick={() => { setShowIOSBanner(false); localStorage.setItem('ios-banner-dismissed','1') }}

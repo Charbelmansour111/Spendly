@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
+import BudgetSuggestionsSheet from '../components/BudgetSuggestionsSheet'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 const CATEGORIES = ['Food', 'Coffee', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Fitness', 'Education', 'Bills', 'Travel', 'Gifts', 'Subscriptions', 'Other']
@@ -133,6 +134,7 @@ export default function Budgets() {
   const [formAiSuggestion, setFormAiSuggestion] = useState('')
   const [suggestModal, setSuggestModal] = useState(null) // { suggestions, monthlyIncome, fromNetWorth }
   const [suggestLoading, setSuggestLoading] = useState(false)
+  const [showAISheet, setShowAISheet] = useState(false)
   const [noIncomeModal, setNoIncomeModal] = useState(false)
   const [totalBudgetInput, setTotalBudgetInput] = useState('')
   const [currencySymbol] = useState(() => {
@@ -145,8 +147,8 @@ export default function Budgets() {
   const [showBillForm, setShowBillForm] = useState(false)
   const [billForm, setBillForm]        = useState({ name: '', amount: '', dueDay: '', emoji: '🏠' })
   const [billSaving, setBillSaving]    = useState(false)
-  const BILLS_KEY = 'spendly_bills'
-  const [bills, setBillsState]         = useState(() => { try { return JSON.parse(localStorage.getItem('spendly_bills') || '[]') } catch { return [] } })
+  const BILLS_KEY = 'fina_bills'
+  const [bills, setBillsState]         = useState(() => { try { return JSON.parse(localStorage.getItem('fina_bills') || '[]') } catch { return [] } })
 
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
@@ -218,7 +220,7 @@ export default function Budgets() {
   }
 
   // ── Bill helpers ────────────────────────────────────────
-  const paidKey = `spendly_paid_bills_${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`
+  const paidKey = `fina_paid_bills_${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`
   const paidBills = (() => { try { return JSON.parse(localStorage.getItem(paidKey) || '[]') } catch { return [] } })()
 
   const saveBills = (updated) => {
@@ -326,6 +328,13 @@ export default function Budgets() {
     <Layout>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {aiModal && <AiModal budget={aiModal.budget} spent={aiModal.spent} symbol={currencySymbol} onClose={() => setAiModal(null)} />}
+      {showAISheet && (
+        <BudgetSuggestionsSheet
+          existingBudgets={budgets}
+          onClose={() => setShowAISheet(false)}
+          onApplied={() => { fetchBudgets(); showToast('Budgets updated!', 'success') }}
+        />
+      )}
 
       {/* No income modal */}
       {noIncomeModal && (
@@ -385,7 +394,7 @@ export default function Budgets() {
                         setNoIncomeModal(false)
                         setSuggestLoading(true)
                         try {
-                          const prefs2 = (() => { try { return JSON.parse(localStorage.getItem('spendly_prefs') || '{}') } catch { return {} } })()
+                          const prefs2 = (() => { try { return JSON.parse(localStorage.getItem('fina_prefs') || '{}') } catch { return {} } })()
                           const r = await API.post('/budgets/suggest', { totalBudget: amt, savingsTarget: prefs2.savingsTarget ?? 20 })
                           setSuggestModal({ suggestions: r.data.suggestions || [], monthlyIncome: null, fromNetWorth: true, totalUsed: amt })
                         } catch { showToast('Failed to generate suggestions', 'error') }
@@ -469,7 +478,7 @@ export default function Budgets() {
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="max-w-4xl mx-auto px-4 py-6 page-enter">
 
         {/* Header */}
         <div className="mb-6">
@@ -557,22 +566,10 @@ export default function Budgets() {
             </div>
             <div className="flex-1" />
             <button
-              onClick={async () => {
-                setSuggestLoading(true)
-                try {
-                  const prefs = (() => { try { return JSON.parse(localStorage.getItem('spendly_prefs') || '{}') } catch { return {} } })()
-                  const r = await API.post('/budgets/suggest', { savingsTarget: prefs.savingsTarget ?? 20 })
-                  if (r.data.noIncome) { setNoIncomeModal(true); return }
-                  setSuggestModal({ suggestions: r.data.suggestions || [], monthlyIncome: r.data.monthlyIncome, fromNetWorth: r.data.fromNetWorth })
-                } catch { showToast('Failed to generate suggestions', 'error') }
-                finally { setSuggestLoading(false) }
-              }}
-              disabled={suggestLoading}
-              className="shrink-0 flex items-center gap-1.5 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-700 px-3.5 py-2 rounded-xl text-sm font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/50 transition disabled:opacity-50">
-              {suggestLoading
-                ? <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".3"/><path d="M21 12a9 9 0 00-9-9"/></svg>
-                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>}
-              AI Suggest
+              onClick={() => setShowAISheet(true)}
+              className="shrink-0 flex items-center gap-1.5 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-700 px-3.5 py-2 rounded-xl text-sm font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/50 transition">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>
+              AI Budget Plan
             </button>
             <button onClick={() => setShowForm(v => !v)}
               className="shrink-0 bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700 transition">

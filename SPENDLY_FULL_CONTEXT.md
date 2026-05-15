@@ -1,6 +1,6 @@
 # Spendly — Full App Context Document
 > Written for any AI assistant continuing development on this project.
-> Last updated: April 2026
+> Last updated: May 2026
 
 ---
 
@@ -384,6 +384,110 @@ Custom hook `src/hooks/useDarkMode.js`. Toggles `dark` class on `<html>`. All Ta
 
 ---
 
+## 15. Multi-Wallet System (May 2026)
+
+### Overview
+Spendly has a full multi-wallet family system. Each user can have multiple personal wallets (e.g. "Elio", "Sara") plus a special **Family Overview** that aggregates all wallets.
+
+### Wallet Data Model
+```
+wallets (id, user_id, name, color, avatar, pin_hash, is_total_wallet, created_at)
+wallet_expenses / wallet_income / wallet_budgets / wallet_savings / wallet_debts / wallet_subscriptions
+```
+`is_total_wallet = true` flags the Family Overview wallet.
+
+### Two Data Systems
+- **Global tables** (`expenses`, `income`, etc.) — used when no personal wallet active or when user hasn't set up wallets
+- **Wallet-specific tables** (`wallet_expenses`, etc.) — used when a personal wallet (`!is_total_wallet`) is active
+
+### API Auto-Rewriting (api.js interceptor)
+When `activeWallet` is set and `!activeWallet.is_total_wallet`, the Axios interceptor rewrites URLs:
+- `/expenses` → `/wallets/{id}/expenses`
+- `/income` → `/wallets/{id}/income`
+- `/budgets`, `/savings`, `/debts`, `/subscriptions` → same pattern
+
+### WalletContext (src/context/WalletContext.jsx)
+```js
+const { wallets, activeWallet, loading, refreshWallets, activateWallet, deactivateWallet } = useWallet()
+```
+- `wallets[]`: all wallets fetched from `/api/wallets` on mount
+- `activeWallet`: initialized from localStorage (persisted 30 days)
+- `activateWallet(wallet, rememberDays=30)`: sets active + persists
+- `deactivateWallet()`: clears active wallet
+
+### walletSession.js (src/utils/walletSession.js)
+Uses `localStorage` only (NOT sessionStorage). Key: `spendly_wallet_remember`.
+- Persists wallet for 30 days — survives browser close/restart
+- `setActiveWallet(wallet, days)` → stores `{ wallet, expiresAt }`
+- `getActiveWallet()` → returns wallet if not expired, else `null`
+- `lockWallet()` → removes only remember key (manual wallet logout)
+- `clearActiveWallet()` → clears everything
+- `verifyWalletPin(walletId, pin, token)` → POST `/wallets/:id/verify-pin`
+- `fetchWallets(token)` → GET `/wallets`
+
+### WalletGuard (src/components/WalletGuard.jsx)
+Redirects to `/wallets` if `activeWallet` is null. Preserves `location.state.from` for post-auth redirect.
+
+### PIN Flow (WalletSelect.jsx)
+1. User sees all personal wallets + Family Overview tile
+2. Clicks any wallet → PIN numpad appears
+3. **Personal wallet success** → `activateWallet(wallet)` → navigate to `/dashboard`
+4. **Family Overview success** → navigate to `/family`
+   - Tries `/wallets/verify-family-pin` first (new backend)
+   - Falls back to looping all personal wallets with `/wallets/:id/verify-pin`
+
+### Routing Changes (App.jsx)
+- `/wallet/:id/app` — redirects to `/wallets` (WalletApp removed from personal wallet flow)
+- `/family` — FamilyOverview (guarded), shows family aggregate
+
+### WalletProfile.jsx
+Per-wallet settings (name, avatar, PIN). Has "Family Overview" button (top-right, violet) → `/family`.
+
+### FamilyOverview.jsx
+Aggregate view of all wallets using `/wallets/total/summary`. Shows family totals, per-wallet breakdown.
+
+### WalletApp.jsx
+Tabbed dashboard (Dashboard/Wellness/Budget tabs) — **kept for Family Overview only**. Personal wallets go directly to `/dashboard`. Route `/wallet/:id/app` is deprecated (redirects to `/wallets`).
+
+### Family Stub Object
+```js
+const FAMILY_STUB = { id: '__family__', is_total_wallet: true, name: 'Family Overview', color: 'purple' }
+```
+
+---
+
+## 16. Wellness Page Redesign (May 2026)
+
+Full colorful professional redesign of `src/pages/Wellness.jsx`:
+
+- **Score hero card**: dark indigo gradient (`#1e1b4b → #4c1d95`), animated SVG ring, grade badge
+- **Stats**: 4 gradient cards — emerald (income), red (spent), blue/orange (balance), amber (streak)
+- **Monthly insights**: 4 pastel cards — green/orange/violet/pink
+- **Personality card**: solid gradient
+- **Mood tracker**: emoji row with pink ring on selected mood
+- **Quote**: violet pastel card; **Joke**: amber pastel card
+- **Time Machine button** → opens as full-page Layout view with "← Back to Wellness" back button
+- **Mini Games button** → same full-page pattern
+
+### Full-Page Feature Pattern (Wellness.jsx)
+```jsx
+if (showGame) {
+  return (
+    <Layout>
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <button onClick={() => setShowGame(false)}>← Back to Wellness</button>
+        <MoneyDefender onClose={() => setShowGame(false)} inline />
+      </div>
+    </Layout>
+  )
+}
+```
+`MoneyDefender` default export is `MiniGames`. Game list renders inline; individual games use `Shell` with `position:fixed` (full-screen). Shell has "✕ Exit" → returns to game list → user clicks Back.
+
+`TimeMachineModal` default export is `App` — uses `minHeight:100vh` but NOT `position:fixed`, so renders inline within Layout.
+
+---
+
 ## 14. Recent Changes (April 2026 session)
 
 In roughly chronological order:
@@ -404,3 +508,18 @@ In roughly chronological order:
 14. Fixed: onboarding flag scoped per user ID (`spendly_onboarded_{userId}`) so new accounts always see tour
 15. Fixed: Transactions tour step corrected — expenses added from Dashboard, not Transactions page
 16. Fixed: build error in Subscriptions.jsx (JSX syntax in template literal)
+
+---
+
+## 14b. Recent Changes (May 2026 session)
+
+1. **Multi-wallet family system**: personal wallets + Family Overview, PIN-based access, per-wallet data tables
+2. **walletSession.js**: switched from sessionStorage to localStorage with 30-day expiry — wallet stays active across browser restarts
+3. **PIN → Dashboard**: entering PIN for a personal wallet goes directly to `/dashboard` (not profile or WalletApp)
+4. **WalletApp removed from personal wallets**: route `/wallet/:id/app` redirects to `/wallets`; WalletApp kept only for Family Overview
+5. **All wallets show full interface**: removed `summary &&` gate that was hiding tabs for empty wallets
+6. **WalletProfile "Family Overview" button**: added violet button top-right → navigates to `/family`
+7. **Reports donut chart**: changed from solid pie to donut (innerRadius=56, outerRadius=88), PIE_COLORS, center total label
+8. **Reports + Wellness wallet-aware**: both pages fetch from wallet-specific endpoints when personal wallet active, `Promise.allSettled` for resilience
+9. **Wellness colorful redesign**: dark indigo score hero, gradient stat cards, pastel insight cards, full-page Time Machine + Mini Games
+10. **api.js auto-rewrite**: interceptor rewrites 6 route prefixes to wallet-specific equivalents when `activeWallet` set

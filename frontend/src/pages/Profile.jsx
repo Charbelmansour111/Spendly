@@ -4,7 +4,7 @@ import Layout from '../components/Layout'
 import API from '../utils/api'
 import { t } from '../i18n'
 import { useDarkMode } from '../hooks/useDarkMode'
-import { requestNotificationPermission, isNotificationsEnabled, disableNotifications, unsubscribeFromPush, playSpendlyChime } from '../utils/notifications'
+import { requestNotificationPermission, isNotificationsEnabled, disableNotifications, unsubscribeFromPush, playFinaChime } from '../utils/notifications'
 import { useWallet } from '../context/WalletContext'
 import { getAvatarUrl, getWalletColor } from '../data/avatars'
 import { deleteWallet, lockWallet } from '../utils/walletSession'
@@ -83,12 +83,12 @@ export default function Profile() {
   const [walletPinError, setWalletPinError] = useState('')
   const [walletPinLoading, setWalletPinLoading] = useState(false)
   const [prefs, setPrefs]         = useState(() => {
-    try { return JSON.parse(localStorage.getItem('spendly_prefs') || '{}') } catch { return {} }
+    try { return JSON.parse(localStorage.getItem('fina_prefs') || '{}') } catch { return {} }
   })
   const [prefsSaved, setPrefsSaved] = useState(false)
-  const [micLang, setMicLang]     = useState(() => localStorage.getItem('spendly_lang_mic') || 'en-US')
-  const [appLang, setAppLang]     = useState(() => localStorage.getItem('spendly_lang_app') || localStorage.getItem('spendly_lang_response') || 'en-US')
-  const [photo, setPhoto]         = useState(() => localStorage.getItem('spendly_profile_photo') || '')
+  const [micLang, setMicLang]     = useState(() => localStorage.getItem('fina_lang_mic') || 'en-US')
+  const [appLang, setAppLang]     = useState(() => localStorage.getItem('fina_lang_app') || localStorage.getItem('fina_lang_response') || 'en-US')
+  const [photo, setPhoto]         = useState(() => localStorage.getItem('fina_profile_photo') || '')
   const fileInputRef              = useRef(null)
   const [supportForm, setSupportForm] = useState({ subject: 'General question', message: '' })
   const [supportSending, setSupportSending] = useState(false)
@@ -96,7 +96,7 @@ export default function Profile() {
   const [notifEnabled, setNotifEnabled] = useState(() => isNotificationsEnabled())
   const [shortcutCopied, setShortcutCopied] = useState(false)
   const [dark, toggleDark] = useDarkMode()
-  const [nwPin, setNwPin] = useState(() => localStorage.getItem('spendly_nw_pin') || '')
+  const [nwPin, setNwPin] = useState(() => localStorage.getItem('fina_nw_pin') || '')
   const [nwPinInput, setNwPinInput] = useState('')
   const [nwPinConfirm, setNwPinConfirm] = useState('')
   const [nwPinMode, setNwPinMode] = useState(null) // 'set' | 'remove'
@@ -112,7 +112,7 @@ export default function Profile() {
     const reader = new FileReader()
     reader.onload = (ev) => {
       setPhoto(ev.target.result)
-      localStorage.setItem('spendly_profile_photo', ev.target.result)
+      localStorage.setItem('fina_profile_photo', ev.target.result)
       showToast('Photo updated!')
     }
     reader.readAsDataURL(file)
@@ -334,7 +334,7 @@ export default function Profile() {
                     } else {
                       const granted = await requestNotificationPermission()
                       setNotifEnabled(granted)
-                      if (granted) playSpendlyChime()
+                      if (granted) playFinaChime()
                     }
                   }}
                   className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifEnabled ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
@@ -347,9 +347,9 @@ export default function Profile() {
               </div>
 
               <button onClick={() => {
-                localStorage.setItem('spendly_prefs', JSON.stringify(prefs))
-                localStorage.setItem('spendly_lang_app', appLang)
-                localStorage.setItem('spendly_lang_mic', micLang)
+                localStorage.setItem('fina_prefs', JSON.stringify(prefs))
+                localStorage.setItem('fina_lang_app', appLang)
+                localStorage.setItem('fina_lang_mic', micLang)
                 setPrefsSaved(true)
                 setTimeout(() => { setPrefsSaved(false); window.location.reload() }, 1200)
               }}
@@ -483,7 +483,7 @@ export default function Profile() {
                     <button
                       disabled={nwPinInput.length !== 4 || nwPinInput !== nwPinConfirm}
                       onClick={() => {
-                        localStorage.setItem('spendly_nw_pin', nwPinInput)
+                        localStorage.setItem('fina_nw_pin', nwPinInput)
                         setNwPin(nwPinInput)
                         setNwPinMode(null)
                         showToast('Net Worth PIN set')
@@ -515,7 +515,7 @@ export default function Profile() {
                       disabled={nwPinInput.length !== 4}
                       onClick={() => {
                         if (nwPinInput !== nwPin) { showToast('Incorrect PIN', 'error'); return }
-                        localStorage.removeItem('spendly_nw_pin')
+                        localStorage.removeItem('fina_nw_pin')
                         setNwPin('')
                         setNwPinMode(null)
                         showToast('PIN removed')
@@ -559,24 +559,24 @@ export default function Profile() {
               <p className="text-xs text-gray-400 mb-4 leading-relaxed">
                 Replay the interactive tour to rediscover features, tips, and the voice assistant.
               </p>
-              <button onClick={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.removeItem(`spendly_onboarded_${uid}`); window.location.href = '/dashboard' }}
+              <button onClick={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.removeItem(`fina_onboarded_${uid}`); window.location.href = '/dashboard' }}
                 className="w-full flex items-center justify-center gap-2 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/40 text-violet-700 dark:text-violet-300 py-3 rounded-xl font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/40 transition text-sm">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 Replay Tutorial
               </button>
             </div>
 
-            {/* Hey Spendly shortcut */}
+            {/* Hey Fina shortcut */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
               <div className="flex items-center gap-2 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
                 <span className="text-sm">🎙️</span>
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Hey Spendly</p>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Hey Fina</p>
                 <span className="ml-auto text-[10px] bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-300 px-2 py-0.5 rounded-full font-bold tracking-wide">QUICK ADD</span>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-4">
                 Add expenses from outside the app with your voice. Open the shortcut and say{' '}
                 <span className="font-semibold text-gray-700 dark:text-gray-200">"I spent $15 on a burger"</span>{' '}
-                — Spendly parses it and adds it instantly.
+                — Fina parses it and adds it instantly.
               </p>
               <button
                 onClick={() => {
@@ -596,14 +596,14 @@ export default function Profile() {
                   <span className="text-base shrink-0 mt-0.5">🍎</span>
                   <div>
                     <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-0.5">iPhone / iOS</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Shortcuts app → <span className="font-semibold">+</span> → Add Action → <span className="font-semibold">Open URLs</span> → paste the link above. Name it "Hey Spendly". Then say <span className="font-semibold">"Hey Siri, Hey Spendly"</span>.</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Shortcuts app → <span className="font-semibold">+</span> → Add Action → <span className="font-semibold">Open URLs</span> → paste the link above. Name it "Hey Fina". Then say <span className="font-semibold">"Hey Siri, Hey Fina"</span>.</p>
                   </div>
                 </div>
                 <div className="flex gap-3 p-3 bg-gray-50 dark:bg-gray-700/40 rounded-xl">
                   <span className="text-base shrink-0 mt-0.5">🤖</span>
                   <div>
                     <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-0.5">Android</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Install Spendly (Add to Home Screen) → long-press app icon → tap <span className="font-semibold">Quick Add</span> shortcut. Or say <span className="font-semibold">"Hey Google, open Spendly Quick Add"</span>.</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Install Fina (Add to Home Screen) → long-press app icon → tap <span className="font-semibold">Quick Add</span> shortcut. Or say <span className="font-semibold">"Hey Google, open Fina Quick Add"</span>.</p>
                   </div>
                 </div>
                 <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center pt-0.5">
@@ -814,7 +814,7 @@ export default function Profile() {
                       await API.post('/support/ticket', { subject: supportForm.subject, message: supportForm.message, user_email: user.email })
                       setSupportSent(true)
                     } catch {
-                      window.open(`mailto:charbel.mansourb@gmail.com?subject=${encodeURIComponent('[Spendly] ' + supportForm.subject)}&body=${encodeURIComponent(supportForm.message)}`)
+                      window.open(`mailto:charbel.mansourb@gmail.com?subject=${encodeURIComponent('[Fina] ' + supportForm.subject)}&body=${encodeURIComponent(supportForm.message)}`)
                       setSupportSent(true)
                     }
                     setSupportSending(false)

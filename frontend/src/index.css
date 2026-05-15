@@ -1,14 +1,117 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *));
 
+/* ── Typography ────────────────────────────────────────────────────────────── */
 body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: #f9fafb;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 .dark body {
   background-color: #111827;
 }
 
-/* Hide mobile bottom nav when any modal/sheet is open */
+/* ── CSS Custom Properties — Design Tokens ─────────────────────────────────── */
+:root {
+  --color-primary:        #7C3AED;
+  --color-primary-light:  #8B5CF6;
+  --color-primary-dark:   #6D28D9;
+  --color-success:        #10B981;
+  --color-warning:        #F59E0B;
+  --color-danger:         #EF4444;
+  --color-bg:             #F9FAFB;
+  --color-card:           #FFFFFF;
+  --color-text-primary:   #111827;
+  --color-text-secondary: #6B7280;
+  --color-border:         rgba(0,0,0,0.06);
+  --color-shadow:         rgba(0,0,0,0.06);
+}
+.dark {
+  --color-bg:             #111827;
+  --color-card:           #1F2937;
+  --color-text-primary:   #F9FAFB;
+  --color-text-secondary: #9CA3AF;
+  --color-border:         rgba(255,255,255,0.07);
+  --color-shadow:         rgba(0,0,0,0.3);
+}
+
+/* ── Hide mobile bottom nav when any modal/sheet is open ───────────────────── */
 body.modal-open .sp-bottom-nav {
   display: none !important;
 }
+
+/* ── Keyframe Animations ───────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInBottom {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(124,58,237,0.4); }
+  70%  { transform: scale(1);    box-shadow: 0 0 0 8px rgba(124,58,237,0); }
+  100% { transform: scale(0.95); }
+}
+
+@keyframes spPageIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Animation Utility Classes ─────────────────────────────────────────────── */
+.page-enter   { animation: fadeInUp 0.3s ease-out both; }
+.modal-enter  { animation: scaleIn 0.2s ease-out both; }
+.sheet-enter  { animation: slideInBottom 0.3s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.card-enter   { animation: fadeInUp 0.25s ease-out both; }
+.number-enter { animation: countUp 0.2s ease-out both; }
+.fade-in      { animation: fadeIn 0.25s ease-out both; }
+
+/* ── Skeleton Loading ───────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+.dark .skeleton {
+  background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+  background-size: 200% 100%;
+}
+
+/* ── Scrollbar Styling ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.25); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.45); }
+
+/* ── Safe Area Support ──────────────────────────────────────────────────────── */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }

@@ -259,11 +259,11 @@ export default function Reports() {
   const [chatMessages, setChatMessages] = useState([{ role: 'assistant', content: CHAT_GREETING }])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
-  const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('spendly_insights_tts') === 'true')
+  const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('fina_insights_tts') === 'true')
   const [listening, setListening] = useState(false)
   const chatEndRef = useRef(null)
   const recognitionRef = useRef(null)
-  const micLang = localStorage.getItem('spendly_lang_mic') || 'en-US'
+  const micLang = localStorage.getItem('fina_lang_mic') || 'en-US'
   const aiRequested = useRef(false)
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
@@ -418,7 +418,7 @@ export default function Reports() {
 
   const exportPDF = () => {
     const doc = new jsPDF()
-    doc.setFontSize(24); doc.setTextColor(79, 70, 229); doc.text('Spendly', 14, 20)
+    doc.setFontSize(24); doc.setTextColor(79, 70, 229); doc.text('Fina', 14, 20)
     doc.setFontSize(11); doc.setTextColor(100, 100, 100)
     doc.text('Report for: ' + (user?.name || 'User'), 14, 30)
     doc.text('Period: ' + monthName, 14, 37)
@@ -489,14 +489,14 @@ export default function Reports() {
     if (!window.speechSynthesis) return
     window.speechSynthesis.cancel()
     const utt = new SpeechSynthesisUtterance(text)
-    utt.lang = localStorage.getItem('spendly_lang_app') || 'en-US'
+    utt.lang = localStorage.getItem('fina_lang_app') || 'en-US'
     utt.rate = 0.95
     window.speechSynthesis.speak(utt)
   }
   const toggleTts = () => {
     const next = !ttsEnabled
     setTtsEnabled(next)
-    localStorage.setItem('spendly_insights_tts', String(next))
+    localStorage.setItem('fina_insights_tts', String(next))
     if (!next) window.speechSynthesis?.cancel()
   }
   const sendChatMessage = async (text) => {

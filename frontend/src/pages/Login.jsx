@@ -28,8 +28,8 @@ const EyeOff = () => (
 function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState(() => {
-    const msg = localStorage.getItem('spendly_session_msg')
-    if (msg) { localStorage.removeItem('spendly_session_msg'); return msg }
+    const msg = localStorage.getItem('fina_session_msg')
+    if (msg) { localStorage.removeItem('fina_session_msg'); return msg }
     return ''
   })
   const [loading, setLoading] = useState(false)
@@ -73,7 +73,7 @@ function Login() {
             <div className="w-10 h-10 bg-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-900/60">
               <Mark size={18} />
             </div>
-            <span className="text-white text-xl font-bold tracking-tight">Spendly</span>
+            <span className="text-white text-xl font-bold tracking-tight">Fina</span>
           </a>
 
           <div className="flex-1 flex flex-col justify-center" style={{ animation: 'slide-up 0.6s ease both' }}>
@@ -159,7 +159,7 @@ function Login() {
           </div>
 
           <div className="flex items-center justify-between pt-5 border-t border-white/8">
-            <p className="text-white/20 text-xs">© 2026 Spendly</p>
+            <p className="text-white/20 text-xs">© 2026 Fina</p>
             <div className="flex items-center gap-1.5 text-white/20 text-xs">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
               256-bit SSL
@@ -177,7 +177,7 @@ function Login() {
             <div className="w-9 h-9 bg-violet-600 rounded-xl flex items-center justify-center">
               <Mark size={14} />
             </div>
-            <span className="font-bold text-gray-900 text-lg">Spendly</span>
+            <span className="font-bold text-gray-900 text-lg">Fina</span>
           </a>
 
           {/* Heading */}

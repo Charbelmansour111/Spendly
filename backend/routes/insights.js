@@ -44,7 +44,7 @@ TRANSACTION DETECTION (apply every message):
 };
 
 const SYSTEM_NORMAL = (total, totalIncome, categoryBreakdown, txCount, budgets) =>
-  `You are Spendly AI ✨ — a warm, encouraging, and genuinely helpful money friend.
+  `You are Fina AI ✨ — a warm, encouraging, and genuinely helpful money friend.
 
 User's financial data:
 - Income: $${totalIncome.toFixed(2)} | Spending: $${total.toFixed(2)} | Balance: $${(totalIncome - total).toFixed(2)}
@@ -62,7 +62,7 @@ Response style rules:
 ${SHARED_RULES()}`;
 
 const SYSTEM_SARCASTIC = (total, totalIncome, categoryBreakdown, txCount, budgets) =>
-  `You are Spendly AI 😏 — sharp, witty, lovably savage. Funny best friend who's also a CPA.
+  `You are Fina AI 😏 — sharp, witty, lovably savage. Funny best friend who's also a CPA.
 
 User's financial data:
 - Income: $${totalIncome.toFixed(2)} | Spending: $${total.toFixed(2)} | Balance: $${(totalIncome - total).toFixed(2)}
@@ -84,17 +84,86 @@ router.post('/chat', authenticateToken, asyncHandler(async (req, res) => {
     const income   = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20', [req.userId]);
     const budgets  = await pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]);
 
-    const total = expenses.rows.reduce((sum, e) => sum + parseFloat(e.amount), 0);
-    const totalIncome = income.rows.reduce((sum, i) => sum + parseFloat(i.amount), 0);
-    const categoryTotals = expenses.rows.reduce((acc, e) => {
-      acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount);
-      return acc;
+    // Fetch onboarding data for life context
+    let onboardingData = null;
+    try {
+      const obRes = await pool.query('SELECT * FROM user_onboarding WHERE user_id = $1', [req.userId]);
+      onboardingData = obRes.rows[0] || null;
+    } catch {}
+
+    const now = new Date();
+    const curMonth = now.getMonth(); const curYear = now.getFullYear();
+
+    const monthExpenses = expenses.rows.filter(e => {
+      const d = new Date(e.date); return d.getMonth() === curMonth && d.getFullYear() === curYear;
+    });
+    const monthIncome = income.rows.filter(i => {
+      const d = new Date(i.date || i.created_at); return d.getMonth() === curMonth && d.getFullYear() === curYear;
+    });
+
+    const total = monthExpenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+    const totalIncome = monthIncome.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+    const savingsRate = totalIncome > 0 ? ((totalIncome - total) / totalIncome * 100).toFixed(1) : 0;
+
+    const categoryTotals = monthExpenses.reduce((acc, e) => {
+      acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount || 0); return acc;
     }, {});
-    const categoryBreakdown = Object.entries(categoryTotals)
+    const categoryWithPct = Object.entries(categoryTotals)
       .sort((a, b) => b[1] - a[1])
-      .map(([cat, amt]) => `${cat}: $${amt.toFixed(2)}`)
-      .join(', ');
+      .map(([cat, amt]) => {
+        const pct = total > 0 ? ((amt / total) * 100).toFixed(1) : 0;
+        const BENCH = { Food: 0.125, Transport: 0.125, Entertainment: 0.075, Shopping: 0.10, Subscriptions: 0.05 };
+        const bench = BENCH[cat];
+        const benchAmt = bench && totalIncome ? (totalIncome * bench).toFixed(0) : null;
+        const diff = benchAmt ? (amt - parseFloat(benchAmt)).toFixed(0) : null;
+        const overStr = diff && parseFloat(diff) > 0 ? ` [OVER benchmark by $${diff}]` : diff ? ` [under benchmark ✓]` : '';
+        return `${cat}: $${amt.toFixed(2)} (${pct}% of expenses${overStr})`;
+      });
+    const categoryBreakdown = categoryWithPct.join(', ') || 'No expenses yet this month';
     const budgetSummary = budgets.rows.map(b => `${b.category}: $${b.amount}`).join(', ') || 'None set';
+
+    // Handle budget_suggestions mode — return structured JSON
+    if (mode === 'budget_suggestions') {
+      const ob = onboardingData || {};
+      const budgetPrompt = `Based on this user's monthly income ($${totalIncome.toFixed(2)}/month) and life situation (${ob.life_situation || 'adult'}, ${ob.employment_status || 'unknown'}, pays tuition: ${ob.pays_tuition ? 'YES' : 'no'}), generate specific budget limits.
+
+RULES:
+- Food minimum $300 (never below). Food max: 20% of income.
+- If income < $800: food $300, transport $120, entertainment $50, shopping $100
+- If income $800-$1500: food $350-$400, transport $150-$200, entertainment $100
+- If income > $1500: apply 50/30/20 rule proportionally
+- Always leave at least 15% of income unbudgeted (savings)
+- If student paying tuition: reduce entertainment, add Education category
+- If parent: add Family/Childcare suggestion
+
+Current spend this month: ${categoryBreakdown}
+Existing budgets: ${budgetSummary}
+
+Return ONLY valid JSON (no other text):
+{"suggestions":[{"category":"Food","amount":380,"percentage_of_income":19,"reasoning":"...","priority":"essential"}],"total_budgeted":1400,"income_used_percent":70,"projected_savings":400,"projected_savings_rate":"20%","summary":"..."}
+
+Categories: Food, Transport, Shopping, Entertainment, Subscriptions, Healthcare, Personal Care${ob.pays_tuition ? ', Education' : ''}${ob.life_situation === 'parent' ? ', Family' : ''}
+Priority values: "essential" | "recommended" | "optional"`;
+
+      const raw = await callAI([{ role: 'user', content: budgetPrompt }], 800);
+      try {
+        const jsonStart = raw.indexOf('{'); const jsonEnd = raw.lastIndexOf('}');
+        const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
+        return res.json({ budgetSuggestions: parsed, monthlyIncome: totalIncome });
+      } catch {
+        return res.json({ budgetSuggestions: null, error: 'Could not parse suggestions' });
+      }
+    }
+
+    // Life context for system prompt
+    const ob = onboardingData || {};
+    const lifeCtx = ob.life_situation ? `
+USER LIFE CONTEXT (factor into every response):
+- Situation: ${ob.life_situation} | Housing: ${ob.housing || 'unknown'} | Employment: ${ob.employment_status || 'unknown'}
+- Pays own tuition: ${ob.pays_tuition ? 'YES — major priority' : 'No'}
+- Financial priority: ${ob.financial_priority || 'not set'}
+- Savings rate this month: ${savingsRate}% (benchmark: 20%+)
+- Monthly benchmarks for this user: Food $${(totalIncome * 0.125).toFixed(0)}, Transport $${(totalIncome * 0.125).toFixed(0)}, Entertainment $${(totalIncome * 0.075).toFixed(0)}` : '';
 
     const expenseList = expenses.rows.slice(0, 30).map(e =>
       `[ID:${e.id}] ${e.date ? new Date(e.date).toISOString().split('T')[0] : ''} | ${e.category} | ${e.description || '—'} | $${parseFloat(e.amount).toFixed(2)}`
@@ -117,7 +186,7 @@ Never invent IDs — only use IDs from the list above.`;
     const systemFn = mode === 'sarcastic' ? SYSTEM_SARCASTIC : SYSTEM_NORMAL;
     const systemMessage = {
       role: 'system',
-      content: systemFn(total, totalIncome, categoryBreakdown, expenses.rows.length, budgetSummary) + actionInstructions,
+      content: systemFn(total, totalIncome, categoryBreakdown, expenses.rows.length, budgetSummary) + lifeCtx + actionInstructions,
     };
 
     const messages = [
@@ -351,7 +420,7 @@ router.post('/time-machine', authenticateToken, async (req, res) => {
       ? `${Math.abs(y)} years before the Common Era (ancient world)`
       : isPast ? `${currentYear - y} years in the past` : `${y - currentYear} years in the future`;
 
-    const prompt = `You are "Spendly" — a wildly entertaining AI narrator doing a fun 45-second time travel story.
+    const prompt = `You are "Fina" — a wildly entertaining AI narrator doing a fun 45-second time travel story.
 
 User in ${currentYear} has ${currency} ${a.toFixed(2)}.
 Destination: ${displayYear} (${timeDesc})

@@ -42,7 +42,7 @@ API.interceptors.response.use(
     if (error.response?.status === 401 || error.response?.status === 403) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      localStorage.setItem('spendly_session_msg', 'Your session expired. Please log in again.')
+      localStorage.setItem('fina_session_msg', 'Your session expired. Please log in again.')
       window.location.href = '/login'
     }
     return Promise.reject(error)

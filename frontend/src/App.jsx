@@ -4,32 +4,32 @@ import { scheduleReminders } from './utils/notifications'
 import { WalletProvider } from './context/WalletContext'
 
 const PAGE_TITLES = {
-  '/': 'Spendly',
-  '/login': 'Login — Spendly',
-  '/register': 'Sign Up — Spendly',
-  '/verify-email': 'Verify Email — Spendly',
-  '/forgot-password': 'Forgot Password — Spendly',
-  '/account-type': 'Account Type — Spendly',
-  '/terms': 'Terms of Service — Spendly',
-  '/privacy': 'Privacy Policy — Spendly',
-  '/wallets': 'Choose Wallet — Spendly',
-  '/create-wallet': 'Create Wallet — Spendly',
-  '/family': 'Family Overview — Spendly',
-  '/wallet/:id/profile': 'Wallet Profile — Spendly',
-  '/dashboard': 'Dashboard — Spendly',
-  '/transactions': 'Transactions — Spendly',
-  '/budgets': 'Budgets — Spendly',
-  '/goals': 'Goals — Spendly',
-  '/reports': 'Reports — Spendly',
-  '/insights': 'Insights — Spendly',
-  '/net-worth': 'Net Worth — Spendly',
-  '/wellness': 'Wellness — Spendly',
-  '/profile': 'Profile — Spendly',
+  '/': 'Fina',
+  '/login': 'Login — Fina',
+  '/register': 'Sign Up — Fina',
+  '/verify-email': 'Verify Email — Fina',
+  '/forgot-password': 'Forgot Password — Fina',
+  '/account-type': 'Account Type — Fina',
+  '/terms': 'Terms of Service — Fina',
+  '/privacy': 'Privacy Policy — Fina',
+  '/wallets': 'Choose Wallet — Fina',
+  '/create-wallet': 'Create Wallet — Fina',
+  '/family': 'Family Overview — Fina',
+  '/wallet/:id/profile': 'Wallet Profile — Fina',
+  '/dashboard': 'Dashboard — Fina',
+  '/transactions': 'Transactions — Fina',
+  '/budgets': 'Budgets — Fina',
+  '/goals': 'Goals — Fina',
+  '/reports': 'Reports — Fina',
+  '/insights': 'Insights — Fina',
+  '/net-worth': 'Net Worth — Fina',
+  '/wellness': 'Wellness — Fina',
+  '/profile': 'Profile — Fina',
 }
 
 function RouteTitle() {
   const { pathname } = useLocation()
-  useEffect(() => { document.title = PAGE_TITLES[pathname] || 'Spendly' }, [pathname])
+  useEffect(() => { document.title = PAGE_TITLES[pathname] || 'Fina' }, [pathname])
   return null
 }
 

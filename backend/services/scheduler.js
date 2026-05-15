@@ -5,8 +5,8 @@ const { sendPush, sendPushToAll } = require('./push');
 const REMINDERS = [
   "💸 Don't forget to log today's expenses!",
   "📊 Keep your budget on track — log your spending!",
-  "🛒 Did you spend anything today? Log it in Spendly!",
-  "☕ Had a coffee or lunch today? Add it to Spendly!",
+  "🛒 Did you spend anything today? Log it in Fina!",
+  "☕ Had a coffee or lunch today? Add it to Fina!",
   "🎯 Stay on target — track what you spent today!",
 ];
 
@@ -19,7 +19,7 @@ function startScheduler() {
   cron.schedule('0 21 * * *', async () => {
     console.log('[scheduler] Sending 9 PM reminders');
     await sendPushToAll({
-      title: 'Spendly',
+      title: 'Fina',
       body: randomReminder(),
       icon: '/icon-192.png',
       badge: '/icon-192.png',
@@ -41,7 +41,7 @@ function startScheduler() {
         );
         if (parseInt(exp.rows[0].count) === 0) {
           await sendPush(user_id, {
-            title: 'Spendly 🕚',
+            title: 'Fina 🕚',
             body: "You haven't logged anything today. Add your expenses before midnight!",
             icon: '/icon-192.png',
             badge: '/icon-192.png',
@@ -129,7 +129,7 @@ function startScheduler() {
       );
       for (const { user_id } of rows.rows) {
         await sendPush(user_id, {
-          title: 'Miss you on Spendly 👋',
+          title: 'Miss you on Fina 👋',
           body: "You haven't logged any expenses in a few days. Stay on top of your budget!",
           icon: '/icon-192.png',
           badge: '/icon-192.png',

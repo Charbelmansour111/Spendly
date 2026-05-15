@@ -292,7 +292,7 @@ export default function WalletSelect() {
               <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
             </svg>
           </div>
-          <span className="text-base font-bold text-gray-900 dark:text-white tracking-tight">Spendly</span>
+          <span className="text-base font-bold text-gray-900 dark:text-white tracking-tight">Fina</span>
         </div>
         <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
           Select Wallet

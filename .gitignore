@@ -18,3 +18,6 @@ frontend/build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local context / notes (never push)
+spendly_full_context.md

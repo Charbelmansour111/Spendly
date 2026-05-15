@@ -6,6 +6,7 @@ import ReceiptScanner from '../components/ReceiptScanner'
 import { DashboardSkeleton } from '../components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Onboarding from '../components/Onboarding'
+import OnboardingQuestions from '../components/OnboardingQuestions'
 import MonthlyWrap from '../components/MonthlyWrap'
 import { useHideNav } from '../hooks/useHideNav'
 import { requestNotificationPermission, isNotificationsEnabled } from '../utils/notifications'
@@ -443,7 +444,7 @@ function QuickLogSheet({ onClose, onSaved, currencySymbol }) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) return
     const rec = new SR()
-    rec.lang = localStorage.getItem('spendly_lang_mic') || 'en-US'
+    rec.lang = localStorage.getItem('fina_lang_mic') || 'en-US'
     rec.interimResults = false
     micRef.current = rec
     rec.onstart = () => setMicActive(true)
@@ -700,19 +701,23 @@ export default function Dashboard() {
   const [monthlyCheckModal, setMonthlyCheckModal] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => {
     const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
-    return !localStorage.getItem(`spendly_onboarded_${uid}`)
+    return !localStorage.getItem(`fina_onboarded_${uid}`)
+  })
+  const [showQuestions, setShowQuestions] = useState(() => {
+    const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
+    return !!(localStorage.getItem(`fina_onboarded_${uid}`) && !localStorage.getItem(`fina_questions_${uid}`))
   })
   const [dismissedGoals, setDismissedGoals] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('spendly_dismissed_goals') || '[]') } catch { return [] }
+    try { return JSON.parse(localStorage.getItem('fina_dismissed_goals') || '[]') } catch { return [] }
   })
   const [showNotifPrompt, setShowNotifPrompt] = useState(() =>
-    !localStorage.getItem('spendly_notif_asked') && !isNotificationsEnabled()
+    !localStorage.getItem('fina_notif_asked') && !isNotificationsEnabled()
   )
 
   // Monthly Wrap
   const [showWrap, setShowWrap] = useState(false)
   const _now = new Date()
-  const wrapKey = `spendly_wrap_watched_${_now.getFullYear()}-${_now.getMonth() + 1}`
+  const wrapKey = `fina_wrap_watched_${_now.getFullYear()}-${_now.getMonth() + 1}`
   const _lastDay = new Date(_now.getFullYear(), _now.getMonth() + 1, 0).getDate()
   const showWrapBanner = _now.getDate() >= _lastDay - 2 && !localStorage.getItem(wrapKey)
 
@@ -788,7 +793,7 @@ export default function Dashboard() {
   // Monthly recurring confirmation check
   useEffect(() => {
     if (!localStorage.getItem('token')) return
-    const key = 'spendly_month_confirmed'
+    const key = 'fina_month_confirmed'
     const now = new Date()
     const currentKey = `${now.getFullYear()}-${now.getMonth() + 1}`
     if (localStorage.getItem(key) !== currentKey) {
@@ -988,7 +993,8 @@ export default function Dashboard() {
     <Layout unreadCount={unread} onBellClick={() => { setShowNotifs(v => !v); if (!showNotifs) markRead() }}>
       {toast    && <Toast {...toast} onClose={() => setToast(null)} />}
       {confirm  && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
-      {showOnboarding && <Onboarding onDone={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.setItem(`spendly_onboarded_${uid}`, '1'); setShowOnboarding(false) }} />}
+      {showOnboarding && <Onboarding onDone={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.setItem(`fina_onboarded_${uid}`, '1'); setShowOnboarding(false); setShowQuestions(true) }} />}
+      {!showOnboarding && showQuestions && <OnboardingQuestions onDone={() => setShowQuestions(false)} />}
       {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
       {showAddExp   && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} />}
       {showAddInc   && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}
@@ -1002,14 +1008,14 @@ export default function Dashboard() {
           <span className="flex-1 text-sm font-medium">Get budget alerts &amp; daily reminders</span>
           <button
             onClick={async () => {
-              localStorage.setItem('spendly_notif_asked', '1')
+              localStorage.setItem('fina_notif_asked', '1')
               setShowNotifPrompt(false)
               await requestNotificationPermission()
             }}
             className="bg-white text-violet-700 font-semibold text-sm px-4 py-1.5 rounded-xl shrink-0"
           >Enable</button>
           <button
-            onClick={() => { localStorage.setItem('spendly_notif_asked', '1'); setShowNotifPrompt(false) }}
+            onClick={() => { localStorage.setItem('fina_notif_asked', '1'); setShowNotifPrompt(false) }}
             className="text-violet-200 text-xl leading-none shrink-0"
             aria-label="Dismiss"
           >×</button>
@@ -1072,7 +1078,7 @@ export default function Dashboard() {
             </div>
             <button onClick={() => {
               const now = new Date()
-              localStorage.setItem('spendly_month_confirmed', `${now.getFullYear()}-${now.getMonth() + 1}`)
+              localStorage.setItem('fina_month_confirmed', `${now.getFullYear()}-${now.getMonth() + 1}`)
               setMonthlyCheckModal(false)
             }} className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-700 transition">
               Looks good ✓
@@ -1112,7 +1118,21 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto px-4 py-4 pb-8">
+      <div className="max-w-2xl mx-auto px-4 py-4 pb-8 page-enter">
+
+        {/* Premium Greeting Header */}
+        {isCurrentMonth && (
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white mt-0.5">
+                {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening' })()}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} 👋
+              </h1>
+            </div>
+          </div>
+        )}
 
         {/* Month Selector */}
         <div className="flex items-center justify-between mb-4">
@@ -1402,8 +1422,8 @@ export default function Dashboard() {
         {/* Upcoming Bills */}
         {/* Bills Due Soon (from Budgets → Bills tab) */}
         {(() => {
-          const allBills = (() => { try { return JSON.parse(localStorage.getItem('spendly_bills') || '[]') } catch { return [] } })()
-          const pKey = `spendly_paid_bills_${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`
+          const allBills = (() => { try { return JSON.parse(localStorage.getItem('fina_bills') || '[]') } catch { return [] } })()
+          const pKey = `fina_paid_bills_${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`
           const paid = (() => { try { return JSON.parse(localStorage.getItem(pKey) || '[]') } catch { return [] } })()
           const calcDays = (dueDay) => {
             const now = new Date()
@@ -1681,7 +1701,7 @@ export default function Dashboard() {
                             onClick={() => {
                               const updated = [...dismissedGoals, g.id]
                               setDismissedGoals(updated)
-                              localStorage.setItem('spendly_dismissed_goals', JSON.stringify(updated))
+                              localStorage.setItem('fina_dismissed_goals', JSON.stringify(updated))
                             }}
                             title="Remove from dashboard"
                             className="text-gray-300 hover:text-red-400 dark:text-gray-600 dark:hover:text-red-500 transition p-0.5 rounded">

@@ -99,6 +99,8 @@ function NumberModal({ label, value, sub, onClose }) {
 export default function Goals() {
   const [goals, setGoals]   = useState([])
   const [debts, setDebts]   = useState([])
+  const [onboarding, setOnboarding] = useState(null)
+  const [showTuitionBanner, setShowTuitionBanner] = useState(true)
   const [filter, setFilter] = useState('All')
   const [numModal, setNumModal] = useState(null)
   const [showForm, setShowForm]   = useState(false)
@@ -136,6 +138,10 @@ export default function Goals() {
       .catch(() => showToast('Error loading data', 'error'))
       .finally(() => setLoading(false))
   }, [showToast])
+
+  useEffect(() => {
+    API.get('/onboarding').then(r => setOnboarding(r.data)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -503,6 +509,30 @@ export default function Goals() {
           <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-40 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
         ) : (
           <>
+            {/* ── Tuition Goal Suggestion ── */}
+            {(filter === 'All' || filter === 'Savings') && onboarding?.pays_tuition && showTuitionBanner &&
+              !goals.some(g => g.goal_type === 'education' || g.name?.toLowerCase().includes('tuition') || g.name?.toLowerCase().includes('university')) && (
+              <div className="bg-linear-to-r from-indigo-600 to-violet-600 rounded-2xl p-4 mb-4 text-white card-enter">
+                <div className="flex items-start gap-3">
+                  <div className="text-3xl">🎓</div>
+                  <div className="flex-1">
+                    <p className="font-bold text-base mb-0.5">Recommended for You</p>
+                    <p className="text-indigo-100 text-sm mb-3">Since you pay your own tuition, saving for it is your most important financial priority.</p>
+                    <button onClick={() => {
+                      const nextJune = new Date(); nextJune.setMonth(5); nextJune.setDate(30);
+                      if (nextJune < new Date()) nextJune.setFullYear(nextJune.getFullYear() + 1);
+                      setSavingForm({ name: 'University Tuition Fund', target_amount: '', saved_amount: '0', deadline: nextJune.toISOString().split('T')[0], goal_type: 'education' });
+                      setFormType('saving'); setShowForm(true);
+                    }}
+                      className="bg-white/20 hover:bg-white/30 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+                      + Create Tuition Savings Goal →
+                    </button>
+                  </div>
+                  <button onClick={() => setShowTuitionBanner(false)} className="text-white/60 hover:text-white p-1 text-xl leading-none">×</button>
+                </div>
+              </div>
+            )}
+
             {/* ── Savings Goals ── */}
             {(filter === 'All' || filter === 'Savings') && (
               <div className="mb-4">

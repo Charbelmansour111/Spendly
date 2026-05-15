@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 /* ── Tour steps ─────────────────────────────────────────────────── */
-export const TOUR_KEY = 'spendly_active_tour'
+export const TOUR_KEY = 'fina_active_tour'
 
 export const TOUR_STEPS = [
   {
@@ -98,8 +98,8 @@ export default function TourBanner() {
   /* listen for tour start triggered by Onboarding */
   useEffect(() => {
     const onUpdate = () => setTourState(getTour())
-    window.addEventListener('spendly_tour_update', onUpdate)
-    return () => window.removeEventListener('spendly_tour_update', onUpdate)
+    window.addEventListener('fina_tour_update', onUpdate)
+    return () => window.removeEventListener('fina_tour_update', onUpdate)
   }, [])
 
   /* slide-in animation for welcome */
@@ -118,7 +118,7 @@ export default function TourBanner() {
     spokenStep.current = key
 
     if (key === -1) {
-      const t = setTimeout(() => speak("Hello! Welcome to Spendly — your personal finance companion. I'm here to guide you through everything. Would you like to start the tour?"), 500)
+      const t = setTimeout(() => speak("Hello! Welcome to Fina — your personal finance companion. I'm here to guide you through everything. Would you like to start the tour?"), 500)
       return () => { clearTimeout(t); window.speechSynthesis?.cancel() }
     }
     const step = TOUR_STEPS[key]
@@ -131,7 +131,7 @@ export default function TourBanner() {
     const next = { ...tour, voice: !tour.voice }
     if (!next.voice) window.speechSynthesis?.cancel()
     else {
-      if (tour.step === -1) speak("Hello! Welcome to Spendly — your personal finance companion.")
+      if (tour.step === -1) speak("Hello! Welcome to Fina — your personal finance companion.")
       else if (TOUR_STEPS[tour.step]) speak(TOUR_STEPS[tour.step].voice)
     }
     save(next)
@@ -210,7 +210,7 @@ export default function TourBanner() {
 
             <div className="relative">
               <div className="text-6xl mb-3 tour-wave">👋</div>
-              <h2 className="text-2xl font-bold mb-1 tour-shimmer">Welcome to Spendly!</h2>
+              <h2 className="text-2xl font-bold mb-1 tour-shimmer">Welcome to Fina!</h2>
               <p className="text-white/75 text-sm leading-relaxed mt-2">Your smart finance companion. Take a quick guided tour and see exactly how everything works.</p>
               <p className="text-white/40 text-xs mt-2">6 pages · 2 minutes · fully interactive</p>
             </div>

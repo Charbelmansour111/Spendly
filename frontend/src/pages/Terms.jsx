@@ -3,7 +3,7 @@ export default function Terms() {
     <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-800 dark:text-gray-200">
       <div className="max-w-3xl mx-auto px-6 py-16">
         <a href="/" className="inline-flex items-center gap-2 text-violet-600 dark:text-violet-400 text-sm font-medium mb-8 hover:underline">
-          ← Back to Spendly
+          ← Back to Fina
         </a>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Terms of Service</h1>
         <p className="text-gray-500 dark:text-gray-400 text-sm mb-10">Last updated: April 2026</p>
@@ -12,27 +12,27 @@ export default function Terms() {
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">1. Acceptance of Terms</h2>
-            <p>By accessing or using Spendly ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, please do not use the Service.</p>
+            <p>By accessing or using Fina ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, please do not use the Service.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">2. Description of Service</h2>
-            <p>Spendly is a personal finance management application that allows users to track expenses, set budgets, manage savings goals, and gain AI-powered insights into their spending habits. The Service is provided for personal, non-commercial use.</p>
+            <p>Fina is a personal finance management application that allows users to track expenses, set budgets, manage savings goals, and gain AI-powered insights into their spending habits. The Service is provided for personal, non-commercial use.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">3. User Accounts</h2>
-            <p>You must create an account to use Spendly. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must notify us immediately of any unauthorized use of your account.</p>
+            <p>You must create an account to use Fina. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must notify us immediately of any unauthorized use of your account.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">4. User Data</h2>
-            <p>All financial data you enter into Spendly is yours. We do not sell your personal financial data to third parties. We store your data securely and use it solely to provide and improve the Service. See our <a href="/privacy" className="text-violet-600 dark:text-violet-400 hover:underline">Privacy Policy</a> for details.</p>
+            <p>All financial data you enter into Fina is yours. We do not sell your personal financial data to third parties. We store your data securely and use it solely to provide and improve the Service. See our <a href="/privacy" className="text-violet-600 dark:text-violet-400 hover:underline">Privacy Policy</a> for details.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">5. AI-Powered Features</h2>
-            <p>Spendly uses AI to provide financial insights and recommendations. These insights are informational only and do not constitute financial advice. Always consult a qualified financial advisor before making significant financial decisions.</p>
+            <p>Fina uses AI to provide financial insights and recommendations. These insights are informational only and do not constitute financial advice. Always consult a qualified financial advisor before making significant financial decisions.</p>
           </section>
 
           <section>
@@ -48,12 +48,12 @@ export default function Terms() {
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">7. Disclaimer of Warranties</h2>
-            <p>The Service is provided "as is" without warranty of any kind. Spendly does not guarantee the accuracy, completeness, or reliability of any financial calculations or AI-generated insights. Use the Service at your own risk.</p>
+            <p>The Service is provided "as is" without warranty of any kind. Fina does not guarantee the accuracy, completeness, or reliability of any financial calculations or AI-generated insights. Use the Service at your own risk.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">8. Limitation of Liability</h2>
-            <p>To the maximum extent permitted by law, Spendly shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the Service, including any financial decisions made based on the Service's outputs.</p>
+            <p>To the maximum extent permitted by law, Fina shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the Service, including any financial decisions made based on the Service's outputs.</p>
           </section>
 
           <section>

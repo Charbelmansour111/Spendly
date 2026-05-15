@@ -354,6 +354,23 @@ async function migrate() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_onboarding (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+        life_situation VARCHAR(50),
+        housing VARCHAR(50),
+        education VARCHAR(50),
+        pays_tuition BOOLEAN DEFAULT FALSE,
+        dependents VARCHAR(50),
+        employment_status VARCHAR(50),
+        financial_priority VARCHAR(100),
+        monthly_income_estimate DECIMAL(12,2),
+        completed_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
     console.log('DB migration complete');
   } catch (e) {
     console.error('DB migration error:', e.message);

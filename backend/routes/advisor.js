@@ -21,7 +21,7 @@ async function sendEmail({ to, subject, html }) {
   try {
     const transporter = createTransport();
     await transporter.sendMail({
-      from: `"Spendly" <${process.env.SMTP_USER || process.env.EMAIL_USER}>`,
+      from: `"Fina" <${process.env.SMTP_USER || process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
@@ -94,23 +94,23 @@ router.post('/apply', authenticateToken, async (req, res) => {
         <p><strong>Country:</strong> ${country}</p>
         <p><strong>Institution:</strong> ${institution}</p>
         <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
-        <p><a href="${process.env.FRONTEND_URL || 'https://spendly.app'}/admin/advisors">Review in Admin Panel</a></p>
+        <p><a href="${process.env.FRONTEND_URL || 'https://fina.app'}/admin/advisors">Review in Admin Panel</a></p>
       `,
     });
 
     // Confirmation email to applicant
     await sendEmail({
       to: applicant?.email,
-      subject: 'Your Advisor Application Was Received — Spendly',
+      subject: 'Your Advisor Application Was Received — Fina',
       html: `
         <h2>Application Received!</h2>
         <p>Hi ${applicant?.name || full_name},</p>
-        <p>We've received your application to join the Spendly Verified Advisor Network.</p>
+        <p>We've received your application to join the Fina Verified Advisor Network.</p>
         <p>Our team will review your application within <strong>1–3 business days</strong>. You'll receive an email once a decision has been made.</p>
         <p>Application ID: <strong>#${profile.id}</strong></p>
         <br/>
         <p>Thank you for your interest in helping others manage their finances!</p>
-        <p>— The Spendly Team</p>
+        <p>— The Fina Team</p>
       `,
     });
 
@@ -303,17 +303,17 @@ router.post('/admin/approve/:id', adminAuth, async (req, res) => {
     // Approval email to applicant
     await sendEmail({
       to: app.email,
-      subject: 'Congratulations! Your Advisor Application is Approved — Spendly',
+      subject: 'Congratulations! Your Advisor Application is Approved — Fina',
       html: `
-        <h2>You're Now a Verified Advisor on Spendly!</h2>
+        <h2>You're Now a Verified Advisor on Fina!</h2>
         <p>Hi ${app.user_name || app.full_name},</p>
-        <p>We're excited to inform you that your application to join the <strong>Spendly Verified Advisor Network</strong> has been <strong>approved</strong>!</p>
+        <p>We're excited to inform you that your application to join the <strong>Fina Verified Advisor Network</strong> has been <strong>approved</strong>!</p>
         <p>Your profile is now live in our public advisor directory.</p>
-        <p>Log in to your Spendly account and visit your <strong>Advisor Dashboard</strong> to update your profile, set your availability, and start helping users.</p>
+        <p>Log in to your Fina account and visit your <strong>Advisor Dashboard</strong> to update your profile, set your availability, and start helping users.</p>
         ${notes ? `<p><em>Note from our team: ${notes}</em></p>` : ''}
         <br/>
         <p>Welcome aboard!</p>
-        <p>— The Spendly Team</p>
+        <p>— The Fina Team</p>
       `,
     });
 
@@ -353,16 +353,16 @@ router.post('/admin/reject/:id', adminAuth, async (req, res) => {
     // Rejection email to applicant
     await sendEmail({
       to: app.email,
-      subject: 'Update on Your Advisor Application — Spendly',
+      subject: 'Update on Your Advisor Application — Fina',
       html: `
         <h2>Advisor Application Update</h2>
         <p>Hi ${app.user_name || app.full_name},</p>
-        <p>Thank you for applying to the Spendly Verified Advisor Network.</p>
+        <p>Thank you for applying to the Fina Verified Advisor Network.</p>
         <p>After careful review, we're unable to approve your application at this time.</p>
         <p><strong>Reason:</strong> ${reason}</p>
-        <p>You're welcome to reapply after addressing the above concerns. If you have questions, please contact us at support@spendly.app.</p>
+        <p>You're welcome to reapply after addressing the above concerns. If you have questions, please contact us at support@fina.app.</p>
         <br/>
-        <p>— The Spendly Team</p>
+        <p>— The Fina Team</p>
       `,
     });
 

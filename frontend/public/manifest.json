@@ -1,6 +1,6 @@
 {
-  "name": "Spendly",
-  "short_name": "Spendly",
+  "name": "Fina",
+  "short_name": "Fina",
   "description": "Your money, under control.",
   "start_url": "/",
   "display": "standalone",
@@ -23,7 +23,7 @@
     {
       "name": "Voice Log",
       "short_name": "Voice",
-      "description": "Talk to Spendly — log expenses with your voice",
+      "description": "Talk to Fina — log expenses with your voice",
       "url": "/voice",
       "icons": [
         {

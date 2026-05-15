@@ -69,7 +69,7 @@ function PinModal({ onUnlock }) {
   const [error, setError] = useState(false)
 
   const check = (value) => {
-    const saved = localStorage.getItem('spendly_nw_pin')
+    const saved = localStorage.getItem('fina_nw_pin')
     if (value === saved) { onUnlock() }
     else { setError(true); setPin(''); setTimeout(() => setError(false), 1200) }
   }
@@ -124,7 +124,7 @@ function PinModal({ onUnlock }) {
 const EMPTY = { items: [], totalAssets: 0, totalLiabilities: 0, netWorth: 0, cashBalance: 0, history: [] }
 
 export default function NetWorth() {
-  const hasPinSet = !!localStorage.getItem('spendly_nw_pin')
+  const hasPinSet = !!localStorage.getItem('fina_nw_pin')
   const [pinUnlocked, setPinUnlocked] = useState(false)
   const [data, setData]         = useState(EMPTY)
   const [totalData, setTotalData] = useState(null)

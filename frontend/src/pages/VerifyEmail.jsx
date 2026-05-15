@@ -24,7 +24,7 @@ export default function VerifyEmail() {
               <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
             </svg>
           </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-white">Spendly</span>
+          <span className="text-xl font-bold text-gray-900 dark:text-white">Fina</span>
         </a>
 
         {status === 'loading' && (
@@ -42,7 +42,7 @@ export default function VerifyEmail() {
               </svg>
             </div>
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Email Verified</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">Your account is ready. Welcome to Spendly.</p>
+            <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">Your account is ready. Welcome to Fina.</p>
             <a href="/login" className="bg-violet-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-violet-700 transition inline-block">
               Go to Login →
             </a>

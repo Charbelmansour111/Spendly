@@ -64,7 +64,7 @@ const T = {
     your_plan: 'Your Plan', personal_plan: 'Personal plan — includes Expense Tracking, Budgets, Savings Goals, AI Insights, Receipt Scanner & more.',
     // AI / Voice
     listening: 'Listening...', processing: 'Processing...', tap_to_speak: 'Tap mic to speak',
-    tap_again: 'Tap to speak again', you_said: 'You said', spendly_ai: 'Spendly AI',
+    tap_again: 'Tap to speak again', you_said: 'You said', fina_ai: 'Fina AI',
     navigating: 'Navigating...', voice_hint: 'Double-tap the AI tab anytime to open · Change language in Profile',
     voice_not_supported: 'Voice input is not supported in this browser. Try Chrome or Safari.',
     try_saying: 'Try:',
@@ -129,7 +129,7 @@ const T = {
     delete_account: 'حذف الحساب', delete_warning: 'سيتم حذف جميع بياناتك نهائياً. لا يمكن التراجع.',
     your_plan: 'خطتك', personal_plan: 'الخطة الشخصية — تتضمن تتبع المصاريف، الميزانيات، أهداف الادخار، الذكاء الاصطناعي والمزيد.',
     listening: 'جاري الاستماع...', processing: 'جاري المعالجة...', tap_to_speak: 'اضغط للتحدث',
-    tap_again: 'اضغط للتحدث مجدداً', you_said: 'قلت', spendly_ai: 'سبيندلي AI',
+    tap_again: 'اضغط للتحدث مجدداً', you_said: 'قلت', fina_ai: 'سبيندلي AI',
     navigating: 'جاري الانتقال...', voice_hint: 'انقر مرتين على تبويب الذكاء لفتح المساعد',
     voice_not_supported: 'إدخال الصوت غير مدعوم في هذا المتصفح. جرب Chrome أو Safari.',
     try_saying: 'جرّب:',
@@ -191,7 +191,7 @@ const T = {
     delete_account: 'Supprimer le compte', delete_warning: 'Toutes vos données seront supprimées définitivement.',
     your_plan: 'Votre forfait', personal_plan: 'Forfait personnel — inclut le suivi des dépenses, budgets, objectifs, IA & plus.',
     listening: 'Écoute...', processing: 'Traitement...', tap_to_speak: 'Appuyez pour parler',
-    tap_again: 'Appuyez pour reparler', you_said: 'Vous avez dit', spendly_ai: 'Spendly IA',
+    tap_again: 'Appuyez pour reparler', you_said: 'Vous avez dit', fina_ai: 'Fina IA',
     navigating: 'Navigation...', voice_hint: 'Double-tap sur IA pour ouvrir · Changer la langue dans Profil',
     voice_not_supported: 'Entrée vocale non prise en charge. Essayez Chrome ou Safari.',
     try_saying: 'Essayez :',
@@ -253,7 +253,7 @@ const T = {
     delete_account: 'Eliminar cuenta', delete_warning: 'Se eliminarán todos tus datos permanentemente.',
     your_plan: 'Tu plan', personal_plan: 'Plan personal — incluye seguimiento de gastos, presupuestos, metas, IA y más.',
     listening: 'Escuchando...', processing: 'Procesando...', tap_to_speak: 'Toca para hablar',
-    tap_again: 'Toca para volver a hablar', you_said: 'Dijiste', spendly_ai: 'Spendly IA',
+    tap_again: 'Toca para volver a hablar', you_said: 'Dijiste', fina_ai: 'Fina IA',
     navigating: 'Navegando...', voice_hint: 'Doble toque en IA para abrir · Cambiar idioma en Perfil',
     voice_not_supported: 'Entrada de voz no compatible. Usa Chrome o Safari.',
     try_saying: 'Prueba:',
@@ -315,7 +315,7 @@ const T = {
     delete_account: 'Konto löschen', delete_warning: 'Alle Ihre Daten werden dauerhaft gelöscht.',
     your_plan: 'Ihr Plan', personal_plan: 'Persönlicher Plan — enthält Ausgabenverfolgung, Budgets, Sparziele, KI & mehr.',
     listening: 'Höre zu...', processing: 'Verarbeite...', tap_to_speak: 'Tippen zum Sprechen',
-    tap_again: 'Erneut tippen', you_said: 'Sie sagten', spendly_ai: 'Spendly KI',
+    tap_again: 'Erneut tippen', you_said: 'Sie sagten', fina_ai: 'Fina KI',
     navigating: 'Navigiere...', voice_hint: 'Doppeltippen auf KI zum Öffnen · Sprache in Profil ändern',
     voice_not_supported: 'Spracheingabe nicht unterstützt. Versuchen Sie Chrome oder Safari.',
     try_saying: 'Versuchen Sie:',
@@ -360,7 +360,7 @@ const T = {
     delete_account: 'Elimina account', delete_warning: 'Tutti i tuoi dati verranno eliminati definitivamente.',
     save_preferences: 'Salva preferenze', saved_label: '✅ Salvato!',
     listening: 'Ascolto...', processing: 'Elaborazione...', tap_to_speak: 'Tocca per parlare',
-    tap_again: 'Tocca per riparlare', you_said: 'Hai detto', spendly_ai: 'Spendly IA',
+    tap_again: 'Tocca per riparlare', you_said: 'Hai detto', fina_ai: 'Fina IA',
     navigating: 'Navigazione...', try_saying: 'Prova:',
     ai_insights: 'IA Insights', ask_ai: 'Chiedimi delle tue finanze...',
     get_started: 'Inizia', skip: 'Salta', next: 'Avanti', finish: 'Fine',
@@ -548,8 +548,8 @@ function getLangGroup(code) {
 }
 
 export function getAppLang() {
-  return localStorage.getItem('spendly_lang_app') ||
-         localStorage.getItem('spendly_lang_response') || // migrate old key
+  return localStorage.getItem('fina_lang_app') ||
+         localStorage.getItem('fina_lang_response') || // migrate old key
          'en-US'
 }
 

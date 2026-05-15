@@ -208,7 +208,7 @@ export default function Wellness() {
   if (showGame) {
     return (
       <Layout>
-        <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="max-w-2xl mx-auto px-4 py-6 page-enter">
           <button onClick={() => setShowGame(false)}
             className="flex items-center gap-2 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition mb-5">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -225,7 +225,7 @@ export default function Wellness() {
   if (showTimeMachine) {
     return (
       <Layout>
-        <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="max-w-2xl mx-auto px-4 py-6 page-enter">
           <button onClick={() => setShowTimeMachine(false)}
             className="flex items-center gap-2 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition mb-5">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

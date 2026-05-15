@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useDarkMode } from '../hooks/useDarkMode'
 import VoiceAssistant from './VoiceAssistant'
@@ -104,7 +104,7 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
               <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
             </svg>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">Spendly</h1>
+          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">Fina</h1>
         </div>
         <p className="text-xs text-gray-400 mt-1 ml-9">Track smarter, spend better</p>
       </div>
@@ -178,6 +178,30 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
   const location = useLocation()
   const [showVoice, setShowVoice] = useState(false)
 
+  // ── Bottom nav scroll hide/show ──
+  const [navVisible, setNavVisible] = useState(true)
+  const lastScrollRef = useRef(0)
+  const ticking = useRef(false)
+
+  const setupScrollListener = useCallback((mainEl) => {
+    if (!mainEl) return
+    const onScroll = () => {
+      if (!ticking.current) {
+        requestAnimationFrame(() => {
+          const current = mainEl.scrollTop
+          const diff = current - lastScrollRef.current
+          if (diff > 10 && current > 60) setNavVisible(false)
+          else if (diff < -10) setNavVisible(true)
+          lastScrollRef.current = current
+          ticking.current = false
+        })
+        ticking.current = true
+      }
+    }
+    mainEl.addEventListener('scroll', onScroll, { passive: true })
+    return () => mainEl.removeEventListener('scroll', onScroll)
+  }, [])
+
   // ── Pull to refresh ──
   const mainRef = useRef(null)
   const ptrStartY = useRef(0)
@@ -216,6 +240,11 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
     }
   }
   useEffect(() => () => { isPullingRef.current = false }, [])
+
+  useEffect(() => {
+    const cleanup = setupScrollListener(mainRef.current)
+    return cleanup
+  }, [setupScrollListener])
 
   const current = window.location.pathname
   const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -264,7 +293,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
               <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
             </svg>
           </div>
-          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">Spendly</h1>
+          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">Fina</h1>
           <MobileWalletBadge />
         </div>
         <div className="flex items-center gap-1">
@@ -289,7 +318,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       {/* Main */}
       <main
         ref={mainRef}
-        className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-28 md:pb-0 relative"
+        className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-32 md:pb-6 relative"
         style={{ overscrollBehavior: 'contain', position: 'relative', zIndex: 1 }}
         onTouchStart={onPTRStart}
         onTouchMove={onPTRMove}
@@ -315,7 +344,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
       </main>
 
       {/* Mobile bottom tab bar */}
-      <nav className="sp-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700/60">
+      <nav className={`sp-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-100 dark:border-gray-700/40 transition-transform duration-300 ease-in-out ${navVisible ? 'translate-y-0' : 'translate-y-full'}`}>
         <div className="flex pt-3 pb-2 px-2">
           {TAB_ITEMS.map(item => {
             const isActive = current === item.href

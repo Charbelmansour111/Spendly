@@ -5,7 +5,7 @@ const Parser = require('rss-parser');
 
 const parser = new Parser({
   timeout: 8000,
-  headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Spendly/1.0)' },
+  headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Fina/1.0)' },
   customFields: { item: ['media:thumbnail', 'media:content', 'enclosure'] }
 });
 

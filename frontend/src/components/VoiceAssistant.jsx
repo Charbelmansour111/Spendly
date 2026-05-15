@@ -27,8 +27,8 @@ export default function VoiceAssistant({ onClose }) {
   const [recurringConfirm, setRecurringConfirm] = useState(null)
   const [multiExpenseConfirm, setMultiExpenseConfirm] = useState(null)
 
-  const micLang = localStorage.getItem('spendly_lang_mic') || 'en-US'
-  const responseLang = localStorage.getItem('spendly_lang_app') || localStorage.getItem('spendly_lang_response') || 'en-US'
+  const micLang = localStorage.getItem('fina_lang_mic') || 'en-US'
+  const responseLang = localStorage.getItem('fina_lang_app') || localStorage.getItem('fina_lang_response') || 'en-US'
   const isRTL = micLang.startsWith('ar') || responseLang.startsWith('ar')
 
   const recognitionRef = useRef(null)
@@ -379,7 +379,7 @@ export default function VoiceAssistant({ onClose }) {
                   <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0014 0M12 19v3M9 22h6"/>
                 </svg>
               </div>
-              <p className="text-white font-bold text-sm">Spendly AI</p>
+              <p className="text-white font-bold text-sm">Fina AI</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-white/50 text-[10px] font-medium">

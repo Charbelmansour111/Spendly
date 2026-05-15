@@ -8,7 +8,7 @@ const SHAKE_CSS = `
 }
 `
 
-export default function PinLock({ children, storageKey = 'spendly_networth_pin' }) {
+export default function PinLock({ children, storageKey = 'fina_networth_pin' }) {
   const stored  = () => localStorage.getItem(storageKey)
   const session = () => sessionStorage.getItem(storageKey + '_ok') === '1'
 

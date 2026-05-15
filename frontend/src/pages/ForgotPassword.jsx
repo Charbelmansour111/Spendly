@@ -44,7 +44,7 @@ export default function ForgotPassword() {
                 <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
               </svg>
             </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-white">Spendly</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-white">Fina</span>
           </a>
           <p className="text-gray-500 dark:text-gray-400 text-sm">
             {step === 1 && 'Reset your password'}

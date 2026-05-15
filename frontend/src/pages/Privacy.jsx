@@ -3,7 +3,7 @@ export default function Privacy() {
     <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-800 dark:text-gray-200">
       <div className="max-w-3xl mx-auto px-6 py-16">
         <a href="/" className="inline-flex items-center gap-2 text-violet-600 dark:text-violet-400 text-sm font-medium mb-8 hover:underline">
-          ← Back to Spendly
+          ← Back to Fina
         </a>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Privacy Policy</h1>
         <p className="text-gray-500 dark:text-gray-400 text-sm mb-10">Last updated: April 2026</p>
@@ -12,7 +12,7 @@ export default function Privacy() {
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">1. What We Collect</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-3">When you use Spendly, we collect the following information:</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-3">When you use Fina, we collect the following information:</p>
             <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
               <li><strong className="text-gray-800 dark:text-gray-200">Account information:</strong> name, email address, and encrypted password</li>
               <li><strong className="text-gray-800 dark:text-gray-200">Financial data:</strong> expenses, income, budgets, savings goals, debts, and subscriptions you enter manually</li>
@@ -25,7 +25,7 @@ export default function Privacy() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">2. How We Use Your Data</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-3">Your data is used solely to:</p>
             <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
-              <li>Provide and operate the Spendly service</li>
+              <li>Provide and operate the Fina service</li>
               <li>Generate AI-powered insights based on your financial data</li>
               <li>Send transactional emails (e.g. email verification, password reset)</li>
               <li>Improve the app's features and performance</li>
@@ -45,7 +45,7 @@ export default function Privacy() {
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">5. Third-Party Services</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-3">Spendly uses the following third-party services:</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-3">Fina uses the following third-party services:</p>
             <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
               <li><strong className="text-gray-800 dark:text-gray-200">Render</strong> — cloud hosting for the backend and database</li>
               <li><strong className="text-gray-800 dark:text-gray-200">Anthropic Claude</strong> — AI model for financial insights</li>
@@ -67,12 +67,12 @@ export default function Privacy() {
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">7. Cookies & Local Storage</h2>
-            <p className="text-gray-600 dark:text-gray-400">Spendly uses browser localStorage to store your authentication token, user preferences (currency, dark mode), and game high scores. We do not use tracking cookies or third-party advertising cookies.</p>
+            <p className="text-gray-600 dark:text-gray-400">Fina uses browser localStorage to store your authentication token, user preferences (currency, dark mode), and game high scores. We do not use tracking cookies or third-party advertising cookies.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">8. Children's Privacy</h2>
-            <p className="text-gray-600 dark:text-gray-400">Spendly is not intended for users under the age of 13. We do not knowingly collect personal information from children.</p>
+            <p className="text-gray-600 dark:text-gray-400">Fina is not intended for users under the age of 13. We do not knowingly collect personal information from children.</p>
           </section>
 
           <section>

@@ -71,7 +71,7 @@ export default function QuickAdd() {
     try { recRef.current?.abort() } catch {}
 
     const r = new SR()
-    r.lang = localStorage.getItem('speechLang') || localStorage.getItem('spendly_lang_mic') || 'en-US'
+    r.lang = localStorage.getItem('speechLang') || localStorage.getItem('fina_lang_mic') || 'en-US'
     r.continuous = false
     r.interimResults = true
 

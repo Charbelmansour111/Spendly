@@ -75,9 +75,10 @@ app.use('/api/support', require('./routes/support'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/splits', require('./routes/splits'));
 app.use('/api/currency', require('./routes/currency'));
+app.use('/api/onboarding', require('./routes/onboarding'));
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Spendly API is running' });
+  res.json({ message: 'Fina API is running' });
 });
 
 app.get('/api/health/ai', async (req, res) => {

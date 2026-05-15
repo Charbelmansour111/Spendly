@@ -33,9 +33,9 @@ router.post('/ticket', auth, async (req, res) => {
     )
 
     await transporter.sendMail({
-      from: `"Spendly Support" <${process.env.GMAIL_USER}>`,
+      from: `"Fina Support" <${process.env.GMAIL_USER}>`,
       to: 'charbel.mansourb@gmail.com',
-      subject: `[Spendly Support] ${subject}`,
+      subject: `[Fina Support] ${subject}`,
       html: `
         <div style="font-family:sans-serif;max-width:600px">
           <h2 style="color:#7c3aed">New Support Ticket</h2>

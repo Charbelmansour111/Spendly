@@ -133,13 +133,13 @@ export default function Insights() {
   const [expenses, setExpenses] = useState([])
   const [income, setIncome] = useState([])
   const [currencySymbol] = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
-  const [micLangMode, setMicLangMode] = useState(() => localStorage.getItem('spendly_mic_lang') || 'en')
+  const [micLangMode, setMicLangMode] = useState(() => localStorage.getItem('fina_mic_lang') || 'en')
   const [modalData, setModalData] = useState(null)
-  const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('spendly_insights_tts') === 'true')
+  const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('fina_insights_tts') === 'true')
   const [listening, setListening]   = useState(false)
   const messagesEndRef  = useRef(null)
   const recognitionRef  = useRef(null)
-  const micLang = localStorage.getItem('spendly_lang_mic') || 'en-US'
+  const micLang = localStorage.getItem('fina_lang_mic') || 'en-US'
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -157,7 +157,7 @@ export default function Insights() {
     if (!window.speechSynthesis) return
     window.speechSynthesis.cancel()
     const utt = new SpeechSynthesisUtterance(text)
-    utt.lang = localStorage.getItem('spendly_lang_app') || 'en-US'
+    utt.lang = localStorage.getItem('fina_lang_app') || 'en-US'
     utt.rate = 0.95
     window.speechSynthesis.speak(utt)
   }
@@ -165,7 +165,7 @@ export default function Insights() {
   const toggleTts = () => {
     const next = !ttsEnabled
     setTtsEnabled(next)
-    localStorage.setItem('spendly_insights_tts', String(next))
+    localStorage.setItem('fina_insights_tts', String(next))
     if (!next) window.speechSynthesis?.cancel()
   }
 
@@ -261,7 +261,7 @@ export default function Insights() {
   const toggleMicLang = () => {
     const next = micLangMode === 'en' ? 'ar' : 'en'
     setMicLangMode(next)
-    localStorage.setItem('spendly_mic_lang', next)
+    localStorage.setItem('fina_mic_lang', next)
   }
 
   const startMic = () => {
@@ -269,7 +269,7 @@ export default function Insights() {
     if (!SR) { setMessages(m => [...m, { role: 'assistant', content: "Speech recognition isn't supported in this browser. Try Chrome." }]); return }
     window.speechSynthesis?.cancel()
     const rec = new SR()
-    rec.lang = micLangMode === 'ar' ? 'ar' : (localStorage.getItem('spendly_lang_mic') || 'en-US')
+    rec.lang = micLangMode === 'ar' ? 'ar' : (localStorage.getItem('fina_lang_mic') || 'en-US')
     rec.interimResults = false
     rec.maxAlternatives = 3
     recognitionRef.current = rec
@@ -447,56 +447,47 @@ export default function Insights() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
+          {/* Input — animated expanded chat input */}
           <div className="border-t border-gray-100 dark:border-gray-700 p-3">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={listening ? (micLangMode === 'ar' ? '…بيسمعك' : 'Listening…') : 'Ask anything — English or Lebanese Arabic...'}
-                className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                dir={micLangMode === 'ar' && input && /[؀-ۿ]/.test(input) ? 'rtl' : 'ltr'}
-              />
-              <button
-                onClick={toggleMicLang}
-                title={micLangMode === 'ar' ? 'Switch to English mic' : 'Switch to Arabic mic'}
-                className={`px-2.5 py-2.5 rounded-xl transition text-xs font-bold ${
-                  micLangMode === 'ar'
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                }`}>
-                {micLangMode === 'ar' ? 'ع' : 'EN'}
-              </button>
-              <button
-                onClick={listening ? stopMic : startMic}
-                disabled={loading}
-                title={listening ? 'Stop listening' : (micLangMode === 'ar' ? 'تحدث بالعربي' : 'Speak in English')}
-                className={`px-3 py-2.5 rounded-xl transition flex items-center justify-center ${
-                  listening
-                    ? 'bg-red-500 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-violet-100 hover:text-violet-600'
-                }`}>
-                {listening ? (
-                  <span className="flex gap-0.5 items-end">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={listening ? (micLangMode === 'ar' ? '…بيسمعك' : 'Listening…') : 'Ask anything about your finances…'}
+                  className="w-full px-4 py-3 pr-10 border border-gray-200 dark:border-gray-600 rounded-2xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm transition shadow-sm"
+                  dir={micLangMode === 'ar' && input && /[؀-ۿ]/.test(input) ? 'rtl' : 'ltr'}
+                />
+                {listening && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-0.5 items-end">
                     {[4,7,5].map((h, i) => (
-                      <span key={i} className="w-0.5 bg-white rounded-full animate-pulse" style={{ height: `${h}px`, animationDelay: `${i*0.12}s` }} />
+                      <span key={i} className="w-0.5 bg-red-500 rounded-full animate-pulse" style={{ height: `${h}px`, animationDelay: `${i*0.12}s` }} />
                     ))}
                   </span>
-                ) : (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                    <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-                  </svg>
                 )}
+              </div>
+              <button onClick={toggleMicLang} title={micLangMode === 'ar' ? 'EN mic' : 'AR mic'}
+                className={`shrink-0 w-10 h-10 rounded-2xl transition text-xs font-bold ${
+                  micLangMode === 'ar' ? 'bg-green-100 dark:bg-green-900/30 text-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+                {micLangMode === 'ar' ? 'ع' : 'EN'}
               </button>
-              <button
-                onClick={() => sendMessage()}
-                disabled={loading || !input.trim()}
-                className="bg-violet-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-                {loading ? '...' : 'Send'}
+              <button onClick={listening ? stopMic : startMic} disabled={loading}
+                className={`shrink-0 w-10 h-10 rounded-2xl transition flex items-center justify-center ${
+                  listening ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-violet-100 hover:text-violet-600'}`}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+              <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
+                className="shrink-0 w-10 h-10 bg-violet-600 text-white rounded-2xl font-bold hover:bg-violet-700 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shadow-sm">
+                {loading
+                  ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                }
               </button>
             </div>
           </div>
