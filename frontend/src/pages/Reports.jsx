@@ -6,6 +6,9 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, LineChart, Line, CartesianGrid } from 'recharts'
 import { METHOD_ICONS, METHOD_COLORS } from '../utils/paymentMethods'
+import { AnimatePresence, motion } from 'motion/react'
+import { AIChatInput } from '../components/ui/AIChatInput'
+import { Sparkles } from 'lucide-react'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 const COLORS = ['#7C3AED', '#2563EB', '#059669', '#D97706', '#EC4899', '#F59E0B', '#10B981', '#3B82F6']
@@ -252,7 +255,56 @@ export default function Reports() {
   const [forecastPeriod, setForecastPeriod] = useState(30)
   const aiRequested = useRef(false)
 
+  // AI Chat state
+  const [chatMessages, setChatMessages] = useState([{ role: 'ai', content: "Hey! I'm your Fina AI advisor. Ask me anything about your finances — spending, savings, budgets, or anything else." }])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const [listening, setListening] = useState(false)
+  const [micLangMode, setMicLangMode] = useState('en')
+  const chatEndRef = useRef(null)
+  const recognitionRef = useRef(null)
+
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), [])
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages])
+
+  const toggleMicLang = () => setMicLangMode(m => m === 'en' ? 'ar' : 'en')
+
+  const sendChatMessage = useCallback(async (msg) => {
+    const text = (msg || chatInput).trim()
+    if (!text || chatLoading) return
+    setChatInput('')
+    setChatMessages(prev => [...prev, { role: 'user', content: text }])
+    setChatLoading(true)
+    try {
+      const r = await API.post('/insights/chat', { message: text })
+      setChatMessages(prev => [...prev, { role: 'ai', content: r.data.reply || '' }])
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'ai', content: 'Sorry, I had trouble connecting. Please try again.' }])
+    } finally {
+      setChatLoading(false)
+    }
+  }, [chatInput, chatLoading])
+
+  const startMic = () => {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    const rec = new SR()
+    rec.lang = micLangMode === 'ar' ? 'ar-LB' : 'en-US'
+    rec.interimResults = false
+    rec.onresult = e => { setChatInput(e.results[0][0].transcript); setListening(false) }
+    rec.onerror = () => setListening(false)
+    rec.onend = () => setListening(false)
+    recognitionRef.current = rec
+    rec.start()
+    setListening(true)
+  }
+
+  const stopMic = () => { recognitionRef.current?.stop(); setListening(false) }
+
+  const handleChatKeyDown = e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() }
+  }
 
   const monthName = new Date(selectedYear, selectedMonth, 1).toLocaleString('default', { month: 'long', year: 'numeric' })
   const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear()
@@ -499,7 +551,7 @@ export default function Reports() {
 
         {/* Tab bar */}
         <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-6">
-          {[{ key: 'analytics', label: '📊 Analytics' }, { key: 'recap', label: '🗓️ Monthly Recap' }].map(t => (
+          {[{ key: 'analytics', label: '📊 Analytics' }, { key: 'recap', label: '🗓️ Monthly Recap' }, { key: 'ai', label: '✨ AI Chat' }].map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition ${activeTab === t.key ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600 dark:text-violet-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>
               {t.label}
@@ -1166,6 +1218,109 @@ export default function Reports() {
             </div>
           )
         })()}
+
+        {/* ── AI CHAT TAB ─────────────────────────────────── */}
+        {activeTab === 'ai' && (
+          <div className="flex flex-col" style={{ height: 'calc(100vh - 300px)', minHeight: 520 }}>
+
+            {/* Header banner */}
+            <div className="bg-linear-to-br from-violet-600 to-purple-700 rounded-2xl p-5 mb-4 shadow-lg shadow-violet-500/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                  <Sparkles size={20} className="text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-white text-base leading-tight">Fina AI Advisor</p>
+                  <p className="text-white/70 text-xs mt-0.5">Ask anything about your {monthName} finances</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  <span className="text-xs text-white/70">Online</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto space-y-3 mb-3 pr-1">
+              <AnimatePresence initial={false}>
+                {chatMessages.map((msg, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22 }}
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2`}
+                  >
+                    {msg.role === 'ai' && (
+                      <div className="w-7 h-7 rounded-xl bg-linear-to-br from-violet-500 to-purple-700 flex items-center justify-center shrink-0 shadow-sm shadow-violet-400/30">
+                        <Sparkles size={13} className="text-white" />
+                      </div>
+                    )}
+                    <div className={`max-w-[78%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'bg-violet-600 text-white rounded-br-sm shadow-sm shadow-violet-400/20'
+                        : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 shadow-sm border border-gray-100 dark:border-gray-700 rounded-bl-sm'
+                    }`}>
+                      {renderMarkdown(msg.content)}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              {chatLoading && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start items-end gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-linear-to-br from-violet-500 to-purple-700 flex items-center justify-center shrink-0">
+                    <Sparkles size={13} className="text-white" />
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm">
+                    <div className="flex gap-1 items-center h-4">
+                      {[0, 1, 2].map(i => (
+                        <span key={i} className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Quick questions — shown only at start */}
+            {chatMessages.length <= 1 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {[
+                  'Where am I overspending?',
+                  "How's my savings rate?",
+                  'Give me a savings tip',
+                  "What's my biggest expense?",
+                  'Compare to last month',
+                ].map(q => (
+                  <button
+                    key={q}
+                    onClick={() => sendChatMessage(q)}
+                    disabled={chatLoading}
+                    className="text-xs bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800/40 px-3 py-1.5 rounded-full hover:bg-violet-100 dark:hover:bg-violet-900/30 transition disabled:opacity-50"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Chat input */}
+            <AIChatInput
+              input={chatInput}
+              setInput={setChatInput}
+              loading={chatLoading}
+              listening={listening}
+              onSend={sendChatMessage}
+              onStartMic={startMic}
+              onStopMic={stopMic}
+              micLangMode={micLangMode}
+              onToggleMicLang={toggleMicLang}
+              onKeyDown={handleChatKeyDown}
+            />
+          </div>
+        )}
 
       </div>
     </Layout>
