@@ -104,7 +104,11 @@ function HeatmapCalendar({ year, month, monthExpenses, monthIncome, sym, fmt, mo
   const hasActivity = dayExpenses.length > 0 || dayIncome.length > 0
   const selectedDateStr = selectedDay ? dateStr(selectedDay) : null
   const dayReminders = selectedDateStr ? reminders.filter(r => r.date === selectedDateStr) : []
-  const isFutureDay = selectedDay ? (isCurrentMonth && selectedDay > today.getDate()) : false
+
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const selectedDate  = selectedDay ? new Date(year, month, selectedDay) : null
+  const isPastDay     = selectedDate ? selectedDate < todayMidnight : false
+  const isFutureDay   = selectedDate ? selectedDate > todayMidnight : false
 
   return (
     <div>
@@ -157,7 +161,7 @@ function HeatmapCalendar({ year, month, monthExpenses, monthIncome, sym, fmt, mo
         <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4 space-y-4">
           <p className="text-xs font-bold text-gray-700 dark:text-gray-200">{monthName} {selectedDay}</p>
 
-          {/* Transactions — only past/today */}
+          {/* Transactions — past/today only */}
           {!isFutureDay && (
             !hasActivity ? (
               <div className="text-center py-3">
@@ -209,7 +213,7 @@ function HeatmapCalendar({ year, month, monthExpenses, monthIncome, sym, fmt, mo
             )
           )}
 
-          {/* Reminders section — always shown */}
+          {/* Reminders — show existing on all days; input only on today/future */}
           <div className="bg-violet-50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-800/30 rounded-2xl p-3">
             <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wide mb-2">
               🔔 Reminders
@@ -228,24 +232,30 @@ function HeatmapCalendar({ year, month, monthExpenses, monthIncome, sym, fmt, mo
               </div>
             )}
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={reminderText}
-                onChange={e => setReminderText(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addReminder()}
-                placeholder="Add a reminder…"
-                className="flex-1 text-xs bg-white dark:bg-gray-800 border border-violet-200 dark:border-violet-700/50 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-violet-400 text-gray-800 dark:text-white placeholder-gray-400"
-              />
-              <button
-                onClick={addReminder}
-                disabled={!reminderText.trim()}
-                className="bg-violet-600 hover:bg-violet-700 disabled:opacity-30 text-white text-xs font-semibold px-3 py-2 rounded-xl transition"
-              >
-                Save
-              </button>
-            </div>
-            <p className="text-[10px] text-violet-400 mt-1.5">You'll get a notification on this date when the app is open.</p>
+            {isPastDay ? (
+              <p className="text-xs text-gray-400 italic">This day has passed — reminders can only be added to today or future dates.</p>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={reminderText}
+                    onChange={e => setReminderText(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addReminder()}
+                    placeholder="Add a reminder…"
+                    className="flex-1 text-xs bg-white dark:bg-gray-800 border border-violet-200 dark:border-violet-700/50 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-violet-400 text-gray-800 dark:text-white placeholder-gray-400"
+                  />
+                  <button
+                    onClick={addReminder}
+                    disabled={!reminderText.trim()}
+                    className="bg-violet-600 hover:bg-violet-700 disabled:opacity-30 text-white text-xs font-semibold px-3 py-2 rounded-xl transition"
+                  >
+                    Save
+                  </button>
+                </div>
+                <p className="text-[10px] text-violet-400 mt-1.5">You'll get a notification on this date when the app is open.</p>
+              </>
+            )}
           </div>
         </div>
       )}

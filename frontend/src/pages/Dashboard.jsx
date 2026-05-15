@@ -1144,41 +1144,29 @@ export default function Dashboard() {
 
       <div className="max-w-2xl mx-auto px-4 py-4 pb-8 page-enter">
 
-        {/* Premium Greeting Header */}
-        {isCurrentMonth && (
-          <div className="flex items-start justify-between mb-5">
-            <div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-              </p>
-              <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white mt-0.5">
-                {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening' })()}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} 👋
-              </h1>
-            </div>
-            {/* Month selector toggle */}
-            <button
-              onClick={toggleMonthSelector}
-              title={showMonthSelector ? 'Hide month selector' : 'Browse other months'}
-              className={`mt-1 p-2 rounded-xl border transition ${showMonthSelector ? 'border-violet-300 bg-violet-50 dark:bg-violet-900/20 text-violet-600' : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:border-violet-300 hover:text-violet-500'}`}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-            </button>
-          </div>
-        )}
-
         {/* Month Selector — hidden by default, user-controlled */}
-        {showMonthSelector && (
+        {showMonthSelector ? (
           <div className="flex items-center justify-between mb-4 bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-sm border border-gray-100 dark:border-gray-700">
             <button onClick={prevMonth} className="w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-violet-50 hover:text-violet-600 transition font-bold text-lg">&lsaquo;</button>
             <div className="text-center">
               <p className="font-semibold text-gray-800 dark:text-white text-sm">{monthName}</p>
               {isCurrentMonth && <span className="text-xs text-violet-500 font-medium">Current month</span>}
             </div>
-            <button onClick={nextMonth} disabled={isCurrentMonth}
-              className={`w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center transition font-bold text-lg ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-violet-50 hover:text-violet-600'}`}>
-              &rsaquo;
+            <div className="flex items-center gap-1">
+              <button onClick={nextMonth} disabled={isCurrentMonth}
+                className={`w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center transition font-bold text-lg ${isCurrentMonth ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:bg-violet-50 hover:text-violet-600'}`}>
+                &rsaquo;
+              </button>
+              <button onClick={toggleMonthSelector} className="w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 hover:text-red-400 transition text-base">✕</button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-end mb-3">
+            <button onClick={toggleMonthSelector} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition font-medium">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              Browse months
             </button>
           </div>
         )}
