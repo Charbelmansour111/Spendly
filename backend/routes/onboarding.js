@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const authenticateToken = require('../middleware/auth');
+const _auth = require('../middleware/auth');
+const authenticateToken = typeof _auth === 'function' ? _auth : _auth.authenticateToken;
+console.log('[onboarding] authenticateToken type:', typeof authenticateToken);
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
