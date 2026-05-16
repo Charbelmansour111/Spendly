@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
-import API from '../utils/api'
+import { useWallet } from '../context/WalletContext'
 
 const BASE = 'https://spendly-backend-et20.onrender.com/api'
 
@@ -124,11 +124,16 @@ function PinModal({ onUnlock }) {
 const EMPTY = { items: [], totalAssets: 0, totalLiabilities: 0, netWorth: 0, cashBalance: 0, history: [] }
 
 export default function NetWorth() {
+  const { activeWallet } = useWallet()
+  const isFamilyWallet  = !!activeWallet?.is_total_wallet
+  const walletId        = activeWallet?.id
+
   const hasPinSet = !!localStorage.getItem('fina_nw_pin')
   const [pinUnlocked, setPinUnlocked] = useState(false)
   const [data, setData]         = useState(EMPTY)
   const [totalData, setTotalData] = useState(null)
-  const [view, setView]         = useState('mine') // 'mine' | 'all'
+  // Family Overview always shows the "all" view
+  const [view, setView]         = useState(isFamilyWallet ? 'all' : 'mine')
   const [loading, setLoading]   = useState(true)
   const [loadingAll, setLoadingAll] = useState(false)
   const [toast, setToast]       = useState(null)
@@ -141,28 +146,42 @@ export default function NetWorth() {
 
   const showToast = (message, type = 'success') => setToast({ message, type })
 
+  // My Wallet — calls /api/wallets/:id/networth for the active wallet
   const load = useCallback(async () => {
+    if (!walletId) { setLoading(false); return }
     try {
-      const r = await API.get('/networth')
-      setData(r.data)
-      const { totalAssets, totalLiabilities, netWorth } = r.data
-      API.post('/networth/snapshot', { totalAssets, totalLiabilities, netWorth }).catch(() => {})
+      const token = localStorage.getItem('token')
+      const r = await fetch(`${BASE}/wallets/${walletId}/networth`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await r.json()
+      if (!r.ok) throw new Error(json.message)
+      setData(json)
+      const { totalAssets, totalLiabilities, netWorth } = json
+      fetch(`${BASE}/networth/snapshot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ totalAssets, totalLiabilities, netWorth }),
+      }).catch(() => {})
     } catch {
-      showToast('Failed to load net worth data', 'error')
+      showToast('Failed to load wallet net worth', 'error')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [walletId])
 
+  // All Wallets — calls /api/wallets/total/networth (excludes Family Overview wallet)
   const loadTotal = useCallback(async () => {
     if (totalData) return
     setLoadingAll(true)
     try {
       const token = localStorage.getItem('token')
-      const r = await fetch(`${BASE}/net-worth`, { headers: { Authorization: `Bearer ${token}` } })
+      const r = await fetch(`${BASE}/wallets/total/networth`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       const json = await r.json()
-      if (!json.message) setTotalData(json)
-      else showToast('No total net worth data yet', 'error')
+      if (!r.ok) throw new Error(json.message)
+      setTotalData(json)
     } catch {
       showToast('Failed to load total net worth', 'error')
     } finally {
@@ -173,8 +192,14 @@ export default function NetWorth() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { window.location.href = '/login'; return }
-    load()
-  }, [load])
+    if (isFamilyWallet) {
+      // Family Overview → load total directly, skip per-wallet load
+      setLoading(false)
+      loadTotal()
+    } else {
+      load()
+    }
+  }, [load, loadTotal, isFamilyWallet])
 
   function handleViewSwitch(v) {
     setView(v)
@@ -192,16 +217,30 @@ export default function NetWorth() {
     setModal({ type: item.type, item })
   }
 
+  const authFetch = (path, opts = {}) => {
+    const token = localStorage.getItem('token')
+    return fetch(`${BASE}${path}`, {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(opts.headers || {}) },
+    })
+  }
+
   const handleSave = async (e) => {
     e.preventDefault()
     if (!form.name.trim() || !form.amount) return
     setSaving(true)
     try {
       if (modal.item) {
-        await API.put(`/networth/item/${modal.item.id}`, { name: form.name, category: form.category, amount: parseFloat(form.amount) })
+        await authFetch(`/networth/item/${modal.item.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ name: form.name, category: form.category, amount: parseFloat(form.amount) }),
+        })
         showToast('Updated successfully')
       } else {
-        await API.post('/networth/item', { name: form.name, category: form.category, amount: parseFloat(form.amount), type: modal.type })
+        await authFetch('/networth/item', {
+          method: 'POST',
+          body: JSON.stringify({ name: form.name, category: form.category, amount: parseFloat(form.amount), type: modal.type }),
+        })
         showToast('Added successfully')
       }
       setModal(null)
@@ -215,7 +254,7 @@ export default function NetWorth() {
 
   const handleDelete = async (id) => {
     try {
-      await API.delete(`/networth/item/${id}`)
+      await authFetch(`/networth/item/${id}`, { method: 'DELETE' })
       setDeleteId(null)
       showToast('Deleted')
       load()
@@ -268,39 +307,43 @@ export default function NetWorth() {
           <p className="text-sm text-gray-400 mt-0.5">Your total financial picture</p>
         </div>
 
-        {/* View toggle */}
-        <div className="flex gap-1 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-2xl mb-5">
-          <button
-            onClick={() => handleViewSwitch('mine')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
-              view === 'mine'
-                ? 'bg-white dark:bg-gray-800 text-violet-600 dark:text-violet-400 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            My Wallet
-          </button>
-          <button
-            onClick={() => handleViewSwitch('all')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
-              view === 'all'
-                ? 'bg-white dark:bg-gray-800 text-violet-600 dark:text-violet-400 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            {loadingAll
-              ? <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-violet-500 rounded-full animate-spin" />
-              : '👨‍👩‍👧‍👦'}
-            All Wallets
-          </button>
-        </div>
+        {/* View toggle — hidden on Family Overview (always shows all) */}
+        {!isFamilyWallet && (
+          <div className="flex gap-1 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-2xl mb-5">
+            <button
+              onClick={() => handleViewSwitch('mine')}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+                view === 'mine'
+                  ? 'bg-white dark:bg-gray-800 text-violet-600 dark:text-violet-400 shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              My Wallet
+            </button>
+            <button
+              onClick={() => handleViewSwitch('all')}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
+                view === 'all'
+                  ? 'bg-white dark:bg-gray-800 text-violet-600 dark:text-violet-400 shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              {loadingAll
+                ? <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-violet-500 rounded-full animate-spin" />
+                : '👨‍👩‍👧‍👦'}
+              All Wallets
+            </button>
+          </div>
+        )}
 
-        {/* All-wallets info banner */}
+        {/* Info banner */}
         {view === 'all' && (
           <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/40 rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
-            <span className="text-lg shrink-0">ℹ️</span>
+            <span className="text-lg shrink-0">{isFamilyWallet ? '👨‍👩‍👧‍👦' : 'ℹ️'}</span>
             <p className="text-xs text-violet-700 dark:text-violet-300 leading-relaxed">
-              Showing combined net worth across all your wallets. Read-only — manage items inside each wallet.
+              {isFamilyWallet
+                ? 'Combined net worth across all your personal wallets.'
+                : 'Showing combined net worth across all your wallets. Read-only — manage items inside each wallet.'}
             </p>
           </div>
         )}

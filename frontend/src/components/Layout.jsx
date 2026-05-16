@@ -7,6 +7,95 @@ import { t, isRTL } from '../i18n'
 import { useWallet } from '../context/WalletContext'
 import { getAvatarUrl, getWalletColor } from '../data/avatars'
 
+const API_BASE = 'https://spendly-backend-et20.onrender.com/api'
+
+function useNotifications() {
+  const [notifs, setNotifs]       = useState([])
+  const [showPanel, setShowPanel] = useState(false)
+  const panelRef                  = useRef(null)
+
+  const fetch_ = useCallback(async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    try {
+      const r = await fetch(`${API_BASE}/notifications`, { headers: { Authorization: `Bearer ${token}` } })
+      if (r.ok) setNotifs(await r.json())
+    } catch { /* noop */ }
+  }, [])
+
+  useEffect(() => { fetch_() }, [fetch_])
+
+  useEffect(() => {
+    if (!showPanel) return
+    const handler = (e) => { if (panelRef.current && !panelRef.current.contains(e.target)) setShowPanel(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showPanel])
+
+  const markRead = useCallback(async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    try {
+      await fetch(`${API_BASE}/notifications/read`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } })
+      setNotifs(prev => prev.map(n => ({ ...n, is_read: true })))
+    } catch { /* noop */ }
+  }, [])
+
+  const dismiss = useCallback(async (id) => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    try {
+      await fetch(`${API_BASE}/notifications/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+      setNotifs(prev => prev.filter(n => n.id !== id))
+    } catch { /* noop */ }
+  }, [])
+
+  const togglePanel = () => {
+    setShowPanel(v => {
+      if (!v) markRead()
+      return !v
+    })
+  }
+
+  const unread = notifs.filter(n => !n.is_read).length
+
+  return { notifs, showPanel, panelRef, unread, togglePanel, dismiss }
+}
+
+function NotificationPanel({ panelRef, notifs, onDismiss }) {
+  return (
+    <div
+      ref={panelRef}
+      className="fixed top-16 right-4 z-50 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden"
+    >
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+        <p className="font-bold text-gray-900 dark:text-white text-sm">Notifications</p>
+        <span className="text-xs text-gray-400">{notifs.length} total</span>
+      </div>
+      <div className="max-h-80 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-700/60">
+        {notifs.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p className="text-2xl mb-2">🔔</p>
+            <p className="text-sm text-gray-400">No notifications yet</p>
+          </div>
+        ) : notifs.map(n => (
+          <div key={n.id} className={`flex items-start gap-3 px-4 py-3 ${n.is_read ? '' : 'bg-violet-50 dark:bg-violet-900/10'}`}>
+            <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: n.is_read ? '#D1D5DB' : '#7C3AED' }} />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-gray-800 dark:text-white leading-snug">{n.title || n.message}</p>
+              {n.title && n.message && <p className="text-xs text-gray-400 mt-0.5 leading-snug">{n.message}</p>}
+              {n.created_at && (
+                <p className="text-[10px] text-gray-400 mt-1">{new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+              )}
+            </div>
+            <button onClick={() => onDismiss(n.id)} className="text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 text-sm shrink-0 p-0.5">✕</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const Icons = {
   // Dashboard — 2×2 grid (clean, modern)
   home: (a) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.9" fill={a?'currentColor':'none'} fillOpacity={a?0.18:0}/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.9" fill={a?'currentColor':'none'} fillOpacity={a?0.18:0}/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.9" fill={a?'currentColor':'none'} fillOpacity={a?0.18:0}/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.9" fill={a?'currentColor':'none'} fillOpacity={a?0.18:0}/></svg>),
@@ -182,11 +271,14 @@ function SidebarContent({ user, current, dark, toggleDark, onBellClick, unreadCo
   )
 }
 
-export default function Layout({ children, onBellClick, unreadCount = 0 }) {
+export default function Layout({ children, onBellClick: externalBellClick, unreadCount: externalUnread }) {
   const [dark, toggleDark] = useDarkMode()
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
   const [showVoice, setShowVoice] = useState(false)
+  const { notifs, showPanel, panelRef, unread: internalUnread, togglePanel, dismiss } = useNotifications()
+  const unreadCount = externalUnread ?? internalUnread
+  const handleBellClick = externalBellClick ?? togglePanel
 
   // ── Bottom nav scroll hide/show ──
   const [navVisible, setNavVisible] = useState(true)
@@ -285,7 +377,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
     }
   }
 
-  const sidebarProps = { user, current, dark, toggleDark, onBellClick, unreadCount, onLogout: handleLogout, navItems: activeNavItems }
+  const sidebarProps = { user, current, dark, toggleDark, onBellClick: handleBellClick, unreadCount, onLogout: handleLogout, navItems: activeNavItems }
 
   return (
     <div className="flex h-screen overflow-hidden relative" style={{ background: 'transparent' }} dir={isRTL() ? 'rtl' : 'ltr'}>
@@ -307,7 +399,7 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
           <MobileWalletBadge />
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={onBellClick} className="relative p-2 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+          <button onClick={handleBellClick} className="relative p-2 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
             {Icons.bell()}
             {unreadCount > 0 && <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{unreadCount > 9 ? '9+' : unreadCount}</span>}
           </button>
@@ -378,6 +470,9 @@ export default function Layout({ children, onBellClick, unreadCount = 0 }) {
 
       {showVoice && <VoiceAssistant onClose={() => setShowVoice(false)} />}
       <TourBanner />
+      {showPanel && !externalBellClick && (
+        <NotificationPanel panelRef={panelRef} notifs={notifs} onDismiss={dismiss} />
+      )}
     </div>
   )
 }
