@@ -75,23 +75,33 @@ function ConfirmModal({ message, onConfirm, onCancel, confirmText = 'Delete' }) 
 }
 
 const BRAND_LOGOS = {
-  "Netflix":       "https://logo.clearbit.com/netflix.com",
-  "Spotify":       "https://logo.clearbit.com/spotify.com",
-  "Disney+":       "https://logo.clearbit.com/disneyplus.com",
-  "HBO Max":       "https://logo.clearbit.com/hbo.com",
-  "Amazon Prime":  "https://logo.clearbit.com/amazon.com",
-  "Apple TV+":     "https://logo.clearbit.com/apple.com",
-  "YouTube":       "https://logo.clearbit.com/youtube.com",
-  "Crunchyroll":   "https://logo.clearbit.com/crunchyroll.com",
-  "McDonald's":    "https://logo.clearbit.com/mcdonalds.com",
-  "KFC":           "https://logo.clearbit.com/kfc.com",
-  "Starbucks":     "https://logo.clearbit.com/starbucks.com",
-  "Pizza Hut":     "https://logo.clearbit.com/pizzahut.com",
-  "Burger King":   "https://logo.clearbit.com/burgerking.com",
-  "Uber":          "https://logo.clearbit.com/uber.com",
-  "Shell":         "https://logo.clearbit.com/shell.com",
-  "Amazon":        "https://logo.clearbit.com/amazon.com",
-  "IKEA":          "https://logo.clearbit.com/ikea.com",
+  "Netflix":        "https://logo.clearbit.com/netflix.com",
+  "Spotify":        "https://logo.clearbit.com/spotify.com",
+  "Disney+":        "https://logo.clearbit.com/disneyplus.com",
+  "HBO Max":        "https://logo.clearbit.com/hbo.com",
+  "Amazon Prime":   "https://logo.clearbit.com/amazon.com",
+  "Apple TV+":      "https://logo.clearbit.com/apple.com",
+  "YouTube":        "https://logo.clearbit.com/youtube.com",
+  "Crunchyroll":    "https://logo.clearbit.com/crunchyroll.com",
+  "ChatGPT":        "https://logo.clearbit.com/openai.com",
+  "Claude AI":      "https://logo.clearbit.com/anthropic.com",
+  "Midjourney":     "https://logo.clearbit.com/midjourney.com",
+  "Microsoft 365":  "https://logo.clearbit.com/microsoft.com",
+  "Adobe CC":       "https://logo.clearbit.com/adobe.com",
+  "GitHub":         "https://logo.clearbit.com/github.com",
+  "Notion":         "https://logo.clearbit.com/notion.so",
+  "iCloud":         "https://logo.clearbit.com/apple.com",
+  "Xbox Game Pass": "https://logo.clearbit.com/xbox.com",
+  "PlayStation":    "https://logo.clearbit.com/playstation.com",
+  "McDonald's":     "https://logo.clearbit.com/mcdonalds.com",
+  "KFC":            "https://logo.clearbit.com/kfc.com",
+  "Starbucks":      "https://logo.clearbit.com/starbucks.com",
+  "Pizza Hut":      "https://logo.clearbit.com/pizzahut.com",
+  "Burger King":    "https://logo.clearbit.com/burgerking.com",
+  "Uber":           "https://logo.clearbit.com/uber.com",
+  "Shell":          "https://logo.clearbit.com/shell.com",
+  "Amazon":         "https://logo.clearbit.com/amazon.com",
+  "IKEA":           "https://logo.clearbit.com/ikea.com",
 }
 
 const SUBCATEGORIES = {
@@ -162,10 +172,18 @@ const SUBCATEGORIES = {
     { label: 'Anniversary', emoji: '🥂' }, { label: 'Holiday Gift', emoji: '🎁' },
   ],
   Subscriptions: [
-    { label: 'Netflix', emoji: '🎬' }, { label: 'Spotify', emoji: '🎵' },
-    { label: 'Disney+', emoji: '🏰' }, { label: 'HBO Max', emoji: '🎭' },
-    { label: 'Amazon Prime', emoji: '📦' }, { label: 'Apple TV+', emoji: '🍎' },
-    { label: 'YouTube', emoji: '▶️' }, { label: 'Crunchyroll', emoji: '🎌' },
+    { label: 'Netflix',       emoji: '🎬' }, { label: 'Spotify',        emoji: '🎵' },
+    { label: 'ChatGPT',       emoji: '🤖' }, { label: 'YouTube',        emoji: '▶️' },
+    { label: 'Disney+',       emoji: '🏰' }, { label: 'Amazon Prime',   emoji: '📦' },
+    { label: 'Apple TV+',     emoji: '🍎' }, { label: 'Claude AI',      emoji: '✨' },
+    { label: 'Electricity',   emoji: '⚡' }, { label: 'Water',          emoji: '💧' },
+    { label: 'Touch',         emoji: '📡' }, { label: 'Alfa',           emoji: '📡' },
+    { label: 'Internet',      emoji: '🌐' }, { label: 'HBO Max',        emoji: '🎭' },
+    { label: 'Midjourney',    emoji: '🎨' }, { label: 'Microsoft 365',  emoji: '💼' },
+    { label: 'Adobe CC',      emoji: '🎨' }, { label: 'GitHub',         emoji: '💻' },
+    { label: 'Notion',        emoji: '📝' }, { label: 'iCloud',         emoji: '☁️' },
+    { label: 'Xbox Game Pass',emoji: '🎮' }, { label: 'PlayStation',    emoji: '🎮' },
+    { label: 'Crunchyroll',   emoji: '🎌' }, { label: 'Gym',            emoji: '🏋️' },
   ],
   Other: [
     { label: 'Personal Care', emoji: '💆' }, { label: 'Haircut', emoji: '💈' },
@@ -232,13 +250,13 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
   const [form, setForm] = useState({
     amount: '', category: 'Food', description: '',
     date: new Date().toISOString().split('T')[0], is_recurring: false, recurring_frequency: 'monthly',
-    payment_method: 'Card', notes: ''
+    billing_cycle: 'monthly', payment_method: 'Card', notes: ''
   })
   const [selectedSub, setSelectedSub] = useState(null)
   const [suggestion, setSuggestion] = useState(null)
 
   const handleCategoryChange = (cat) => {
-    setForm(f => ({ ...f, category: cat }))
+    setForm(f => ({ ...f, category: cat, is_recurring: cat === 'Subscriptions' ? true : f.is_recurring }))
     setSelectedSub(null)
     setSuggestion(null)
   }
@@ -312,29 +330,55 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
           {subs.length > 0 && (
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Quick-fill</label>
-              <div className="grid grid-cols-4 gap-2">
+              <div
+                className={`grid grid-cols-4 gap-2 ${form.category === 'Subscriptions' ? 'max-h-44 overflow-y-auto pr-0.5' : ''}`}
+                style={form.category === 'Subscriptions' ? { scrollbarWidth: 'thin' } : {}}
+              >
                 {subs.map(sub => (
                   <SubTile key={sub.label} sub={sub} selected={selectedSub === sub.label} onClick={() => handleSubSelect(sub)} />
                 ))}
               </div>
             </div>
           )}
-          <div>
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Date</label>
-            <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
-              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
-          </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="w-4 h-4 accent-violet-600" />
-            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
-          </label>
-          {form.is_recurring && (
-            <select value={form.recurring_frequency} onChange={e => setForm({ ...form, recurring_frequency: e.target.value })}
-              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+          {form.category === 'Subscriptions' ? (
+            <div>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Billing Cycle</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[{ key: 'weekly', label: 'Weekly', icon: '📅' }, { key: 'monthly', label: 'Monthly', icon: '📆' }, { key: 'yearly', label: 'Yearly', icon: '🗓️' }].map(({ key, label, icon }) => (
+                  <button key={key} type="button"
+                    onClick={() => setForm(f => ({ ...f, billing_cycle: key, recurring_frequency: key, is_recurring: true }))}
+                    className={`py-3 rounded-xl text-sm font-bold border-2 transition ${
+                      form.billing_cycle === key
+                        ? 'border-violet-500 bg-violet-600 text-white shadow-sm'
+                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50 hover:border-violet-300'
+                    }`}>
+                    {icon} {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Date</label>
+              <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+            </div>
+          )}
+          {form.category !== 'Subscriptions' && (
+            <>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="w-4 h-4 accent-violet-600" />
+                <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
+              </label>
+              {form.is_recurring && (
+                <select value={form.recurring_frequency} onChange={e => setForm({ ...form, recurring_frequency: e.target.value })}
+                  className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              )}
+            </>
           )}
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Paid with</label>
@@ -936,6 +980,20 @@ export default function Dashboard() {
     setShowAddExp(false)
     try {
       await API.post('/expenses', form)
+      if (form.category === 'Subscriptions' && form.description) {
+        const cycle = form.billing_cycle || 'monthly'
+        const next = new Date()
+        if (cycle === 'weekly') next.setDate(next.getDate() + 7)
+        else if (cycle === 'yearly') next.setFullYear(next.getFullYear() + 1)
+        else next.setMonth(next.getMonth() + 1)
+        API.post('/subscriptions', {
+          name: form.description,
+          amount: parseFloat(form.amount),
+          billing_cycle: cycle,
+          next_billing_date: next.toISOString().split('T')[0],
+          category: 'Subscriptions',
+        }).catch(() => {})
+      }
       await fetchExpenses()
       const budget = budgets.find(b => b.category === form.category)
       if (budget) {

@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
-import { AIChatInput } from '../components/ui/AIChatInput'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦' }
@@ -28,7 +27,8 @@ function getLogoUrl(name) {
     linkedin: 'linkedin.com', twitter: 'twitter.com', x: 'x.com', instagram: 'instagram.com',
     duolingo: 'duolingo.com', audible: 'audible.com', github: 'github.com', gitlab: 'gitlab.com',
     adobe: 'adobe.com', adobecc: 'adobe.com', photoshop: 'adobe.com', grammarly: 'grammarly.com',
-    chatgpt: 'openai.com', openai: 'openai.com', nordvpn: 'nordvpn.com', expressvpn: 'expressvpn.com',
+    chatgpt: 'openai.com', openai: 'openai.com', claudeai: 'anthropic.com', anthropic: 'anthropic.com',
+    nordvpn: 'nordvpn.com', expressvpn: 'expressvpn.com', midjourney: 'midjourney.com',
     starbucks: 'starbucks.com', uber: 'uber.com', lyft: 'lyft.com', doordash: 'doordash.com',
     showtime: 'showtime.com', deezer: 'deezer.com', tidal: 'tidal.com',
   }
@@ -72,6 +72,39 @@ function renderMarkdown(text) {
     .split('\n').map((line, i) => <p key={i} className="mb-1" dangerouslySetInnerHTML={{ __html: line || '&nbsp;' }} />)
 }
 
+function CooldownBar({ days, billing_cycle }) {
+  if (days === null) return null
+  const totalDays = billing_cycle === 'weekly' ? 7 : billing_cycle === 'yearly' ? 365 : 30
+  const pct = Math.max(0, Math.min(100, (days / totalDays) * 100))
+  const isOverdue = days < 0
+  const isUrgent  = !isOverdue && days <= 5
+  const isWarning = !isOverdue && days > 5 && days <= 14
+
+  const barColor  = isOverdue || isUrgent  ? 'bg-red-500'    : isWarning ? 'bg-amber-400'    : 'bg-emerald-400'
+  const textColor = isOverdue || isUrgent  ? 'text-red-500 dark:text-red-400'  : isWarning ? 'text-amber-600 dark:text-amber-400'  : 'text-emerald-600 dark:text-emerald-400'
+  const bgColor   = isOverdue || isUrgent  ? 'bg-red-50 dark:bg-red-900/10'    : isWarning ? 'bg-amber-50 dark:bg-amber-900/10'    : 'bg-emerald-50 dark:bg-emerald-900/10'
+
+  const label = isOverdue
+    ? `Overdue ${Math.abs(days)}d`
+    : days === 0 ? 'Renews today'
+    : `${days}d left`
+
+  return (
+    <div className={`px-4 pb-3.5 pt-0 ${bgColor} rounded-b-2xl`}>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cooldown</span>
+        <span className={`text-[11px] font-bold ${textColor}`}>{label}</span>
+      </div>
+      <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+          style={{ width: `${isOverdue ? 100 : pct}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
 export default function Subscriptions() {
   const [subs, setSubs]                   = useState([])
   const [monthlyIncome, setMonthlyIncome] = useState(0)
@@ -80,14 +113,7 @@ export default function Subscriptions() {
   const [aiAudit, setAiAudit]             = useState('')
   const [aiLoading, setAiLoading]         = useState(false)
   const [deleteId, setDeleteId]           = useState(null)
-  const [chatInput, setChatInput]         = useState('')
-  const [chatLoading, setChatLoading]     = useState(false)
-  const [chatMessages, setChatMessages]   = useState([])
-  const [micLangMode, setMicLangMode]     = useState('en')
-  const [listening, setListening]         = useState(false)
-  const chatBottomRef = useRef(null)
   const aiRequested = useRef(false)
-  const recognitionRef = useRef(null)
   const sym = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
   const today = new Date()
 
@@ -114,10 +140,6 @@ export default function Subscriptions() {
   }
 
   useEffect(() => { load() }, [])
-
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatMessages])
 
   const monthlyTotal = subs.reduce((s, sub) => s + toMonthly(sub.amount, sub.billing_cycle), 0)
   const yearlyTotal  = monthlyTotal * 12
@@ -148,51 +170,6 @@ export default function Subscriptions() {
       .finally(() => setAiLoading(false))
   }
 
-  const buildSubContext = () => {
-    if (subs.length === 0) return ''
-    const list = subs.map(s => {
-      const days = daysUntil(s.next_billing_date)
-      const renewal = days !== null
-        ? (days < 0 ? `overdue by ${Math.abs(days)} days` : days === 0 ? 'renews today' : `renews in ${days} days`)
-        : 'no renewal date'
-      return `${s.name} (${s.category}, ${s.billing_cycle}, ${sym}${safeNum(s.amount).toFixed(2)}/period, ${renewal})`
-    }).join('; ')
-    return `\n\nContext — My active subscriptions: ${list}. Monthly total: ${sym}${monthlyTotal.toFixed(2)}.`
-  }
-
-  const sendChat = async (text) => {
-    const msg = (text || chatInput).trim()
-    if (!msg || chatLoading) return
-    setChatInput('')
-    setChatMessages(prev => [...prev, { role: 'user', content: msg }])
-    setChatLoading(true)
-    try {
-      const fullMsg = msg + buildSubContext()
-      const r = await API.post('/insights/chat', { message: fullMsg })
-      setChatMessages(prev => [...prev, { role: 'ai', content: r.data.reply || '' }])
-    } catch {
-      setChatMessages(prev => [...prev, { role: 'ai', content: 'Sorry, I had trouble connecting. Please try again.' }])
-    } finally {
-      setChatLoading(false)
-    }
-  }
-
-  const startMic = () => {
-    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    const rec = new SR()
-    rec.lang = micLangMode === 'ar' ? 'ar-LB' : 'en-US'
-    rec.interimResults = false
-    rec.onresult = (e) => { const t = e.results[0][0].transcript; setChatInput(t); setListening(false) }
-    rec.onerror = () => setListening(false)
-    rec.onend = () => setListening(false)
-    rec.start()
-    recognitionRef.current = rec
-    setListening(true)
-  }
-
-  const stopMic = () => { recognitionRef.current?.stop(); setListening(false) }
-
   return (
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6 pb-28 md:pb-8">
@@ -204,14 +181,14 @@ export default function Subscriptions() {
         </div>
 
         {loading ? (
-          <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
+          <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
         ) : subs.length === 0 ? (
           <div className="space-y-4">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-12 text-center">
               <p className="text-5xl mb-3">📭</p>
               <p className="font-semibold text-gray-700 dark:text-gray-200 mb-2">No subscriptions yet</p>
               <p className="text-gray-400 text-sm mb-5 max-w-xs mx-auto leading-relaxed">
-                Add subscriptions from the Transactions page by marking an expense as recurring.
+                Add subscriptions from the Transactions page — select Subscriptions category to sync them here.
               </p>
               <a href="/transactions"
                 className="inline-flex items-center gap-2 bg-violet-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-700 transition">
@@ -344,28 +321,13 @@ export default function Subscriptions() {
                   const isSoon    = days !== null && days >= 0 && days <= 7
                   return (
                     <div key={sub.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-                      <div className="flex items-center gap-4 p-4">
+                      <div className="flex items-center gap-4 p-4 pb-3">
                         <div className="w-11 h-11 flex items-center justify-center shrink-0">
                           <SubLogo name={sub.name} category={sub.category} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-gray-800 dark:text-white text-sm truncate">{sub.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <span className="text-xs text-gray-400 capitalize">{sub.billing_cycle}</span>
-                            {days !== null && (
-                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                                isOverdue ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
-                                isSoon    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                                            'bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400'
-                              }`}>
-                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                {isOverdue
-                                  ? `Overdue ${Math.abs(days)}d`
-                                  : days === 0 ? 'Renews today'
-                                  : `${days}d cooldown`}
-                              </span>
-                            )}
-                          </div>
+                          <span className="text-xs text-gray-400 capitalize">{sub.billing_cycle}</span>
                         </div>
                         <div className="text-right shrink-0 mr-1">
                           <p className="font-bold text-gray-800 dark:text-white tabular-nums text-sm">
@@ -379,9 +341,13 @@ export default function Subscriptions() {
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                         </button>
                       </div>
+
+                      {/* Cooldown bar */}
+                      <CooldownBar days={days} billing_cycle={sub.billing_cycle} />
+
                       {deleteId === sub.id && (
                         <div className="px-4 pb-4 border-t border-gray-50 dark:border-gray-700/40 pt-3 flex items-center justify-between gap-3">
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Remove <strong>{sub.name}</strong> from your subscriptions?</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Remove <strong>{sub.name}</strong>?</p>
                           <div className="flex gap-2 shrink-0">
                             <button onClick={() => handleDelete(sub.id)}
                               className="text-xs bg-red-500 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-red-600 transition">
@@ -421,7 +387,7 @@ export default function Subscriptions() {
               )
             })()}
 
-            {/* Subscription expenses pulled from Transactions */}
+            {/* From Transactions */}
             {subExpenses.length > 0 && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
                 <div className="flex items-center justify-between mb-4">
@@ -434,7 +400,7 @@ export default function Subscriptions() {
                 <div className="space-y-2">
                   {subExpenses.map(e => (
                     <div key={e.id} className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0 bg-violet-50 dark:bg-violet-900/30">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-violet-50 dark:bg-violet-900/30">
                         <SubLogo name={e.description} category={e.category} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -447,61 +413,6 @@ export default function Subscriptions() {
                 </div>
               </div>
             )}
-
-            {/* AI Chat */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-5 pt-5 pb-3 border-b border-gray-50 dark:border-gray-700/60">
-                <p className="text-sm font-semibold text-gray-800 dark:text-white">Ask AI about your subscriptions</p>
-                <p className="text-xs text-gray-400 mt-0.5">The AI knows all your subscription details automatically</p>
-              </div>
-
-              {chatMessages.length > 0 && (
-                <div className="px-4 py-3 space-y-3 max-h-72 overflow-y-auto">
-                  {chatMessages.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      {msg.role === 'ai' && (
-                        <div className="w-7 h-7 rounded-xl bg-linear-to-br from-violet-500 to-purple-700 flex items-center justify-center shrink-0 mr-2 mt-0.5">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 2L13.09 8.26L19 6L15.45 11.27L22 12L15.45 12.73L19 18L13.09 15.74L12 22L10.91 15.74L5 18L8.55 12.73L2 12L8.55 11.27L5 6L10.91 8.26L12 2Z"/></svg>
-                        </div>
-                      )}
-                      <div className={`max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                        msg.role === 'user'
-                          ? 'bg-violet-600 text-white rounded-br-md'
-                          : 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white rounded-bl-md'
-                      }`}>
-                        {msg.role === 'ai' ? renderMarkdown(msg.content) : msg.content}
-                      </div>
-                    </div>
-                  ))}
-                  {chatLoading && (
-                    <div className="flex justify-start">
-                      <div className="w-7 h-7 rounded-xl bg-linear-to-br from-violet-500 to-purple-700 flex items-center justify-center shrink-0 mr-2">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 2L13.09 8.26L19 6L15.45 11.27L22 12L15.45 12.73L19 18L13.09 15.74L12 22L10.91 15.74L5 18L8.55 12.73L2 12L8.55 11.27L5 6L10.91 8.26L12 2Z"/></svg>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 rounded-2xl rounded-bl-md flex items-center gap-1.5">
-                        {[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
-                      </div>
-                    </div>
-                  )}
-                  <div ref={chatBottomRef} />
-                </div>
-              )}
-
-              <div className="px-4 pb-4 pt-3">
-                <AIChatInput
-                  input={chatInput}
-                  setInput={setChatInput}
-                  loading={chatLoading}
-                  listening={listening}
-                  onSend={() => sendChat()}
-                  onStartMic={startMic}
-                  onStopMic={stopMic}
-                  micLangMode={micLangMode}
-                  onToggleMicLang={() => setMicLangMode(m => m === 'en' ? 'ar' : 'en')}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat() } }}
-                />
-              </div>
-            </div>
 
           </div>
         )}

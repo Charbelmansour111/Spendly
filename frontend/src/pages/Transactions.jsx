@@ -188,7 +188,20 @@ const SUBCATEGORIES = {
   Food: [{ label: 'Restaurant', emoji: '🍽️' }, { label: 'Groceries', emoji: '🛒' }, { label: 'Fast Food', emoji: '🍔' }, { label: 'Coffee', emoji: '☕' }],
   Transport: [{ label: 'Uber', emoji: '🚗' }, { label: 'Taxi', emoji: '🚕' }, { label: 'Gas', emoji: '⛽' }, { label: 'Parking', emoji: '🅿️' }],
   Shopping: [{ label: 'Amazon', emoji: '📦' }, { label: 'Clothes', emoji: '👗' }, { label: 'Electronics', emoji: '💻' }, { label: 'Shoes', emoji: '👟' }],
-  Subscriptions: [{ label: 'Netflix', emoji: '🎬' }, { label: 'Spotify', emoji: '🎵' }, { label: 'Disney+', emoji: '🏰' }, { label: 'YouTube', emoji: '▶️' }],
+  Subscriptions: [
+    { label: 'Netflix',        emoji: '🎬' }, { label: 'Spotify',       emoji: '🎵' },
+    { label: 'ChatGPT',        emoji: '🤖' }, { label: 'YouTube',       emoji: '▶️' },
+    { label: 'Disney+',        emoji: '🏰' }, { label: 'Amazon Prime',  emoji: '📦' },
+    { label: 'Apple TV+',      emoji: '🍎' }, { label: 'Claude AI',     emoji: '✨' },
+    { label: 'Electricity',    emoji: '⚡' }, { label: 'Water',         emoji: '💧' },
+    { label: 'Touch',          emoji: '📡' }, { label: 'Alfa',          emoji: '📡' },
+    { label: 'Internet',       emoji: '🌐' }, { label: 'HBO Max',       emoji: '🎭' },
+    { label: 'Midjourney',     emoji: '🎨' }, { label: 'Microsoft 365', emoji: '💼' },
+    { label: 'Adobe CC',       emoji: '🎨' }, { label: 'GitHub',        emoji: '💻' },
+    { label: 'Notion',         emoji: '📝' }, { label: 'iCloud',        emoji: '☁️' },
+    { label: 'Xbox Game Pass', emoji: '🎮' }, { label: 'PlayStation',   emoji: '🎮' },
+    { label: 'Crunchyroll',    emoji: '🎌' }, { label: 'Gym',           emoji: '🏋️' },
+  ],
   Entertainment: [{ label: 'Cinema', emoji: '🎥' }, { label: 'Concert', emoji: '🎵' }, { label: 'Gaming', emoji: '🎮' }, { label: 'Bar', emoji: '🍻' }],
 }
 const CATEGORY_HINTS_LOCAL = {
@@ -217,7 +230,7 @@ function suggestCategoryLocal(desc) {
 function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
   useHideNav()
   const today = new Date().toISOString().split('T')[0]
-  const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly' })
+  const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly', billing_cycle: 'monthly' })
   const [suggestion, setSuggestion] = useState(null)
   const [saving, setSaving] = useState(false)
 
@@ -283,35 +296,64 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
             </div>
           </div>
           {subs.length > 0 && (
-            <div className="grid grid-cols-4 gap-2">
-              {subs.map(s => (
-                <button key={s.label} type="button" onClick={() => setForm(f => ({ ...f, description: s.label }))}
-                  className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border-2 transition ${form.description === s.label ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50'}`}>
-                  <span className="text-xl">{s.emoji}</span>
-                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 leading-tight text-center">{s.label}</span>
-                </button>
-              ))}
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-2 block">Quick-fill</label>
+              <div
+                className={`grid grid-cols-4 gap-2 ${form.category === 'Subscriptions' ? 'max-h-44 overflow-y-auto' : ''}`}
+                style={form.category === 'Subscriptions' ? { scrollbarWidth: 'thin' } : {}}
+              >
+                {subs.map(s => (
+                  <button key={s.label} type="button" onClick={() => setForm(f => ({ ...f, description: s.label }))}
+                    className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border-2 transition ${form.description === s.label ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50'}`}>
+                    <span className="text-xl">{s.emoji}</span>
+                    <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 leading-tight text-center">{s.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Date</label>
-            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
-          </div>
+          {form.category === 'Subscriptions' ? (
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-2 block">Billing Cycle</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[{ key: 'weekly', label: 'Weekly', icon: '📅' }, { key: 'monthly', label: 'Monthly', icon: '📆' }, { key: 'yearly', label: 'Yearly', icon: '🗓️' }].map(({ key, label, icon }) => (
+                  <button key={key} type="button"
+                    onClick={() => setForm(f => ({ ...f, billing_cycle: key, recurring_frequency: key, is_recurring: true }))}
+                    className={`py-3 rounded-xl text-sm font-bold border-2 transition ${
+                      form.billing_cycle === key
+                        ? 'border-violet-500 bg-violet-600 text-white shadow-sm'
+                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50'
+                    }`}>
+                    {icon} {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Date</label>
+              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+            </div>
+          )}
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Notes (optional)</label>
             <textarea rows={2} value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any extra details…"
               className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none" />
           </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.is_recurring} onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))} className="w-4 h-4 accent-violet-600" />
-            <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
-          </label>
-          {form.is_recurring && (
-            <select value={form.recurring_frequency} onChange={e => setForm(f => ({ ...f, recurring_frequency: e.target.value }))}
-              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
-              <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
-            </select>
+          {form.category !== 'Subscriptions' && (
+            <>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.is_recurring} onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))} className="w-4 h-4 accent-violet-600" />
+                <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
+              </label>
+              {form.is_recurring && (
+                <select value={form.recurring_frequency} onChange={e => setForm(f => ({ ...f, recurring_frequency: e.target.value }))}
+                  className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                  <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+                </select>
+              )}
+            </>
           )}
         </div>
         {/* Sticky footer */}
@@ -627,6 +669,20 @@ export default function Transactions() {
       })
       if (data.suggestion?.type === 'recurring') {
         setRecurringHint({ merchant: data.suggestion.merchant, expense_id: data.suggestion.expense_id })
+      }
+      if (form.category === 'Subscriptions' && form.description) {
+        const cycle = form.billing_cycle || 'monthly'
+        const next = new Date()
+        if (cycle === 'weekly') next.setDate(next.getDate() + 7)
+        else if (cycle === 'yearly') next.setFullYear(next.getFullYear() + 1)
+        else next.setMonth(next.getMonth() + 1)
+        API.post('/subscriptions', {
+          name: form.description,
+          amount: parseFloat(form.amount),
+          billing_cycle: cycle,
+          next_billing_date: next.toISOString().split('T')[0],
+          category: 'Subscriptions',
+        }).catch(() => {})
       }
       const res = await API.get('/expenses')
       setExpenses(res.data || [])
