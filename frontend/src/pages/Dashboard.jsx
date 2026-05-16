@@ -10,6 +10,7 @@ import OnboardingQuestions from '../components/OnboardingQuestions'
 import MonthlyWrap from '../components/MonthlyWrap'
 import { useHideNav } from '../hooks/useHideNav'
 import { requestNotificationPermission, isNotificationsEnabled } from '../utils/notifications'
+import useCategories from '../hooks/useCategories'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
@@ -236,6 +237,8 @@ function SubTile({ sub, selected, onClick }) {
   )
 }
 
+const CAT_EMOJIS = ['📌','🏠','🌟','💡','🔥','💎','🎯','⚡','🌿','🎪','🎨','🎵','🏆','🚀','🌈','🦋','🍀','🎲','🔑','💫','🌙','🏖️','🧩','🎀']
+
 const EXP_CATS = [
   { key: 'Food', icon: '🍔' }, { key: 'Coffee', icon: '☕' },
   { key: 'Transport', icon: '🚗' }, { key: 'Shopping', icon: '🛍️' },
@@ -246,7 +249,7 @@ const EXP_CATS = [
   { key: 'Other', icon: '📦' },
 ]
 
-function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
+function AddExpenseSheet({ onClose, onSave, currencySymbol, categories: propCats, onAddCategory }) {
   useHideNav()
   const [form, setForm] = useState({
     amount: '', category: 'Food', description: '',
@@ -255,23 +258,40 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
   })
   const [selectedSub, setSelectedSub] = useState(null)
   const [suggestion, setSuggestion] = useState(null)
+  const [showCreateCat, setShowCreateCat] = useState(false)
+  const [newCatEmoji, setNewCatEmoji] = useState('📌')
+  const [newCatName, setNewCatName] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  const cats = propCats?.length
+    ? propCats.map(c => ({ key: c.name, icon: c.emoji }))
+    : EXP_CATS
 
   const handleCategoryChange = (cat) => {
     setForm(f => ({ ...f, category: cat, is_recurring: cat === 'Subscriptions' ? true : f.is_recurring }))
     setSelectedSub(null)
     setSuggestion(null)
   }
-
   const handleSubSelect = (sub) => {
     setSelectedSub(sub.label)
     setForm(f => ({ ...f, description: sub.label }))
     setSuggestion(null)
   }
-
   const handleDescChange = (val) => {
     setForm(f => ({ ...f, description: val }))
     const cat = suggestCategory(val)
     setSuggestion(cat && cat !== form.category ? cat : null)
+  }
+  const handleCreateCat = async () => {
+    if (!newCatName.trim() || creating) return
+    setCreating(true)
+    try {
+      if (onAddCategory) await onAddCategory(newCatName.trim(), newCatEmoji)
+      handleCategoryChange(newCatName.trim())
+      setShowCreateCat(false)
+      setNewCatName('')
+      setNewCatEmoji('📌')
+    } finally { setCreating(false) }
   }
 
   const subs = SUBCATEGORIES[form.category] || []
@@ -279,55 +299,104 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+        <div className="flex justify-between items-center px-6 pt-5 pb-3 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-rose-100 dark:bg-rose-900/30 rounded-xl flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
+
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-5" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
           <ReceiptScanner onScanComplete={data => setForm(f => ({ ...f, amount: data.amount, description: data.description, category: data.category || f.category, date: data.date || f.date }))} />
-          <div>
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Amount ({currencySymbol})</label>
+
+          {/* Amount */}
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4">
+            <label className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1 block">Amount ({currencySymbol})</label>
             <input type="number" placeholder="0.00" value={form.amount}
-              onChange={e => setForm({ ...form, amount: e.target.value })}
+              onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
               required min="0.01" step="0.01"
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
+              className="w-full bg-transparent text-3xl font-black text-gray-900 dark:text-white focus:outline-none placeholder-gray-300 dark:placeholder-gray-600" />
           </div>
+
+          {/* Description */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Description (optional)</label>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Description <span className="font-normal text-gray-400">(optional)</span></label>
             <input type="text" placeholder="What was this for?" value={form.description}
               onChange={e => handleDescChange(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
             {suggestion && (
-              <div className="mt-1.5 flex items-center gap-2 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 rounded-xl px-3 py-2">
-                <span className="text-xs text-violet-700 dark:text-violet-300">🤖 Looks like <strong>{suggestion}</strong>?</span>
+              <div className="mt-1.5 flex items-center gap-2 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700/50 rounded-xl px-3 py-2">
+                <span className="text-xs text-rose-700 dark:text-rose-300">🤖 Looks like <strong>{suggestion}</strong>?</span>
                 <button type="button" onClick={() => handleCategoryChange(suggestion)}
-                  className="ml-auto text-xs bg-violet-600 text-white px-3 py-1 rounded-lg font-semibold hover:bg-violet-700 transition">
-                  Use it
-                </button>
+                  className="ml-auto text-xs bg-rose-500 text-white px-3 py-1 rounded-lg font-semibold hover:bg-rose-600 transition">Use it</button>
                 <button type="button" onClick={() => setSuggestion(null)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
               </div>
             )}
           </div>
+
+          {/* Category */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Category</label>
-            <div className="flex flex-wrap gap-2">
-              {EXP_CATS.map(({ key, icon }) => (
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2.5 block">Category</label>
+            <div className="flex gap-2.5 overflow-x-auto pb-1.5" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {cats.map(({ key, icon }) => (
                 <button key={key} type="button" onClick={() => handleCategoryChange(key)}
-                  className={`py-1.5 px-3 rounded-full text-xs font-semibold border-2 transition ${
+                  className={`flex flex-col items-center gap-1.5 shrink-0 w-[70px] pt-3 pb-2.5 rounded-2xl border-2 transition-all ${
                     form.category === key
-                      ? 'border-violet-500 bg-violet-600 text-white'
-                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-violet-300 bg-white dark:bg-gray-700/50'
+                      ? 'border-rose-400 bg-linear-to-b from-rose-400 to-pink-500 shadow-sm shadow-rose-200 dark:shadow-none'
+                      : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-700/50 hover:border-rose-200'
                   }`}>
-                  {icon} {key}
+                  <span className="text-2xl leading-none">{icon}</span>
+                  <span className={`text-[10px] font-semibold leading-tight text-center px-0.5 ${form.category === key ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}>{key}</span>
                 </button>
               ))}
+              <button type="button" onClick={() => setShowCreateCat(v => !v)}
+                className={`flex flex-col items-center gap-1.5 shrink-0 w-[70px] pt-3 pb-2.5 rounded-2xl border-2 border-dashed transition-all ${
+                  showCreateCat ? 'border-violet-400 bg-violet-50 dark:bg-violet-900/20' : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 hover:border-violet-300'
+                }`}>
+                <span className="text-2xl leading-none">➕</span>
+                <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">Create</span>
+              </button>
             </div>
+
+            {/* Inline create category */}
+            {showCreateCat && (
+              <div className="mt-3 bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 border border-gray-200 dark:border-gray-600">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold text-gray-600 dark:text-gray-300">New Category</p>
+                  <button type="button" onClick={() => { setShowCreateCat(false); setNewCatName(''); setNewCatEmoji('📌') }}
+                    className="text-gray-400 hover:text-gray-600 text-sm w-6 h-6 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">✕</button>
+                </div>
+                <div className="grid grid-cols-6 gap-1.5 mb-3">
+                  {CAT_EMOJIS.map(em => (
+                    <button key={em} type="button" onClick={() => setNewCatEmoji(em)}
+                      className={`h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
+                        newCatEmoji === em ? 'bg-violet-100 dark:bg-violet-900/40 ring-2 ring-violet-400' : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
+                      }`}>
+                      {em}
+                    </button>
+                  ))}
+                </div>
+                <input type="text" placeholder="Category name…" value={newCatName}
+                  onChange={e => setNewCatName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCreateCat()}
+                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm mb-2.5" />
+                <button type="button" onClick={handleCreateCat} disabled={!newCatName.trim() || creating}
+                  className="w-full bg-violet-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-violet-700 transition disabled:opacity-50">
+                  {creating ? 'Creating…' : `${newCatEmoji} Create "${newCatName || '…'}"`}
+                </button>
+              </div>
+            )}
           </div>
+
+          {/* Quick-fill */}
           {subs.length > 0 && (
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Quick-fill</label>
@@ -341,6 +410,8 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
               </div>
             </div>
           )}
+
+          {/* Billing cycle or date */}
           {form.category === 'Subscriptions' ? (
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Billing Cycle</label>
@@ -350,8 +421,8 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
                     onClick={() => setForm(f => ({ ...f, billing_cycle: key, recurring_frequency: key, is_recurring: true }))}
                     className={`py-3 rounded-xl text-sm font-bold border-2 transition ${
                       form.billing_cycle === key
-                        ? 'border-violet-500 bg-violet-600 text-white shadow-sm'
-                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50 hover:border-violet-300'
+                        ? 'border-rose-400 bg-linear-to-b from-rose-400 to-pink-500 text-white shadow-sm'
+                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50 hover:border-rose-300'
                     }`}>
                     {icon} {label}
                   </button>
@@ -361,19 +432,21 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
           ) : (
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Date</label>
-              <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
-                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
             </div>
           )}
+
+          {/* Recurring */}
           {form.category !== 'Subscriptions' && (
             <>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.is_recurring} onChange={e => setForm({ ...form, is_recurring: e.target.checked })} className="w-4 h-4 accent-violet-600" />
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={form.is_recurring} onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))} className="w-4 h-4 accent-rose-500" />
                 <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
               </label>
               {form.is_recurring && (
-                <select value={form.recurring_frequency} onChange={e => setForm({ ...form, recurring_frequency: e.target.value })}
-                  className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                <select value={form.recurring_frequency} onChange={e => setForm(f => ({ ...f, recurring_frequency: e.target.value }))}
+                  className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
@@ -381,29 +454,38 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
               )}
             </>
           )}
+
+          {/* Payment method */}
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Paid with</label>
             <div className="flex gap-2">
               {['Card', 'Cash', 'Mobile Pay', 'Bank Transfer'].map(m => (
                 <button key={m} type="button" onClick={() => setForm(f => ({ ...f, payment_method: m }))}
-                  className={`flex-1 py-2 rounded-xl text-xs font-semibold border-2 transition ${form.payment_method === m ? 'border-violet-500 bg-violet-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700/50 hover:border-violet-300'}`}>
+                  className={`flex-1 py-2 rounded-xl text-xs font-semibold border-2 transition ${
+                    form.payment_method === m
+                      ? 'border-rose-400 bg-linear-to-b from-rose-400 to-pink-500 text-white'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700/50 hover:border-rose-300'
+                  }`}>
                   {m === 'Card' ? '💳' : m === 'Cash' ? '💵' : m === 'Mobile Pay' ? '📱' : '🏦'} {m}
                 </button>
               ))}
             </div>
           </div>
+
+          {/* Notes */}
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Notes <span className="font-normal">(optional)</span></label>
             <input type="text" placeholder="Any extra details…" value={form.notes}
-              onChange={e => setForm({ ...form, notes: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
           </div>
         </div>
+
         {/* Sticky footer */}
         <div className="shrink-0 px-6 pt-4 pb-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}>
           <button onClick={() => onSave(form)}
             disabled={!form.amount || !form.date}
-            className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50">
+            className="w-full bg-linear-to-r from-rose-500 to-pink-500 text-white py-4 rounded-2xl font-bold text-base hover:from-rose-600 hover:to-pink-600 transition disabled:opacity-50 shadow-md shadow-rose-200/60 dark:shadow-none">
             Add Expense
           </button>
         </div>
@@ -734,6 +816,7 @@ export default function Dashboard() {
   const [subscriptions, setSubs]      = useState([])
   const [loading, setLoading]         = useState(true)
   const [currencySymbol]              = useState(() => CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$')
+  const { categories: dynCats, addCategory, refresh: refreshCats } = useCategories()
   const [toast, setToast]             = useState(null)
   const [confirm, setConfirm]         = useState(null)
   const [modalData, setModalData]     = useState(null)
@@ -1079,7 +1162,7 @@ export default function Dashboard() {
       {showOnboarding && <Onboarding onDone={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.setItem(`fina_onboarded_${uid}`, '1'); setShowOnboarding(false); setShowQuestions(true) }} />}
       {!showOnboarding && showQuestions && <OnboardingQuestions onDone={() => setShowQuestions(false)} />}
       {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
-      {showAddExp   && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} />}
+      {showAddExp   && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} categories={dynCats} onAddCategory={async (name, emoji) => { await addCategory(name, emoji); refreshCats() }} />}
       {showAddInc   && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}
       {showVoice    && <VoiceAssistant onClose={() => setShowVoice(false)} />}
       {showWrap && <MonthlyWrap onClose={() => { localStorage.setItem(wrapKey, '1'); setShowWrap(false) }} />}

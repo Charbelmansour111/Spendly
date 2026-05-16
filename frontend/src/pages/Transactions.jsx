@@ -184,6 +184,8 @@ const BRAND_LOGOS = {
   'Disney+': 'https://logo.clearbit.com/disneyplus.com', 'HBO Max': 'https://logo.clearbit.com/hbo.com',
   'Amazon Prime': 'https://logo.clearbit.com/amazon.com', YouTube: 'https://logo.clearbit.com/youtube.com',
 }
+const CAT_EMOJIS = ['📌','🏠','🌟','💡','🔥','💎','🎯','⚡','🌿','🎪','🎨','🎵','🏆','🚀','🌈','🦋','🍀','🎲','🔑','💫','🌙','🏖️','🧩','🎀']
+
 const SUBCATEGORIES = {
   Food: [
     { label: "McDonald's", emoji: '🍔' }, { label: 'KFC', emoji: '🍗' },
@@ -295,21 +297,27 @@ function suggestCategoryLocal(desc) {
   return null
 }
 
-function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
+function AddExpenseModal({ onClose, onSave, sym, dynamicCats, onAddCategory }) {
   useHideNav()
   const today = new Date().toISOString().split('T')[0]
-  const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly', billing_cycle: 'monthly' })
+  const [form, setForm] = useState({ amount: '', category: 'Food', description: '', date: today, is_recurring: false, recurring_frequency: 'monthly', billing_cycle: 'monthly', notes: '' })
   const [suggestion, setSuggestion] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [showCreateCat, setShowCreateCat] = useState(false)
+  const [newCatEmoji, setNewCatEmoji] = useState('📌')
+  const [newCatName, setNewCatName] = useState('')
+  const [creating, setCreating] = useState(false)
 
+  const defaultCats = [
+    { key: 'Food', icon: '🍔' }, { key: 'Coffee', icon: '☕' }, { key: 'Transport', icon: '🚗' },
+    { key: 'Shopping', icon: '🛍️' }, { key: 'Entertainment', icon: '🎬' }, { key: 'Health', icon: '🏥' },
+    { key: 'Fitness', icon: '🏋️' }, { key: 'Education', icon: '🎓' }, { key: 'Bills', icon: '💡' },
+    { key: 'Travel', icon: '✈️' }, { key: 'Gifts', icon: '🎁' }, { key: 'Subscriptions', icon: '📱' }, { key: 'Other', icon: '📦' },
+  ]
   const cats = dynamicCats?.length
     ? dynamicCats.map(c => ({ key: c.name, icon: c.emoji }))
-    : [
-      { key: 'Food', icon: '🍔' }, { key: 'Coffee', icon: '☕' }, { key: 'Transport', icon: '🚗' },
-      { key: 'Shopping', icon: '🛍️' }, { key: 'Entertainment', icon: '🎬' }, { key: 'Health', icon: '🏥' },
-      { key: 'Fitness', icon: '🏋️' }, { key: 'Education', icon: '🎓' }, { key: 'Bills', icon: '💡' },
-      { key: 'Travel', icon: '✈️' }, { key: 'Gifts', icon: '🎁' }, { key: 'Subscriptions', icon: '📱' }, { key: 'Other', icon: '📦' },
-    ]
+    : defaultCats
+
   const subs = SUBCATEGORIES[form.category] || []
   const handleDesc = (val) => {
     setForm(f => ({ ...f, description: val }))
@@ -322,57 +330,130 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
     await onSave(form)
     setSaving(false)
   }
+  const handleCreateCat = async () => {
+    if (!newCatName.trim() || creating) return
+    setCreating(true)
+    try {
+      if (onAddCategory) await onAddCategory(newCatName.trim(), newCatEmoji)
+      setForm(f => ({ ...f, category: newCatName.trim() }))
+      setShowCreateCat(false)
+      setNewCatName('')
+      setNewCatEmoji('📌')
+    } finally { setCreating(false) }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-3xl w-full md:max-w-md shadow-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
-          <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        <div className="flex justify-between items-center px-6 pt-5 pb-3 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-rose-100 dark:bg-rose-900/30 rounded-xl flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Expense</h3>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
         </div>
+
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({sym})</label>
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-5" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+
+          {/* Amount */}
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4">
+            <label className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1 block">Amount ({sym})</label>
             <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
               min="0.01" step="0.01" autoFocus
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold" />
+              className="w-full bg-transparent text-3xl font-black text-gray-900 dark:text-white focus:outline-none placeholder-gray-300 dark:placeholder-gray-600" />
           </div>
+
+          {/* Description */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Description (optional)</label>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Description <span className="font-normal text-gray-400">(optional)</span></label>
             <input type="text" placeholder="What was this for?" value={form.description} onChange={e => handleDesc(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
             {suggestion && (
-              <div className="mt-1.5 flex items-center gap-2 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 rounded-xl px-3 py-2">
-                <span className="text-xs text-violet-700 dark:text-violet-300">🤖 Looks like <strong>{suggestion}</strong>?</span>
+              <div className="mt-1.5 flex items-center gap-2 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700/50 rounded-xl px-3 py-2">
+                <span className="text-xs text-rose-700 dark:text-rose-300">🤖 Looks like <strong>{suggestion}</strong>?</span>
                 <button type="button" onClick={() => { setForm(f => ({ ...f, category: suggestion })); setSuggestion(null) }}
-                  className="ml-auto text-xs bg-violet-600 text-white px-3 py-1 rounded-lg font-semibold">Use it</button>
+                  className="ml-auto text-xs bg-rose-500 text-white px-3 py-1 rounded-lg font-semibold">Use it</button>
                 <button type="button" onClick={() => setSuggestion(null)} className="text-gray-400 text-xs">✕</button>
               </div>
             )}
           </div>
+
+          {/* Category */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-2 block">Category</label>
-            <div className="flex flex-wrap gap-2">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2.5 block">Category</label>
+            <div className="flex gap-2.5 overflow-x-auto pb-1.5" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {cats.map(({ key, icon }) => (
                 <button key={key} type="button" onClick={() => setForm(f => ({ ...f, category: key }))}
-                  className={`py-1.5 px-3 rounded-full text-xs font-semibold border-2 transition ${form.category === key ? 'border-violet-500 bg-violet-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50'}`}>
-                  {icon} {key}
+                  className={`flex flex-col items-center gap-1.5 shrink-0 w-[70px] pt-3 pb-2.5 rounded-2xl border-2 transition-all ${
+                    form.category === key
+                      ? 'border-rose-400 bg-linear-to-b from-rose-400 to-pink-500 shadow-sm shadow-rose-200 dark:shadow-none'
+                      : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-700/50 hover:border-rose-200'
+                  }`}>
+                  <span className="text-2xl leading-none">{icon}</span>
+                  <span className={`text-[10px] font-semibold leading-tight text-center px-0.5 ${form.category === key ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}>{key}</span>
                 </button>
               ))}
+              <button type="button" onClick={() => setShowCreateCat(v => !v)}
+                className={`flex flex-col items-center gap-1.5 shrink-0 w-[70px] pt-3 pb-2.5 rounded-2xl border-2 border-dashed transition-all ${
+                  showCreateCat ? 'border-violet-400 bg-violet-50 dark:bg-violet-900/20' : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 hover:border-violet-300'
+                }`}>
+                <span className="text-2xl leading-none">➕</span>
+                <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">Create</span>
+              </button>
             </div>
+
+            {/* Inline create category */}
+            {showCreateCat && (
+              <div className="mt-3 bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 border border-gray-200 dark:border-gray-600">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold text-gray-600 dark:text-gray-300">New Category</p>
+                  <button type="button" onClick={() => { setShowCreateCat(false); setNewCatName(''); setNewCatEmoji('📌') }}
+                    className="text-gray-400 hover:text-gray-600 text-sm w-6 h-6 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">✕</button>
+                </div>
+                <div className="grid grid-cols-6 gap-1.5 mb-3">
+                  {CAT_EMOJIS.map(em => (
+                    <button key={em} type="button" onClick={() => setNewCatEmoji(em)}
+                      className={`h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
+                        newCatEmoji === em ? 'bg-violet-100 dark:bg-violet-900/40 ring-2 ring-violet-400' : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
+                      }`}>
+                      {em}
+                    </button>
+                  ))}
+                </div>
+                <input type="text" placeholder="Category name…" value={newCatName}
+                  onChange={e => setNewCatName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCreateCat()}
+                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm mb-2.5" />
+                <button type="button" onClick={handleCreateCat} disabled={!newCatName.trim() || creating}
+                  className="w-full bg-violet-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-violet-700 transition disabled:opacity-50">
+                  {creating ? 'Creating…' : `${newCatEmoji} Create "${newCatName || '…'}"`}
+                </button>
+              </div>
+            )}
           </div>
+
+          {/* Quick-fill */}
           {subs.length > 0 && (
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-2 block">Quick-fill</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Quick-fill</label>
               <div
                 className={`grid grid-cols-4 gap-2 ${form.category === 'Subscriptions' ? 'max-h-44 overflow-y-auto' : ''}`}
                 style={form.category === 'Subscriptions' ? { scrollbarWidth: 'thin' } : {}}
               >
                 {subs.map(s => (
                   <button key={s.label} type="button" onClick={() => setForm(f => ({ ...f, description: s.label }))}
-                    className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border-2 transition ${form.description === s.label ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50'}`}>
+                    className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border-2 transition-all ${
+                      form.description === s.label
+                        ? 'border-rose-400 bg-rose-50 dark:bg-rose-900/20'
+                        : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 hover:border-rose-200'
+                    }`}>
                     <span className="text-xl">{s.emoji}</span>
                     <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 leading-tight text-center">{s.label}</span>
                   </button>
@@ -380,17 +461,19 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
               </div>
             </div>
           )}
+
+          {/* Billing cycle or date */}
           {form.category === 'Subscriptions' ? (
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-2 block">Billing Cycle</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">Billing Cycle</label>
               <div className="grid grid-cols-3 gap-2">
                 {[{ key: 'weekly', label: 'Weekly', icon: '📅' }, { key: 'monthly', label: 'Monthly', icon: '📆' }, { key: 'yearly', label: 'Yearly', icon: '🗓️' }].map(({ key, label, icon }) => (
                   <button key={key} type="button"
                     onClick={() => setForm(f => ({ ...f, billing_cycle: key, recurring_frequency: key, is_recurring: true }))}
                     className={`py-3 rounded-xl text-sm font-bold border-2 transition ${
                       form.billing_cycle === key
-                        ? 'border-violet-500 bg-violet-600 text-white shadow-sm'
-                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50'
+                        ? 'border-rose-400 bg-linear-to-b from-rose-400 to-pink-500 text-white shadow-sm'
+                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700/50 hover:border-rose-300'
                     }`}>
                     {icon} {label}
                   </button>
@@ -399,35 +482,40 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
             </div>
           ) : (
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">Date</label>
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Date</label>
               <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
+                className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" />
             </div>
           )}
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Notes (optional)</label>
-            <textarea rows={2} value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any extra details…"
-              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none" />
-          </div>
+
+          {/* Recurring */}
           {form.category !== 'Subscriptions' && (
             <>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.is_recurring} onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))} className="w-4 h-4 accent-violet-600" />
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={form.is_recurring} onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))} className="w-4 h-4 accent-rose-500" />
                 <span className="text-sm text-gray-600 dark:text-gray-300">Recurring</span>
               </label>
               {form.is_recurring && (
                 <select value={form.recurring_frequency} onChange={e => setForm(f => ({ ...f, recurring_frequency: e.target.value }))}
-                  className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                  className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
                   <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
                 </select>
               )}
             </>
           )}
+
+          {/* Notes */}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Notes <span className="font-normal">(optional)</span></label>
+            <textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any extra details…"
+              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none" />
+          </div>
         </div>
+
         {/* Sticky footer */}
         <div className="shrink-0 px-6 pt-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-3xl" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}>
           <button onClick={handleSave} disabled={!form.amount || saving}
-            className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-violet-700 transition disabled:opacity-50">
+            className="w-full bg-linear-to-r from-rose-500 to-pink-500 text-white py-4 rounded-2xl font-bold text-base hover:from-rose-600 hover:to-pink-600 transition disabled:opacity-50 shadow-md shadow-rose-200/60 dark:shadow-none">
             {saving ? 'Adding…' : 'Add Expense'}
           </button>
         </div>
@@ -1200,7 +1288,7 @@ const onTabSwipeStart = (e) => {
       {undoLabel && <UndoToast label={undoLabel} onUndo={handleUndoExpense} onDismiss={handleDismissUndo} />}
       {editing   && <EditSheet expense={editing} sym={sym} onSave={handleEditSave} onClose={() => setEditing(null)} />}
       {showPicker && <AddPickerModal onClose={() => setShowPicker(false)} onExpense={() => { setShowPicker(false); setShowAddExp(true) }} onIncome={() => { setShowPicker(false); setShowAddInc(true) }} onScan={() => { setShowPicker(false); setShowScan(true) }} onSplit={() => { setShowPicker(false); setShowSplit(true) }} />}
-      {showAddExp && <AddExpenseModal onClose={() => setShowAddExp(false)} onSave={handleAddExpense} sym={sym} dynamicCats={dynCats} />}
+      {showAddExp && <AddExpenseModal onClose={() => setShowAddExp(false)} onSave={handleAddExpense} sym={sym} dynamicCats={dynCats} onAddCategory={async (name, emoji) => { await addCategory(name, emoji); refreshCats() }} />}
       {showAddInc && <AddIncomeModal onClose={() => setShowAddInc(false)} onSave={handleAddIncome} sym={sym} />}
       {showScan && <QuickScanModal onClose={() => setShowScan(false)} onAdded={handleScanAdded} />}
       {showSplit && <SplitBillModal onClose={() => setShowSplit(false)} onSaved={() => { const r = API.get('/expenses'); r.then(e => setExpenses(e.data || [])); showToast('Split bill logged!') }} />}
@@ -1272,24 +1360,24 @@ const onTabSwipeStart = (e) => {
         <div className="grid grid-cols-2 gap-3 mb-5">
           <button
             onClick={() => setShowAddExp(true)}
-            className="flex items-center justify-center gap-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-4 py-3.5 shadow-sm hover:border-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/10 active:scale-95 transition-all group">
-            <div className="w-8 h-8 bg-violet-100 dark:bg-violet-900/40 group-hover:bg-violet-200 dark:group-hover:bg-violet-900/60 rounded-xl flex items-center justify-center transition-colors shrink-0">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-violet-600 dark:text-violet-400"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            className="flex items-center gap-3 bg-linear-to-br from-rose-400 to-pink-500 rounded-2xl px-4 py-4 shadow-md shadow-rose-200/60 dark:shadow-none active:scale-95 transition-all">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </div>
             <div className="text-left">
-              <p className="text-sm font-bold text-gray-800 dark:text-white">Add Expense</p>
-              <p className="text-xs text-gray-400">Log a payment</p>
+              <p className="text-sm font-bold text-white">Add Expense</p>
+              <p className="text-xs text-white/70">Log a payment</p>
             </div>
           </button>
           <button
             onClick={() => setShowAddInc(true)}
-            className="flex items-center justify-center gap-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-4 py-3.5 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 active:scale-95 transition-all group">
-            <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/40 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/60 rounded-xl flex items-center justify-center transition-colors shrink-0">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-emerald-600 dark:text-emerald-400"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            className="flex items-center gap-3 bg-linear-to-br from-emerald-400 to-teal-500 rounded-2xl px-4 py-4 shadow-md shadow-emerald-200/60 dark:shadow-none active:scale-95 transition-all">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
             </div>
             <div className="text-left">
-              <p className="text-sm font-bold text-gray-800 dark:text-white">Add Income</p>
-              <p className="text-xs text-gray-400">Log earnings</p>
+              <p className="text-sm font-bold text-white">Add Income</p>
+              <p className="text-xs text-white/70">Log earnings</p>
             </div>
           </button>
         </div>
