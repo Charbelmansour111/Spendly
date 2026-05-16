@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
+import { AIChatInput } from '../components/ui/AIChatInput'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CAT_ICONS = { Food: '🍔', Coffee: '☕', Transport: '🚗', Shopping: '🛍️', Entertainment: '🎬', Health: '🏥', Fitness: '🏋️', Education: '🎓', Bills: '💡', Travel: '✈️', Gifts: '🎁', Subscriptions: '📱', Other: '📦' }
@@ -10,7 +11,6 @@ const CAT_COLORS = {
   Fitness: 'bg-yellow-500', Education: 'bg-indigo-500', Bills: 'bg-sky-500',
   Travel: 'bg-teal-500', Gifts: 'bg-fuchsia-500', Other: 'bg-gray-400',
 }
-const CATEGORIES = ['Subscriptions', 'Entertainment', 'Food', 'Coffee', 'Shopping', 'Transport', 'Health', 'Fitness', 'Education', 'Bills', 'Travel', 'Gifts', 'Other']
 
 function getLogoUrl(name) {
   const n = (name || '').toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -42,12 +42,11 @@ function SubLogo({ name, category }) {
   const [ok, setOk] = useState(true)
   const url = getLogoUrl(name)
   if (url && ok) return (
-    <img src={url} alt={name} className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 shadow-sm shrink-0"
+    <img src={url} alt={name} className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 shadow-sm shrink-0"
       onError={() => setOk(false)} />
   )
   return <span className="text-2xl shrink-0">{CAT_ICONS[category] || '📱'}</span>
 }
-const CYCLES = ['monthly', 'yearly', 'weekly']
 
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 
@@ -73,20 +72,22 @@ function renderMarkdown(text) {
     .split('\n').map((line, i) => <p key={i} className="mb-1" dangerouslySetInnerHTML={{ __html: line || '&nbsp;' }} />)
 }
 
-const EMPTY_FORM = { name: '', amount: '', billing_cycle: 'monthly', next_billing_date: '', category: 'Subscriptions' }
-
 export default function Subscriptions() {
   const [subs, setSubs]                   = useState([])
   const [monthlyIncome, setMonthlyIncome] = useState(0)
   const [subExpenses, setSubExpenses]     = useState([])
   const [loading, setLoading]             = useState(true)
-  const [showForm, setShowForm]           = useState(false)
-  const [form, setForm]                   = useState(EMPTY_FORM)
-  const [saving, setSaving]               = useState(false)
   const [aiAudit, setAiAudit]             = useState('')
   const [aiLoading, setAiLoading]         = useState(false)
   const [deleteId, setDeleteId]           = useState(null)
+  const [chatInput, setChatInput]         = useState('')
+  const [chatLoading, setChatLoading]     = useState(false)
+  const [chatMessages, setChatMessages]   = useState([])
+  const [micLangMode, setMicLangMode]     = useState('en')
+  const [listening, setListening]         = useState(false)
+  const chatBottomRef = useRef(null)
   const aiRequested = useRef(false)
+  const recognitionRef = useRef(null)
   const sym = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
   const today = new Date()
 
@@ -114,6 +115,10 @@ export default function Subscriptions() {
 
   useEffect(() => { load() }, [])
 
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [chatMessages])
+
   const monthlyTotal = subs.reduce((s, sub) => s + toMonthly(sub.amount, sub.billing_cycle), 0)
   const yearlyTotal  = monthlyTotal * 12
   const pctOfIncome  = monthlyIncome > 0 ? (monthlyTotal / monthlyIncome) * 100 : 0
@@ -125,19 +130,6 @@ export default function Subscriptions() {
       return acc
     }, {})
   ).sort((a, b) => b[1] - a[1])
-
-  const handleAdd = async (e) => {
-    e.preventDefault()
-    if (!form.name.trim() || !form.amount) return
-    setSaving(true)
-    try {
-      await API.post('/subscriptions', form)
-      setForm(EMPTY_FORM)
-      setShowForm(false)
-      load()
-    } catch {}
-    setSaving(false)
-  }
 
   const handleDelete = async (id) => {
     try { await API.delete(`/subscriptions/${id}`); setSubs(s => s.filter(x => x.id !== id)) } catch {}
@@ -156,58 +148,60 @@ export default function Subscriptions() {
       .finally(() => setAiLoading(false))
   }
 
-  const cls = "w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-700/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 transition"
+  const buildSubContext = () => {
+    if (subs.length === 0) return ''
+    const list = subs.map(s => {
+      const days = daysUntil(s.next_billing_date)
+      const renewal = days !== null
+        ? (days < 0 ? `overdue by ${Math.abs(days)} days` : days === 0 ? 'renews today' : `renews in ${days} days`)
+        : 'no renewal date'
+      return `${s.name} (${s.category}, ${s.billing_cycle}, ${sym}${safeNum(s.amount).toFixed(2)}/period, ${renewal})`
+    }).join('; ')
+    return `\n\nContext — My active subscriptions: ${list}. Monthly total: ${sym}${monthlyTotal.toFixed(2)}.`
+  }
+
+  const sendChat = async (text) => {
+    const msg = (text || chatInput).trim()
+    if (!msg || chatLoading) return
+    setChatInput('')
+    setChatMessages(prev => [...prev, { role: 'user', content: msg }])
+    setChatLoading(true)
+    try {
+      const fullMsg = msg + buildSubContext()
+      const r = await API.post('/insights/chat', { message: fullMsg })
+      setChatMessages(prev => [...prev, { role: 'ai', content: r.data.reply || '' }])
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'ai', content: 'Sorry, I had trouble connecting. Please try again.' }])
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
+  const startMic = () => {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    const rec = new SR()
+    rec.lang = micLangMode === 'ar' ? 'ar-LB' : 'en-US'
+    rec.interimResults = false
+    rec.onresult = (e) => { const t = e.results[0][0].transcript; setChatInput(t); setListening(false) }
+    rec.onerror = () => setListening(false)
+    rec.onend = () => setListening(false)
+    rec.start()
+    recognitionRef.current = rec
+    setListening(true)
+  }
+
+  const stopMic = () => { recognitionRef.current?.stop(); setListening(false) }
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-28 md:pb-8">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Subscriptions</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Track recurring payments and renewals</p>
-          </div>
-          <button onClick={() => setShowForm(v => !v)}
-            className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-700 active:scale-95 transition shadow-sm">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add
-          </button>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Subscriptions</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Track recurring payments and renewals</p>
         </div>
-
-        {/* Add form */}
-        {showForm && (
-          <form onSubmit={handleAdd} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-5 space-y-3 border border-violet-100 dark:border-violet-800/40">
-            <p className="text-sm font-bold text-gray-800 dark:text-white mb-1">New Subscription</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <input placeholder="Name (e.g. Netflix, Spotify)" value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={cls} required />
-              </div>
-              <input type="number" placeholder="Amount" min="0" step="0.01" value={form.amount}
-                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className={cls} required />
-              <select value={form.billing_cycle} onChange={e => setForm(f => ({ ...f, billing_cycle: e.target.value }))} className={cls}>
-                {CYCLES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-              </select>
-              <input type="date" value={form.next_billing_date}
-                onChange={e => setForm(f => ({ ...f, next_billing_date: e.target.value }))} className={cls}
-                title="Next billing date" />
-              <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className={cls}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button type="submit" disabled={saving}
-                className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-violet-700 transition disabled:opacity-60">
-                {saving ? 'Adding…' : 'Add Subscription'}
-              </button>
-              <button type="button" onClick={() => { setShowForm(false); setForm(EMPTY_FORM) }}
-                className="px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
 
         {loading ? (
           <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />)}</div>
@@ -217,24 +211,18 @@ export default function Subscriptions() {
               <p className="text-5xl mb-3">📭</p>
               <p className="font-semibold text-gray-700 dark:text-gray-200 mb-2">No subscriptions yet</p>
               <p className="text-gray-400 text-sm mb-5 max-w-xs mx-auto leading-relaxed">
-                Add your subscriptions to track renewal dates, monthly costs, and get AI-powered advice on what to cut.
+                Add subscriptions from the Transactions page by marking an expense as recurring.
               </p>
-              <button onClick={() => setShowForm(true)}
+              <a href="/transactions"
                 className="inline-flex items-center gap-2 bg-violet-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-700 transition">
-                + Add your first subscription
-              </button>
-            </div>
-            <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800/40 rounded-2xl p-4 flex gap-3">
-              <span className="text-xl shrink-0">💡</span>
-              <p className="text-sm text-violet-700 dark:text-violet-400 leading-relaxed">
-                Add Netflix, Spotify, gym, insurance — anything billed on a schedule. You'll see exactly how much you're spending and when each one renews.
-              </p>
+                Go to Transactions →
+              </a>
             </div>
           </div>
         ) : (
           <div className="space-y-5">
 
-            {/* Overview */}
+            {/* Overview hero */}
             <div className="bg-linear-to-br from-fuchsia-500 to-pink-600 rounded-2xl px-5 py-4 relative overflow-hidden">
               <div className="absolute inset-0 opacity-10 pointer-events-none">
                 <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
@@ -272,7 +260,7 @@ export default function Subscriptions() {
                     {pctOfIncome > 25 ? 'Subscriptions are eating your budget' : 'Above the healthy range'}
                   </p>
                   <p className={`text-xs leading-relaxed ${pctOfIncome > 25 ? 'text-red-600 dark:text-red-300' : 'text-amber-600 dark:text-amber-300'}`}>
-                    You're spending <strong>{pctOfIncome.toFixed(1)}%</strong> of monthly income on subscriptions. Experts recommend keeping this under 10–15%. Run the AI audit below to see what to cut.
+                    You're spending <strong>{pctOfIncome.toFixed(1)}%</strong> of monthly income on subscriptions. Experts recommend keeping this under 10–15%.
                   </p>
                 </div>
               </div>
@@ -365,12 +353,16 @@ export default function Subscriptions() {
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="text-xs text-gray-400 capitalize">{sub.billing_cycle}</span>
                             {days !== null && (
-                              <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${
                                 isOverdue ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
                                 isSoon    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                                            'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                                            'bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400'
                               }`}>
-                                {isOverdue ? `Overdue ${Math.abs(days)}d` : days === 0 ? 'Renews today' : `Renews in ${days}d`}
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                {isOverdue
+                                  ? `Overdue ${Math.abs(days)}d`
+                                  : days === 0 ? 'Renews today'
+                                  : `${days}d cooldown`}
                               </span>
                             )}
                           </div>
@@ -455,6 +447,61 @@ export default function Subscriptions() {
                 </div>
               </div>
             )}
+
+            {/* AI Chat */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-5 pt-5 pb-3 border-b border-gray-50 dark:border-gray-700/60">
+                <p className="text-sm font-semibold text-gray-800 dark:text-white">Ask AI about your subscriptions</p>
+                <p className="text-xs text-gray-400 mt-0.5">The AI knows all your subscription details automatically</p>
+              </div>
+
+              {chatMessages.length > 0 && (
+                <div className="px-4 py-3 space-y-3 max-h-72 overflow-y-auto">
+                  {chatMessages.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      {msg.role === 'ai' && (
+                        <div className="w-7 h-7 rounded-xl bg-linear-to-br from-violet-500 to-purple-700 flex items-center justify-center shrink-0 mr-2 mt-0.5">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 2L13.09 8.26L19 6L15.45 11.27L22 12L15.45 12.73L19 18L13.09 15.74L12 22L10.91 15.74L5 18L8.55 12.73L2 12L8.55 11.27L5 6L10.91 8.26L12 2Z"/></svg>
+                        </div>
+                      )}
+                      <div className={`max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                        msg.role === 'user'
+                          ? 'bg-violet-600 text-white rounded-br-md'
+                          : 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white rounded-bl-md'
+                      }`}>
+                        {msg.role === 'ai' ? renderMarkdown(msg.content) : msg.content}
+                      </div>
+                    </div>
+                  ))}
+                  {chatLoading && (
+                    <div className="flex justify-start">
+                      <div className="w-7 h-7 rounded-xl bg-linear-to-br from-violet-500 to-purple-700 flex items-center justify-center shrink-0 mr-2">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 2L13.09 8.26L19 6L15.45 11.27L22 12L15.45 12.73L19 18L13.09 15.74L12 22L10.91 15.74L5 18L8.55 12.73L2 12L8.55 11.27L5 6L10.91 8.26L12 2Z"/></svg>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 rounded-2xl rounded-bl-md flex items-center gap-1.5">
+                        {[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
+                      </div>
+                    </div>
+                  )}
+                  <div ref={chatBottomRef} />
+                </div>
+              )}
+
+              <div className="px-4 pb-4 pt-3">
+                <AIChatInput
+                  input={chatInput}
+                  setInput={setChatInput}
+                  loading={chatLoading}
+                  listening={listening}
+                  onSend={() => sendChat()}
+                  onStartMic={startMic}
+                  onStopMic={stopMic}
+                  micLangMode={micLangMode}
+                  onToggleMicLang={() => setMicLangMode(m => m === 'en' ? 'ar' : 'en')}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat() } }}
+                />
+              </div>
+            </div>
 
           </div>
         )}

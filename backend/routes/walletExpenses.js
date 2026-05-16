@@ -105,4 +105,41 @@ router.delete('/:id', auth, async (req, res) => {
   }
 })
 
+// GET /api/wallets/:walletId/expenses/trends
+router.get('/trends', auth, async (req, res) => {
+  try {
+    const { walletId } = req.params
+    if (!(await verifyOwnership(walletId, req.userId)))
+      return res.status(403).json({ message: 'Not your wallet' })
+
+    const months = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date()
+      d.setMonth(d.getMonth() - i)
+      months.push({ month: d.getMonth() + 1, year: d.getFullYear() })
+    }
+    const results = await Promise.all(months.map(async ({ month, year }) => {
+      const expenses = await pool.query(
+        `SELECT COALESCE(SUM(amount), 0) as total FROM wallet_expenses WHERE wallet_id=$1 AND user_id=$2 AND EXTRACT(MONTH FROM date)=$3 AND EXTRACT(YEAR FROM date)=$4`,
+        [walletId, req.userId, month, year]
+      )
+      const income = await pool.query(
+        `SELECT COALESCE(SUM(amount), 0) as total FROM wallet_income WHERE wallet_id=$1 AND user_id=$2 AND month=$3 AND year=$4`,
+        [walletId, req.userId, month, year]
+      )
+      const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'short' })
+      return {
+        label: `${monthName} ${year}`,
+        spending: parseFloat(expenses.rows[0].total),
+        income: parseFloat(income.rows[0].total),
+        balance: parseFloat(income.rows[0].total) - parseFloat(expenses.rows[0].total),
+      }
+    }))
+    res.json(results)
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
 module.exports = router

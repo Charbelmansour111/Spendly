@@ -156,7 +156,7 @@ export default function NetWorth() {
       })
       const json = await r.json()
       if (!r.ok) throw new Error(json.message)
-      setData(json)
+      setData({ ...EMPTY, ...json })
       const { totalAssets, totalLiabilities, netWorth } = json
       fetch(`${BASE}/networth/snapshot`, {
         method: 'POST',
@@ -268,7 +268,7 @@ export default function NetWorth() {
   const liabilities = (d.items || []).filter(i => i.type === 'liability')
   const netWorth    = safeNum(d.netWorth)
   const cashBalance = safeNum(d.cashBalance)
-  const trend       = view === 'mine' && data.history.length >= 2
+  const trend       = view === 'mine' && (data.history || []).length >= 2
     ? netWorth - safeNum(data.history[1]?.net_worth)
     : null
   const assetPct = d.totalAssets > 0 ? Math.min((d.totalAssets / Math.max(d.totalAssets + d.totalLiabilities, 1)) * 100, 100) : 0
@@ -399,7 +399,7 @@ export default function NetWorth() {
         </div>
 
         {/* History trend (mine view only) */}
-        {view === 'mine' && data.history.length >= 2 && (
+        {view === 'mine' && (data.history || []).length >= 2 && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm px-5 py-4 mb-4">
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Net Worth History</p>
             <div className="flex items-end gap-1.5 h-14">
