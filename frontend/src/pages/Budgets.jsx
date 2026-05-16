@@ -214,6 +214,11 @@ export default function Budgets() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (saving) return
+    const duplicate = budgets.find(b => b.category === form.category && b.period === form.period)
+    if (duplicate) {
+      showToast(`You already have a ${form.period} budget for ${form.category}`, 'error')
+      return
+    }
     setSaving(true)
     try {
       await API.post('/budgets', form)
@@ -505,6 +510,17 @@ export default function Budgets() {
           {/* Add form */}
           {showForm && (
             <form onSubmit={handleSubmit} className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              {(() => {
+                const dup = budgets.find(b => b.category === form.category && b.period === form.period)
+                return dup ? (
+                  <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl px-3 py-2.5 mb-3">
+                    <span className="text-base shrink-0">⚠️</span>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                      You already have a {dup.period} budget limit for <strong>{dup.category}</strong>. Delete the existing one first to set a new limit.
+                    </p>
+                  </div>
+                ) : null
+              })()}
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Category</label>
@@ -542,7 +558,9 @@ export default function Budgets() {
                     className={inputCls} />
                 </div>
               </div>
-              <button type="submit" disabled={saving} className="w-full bg-violet-600 text-white py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition text-sm disabled:opacity-60">
+              <button type="submit"
+                disabled={saving || !!budgets.find(b => b.category === form.category && b.period === form.period)}
+                className="w-full bg-violet-600 text-white py-2.5 rounded-xl font-semibold hover:bg-violet-700 transition text-sm disabled:opacity-50">
                 {saving ? 'Saving…' : 'Save Budget'}
               </button>
               <p className="text-xs text-gray-400 text-center mt-2">
