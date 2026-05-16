@@ -332,7 +332,7 @@ export default function Budgets() {
         <BudgetSuggestionsSheet
           existingBudgets={budgets}
           onClose={() => setShowAISheet(false)}
-          onApplied={() => { fetchBudgets(); showToast('Budgets updated!', 'success') }}
+          onApplied={() => { fetchAll(); showToast('✅ Budgets applied!', 'success') }}
         />
       )}
 
