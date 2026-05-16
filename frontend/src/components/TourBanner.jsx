@@ -261,7 +261,7 @@ export default function TourBanner() {
   const isLast = tour.step === TOUR_STEPS.length - 1
 
   return (
-    <div className="fixed bottom-16 md:bottom-4 left-0 right-0 z-40 flex justify-center px-3 pointer-events-none">
+    <div className="fixed bottom-28 md:bottom-4 left-0 right-0 z-40 flex justify-center px-3 pointer-events-none">
       <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700/60 overflow-hidden pointer-events-auto">
 
         {/* Header */}

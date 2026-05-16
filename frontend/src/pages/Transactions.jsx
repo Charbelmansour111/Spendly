@@ -185,24 +185,92 @@ const BRAND_LOGOS = {
   'Amazon Prime': 'https://logo.clearbit.com/amazon.com', YouTube: 'https://logo.clearbit.com/youtube.com',
 }
 const SUBCATEGORIES = {
-  Food: [{ label: 'Restaurant', emoji: '🍽️' }, { label: 'Groceries', emoji: '🛒' }, { label: 'Fast Food', emoji: '🍔' }, { label: 'Coffee', emoji: '☕' }],
-  Transport: [{ label: 'Uber', emoji: '🚗' }, { label: 'Taxi', emoji: '🚕' }, { label: 'Gas', emoji: '⛽' }, { label: 'Parking', emoji: '🅿️' }],
-  Shopping: [{ label: 'Amazon', emoji: '📦' }, { label: 'Clothes', emoji: '👗' }, { label: 'Electronics', emoji: '💻' }, { label: 'Shoes', emoji: '👟' }],
-  Subscriptions: [
-    { label: 'Netflix',        emoji: '🎬' }, { label: 'Spotify',       emoji: '🎵' },
-    { label: 'ChatGPT',        emoji: '🤖' }, { label: 'YouTube',       emoji: '▶️' },
-    { label: 'Disney+',        emoji: '🏰' }, { label: 'Amazon Prime',  emoji: '📦' },
-    { label: 'Apple TV+',      emoji: '🍎' }, { label: 'Gemini',        emoji: '🌟' },
-    { label: 'Electricity',    emoji: '⚡' }, { label: 'Water',         emoji: '💧' },
-    { label: 'Touch',          emoji: '📡' }, { label: 'Alfa',          emoji: '📡' },
-    { label: 'Internet',       emoji: '🌐' }, { label: 'HBO Max',       emoji: '🎭' },
-    { label: 'Midjourney',     emoji: '🎨' }, { label: 'Microsoft 365', emoji: '💼' },
-    { label: 'Adobe CC',       emoji: '🎨' }, { label: 'GitHub',        emoji: '💻' },
-    { label: 'Perplexity',     emoji: '🔍' }, { label: 'iCloud',        emoji: '☁️' },
-    { label: 'Xbox Game Pass', emoji: '🎮' }, { label: 'PlayStation',   emoji: '🎮' },
-    { label: 'Crunchyroll',    emoji: '🎌' }, { label: 'Gym',           emoji: '🏋️' },
+  Food: [
+    { label: "McDonald's", emoji: '🍔' }, { label: 'KFC', emoji: '🍗' },
+    { label: 'Pizza Hut', emoji: '🍕' }, { label: 'Burger King', emoji: '🍔' },
+    { label: 'Groceries', emoji: '🛒' }, { label: 'Restaurant', emoji: '🍽️' },
+    { label: 'Delivery', emoji: '🛵' }, { label: 'Shawarma', emoji: '🌯' },
   ],
-  Entertainment: [{ label: 'Cinema', emoji: '🎥' }, { label: 'Concert', emoji: '🎵' }, { label: 'Gaming', emoji: '🎮' }, { label: 'Bar', emoji: '🍻' }],
+  Coffee: [
+    { label: 'Starbucks', emoji: '☕' }, { label: 'Costa Coffee', emoji: '☕' },
+    { label: 'Dunkin', emoji: '🍩' }, { label: 'Tim Hortons', emoji: '☕' },
+    { label: 'Cafe Lattè', emoji: '☕' }, { label: 'Espresso', emoji: '☕' },
+    { label: 'Tea', emoji: '🍵' }, { label: 'Juice Bar', emoji: '🧃' },
+  ],
+  Transport: [
+    { label: 'Uber', emoji: '🚗' }, { label: 'Taxi', emoji: '🚕' },
+    { label: 'Shell', emoji: '⛽' }, { label: 'Metro', emoji: '🚇' },
+    { label: 'Bus', emoji: '🚌' }, { label: 'Parking', emoji: '🅿️' },
+    { label: 'Careem', emoji: '🚗' }, { label: 'Bike Rental', emoji: '🚲' },
+  ],
+  Shopping: [
+    { label: 'Amazon', emoji: '📦' }, { label: 'Clothing', emoji: '👕' },
+    { label: 'Electronics', emoji: '💻' }, { label: 'Beauty', emoji: '💄' },
+    { label: 'IKEA', emoji: '🛋️' }, { label: 'Books', emoji: '📚' },
+    { label: 'Shoes', emoji: '👟' }, { label: 'Accessories', emoji: '👜' },
+  ],
+  Entertainment: [
+    { label: 'Cinema', emoji: '🎥' }, { label: 'Gaming', emoji: '🎮' },
+    { label: 'Bar', emoji: '🍺' }, { label: 'Concert', emoji: '🎤' },
+    { label: 'Club', emoji: '🎉' }, { label: 'Arcade', emoji: '🕹️' },
+    { label: 'Live Show', emoji: '🎭' }, { label: 'Bowling', emoji: '🎳' },
+  ],
+  Health: [
+    { label: 'Doctor', emoji: '🩺' }, { label: 'Hospital', emoji: '🏥' },
+    { label: 'Pharmacy', emoji: '💊' }, { label: 'Dentist', emoji: '🦷' },
+    { label: 'Lab Tests', emoji: '🧪' }, { label: 'Eye Care', emoji: '👁️' },
+    { label: 'Therapy', emoji: '🧠' }, { label: 'Insurance', emoji: '🛡️' },
+  ],
+  Fitness: [
+    { label: 'Gym', emoji: '🏋️' }, { label: 'Yoga', emoji: '🧘' },
+    { label: 'Swimming', emoji: '🏊' }, { label: 'Running Gear', emoji: '👟' },
+    { label: 'Supplements', emoji: '💪' }, { label: 'Sports Club', emoji: '⚽' },
+    { label: 'Cycling', emoji: '🚴' }, { label: 'Personal Trainer', emoji: '🏅' },
+  ],
+  Education: [
+    { label: 'Tuition', emoji: '🎓' }, { label: 'Online Course', emoji: '💻' },
+    { label: 'Books', emoji: '📚' }, { label: 'School Supplies', emoji: '✏️' },
+    { label: 'Language Class', emoji: '🗣️' }, { label: 'Certification', emoji: '📜' },
+    { label: 'Workshop', emoji: '🛠️' }, { label: 'Tutoring', emoji: '📖' },
+  ],
+  Bills: [
+    { label: 'Rent', emoji: '🏠' }, { label: 'Electricity', emoji: '💡' },
+    { label: 'Water', emoji: '💧' }, { label: 'Internet', emoji: '📶' },
+    { label: 'Phone', emoji: '📱' }, { label: 'Gas', emoji: '🔥' },
+    { label: 'Cable TV', emoji: '📺' }, { label: 'Loan Payment', emoji: '🏦' },
+  ],
+  Travel: [
+    { label: 'Flight', emoji: '✈️' }, { label: 'Hotel', emoji: '🏨' },
+    { label: 'Airbnb', emoji: '🏡' }, { label: 'Car Rental', emoji: '🚗' },
+    { label: 'Travel Insurance', emoji: '🛡️' }, { label: 'Tour', emoji: '🗺️' },
+    { label: 'Visa', emoji: '📋' }, { label: 'Baggage', emoji: '🧳' },
+  ],
+  Gifts: [
+    { label: 'Birthday Gift', emoji: '🎂' }, { label: 'Wedding Gift', emoji: '💍' },
+    { label: 'Flowers', emoji: '💐' }, { label: 'Charity', emoji: '❤️' },
+    { label: 'Donation', emoji: '🤲' }, { label: 'Baby Shower', emoji: '👶' },
+    { label: 'Anniversary', emoji: '🥂' }, { label: 'Holiday Gift', emoji: '🎁' },
+  ],
+  Subscriptions: [
+    { label: 'Netflix',       emoji: '🎬' }, { label: 'Spotify',        emoji: '🎵' },
+    { label: 'ChatGPT',       emoji: '🤖' }, { label: 'YouTube',        emoji: '▶️' },
+    { label: 'Disney+',       emoji: '🏰' }, { label: 'Amazon Prime',   emoji: '📦' },
+    { label: 'Apple TV+',     emoji: '🍎' }, { label: 'Gemini',         emoji: '🌟' },
+    { label: 'Electricity',   emoji: '⚡' }, { label: 'Water',          emoji: '💧' },
+    { label: 'Touch',         emoji: '📡' }, { label: 'Alfa',           emoji: '📡' },
+    { label: 'Internet',      emoji: '🌐' }, { label: 'HBO Max',        emoji: '🎭' },
+    { label: 'Midjourney',    emoji: '🎨' }, { label: 'Microsoft 365',  emoji: '💼' },
+    { label: 'Adobe CC',      emoji: '🎨' }, { label: 'GitHub',         emoji: '💻' },
+    { label: 'Perplexity',    emoji: '🔍' }, { label: 'iCloud',         emoji: '☁️' },
+    { label: 'Xbox Game Pass',emoji: '🎮' }, { label: 'PlayStation',    emoji: '🎮' },
+    { label: 'Crunchyroll',   emoji: '🎌' }, { label: 'Gym',            emoji: '🏋️' },
+  ],
+  Other: [
+    { label: 'Personal Care', emoji: '💆' }, { label: 'Haircut', emoji: '💈' },
+    { label: 'Laundry', emoji: '👔' }, { label: 'Pet Care', emoji: '🐾' },
+    { label: 'Home Repair', emoji: '🔧' }, { label: 'Parking Fine', emoji: '🚨' },
+    { label: 'Tax', emoji: '📋' }, { label: 'Miscellaneous', emoji: '📦' },
+  ],
 }
 const CATEGORY_HINTS_LOCAL = {
   Food: ['mcdonald','kfc','pizza','burger','grocery','restaurant','food','lunch','dinner','breakfast'],
@@ -528,7 +596,6 @@ export default function Transactions() {
     })
   }
   const [numModal, setNumModal] = useState(null)
-  const [showRecurring, setShowRecurring] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [showAddExp, setShowAddExp] = useState(false)
   const [showAddInc, setShowAddInc] = useState(false)
@@ -805,12 +872,6 @@ export default function Transactions() {
   const monthSpent  = monthExpenses.reduce((s, e) => s + safeNum(e.amount), 0)
   const monthEarned = monthIncome.reduce((s, i) => s + safeNum(i.amount), 0)
   const monthNet    = monthEarned - monthSpent
-
-  // Recurring
-  const recurringExpenses     = expenses.filter(e => e.is_recurring)
-  const recurringIncome       = income.filter(i => i.is_recurring)
-  const recurringExpenseTotal = recurringExpenses.reduce((s, e) => s + safeNum(e.amount), 0)
-  const recurringIncomeTotal  = recurringIncome.reduce((s, i) => s + safeNum(i.amount), 0)
 
   // Category breakdown for the active tab
   const expenseByCat = filteredExpenses.reduce((acc, e) => {
@@ -1207,66 +1268,31 @@ const onTabSwipeStart = (e) => {
           </div>
         </div>
 
-        {/* Recurring Commitments — collapsed by default */}
-        {(recurringExpenses.length > 0 || recurringIncome.length > 0) && (
-          <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl mb-5 shadow-sm overflow-hidden">
-            <button
-              onClick={() => setShowRecurring(v => !v)}
-              className="w-full flex items-center gap-3 px-5 py-4 text-left active:bg-gray-50 dark:active:bg-gray-700/50 transition-colors">
-              <span className="text-sky-500 text-base shrink-0">↻</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-gray-800 dark:text-white font-bold text-sm">Recurring Commitments</p>
-                <p className="text-gray-400 text-xs mt-0.5">
-                  {recurringExpenses.length + recurringIncome.length} item{recurringExpenses.length + recurringIncome.length !== 1 ? 's' : ''}
-                  <span className="mx-1.5 text-gray-300 dark:text-gray-600">·</span>
-                  <span className="text-red-400">-{fmtMoney(recurringExpenseTotal, sym)}</span>
-                  <span className="mx-1 text-gray-300 dark:text-gray-600">/</span>
-                  <span className="text-green-500">+{fmtMoney(recurringIncomeTotal, sym)}</span>
-                  <span className="ml-1 text-gray-400">mo</span>
-                </p>
-              </div>
-              <svg
-                width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-                className={`text-gray-400 shrink-0 transition-transform duration-200 ${showRecurring ? 'rotate-180' : ''}`}>
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-            </button>
-
-            {showRecurring && (
-              <div className="px-5 pb-4 space-y-0 border-t border-gray-100 dark:border-gray-700">
-                <div className="grid grid-cols-2 gap-2 mt-3 mb-3">
-                  <div className="bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2.5">
-                    <p className="text-red-400 text-[10px] mb-0.5">Monthly Out</p>
-                    <p className="text-red-600 dark:text-red-400 font-bold text-sm tabular-nums">-{fmtMoney(recurringExpenseTotal, sym)}</p>
-                    <p className="text-gray-400 text-[10px]">{recurringExpenses.length} expense{recurringExpenses.length !== 1 ? 's' : ''}</p>
-                  </div>
-                  <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-3 py-2.5">
-                    <p className="text-green-500 text-[10px] mb-0.5">Monthly In</p>
-                    <p className="text-green-600 dark:text-green-400 font-bold text-sm tabular-nums">+{fmtMoney(recurringIncomeTotal, sym)}</p>
-                    <p className="text-gray-400 text-[10px]">{recurringIncome.length} income{recurringIncome.length !== 1 ? 's' : ''}</p>
-                  </div>
-                </div>
-                <div className="space-y-2 pt-3 border-t border-gray-100 dark:border-gray-700">
-                  {recurringExpenses.map(e => (
-                    <div key={e.id} className="flex items-center gap-2.5">
-                      <span className="text-base w-6 text-center shrink-0">{CAT_ICONS[e.category] || '📦'}</span>
-                      <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">{e.description || e.category}</span>
-                      <span className="text-xs font-semibold text-red-500 tabular-nums shrink-0">-{sym}{safeNum(e.amount).toFixed(2)}/{(e.recurring_frequency || 'mo').replace('monthly','mo').replace('weekly','wk').replace('daily','day')}</span>
-                    </div>
-                  ))}
-                  {recurringIncome.map(i => (
-                    <div key={i.id} className="flex items-center gap-2.5">
-                      <span className="text-base w-6 text-center shrink-0">💵</span>
-                      <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">{i.description || i.source || 'Income'}</span>
-                      <span className="text-xs font-semibold text-green-500 tabular-nums shrink-0">+{sym}{safeNum(i.amount).toFixed(2)}/{(i.recurring_frequency || 'mo').replace('monthly','mo').replace('weekly','wk').replace('daily','day')}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Action buttons */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <button
+            onClick={() => setShowAddExp(true)}
+            className="flex items-center justify-center gap-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-4 py-3.5 shadow-sm hover:border-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/10 active:scale-95 transition-all group">
+            <div className="w-8 h-8 bg-violet-100 dark:bg-violet-900/40 group-hover:bg-violet-200 dark:group-hover:bg-violet-900/60 rounded-xl flex items-center justify-center transition-colors shrink-0">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-violet-600 dark:text-violet-400"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-gray-800 dark:text-white">Add Expense</p>
+              <p className="text-xs text-gray-400">Log a payment</p>
+            </div>
+          </button>
+          <button
+            onClick={() => setShowAddInc(true)}
+            className="flex items-center justify-center gap-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-4 py-3.5 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 active:scale-95 transition-all group">
+            <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/40 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/60 rounded-xl flex items-center justify-center transition-colors shrink-0">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-emerald-600 dark:text-emerald-400"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-gray-800 dark:text-white">Add Income</p>
+              <p className="text-xs text-gray-400">Log earnings</p>
+            </div>
+          </button>
+        </div>
 
         {/* Tab bar */}
         <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-5"
@@ -1465,17 +1491,6 @@ const onTabSwipeStart = (e) => {
           </>
         )}
       </div>
-
-      {/* FAB — hidden in select mode */}
-      {!selectMode && !showAddExp && !showAddInc && !showPicker && !editing && !showScan && (
-        <button onClick={() => setShowPicker(true)}
-          className="fixed bottom-28 right-5 md:bottom-8 md:right-8 z-40 w-14 h-14 bg-violet-600 hover:bg-violet-700 active:scale-90 rounded-2xl shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all"
-          aria-label="Add transaction">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-        </button>
-      )}
 
       {/* Bulk action bar */}
       {selectMode && selected.size > 0 && (

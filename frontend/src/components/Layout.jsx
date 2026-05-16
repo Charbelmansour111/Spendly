@@ -67,12 +67,13 @@ function NotificationPanel({ panelRef, notifs, onDismiss }) {
     <div
       ref={panelRef}
       className="fixed top-16 right-4 z-50 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden"
+      style={{ maxHeight: 'calc(100vh - 8rem)' }}
     >
       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
         <p className="font-bold text-gray-900 dark:text-white text-sm">Notifications</p>
         <span className="text-xs text-gray-400">{notifs.length} total</span>
       </div>
-      <div className="max-h-80 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-700/60">
+      <div className="overflow-y-auto divide-y divide-gray-50 dark:divide-gray-700/60" style={{ maxHeight: 'calc(100vh - 12rem)' }}>
         {notifs.length === 0 ? (
           <div className="px-4 py-8 text-center">
             <p className="text-2xl mb-2">🔔</p>
