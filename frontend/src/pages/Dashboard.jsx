@@ -84,7 +84,8 @@ const BRAND_LOGOS = {
   "YouTube":        "https://logo.clearbit.com/youtube.com",
   "Crunchyroll":    "https://logo.clearbit.com/crunchyroll.com",
   "ChatGPT":        "https://logo.clearbit.com/openai.com",
-  "Claude AI":      "https://logo.clearbit.com/anthropic.com",
+  "Gemini":         "https://logo.clearbit.com/google.com",
+  "Perplexity":     "https://logo.clearbit.com/perplexity.ai",
   "Midjourney":     "https://logo.clearbit.com/midjourney.com",
   "Microsoft 365":  "https://logo.clearbit.com/microsoft.com",
   "Adobe CC":       "https://logo.clearbit.com/adobe.com",
@@ -175,14 +176,14 @@ const SUBCATEGORIES = {
     { label: 'Netflix',       emoji: '🎬' }, { label: 'Spotify',        emoji: '🎵' },
     { label: 'ChatGPT',       emoji: '🤖' }, { label: 'YouTube',        emoji: '▶️' },
     { label: 'Disney+',       emoji: '🏰' }, { label: 'Amazon Prime',   emoji: '📦' },
-    { label: 'Apple TV+',     emoji: '🍎' }, { label: 'Claude AI',      emoji: '✨' },
+    { label: 'Apple TV+',     emoji: '🍎' }, { label: 'Gemini',         emoji: '🌟' },
     { label: 'Electricity',   emoji: '⚡' }, { label: 'Water',          emoji: '💧' },
     { label: 'Touch',         emoji: '📡' }, { label: 'Alfa',           emoji: '📡' },
     { label: 'Internet',      emoji: '🌐' }, { label: 'HBO Max',        emoji: '🎭' },
     { label: 'Midjourney',    emoji: '🎨' }, { label: 'Microsoft 365',  emoji: '💼' },
     { label: 'Adobe CC',      emoji: '🎨' }, { label: 'GitHub',         emoji: '💻' },
     { label: 'Notion',        emoji: '📝' }, { label: 'iCloud',         emoji: '☁️' },
-    { label: 'Xbox Game Pass',emoji: '🎮' }, { label: 'PlayStation',    emoji: '🎮' },
+    { label: 'Perplexity',    emoji: '🔍' }, { label: 'PlayStation',    emoji: '🎮' },
     { label: 'Crunchyroll',   emoji: '🎌' }, { label: 'Gym',            emoji: '🏋️' },
   ],
   Other: [
@@ -287,7 +288,7 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol }) {
           </button>
         </div>
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-3">
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
           <ReceiptScanner onScanComplete={data => setForm(f => ({ ...f, amount: data.amount, description: data.description, category: data.category || f.category, date: data.date || f.date }))} />
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Amount ({currencySymbol})</label>
@@ -424,7 +425,7 @@ function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-3">
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Amount ({currencySymbol})</label>
             <input type="number" placeholder="0.00" value={form.amount}

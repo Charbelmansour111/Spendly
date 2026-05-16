@@ -113,7 +113,18 @@ export default function Subscriptions() {
   const [aiAudit, setAiAudit]             = useState('')
   const [aiLoading, setAiLoading]         = useState(false)
   const [deleteId, setDeleteId]           = useState(null)
+  const [paidSubs, setPaidSubs]           = useState(() => {
+    try { return JSON.parse(localStorage.getItem('fina_paid_subs') || '{}') } catch { return {} }
+  })
   const aiRequested = useRef(false)
+
+  const togglePaid = (id) => {
+    setPaidSubs(prev => {
+      const next = { ...prev, [id]: !prev[id] }
+      localStorage.setItem('fina_paid_subs', JSON.stringify(next))
+      return next
+    })
+  }
   const sym = CURRENCY_SYMBOLS[localStorage.getItem('currency') || 'USD'] || '$'
   const today = new Date()
 
@@ -319,22 +330,32 @@ export default function Subscriptions() {
                   const days    = daysUntil(sub.next_billing_date)
                   const isOverdue = days !== null && days < 0
                   const isSoon    = days !== null && days >= 0 && days <= 7
+                  const isPaid = !!paidSubs[sub.id]
                   return (
-                    <div key={sub.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                    <div key={sub.id} className={`rounded-2xl shadow-sm overflow-hidden transition-all duration-200 ${isPaid ? 'bg-emerald-50 dark:bg-emerald-900/10' : 'bg-white dark:bg-gray-800'}`}>
                       <div className="flex items-center gap-4 p-4 pb-3">
-                        <div className="w-11 h-11 flex items-center justify-center shrink-0">
+                        <div className="w-11 h-11 flex items-center justify-center shrink-0 relative">
                           <SubLogo name={sub.name} category={sub.category} />
+                          {isPaid && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center text-[8px] text-white font-bold">✓</span>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-800 dark:text-white text-sm truncate">{sub.name}</p>
+                          <p className={`font-semibold text-sm truncate ${isPaid ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-800 dark:text-white'}`}>{sub.name}</p>
                           <span className="text-xs text-gray-400 capitalize">{sub.billing_cycle}</span>
                         </div>
                         <div className="text-right shrink-0 mr-1">
-                          <p className="font-bold text-gray-800 dark:text-white tabular-nums text-sm">
+                          <p className={`font-bold tabular-nums text-sm ${isPaid ? 'text-emerald-600 dark:text-emerald-400 line-through opacity-60' : 'text-gray-800 dark:text-white'}`}>
                             {sym}{monthly.toFixed(2)}<span className="text-xs text-gray-400 font-normal">/mo</span>
                           </p>
                           <p className="text-xs text-gray-400">{sym}{annual.toFixed(0)}/yr</p>
                         </div>
+                        <button
+                          onClick={() => togglePaid(sub.id)}
+                          title={isPaid ? 'Mark as unpaid' : 'Mark as paid'}
+                          className={`shrink-0 p-1.5 rounded-lg transition-all ${isPaid ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-emerald-100 hover:text-emerald-600'}`}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </button>
                         <button
                           onClick={() => setDeleteId(deleteId === sub.id ? null : sub.id)}
                           className="text-gray-300 hover:text-red-400 transition shrink-0 p-1">

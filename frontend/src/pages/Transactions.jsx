@@ -192,13 +192,13 @@ const SUBCATEGORIES = {
     { label: 'Netflix',        emoji: '🎬' }, { label: 'Spotify',       emoji: '🎵' },
     { label: 'ChatGPT',        emoji: '🤖' }, { label: 'YouTube',       emoji: '▶️' },
     { label: 'Disney+',        emoji: '🏰' }, { label: 'Amazon Prime',  emoji: '📦' },
-    { label: 'Apple TV+',      emoji: '🍎' }, { label: 'Claude AI',     emoji: '✨' },
+    { label: 'Apple TV+',      emoji: '🍎' }, { label: 'Gemini',        emoji: '🌟' },
     { label: 'Electricity',    emoji: '⚡' }, { label: 'Water',         emoji: '💧' },
     { label: 'Touch',          emoji: '📡' }, { label: 'Alfa',          emoji: '📡' },
     { label: 'Internet',       emoji: '🌐' }, { label: 'HBO Max',       emoji: '🎭' },
     { label: 'Midjourney',     emoji: '🎨' }, { label: 'Microsoft 365', emoji: '💼' },
     { label: 'Adobe CC',       emoji: '🎨' }, { label: 'GitHub',        emoji: '💻' },
-    { label: 'Notion',         emoji: '📝' }, { label: 'iCloud',        emoji: '☁️' },
+    { label: 'Perplexity',     emoji: '🔍' }, { label: 'iCloud',        emoji: '☁️' },
     { label: 'Xbox Game Pass', emoji: '🎮' }, { label: 'PlayStation',   emoji: '🎮' },
     { label: 'Crunchyroll',    emoji: '🎌' }, { label: 'Gym',           emoji: '🏋️' },
   ],
@@ -264,7 +264,7 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats }) {
           <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
         </div>
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-3">
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({sym})</label>
             <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
@@ -386,7 +386,7 @@ function AddIncomeModal({ onClose, onSave, sym }) {
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Income</h3>
           <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-3">
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({sym})</label>
             <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
@@ -535,8 +535,6 @@ export default function Transactions() {
   const [showScan, setShowScan] = useState(false)
   const [showSplit, setShowSplit] = useState(false)
   const [showCatManager, setShowCatManager] = useState(false)
-  const [recurringHint, setRecurringHint] = useState(null) // { merchant, expense_id }
-
   const { categories: dynCats, refresh: refreshCats, addCategory, removeCategory } = useCategories()
 
   // Filters
@@ -690,15 +688,6 @@ export default function Transactions() {
       setShowPicker(false)
       showToast('Expense added!')
     } catch { showToast('Error adding expense', 'error') }
-  }
-
-  const markRecurring = async (expenseId) => {
-    try {
-      await API.put('/expenses/' + expenseId, { is_recurring: true })
-      setExpenses(prev => prev.map(e => e.id === expenseId ? { ...e, is_recurring: true } : e))
-      showToast('Marked as recurring!')
-    } catch { showToast('Error updating', 'error') }
-    setRecurringHint(null)
   }
 
   const handleScanAdded = async () => {
@@ -1155,30 +1144,6 @@ const onTabSwipeStart = (e) => {
       {showScan && <QuickScanModal onClose={() => setShowScan(false)} onAdded={handleScanAdded} />}
       {showSplit && <SplitBillModal onClose={() => setShowSplit(false)} onSaved={() => { const r = API.get('/expenses'); r.then(e => setExpenses(e.data || [])); showToast('Split bill logged!') }} />}
       {showCatManager && <CategoryManagerModal categories={dynCats} onAdd={addCategory} onDelete={removeCategory} onClose={() => { setShowCatManager(false); refreshCats() }} />}
-
-      {/* Recurring hint banner */}
-      {recurringHint && (
-        <div className="fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-80 z-50">
-          <div className="bg-violet-600 text-white rounded-2xl shadow-2xl px-4 py-4">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl shrink-0">🔁</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm">Recurring pattern detected</p>
-                <p className="text-white/70 text-xs mt-0.5 truncate">"{recurringHint.merchant}" appears regularly</p>
-              </div>
-              <button onClick={() => setRecurringHint(null)} className="text-white/60 hover:text-white text-xl leading-none shrink-0">×</button>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => markRecurring(recurringHint.expense_id)} className="flex-1 bg-white text-violet-600 font-bold text-sm py-2 rounded-xl hover:bg-violet-50 transition">
-                Mark Recurring
-              </button>
-              <button onClick={() => setRecurringHint(null)} className="flex-1 bg-white/20 text-white font-semibold text-sm py-2 rounded-xl hover:bg-white/30 transition">
-                Skip
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="max-w-2xl mx-auto px-4 py-6 page-enter">
 

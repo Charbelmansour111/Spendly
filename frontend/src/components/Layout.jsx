@@ -140,8 +140,8 @@ const TAB_ITEMS = [
   { href: '/transactions', icon: 'transactions', key: 'nav_transactions', label: 'Txns' },
   { href: '/budgets',      icon: 'budget',       key: 'nav_budgets',      label: 'Budgets' },
   { href: '/dashboard',    icon: 'home',         key: 'tab_home',         isCenter: true, label: 'Home' },
-  { href: '/wellness',     icon: 'wellness',     key: 'nav_wellness',     label: 'Wellness' },
   { href: '/profile',      icon: 'profile',      key: 'nav_profile',      label: 'Profile' },
+  { href: '/settings',     icon: 'settings',     key: 'nav_settings',     label: 'Settings' },
 ]
 
 // Business navigation — disabled until business mode is re-enabled
