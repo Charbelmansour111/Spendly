@@ -1322,12 +1322,12 @@ const onTabSwipeStart = (e) => {
 
         {/* Overview */}
         {numModal && <NumberModal {...numModal} onClose={() => setNumModal(null)} />}
-        <div className="bg-linear-to-br from-indigo-500 via-violet-600 to-fuchsia-600 rounded-3xl px-5 pt-5 pb-4 mb-5 relative overflow-hidden shadow-xl shadow-violet-500/25 dark:shadow-none">
+        <div className="bg-linear-to-br from-sky-500 via-blue-600 to-indigo-700 rounded-3xl px-5 pt-5 pb-4 mb-5 relative overflow-hidden shadow-xl shadow-blue-500/25 dark:shadow-none">
           {/* Decorative blobs */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/10" />
-            <div className="absolute top-1/2 right-3 w-20 h-20 rounded-full bg-fuchsia-400/20" />
-            <div className="absolute -bottom-10 -left-6 w-36 h-36 rounded-full bg-indigo-300/15" />
+            <div className="absolute top-1/2 right-3 w-20 h-20 rounded-full bg-sky-300/20" />
+            <div className="absolute -bottom-10 -left-6 w-36 h-36 rounded-full bg-blue-300/15" />
           </div>
 
           {/* Top row: month + icon */}
@@ -1381,8 +1381,8 @@ const onTabSwipeStart = (e) => {
             <button onClick={() => setNumModal({ label: 'All entries', value: String(expenses.length + income.length), sub: 'across all time' })}
               className="bg-white/15 hover:bg-white/20 rounded-2xl px-3 py-3 text-left active:scale-95 transition-all">
               <div className="flex items-center gap-1 mb-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-violet-200" />
-                <p className="text-violet-200 text-[10px] font-semibold">All time</p>
+                <div className="w-1.5 h-1.5 rounded-full bg-sky-200" />
+                <p className="text-sky-200 text-[10px] font-semibold">All time</p>
               </div>
               <p className="text-white font-bold text-sm tabular-nums leading-none">{expenses.length + income.length}</p>
               <p className="text-white/40 text-[10px] mt-1">entries total</p>

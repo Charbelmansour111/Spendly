@@ -828,13 +828,13 @@ export default function Dashboard() {
   const [showNotifs, setShowNotifs]   = useState(false)
   const [behaviorAlert, setBehaviorAlert] = useState(null)
   const [monthlyCheckModal, setMonthlyCheckModal] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
-    return !localStorage.getItem(`fina_onboarded_${uid}`)
-  })
   const [showQuestions, setShowQuestions] = useState(() => {
     const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
-    return !!(localStorage.getItem(`fina_onboarded_${uid}`) && !localStorage.getItem(`fina_questions_${uid}`))
+    return !localStorage.getItem(`fina_questions_${uid}`)
+  })
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
+    return !!(localStorage.getItem(`fina_questions_${uid}`) && !localStorage.getItem(`fina_onboarded_${uid}`))
   })
   const [dismissedGoals, setDismissedGoals] = useState(() => {
     try { return JSON.parse(localStorage.getItem('fina_dismissed_goals') || '[]') } catch { return [] }
@@ -1159,8 +1159,8 @@ export default function Dashboard() {
     <Layout unreadCount={unread} onBellClick={() => { setShowNotifs(v => !v); if (!showNotifs) markRead() }}>
       {toast    && <Toast {...toast} onClose={() => setToast(null)} />}
       {confirm  && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
-      {showOnboarding && <Onboarding onDone={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.setItem(`fina_onboarded_${uid}`, '1'); setShowOnboarding(false); setShowQuestions(true) }} />}
-      {!showOnboarding && showQuestions && <OnboardingQuestions onDone={() => setShowQuestions(false)} />}
+      {showQuestions && <OnboardingQuestions onDone={() => { setShowQuestions(false); setShowOnboarding(true) }} />}
+      {!showQuestions && showOnboarding && <Onboarding onDone={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.setItem(`fina_onboarded_${uid}`, '1'); setShowOnboarding(false) }} />}
       {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
       {showAddExp   && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} categories={dynCats} onAddCategory={async (name, emoji) => { await addCategory(name, emoji); refreshCats() }} />}
       {showAddInc   && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}

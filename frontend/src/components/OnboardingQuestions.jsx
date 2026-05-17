@@ -83,21 +83,24 @@ export default function OnboardingQuestions({ onDone }) {
       independent: "I'll help you make the most of your independence — smart budgets, clear goals, real growth.",
     }
     return (
-      <div className="fixed inset-0 z-[80] bg-gray-950/95 backdrop-blur-md flex items-center justify-center px-4">
-        <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-sm w-full text-center modal-enter">
-          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4"
-            style={{ animation: 'scaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both' }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <div className="fixed inset-0 z-80 flex items-center justify-center px-4"
+        style={{ background: 'linear-gradient(135deg, #0a0f1e 0%, #1a0a2e 40%, #0d1b3e 70%, #060c1a 100%)' }}>
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-sm w-full text-center"
+          style={{ animation: 'scaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
+          <div className="w-18 h-18 bg-emerald-50 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-5"
+            style={{ width: '72px', height: '72px', animation: 'scaleIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both' }}>
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12"/>
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Perfect! I know you now.</h2>
+          <h2 className="text-xl font-black text-gray-900 dark:text-white mb-2">Perfect! I know you now.</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
             {msgs[answers.life_situation] || "I'll give you personalized financial advice based on your profile."}
           </p>
           <button onClick={() => onDone?.()}
-            className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-2xl transition active:scale-95">
-            Let's Start →
+            className="cursor-pointer w-full text-white font-bold py-3.5 rounded-2xl transition active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', boxShadow: '0 8px 24px rgba(124,58,237,0.35)' }}>
+            Continue to Tour →
           </button>
         </div>
       </div>
@@ -130,8 +133,10 @@ export default function OnboardingQuestions({ onDone }) {
     && (answers.housing === 'rent_self' || answers.housing === 'family_partial')
 
   return (
-    <div className="fixed inset-0 z-[80] bg-gray-950/95 backdrop-blur-md flex items-center justify-center px-4">
-      <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-md w-full modal-enter max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-80 flex items-center justify-center px-4"
+      style={{ background: 'linear-gradient(135deg, #0a0f1e 0%, #1a0a2e 40%, #0d1b3e 70%, #060c1a 100%)' }}>
+      <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-md w-full modal-enter max-h-[90vh] overflow-y-auto"
+        style={{ boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)' }}>
 
         <ProgressDots current={step} total={STEP_COUNT} />
 
