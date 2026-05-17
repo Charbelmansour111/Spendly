@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react'
 import API from '../utils/api'
 
+function getWalletKey() {
+  try {
+    const session = JSON.parse(localStorage.getItem('spendly_wallet_remember') || '{}')
+    const wid = session?.wallet?.id
+    if (wid) return String(wid)
+    return JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
+  } catch { return 'guest' }
+}
+
 const STEP_COUNT = 4
 
 function OptionCard({ emoji, label, desc, selected, onClick }) {
@@ -56,7 +65,6 @@ export default function OnboardingQuestions({ onDone }) {
 
   const handleFinish = async () => {
     setSaving(true)
-    const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
     try {
       await API.post('/onboarding', {
         life_situation: answers.life_situation,
@@ -67,7 +75,7 @@ export default function OnboardingQuestions({ onDone }) {
         dependents: answers.life_situation === 'parent' ? answers.housing : null,
       })
     } catch {}
-    localStorage.setItem(`fina_questions_${uid}`, '1')
+    localStorage.setItem(`fina_questions_${getWalletKey()}`, '1')
     setSaving(false)
     setDone(true)
     setTimeout(() => onDone?.(), 3000)
@@ -250,7 +258,7 @@ export default function OnboardingQuestions({ onDone }) {
           </button>
         </div>
 
-        <button onClick={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.setItem(`fina_questions_${uid}`, '1'); onDone?.() }}
+        <button onClick={() => { localStorage.setItem(`fina_questions_${getWalletKey()}`, '1'); onDone?.() }}
           className="w-full text-center text-xs text-gray-400 mt-3 hover:text-gray-500 transition py-1">
           Skip for now
         </button>

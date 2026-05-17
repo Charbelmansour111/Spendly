@@ -17,6 +17,15 @@ const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', 
 const CATEGORY_COLORS = { Food: '#F97316', Transport: '#3B82F6', Shopping: '#EC4899', Subscriptions: '#8B5CF6', Entertainment: '#10B981', Other: '#6B7280' }
 const CAT_PALETTE = ['#7C3AED','#2563EB','#059669','#D97706','#EC4899','#F59E0B','#10B981','#3B82F6','#EF4444','#8B5CF6','#14B8A6','#F97316','#6B7280']
 
+function getWalletKey() {
+  try {
+    const session = JSON.parse(localStorage.getItem('spendly_wallet_remember') || '{}')
+    const wid = session?.wallet?.id
+    if (wid) return String(wid)
+    return JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
+  } catch { return 'guest' }
+}
+
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n }
 
 function fmt(amount, symbol) {
@@ -829,12 +838,12 @@ export default function Dashboard() {
   const [behaviorAlert, setBehaviorAlert] = useState(null)
   const [monthlyCheckModal, setMonthlyCheckModal] = useState(false)
   const [showQuestions, setShowQuestions] = useState(() => {
-    const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
-    return !localStorage.getItem(`fina_questions_${uid}`)
+    const wid = getWalletKey()
+    return !localStorage.getItem(`fina_questions_${wid}`)
   })
   const [showOnboarding, setShowOnboarding] = useState(() => {
-    const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'
-    return !!(localStorage.getItem(`fina_questions_${uid}`) && !localStorage.getItem(`fina_onboarded_${uid}`))
+    const wid = getWalletKey()
+    return !!(localStorage.getItem(`fina_questions_${wid}`) && !localStorage.getItem(`fina_onboarded_${wid}`))
   })
   const [dismissedGoals, setDismissedGoals] = useState(() => {
     try { return JSON.parse(localStorage.getItem('fina_dismissed_goals') || '[]') } catch { return [] }
@@ -1160,7 +1169,7 @@ export default function Dashboard() {
       {toast    && <Toast {...toast} onClose={() => setToast(null)} />}
       {confirm  && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
       {showQuestions && <OnboardingQuestions onDone={() => { setShowQuestions(false); setShowOnboarding(true) }} />}
-      {!showQuestions && showOnboarding && <Onboarding onDone={() => { const uid = JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; localStorage.setItem(`fina_onboarded_${uid}`, '1'); setShowOnboarding(false) }} />}
+      {!showQuestions && showOnboarding && <Onboarding onDone={() => { localStorage.setItem(`fina_onboarded_${getWalletKey()}`, '1'); setShowOnboarding(false) }} />}
       {modalData && <NumberModal {...modalData} onClose={() => setModalData(null)} />}
       {showAddExp   && <AddExpenseSheet onClose={() => setShowAddExp(false)} onSave={handleAddExpense} currencySymbol={currencySymbol} categories={dynCats} onAddCategory={async (name, emoji) => { await addCategory(name, emoji); refreshCats() }} />}
       {showAddInc   && <AddIncomeSheet  onClose={() => setShowAddInc(false)} onSave={handleAddIncome} currencySymbol={currencySymbol} />}
