@@ -1322,36 +1322,70 @@ const onTabSwipeStart = (e) => {
 
         {/* Overview */}
         {numModal && <NumberModal {...numModal} onClose={() => setNumModal(null)} />}
-        <div className="bg-gradient-to-br from-violet-600 via-violet-700 to-purple-800 rounded-2xl px-5 py-4 mb-5 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white" />
-            <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white" />
+        <div className="bg-linear-to-br from-indigo-500 via-violet-600 to-fuchsia-600 rounded-3xl px-5 pt-5 pb-4 mb-5 relative overflow-hidden shadow-xl shadow-violet-500/25 dark:shadow-none">
+          {/* Decorative blobs */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/10" />
+            <div className="absolute top-1/2 right-3 w-20 h-20 rounded-full bg-fuchsia-400/20" />
+            <div className="absolute -bottom-10 -left-6 w-36 h-36 rounded-full bg-indigo-300/15" />
           </div>
-          <div className="relative mb-3">
-            <p className="text-violet-200 text-xs font-medium">{_now.toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
-            <p className={`text-3xl font-bold tabular-nums mt-0.5 ${monthNet < 0 ? 'text-red-200' : 'text-white'}`}>
+
+          {/* Top row: month + icon */}
+          <div className="relative flex items-start justify-between mb-4">
+            <div>
+              <p className="text-white/55 text-[11px] font-bold uppercase tracking-widest">
+                {_now.toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </p>
+              <p className="text-white/70 text-xs mt-0.5 font-medium">Money Flow</p>
+            </div>
+            <div className="w-9 h-9 bg-white/15 rounded-2xl flex items-center justify-center shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* Net balance */}
+          <div className="relative mb-4">
+            <p className="text-white/50 text-[11px] font-semibold uppercase tracking-wide mb-1">
+              {monthNet >= 0 ? 'Net Surplus' : 'Net Deficit'}
+            </p>
+            <p className={`text-4xl font-black tabular-nums leading-none ${monthNet < 0 ? 'text-red-200' : 'text-white'}`}>
               {monthNet >= 0 ? '+' : '-'}{fmtMoney(Math.abs(monthNet), sym)}
             </p>
-            <p className="text-violet-300 text-xs mt-0.5">{monthNet >= 0 ? 'surplus this month' : 'over income this month'}</p>
           </div>
+
+          {/* Divider */}
+          <div className="relative h-px bg-white/20 mb-3.5" />
+
+          {/* Stat cards */}
           <div className="relative grid grid-cols-3 gap-2">
             <button onClick={() => setNumModal({ label: 'Income this month', value: '+' + fmtMoney(monthEarned, sym), sub: monthIncome.length + ' entries' })}
-              className="bg-white/15 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-green-300 text-[10px] mb-0.5">Income</p>
-              <p className="text-white font-bold text-sm tabular-nums truncate">+{fmtMoney(monthEarned, sym)}</p>
-              <p className="text-white/50 text-[10px]">{monthIncome.length} entr{monthIncome.length !== 1 ? 'ies' : 'y'}</p>
+              className="bg-white/15 hover:bg-white/20 rounded-2xl px-3 py-3 text-left active:scale-95 transition-all">
+              <div className="flex items-center gap-1 mb-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
+                <p className="text-emerald-200 text-[10px] font-semibold">Income</p>
+              </div>
+              <p className="text-white font-bold text-sm tabular-nums truncate leading-none">+{fmtMoney(monthEarned, sym)}</p>
+              <p className="text-white/40 text-[10px] mt-1">{monthIncome.length} entr{monthIncome.length !== 1 ? 'ies' : 'y'}</p>
             </button>
             <button onClick={() => setNumModal({ label: 'Spent this month', value: '-' + fmtMoney(monthSpent, sym), sub: monthExpenses.length + ' expenses' })}
-              className="bg-white/15 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-red-300 text-[10px] mb-0.5">Spent</p>
-              <p className="text-white font-bold text-sm tabular-nums truncate">-{fmtMoney(monthSpent, sym)}</p>
-              <p className="text-white/50 text-[10px]">{monthExpenses.length} expense{monthExpenses.length !== 1 ? 's' : ''}</p>
+              className="bg-white/15 hover:bg-white/20 rounded-2xl px-3 py-3 text-left active:scale-95 transition-all">
+              <div className="flex items-center gap-1 mb-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-rose-300" />
+                <p className="text-rose-200 text-[10px] font-semibold">Spent</p>
+              </div>
+              <p className="text-white font-bold text-sm tabular-nums truncate leading-none">-{fmtMoney(monthSpent, sym)}</p>
+              <p className="text-white/40 text-[10px] mt-1">{monthExpenses.length} expense{monthExpenses.length !== 1 ? 's' : ''}</p>
             </button>
             <button onClick={() => setNumModal({ label: 'All entries', value: String(expenses.length + income.length), sub: 'across all time' })}
-              className="bg-white/15 rounded-xl px-3 py-2.5 text-left active:scale-95 transition-transform">
-              <p className="text-violet-200 text-[10px] mb-0.5">All time</p>
-              <p className="text-white font-bold text-sm tabular-nums">{expenses.length + income.length}</p>
-              <p className="text-white/50 text-[10px]">entries</p>
+              className="bg-white/15 hover:bg-white/20 rounded-2xl px-3 py-3 text-left active:scale-95 transition-all">
+              <div className="flex items-center gap-1 mb-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-violet-200" />
+                <p className="text-violet-200 text-[10px] font-semibold">All time</p>
+              </div>
+              <p className="text-white font-bold text-sm tabular-nums leading-none">{expenses.length + income.length}</p>
+              <p className="text-white/40 text-[10px] mt-1">entries total</p>
             </button>
           </div>
         </div>

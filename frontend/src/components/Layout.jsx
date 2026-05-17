@@ -141,7 +141,7 @@ const TAB_ITEMS = [
   { href: '/transactions', icon: 'transactions', key: 'nav_transactions', label: 'Txns' },
   { href: '/budgets',      icon: 'budget',       key: 'nav_budgets',      label: 'Budgets' },
   { href: '/dashboard',    icon: 'home',         key: 'tab_home',         isCenter: true, label: 'Home' },
-  { href: '/profile',      icon: 'profile',      key: 'nav_profile',      label: 'Profile' },
+  { href: '/net-worth',    icon: 'networth',     key: 'nav_networth',     label: 'Net Worth' },
   { href: '/settings',     icon: 'settings',     key: 'nav_settings',     label: 'Settings' },
 ]
 
