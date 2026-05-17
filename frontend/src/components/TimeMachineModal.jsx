@@ -710,11 +710,13 @@ function FinBot({ mood="neutral", talking=false, pointing=false, swapping=false 
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────
-export default function App() {
-  const sym="$";
+const CURRENCY_SYM = { USD:'$', EUR:'€', GBP:'£', LBP:'L£', AED:'د.إ', SAR:'﷼', CAD:'C$', AUD:'A$' }
+
+export default function TimeMachineModal({ onClose, defaultAmount = 100, currency = 'USD' }) {
+  const sym = CURRENCY_SYM[currency] || '$';
   const [phase,     setPhase]     = useState("input");
   const [yearInput, setYearInput] = useState("");
-  const [amtInput,  setAmtInput]  = useState("100");
+  const [amtInput,  setAmtInput]  = useState(String(defaultAmount));
   const [err,       setErr]       = useState("");
   const [muted,     setMuted]     = useState(false);
   const [year,      setYear]      = useState(0);
@@ -802,7 +804,7 @@ export default function App() {
   const isSerious=script?.lines?.[lineIdx]?.serious;
 
   return(
-    <div style={{minHeight:"100vh",
+    <div style={{position:"fixed",inset:0,zIndex:200,overflowY:"auto",
       background:"linear-gradient(160deg,#0f0c29 0%,#1e1b4b 50%,#0f172a 100%)",
       fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
       <style>{`
@@ -821,7 +823,8 @@ export default function App() {
 
       {/* top bar */}
       <div style={{width:"100%",maxWidth:500,margin:"0 auto",
-        display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 16px 0"}}>
+        display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"18px 16px 0",paddingTop:"max(18px, env(safe-area-inset-top, 0px))"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{width:40,height:40,borderRadius:11,background:"rgba(99,102,241,0.2)",
             border:"1px solid rgba(99,102,241,0.35)",display:"flex",alignItems:"center",
@@ -838,6 +841,12 @@ export default function App() {
             {muted?"🔇":"🔊"}</button>
           {(phase==="story"||phase==="question")&&(
             <button onClick={reset} style={{width:36,height:36,borderRadius:10,
+              border:"1px solid rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.06)",
+              color:"rgba(255,255,255,0.7)",cursor:"pointer",display:"flex",
+              alignItems:"center",justifyContent:"center",fontSize:15}}>↩</button>
+          )}
+          {onClose&&(
+            <button onClick={()=>{window.speechSynthesis?.cancel();if(_wd){clearInterval(_wd);_wd=null;}onClose()}} style={{width:36,height:36,borderRadius:10,
               border:"1px solid rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.06)",
               color:"rgba(255,255,255,0.7)",cursor:"pointer",display:"flex",
               alignItems:"center",justifyContent:"center",fontSize:17}}>✕</button>

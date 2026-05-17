@@ -15,38 +15,106 @@ function rr(ctx, x, y, w, h, r) {
 
 function Shell({ title, emoji, onClose, score, hs, lives, extra, children }) {
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:200, display:'flex', flexDirection:'column', fontFamily:'system-ui' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 16px', background:'rgba(0,0,0,0.88)', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
-        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <span style={{ fontSize:22 }}>{emoji}</span>
-          <span style={{ fontSize:15, fontWeight:700, color:'white' }}>{title}</span>
+    <div style={{ position:'fixed', inset:0, zIndex:200, display:'flex', flexDirection:'column', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif', background:'#000' }}>
+      <div style={{
+        flexShrink:0,
+        background:'linear-gradient(135deg,#0f0c29 0%,#1e1b4b 60%,#1a0a2e 100%)',
+        borderBottom:'1px solid rgba(255,255,255,0.07)',
+        paddingTop:'env(safe-area-inset-top, 0px)',
+        paddingLeft:'max(12px, env(safe-area-inset-left, 0px))',
+        paddingRight:'max(12px, env(safe-area-inset-right, 0px))',
+        paddingBottom:0,
+        minHeight:52,
+        display:'flex', alignItems:'center', justifyContent:'space-between', gap:8
+      }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flex:1, minWidth:0 }}>
+          <div style={{
+            width:34, height:34, borderRadius:10, flexShrink:0,
+            background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)',
+            display:'flex', alignItems:'center', justifyContent:'center', fontSize:17
+          }}>{emoji}</div>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'white', lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{title}</div>
+            {hs !== undefined && <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)', lineHeight:1 }}>Best {(hs||0).toLocaleString()}</div>}
+          </div>
         </div>
-        <div style={{ display:'flex', gap:14, alignItems:'center' }}>
-          {lives !== undefined && <span style={{ fontSize:18 }}>{'❤️'.repeat(Math.max(0,lives))}</span>}
-          {score !== undefined && <span style={{ fontSize:14, fontWeight:700, color:'#FCD34D' }}>Score: {score}</span>}
-          {hs !== undefined && <span style={{ fontSize:11, color:'#64748B' }}>Best: {hs}</span>}
+        <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
           {extra}
-          <button onClick={onClose} style={{ background:'rgba(255,255,255,0.12)', border:'none', color:'white', padding:'5px 14px', borderRadius:8, cursor:'pointer', fontSize:13 }}>✕ Exit</button>
+          {lives !== undefined && (
+            <div style={{ display:'flex', gap:3.5, alignItems:'center' }}>
+              {[0,1,2].map(i=>(
+                <div key={i} style={{
+                  width:9, height:9, borderRadius:'50%',
+                  background: i < lives ? '#EF4444' : 'rgba(255,255,255,0.1)',
+                  boxShadow: i < lives ? '0 0 7px rgba(239,68,68,0.9)' : 'none',
+                  transition:'all 0.3s'
+                }}/>
+              ))}
+            </div>
+          )}
+          {score !== undefined && (
+            <div style={{
+              background:'rgba(252,211,77,0.1)', border:'1px solid rgba(252,211,77,0.2)',
+              borderRadius:8, padding:'3px 10px',
+              fontSize:13, fontWeight:800, color:'#FCD34D', minWidth:44, textAlign:'center'
+            }}>{(score||0).toLocaleString()}</div>
+          )}
+          <button onClick={onClose} style={{
+            width:32, height:32, borderRadius:9, flexShrink:0,
+            background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.09)',
+            color:'rgba(255,255,255,0.45)', cursor:'pointer', fontSize:14,
+            display:'flex', alignItems:'center', justifyContent:'center'
+          }}>✕</button>
         </div>
       </div>
       <div style={{ flex:1, position:'relative', overflow:'hidden' }}>{children}</div>
+      <div style={{ height:'env(safe-area-inset-bottom, 0px)', background:'#0f0c29', flexShrink:0 }}/>
     </div>
   )
 }
 
 function Over({ score, hs, onRestart, onExit, msg }) {
+  const isNew = score > 0 && score >= hs
   return (
-    <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.82)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:30 }}>
-      <div style={{ background:'#1E293B', borderRadius:20, padding:'28px 36px', textAlign:'center', border:'2px solid #334155', minWidth:240 }}>
-        <div style={{ fontSize:44, marginBottom:8 }}>💀</div>
-        <div style={{ fontSize:20, fontWeight:700, color:'white', marginBottom:6 }}>Game Over!</div>
-        {msg && <div style={{ fontSize:12, color:'#94A3B8', marginBottom:10 }}>{msg}</div>}
-        <div style={{ fontSize:30, fontWeight:700, color:'#FCD34D', marginBottom:4 }}>{score}</div>
-        {score > 0 && score >= hs && <div style={{ fontSize:11, color:'#10B981', marginBottom:6 }}>🏆 New High Score!</div>}
-        <div style={{ fontSize:11, color:'#475569', marginBottom:20 }}>Best: {hs}</div>
-        <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
-          <button onClick={onRestart} style={{ padding:'9px 22px', background:'#7C3AED', color:'white', border:'none', borderRadius:10, cursor:'pointer', fontWeight:700 }}>Play Again</button>
-          <button onClick={onExit} style={{ padding:'9px 22px', background:'#334155', color:'white', border:'none', borderRadius:10, cursor:'pointer' }}>Exit</button>
+    <div style={{
+      position:'absolute', inset:0, zIndex:30,
+      background:'rgba(0,0,0,0.87)',
+      backdropFilter:'blur(8px)',
+      display:'flex', alignItems:'center', justifyContent:'center'
+    }}>
+      <div style={{
+        background:'linear-gradient(145deg,rgba(30,41,59,0.98),rgba(15,23,42,0.98))',
+        border:'1px solid rgba(255,255,255,0.08)',
+        borderRadius:24, padding:'28px 28px 22px',
+        textAlign:'center', minWidth:260, maxWidth:310,
+        boxShadow:'0 32px 64px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.05)'
+      }}>
+        <div style={{ fontSize:52, marginBottom:8, lineHeight:1 }}>{isNew ? '🏆' : '💀'}</div>
+        <div style={{ fontSize:21, fontWeight:800, color:'white', marginBottom:4, letterSpacing:'-0.3px' }}>
+          {isNew ? 'New Record!' : 'Game Over'}
+        </div>
+        {msg && <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginBottom:12, lineHeight:1.5 }}>{msg}</div>}
+        <div style={{
+          background:'rgba(252,211,77,0.07)', border:'1px solid rgba(252,211,77,0.15)',
+          borderRadius:14, padding:'10px 24px', margin:'0 0 8px'
+        }}>
+          <div style={{ fontSize:38, fontWeight:900, color:'#FCD34D', lineHeight:1.1 }}>{(score||0).toLocaleString()}</div>
+          <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginTop:2, letterSpacing:'1px' }}>SCORE</div>
+        </div>
+        <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginBottom:20 }}>Best: {Math.max(score||0, hs||0).toLocaleString()}</div>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={onRestart} style={{
+            flex:1, padding:'13px 8px',
+            background:'linear-gradient(135deg,#7C3AED,#4F46E5)',
+            color:'white', border:'none', borderRadius:13,
+            cursor:'pointer', fontWeight:800, fontSize:14,
+            boxShadow:'0 4px 18px rgba(124,58,237,0.4)'
+          }}>Play Again</button>
+          <button onClick={onExit} style={{
+            flex:1, padding:'13px 8px',
+            background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)',
+            color:'rgba(255,255,255,0.7)', borderRadius:13, cursor:'pointer', fontSize:14
+          }}>Exit</button>
         </div>
       </div>
     </div>
@@ -78,7 +146,8 @@ function MoneyRain({ onClose }) {
     const kd=e=>{stRef.current.keys[e.key]=true}
     const ku=e=>{stRef.current.keys[e.key]=false}
     const mm=e=>{const r=cv.getBoundingClientRect();stRef.current.bx=Math.max(0,Math.min(W-stRef.current.bw,(e.clientX-r.left)*(W/r.width)-stRef.current.bw/2))}
-    window.addEventListener('keydown',kd); window.addEventListener('keyup',ku); cv.addEventListener('mousemove',mm)
+    const tm=e=>{e.preventDefault();const r=cv.getBoundingClientRect();const t=e.touches[0];stRef.current.bx=Math.max(0,Math.min(W-stRef.current.bw,(t.clientX-r.left)*(W/r.width)-stRef.current.bw/2))}
+    window.addEventListener('keydown',kd); window.addEventListener('keyup',ku); cv.addEventListener('mousemove',mm); cv.addEventListener('touchmove',tm,{passive:false}); cv.addEventListener('touchstart',tm,{passive:false})
     const loop=()=>{
       const s=stRef.current; if(!s||s.over) return
       s.frame++; s.hue=(s.hue+0.07)%360
@@ -132,16 +201,16 @@ function MoneyRain({ onClose }) {
       rafRef.current=requestAnimationFrame(loop)
     }
     loop()
-    return ()=>{window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);cv.removeEventListener('mousemove',mm);cancelAnimationFrame(rafRef.current)}
+    return ()=>{window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);cv.removeEventListener('mousemove',mm);cv.removeEventListener('touchmove',tm);cv.removeEventListener('touchstart',tm);cancelAnimationFrame(rafRef.current)}
   },[])
   useEffect(()=>{const c=start();return()=>{c?.();cancelAnimationFrame(rafRef.current)}},[start])
   return (
     <Shell title="Money Rain" emoji="💰" onClose={onClose} score={ui.score} hs={hs} lives={ui.lives}>
-      <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'#0F172A'}}>
-        <canvas ref={cvRef} width={480} height={520} style={{maxWidth:'100%',maxHeight:'100%',cursor:'none'}}/>
+      <div style={{position:'absolute',inset:0,background:'#0F172A'}}>
+        <canvas ref={cvRef} width={480} height={520} style={{width:'100%',height:'100%',display:'block',cursor:'none'}}/>
+        {ui.over&&<Over score={ui.score} hs={hs} onRestart={()=>{cancelAnimationFrame(rafRef.current);start()}} onExit={onClose} msg="Catch money in your cart — dodge taxes!"/>}
+        <div style={{position:'absolute',bottom:6,left:0,right:0,textAlign:'center',fontSize:11,color:'rgba(255,255,255,0.25)',pointerEvents:'none'}}>Slide finger or use arrow keys</div>
       </div>
-      {ui.over&&<Over score={ui.score} hs={hs} onRestart={()=>{cancelAnimationFrame(rafRef.current);start()}} onExit={onClose} msg="Catch money in your cart — dodge taxes!"/>}
-      <div style={{position:'absolute',bottom:6,left:0,right:0,textAlign:'center',fontSize:11,color:'rgba(255,255,255,0.3)'}}>Mouse or Arrow keys to move</div>
     </Shell>
   )
 }
@@ -183,7 +252,8 @@ function ExpenseRunner({ onClose }) {
     setUi({score:0,over:false})
     const jump=()=>{const s=stRef.current;if(s?.onG){s.vy=-13.5;s.onG=false}}
     const kd=e=>{if(['ArrowUp',' ','w','W'].includes(e.key)){e.preventDefault();jump()}}
-    cv.addEventListener('click',jump); window.addEventListener('keydown',kd)
+    const tj=e=>{e.preventDefault();jump()}
+    cv.addEventListener('click',jump); cv.addEventListener('touchstart',tj,{passive:false}); window.addEventListener('keydown',kd)
 
     const loop=()=>{
       const s=stRef.current; if(!s||s.over) return
@@ -280,16 +350,16 @@ function ExpenseRunner({ onClose }) {
       rafRef.current=requestAnimationFrame(loop)
     }
     loop()
-    return ()=>{cv.removeEventListener('click',jump);window.removeEventListener('keydown',kd);cancelAnimationFrame(rafRef.current)}
+    return ()=>{cv.removeEventListener('click',jump);cv.removeEventListener('touchstart',tj);window.removeEventListener('keydown',kd);cancelAnimationFrame(rafRef.current)}
   },[])
   useEffect(()=>{const c=start();return()=>{c?.();cancelAnimationFrame(rafRef.current)}},[start])
   return (
     <Shell title="Expense Runner" emoji="🏃" onClose={onClose} score={ui.score} hs={hs}>
-      <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'#A1C4FD'}}>
-        <canvas ref={cvRef} width={580} height={380} style={{maxWidth:'100%',maxHeight:'100%',cursor:'pointer'}}/>
+      <div style={{position:'absolute',inset:0,background:'#A1C4FD'}}>
+        <canvas ref={cvRef} width={580} height={380} style={{width:'100%',height:'100%',display:'block',cursor:'pointer'}}/>
+        {ui.over&&<Over score={ui.score} hs={hs} onRestart={()=>{cancelAnimationFrame(rafRef.current);start()}} onExit={onClose} msg="Jump over expenses, collect money!"/>}
+        <div style={{position:'absolute',bottom:6,left:0,right:0,textAlign:'center',fontSize:11,color:'rgba(255,255,255,0.5)',pointerEvents:'none'}}>Tap / Space / Up to jump</div>
       </div>
-      {ui.over&&<Over score={ui.score} hs={hs} onRestart={()=>{cancelAnimationFrame(rafRef.current);start()}} onExit={onClose} msg="Jump over expenses, collect money!"/>}
-      <div style={{position:'absolute',bottom:6,left:0,right:0,textAlign:'center',fontSize:11,color:'rgba(255,255,255,0.5)'}}>Click / Space / Up to jump</div>
     </Shell>
   )
 }
@@ -472,7 +542,7 @@ function StockClicker({ onClose }) {
     <Shell title="Stock Clicker" emoji="📈" onClose={onClose} score={ui.score} hs={hs} lives={ui.lives}
       extra={<span style={{fontSize:11,color:'#A78BFA'}}>Lv.{ui.level}</span>}>
       {phase==='idle'&&(
-        <div style={{width:'100%',height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#0A1628',gap:14}}>
+        <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#0A1628',gap:14,overflowY:'auto',padding:16}}>
           <div style={{fontSize:52}}>📈</div>
           <div style={{fontSize:20,fontWeight:700,color:'white'}}>Stock Clicker</div>
           <div style={{fontSize:13,color:'#94A3B8',textAlign:'center',maxWidth:320,lineHeight:1.6}}>A window flashes — BUY when it crashes, SELL when it peaks. You must act within the time window or lose a life!</div>
@@ -484,8 +554,8 @@ function StockClicker({ onClose }) {
         </div>
       )}
       {phase==='playing'&&(
-        <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'#0A1628'}}>
-          <canvas ref={cvRef} width={440} height={470} style={{maxWidth:'100%',maxHeight:'100%',cursor:'pointer'}}/>
+        <div style={{position:'absolute',inset:0,background:'#0A1628'}}>
+          <canvas ref={cvRef} width={440} height={470} style={{width:'100%',height:'100%',display:'block',cursor:'pointer'}}/>
         </div>
       )}
       {phase==='over'&&<Over score={ui.score} hs={hs} onRestart={()=>setPhase('idle')} onExit={onClose} msg="Act fast when the window opens!"/>}
@@ -548,7 +618,7 @@ function BudgetReflex({ onClose }) {
   const card=gs.cards?.[gs.idx]
   return (
     <Shell title="Good or Bad?" emoji="⚡" onClose={onClose} score={gs.score||0} hs={hs} lives={gs.lives}>
-      <div style={{width:'100%',height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:16,background:gs.phase==='playing'?BGS[gs.bgIdx||0]:BGS[0],transition:'background 0.5s'}}>
+      <div style={{position:'absolute',inset:0,overflowY:'auto',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:16,background:gs.phase==='playing'?BGS[gs.bgIdx||0]:BGS[0],transition:'background 0.5s'}}>
         {gs.phase==='idle'&&(
           <>
             <div style={{fontSize:62}}>💸</div>
@@ -847,9 +917,10 @@ function MoneyDefender({ onClose }) {
     const kd=e=>{keysRef.current[e.key]=true}
     const ku=e=>{keysRef.current[e.key]=false}
     const mm=e=>{const r=cv.getBoundingClientRect();mouseRef.current={x:(e.clientX-r.left)*(RW/r.width),y:(e.clientY-r.top)*(RH/r.height)}}
-    window.addEventListener('keydown',kd);window.addEventListener('keyup',ku);cv.addEventListener('mousemove',mm)
+    const tm=e=>{e.preventDefault();const r=cv.getBoundingClientRect();const t=e.touches[0];mouseRef.current={x:(t.clientX-r.left)*(RW/r.width),y:(t.clientY-r.top)*(RH/r.height)}}
+    window.addEventListener('keydown',kd);window.addEventListener('keyup',ku);cv.addEventListener('mousemove',mm);cv.addEventListener('touchmove',tm,{passive:false});cv.addEventListener('touchstart',tm,{passive:false})
     runLoop(ctx)
-    return ()=>{window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);cv.removeEventListener('mousemove',mm);cancelAnimationFrame(rafRef.current)}
+    return ()=>{window.removeEventListener('keydown',kd);window.removeEventListener('keyup',ku);cv.removeEventListener('mousemove',mm);cv.removeEventListener('touchmove',tm);cv.removeEventListener('touchstart',tm);cancelAnimationFrame(rafRef.current)}
   },[makeWave,runLoop])
 
   useEffect(()=>{const c=start();return()=>{c?.();cancelAnimationFrame(rafRef.current)}},[start])
@@ -865,8 +936,27 @@ function MoneyDefender({ onClose }) {
 
   return (
     <Shell title="Money Defender" emoji="💼" onClose={onClose} score={ui.score} hs={hs} lives={ui.lives} extra={<span style={{fontSize:11,color:'#A78BFA'}}>Wave {ui.wave}</span>}>
-      <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'#0A1628'}}>
-        <canvas ref={cvRef} width={RW} height={RH} style={{maxWidth:'100%',maxHeight:'100%',cursor:'crosshair'}}/>
+      <div style={{position:'absolute',inset:0,background:'#0A1628',overflow:'hidden'}}>
+        <canvas ref={cvRef} width={RW} height={RH} style={{width:'100%',height:'100%',display:'block',cursor:'crosshair'}}/>
+        {!ui.over&&!ui.between&&(
+          <div style={{position:'absolute',bottom:30,left:14,display:'grid',gridTemplateColumns:'42px 42px 42px',gridTemplateRows:'42px 42px',gap:5,opacity:0.72,pointerEvents:'auto'}}>
+            {[
+              {col:1,row:2,key:'ArrowLeft',label:'◀'},
+              {col:2,row:1,key:'ArrowUp',label:'▲'},
+              {col:2,row:2,key:'ArrowDown',label:'▼'},
+              {col:3,row:2,key:'ArrowRight',label:'▶'},
+            ].map(({col,row,key,label})=>(
+              <button key={key} style={{gridColumn:col,gridRow:row,background:'rgba(255,255,255,0.12)',border:'1px solid rgba(255,255,255,0.18)',borderRadius:11,color:'white',fontSize:16,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',WebkitTapHighlightColor:'transparent',userSelect:'none'}}
+                onTouchStart={e=>{e.preventDefault();keysRef.current[key]=true}}
+                onTouchEnd={e=>{e.preventDefault();keysRef.current[key]=false}}
+                onMouseDown={()=>{keysRef.current[key]=true}}
+                onMouseUp={()=>{keysRef.current[key]=false}}
+                onMouseLeave={()=>{keysRef.current[key]=false}}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         {ui.between&&!ui.over&&(
           <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{background:'#1E293B',borderRadius:20,padding:'28px 36px',textAlign:'center',border:'2px solid #334155'}}>
@@ -879,8 +969,8 @@ function MoneyDefender({ onClose }) {
           </div>
         )}
         {ui.over&&<Over score={ui.score} hs={hs} onRestart={()=>{cancelAnimationFrame(rafRef.current);start()}} onExit={onClose} msg={`Survived ${ui.wave} waves!`}/>}
+        <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'4px',textAlign:'center',fontSize:10,color:'rgba(255,255,255,0.2)',pointerEvents:'none'}}>WASD/Arrows · mouse aims · D-pad for touch</div>
       </div>
-      <div style={{padding:'5px',background:'#0A1628',fontSize:11,color:'#475569',textAlign:'center'}}>WASD/Arrows to move — mouse aims — auto-shoots!</div>
     </Shell>
   )
 }
@@ -937,7 +1027,7 @@ function InvestmentMemory({ onClose }) {
 
   return (
     <Shell title="Investment Memory" emoji="🃏" onClose={onClose} score={gs.score||0} hs={hs}>
-      <div style={{width:'100%',height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:16,background:'linear-gradient(135deg,#0f172a,#1e293b)',gap:12}}>
+      <div style={{position:'absolute',inset:0,overflowY:'auto',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:16,background:'linear-gradient(135deg,#0f172a,#1e293b)',gap:12}}>
         {gs.phase==='idle'&&(
           <div style={{textAlign:'center'}}>
             <div style={{fontSize:56,marginBottom:10}}>🃏</div>
@@ -1072,7 +1162,7 @@ function BudgetBalance({ onClose }) {
 
   return (
     <Shell title="Budget Balance" emoji="⚖️" onClose={onClose} score={gs.score||0} hs={hs}>
-      <div style={{width:'100%',height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:10,padding:12,background:'linear-gradient(135deg,#0f172a,#1a2744)'}}>
+      <div style={{position:'absolute',inset:0,overflowY:'auto',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:10,padding:12,background:'linear-gradient(135deg,#0f172a,#1a2744)'}}>
         {gs.phase==='idle'&&(
           <div style={{textAlign:'center'}}>
             <div style={{fontSize:56,marginBottom:10}}>⚖️</div>
@@ -1160,31 +1250,53 @@ const GAMES=[
 ]
 
 export default function MiniGames() {
-  const [active,setActive]=useState(null)
-  const G=active?GAMES.find(g=>g.id===active):null
-  if(G) return <G.Comp onClose={()=>setActive(null)}/>
+  const [active, setActive] = useState(null)
+  const G = active ? GAMES.find(g => g.id === active) : null
+  if (G) return <G.Comp onClose={() => setActive(null)} />
   return (
-    <div style={{padding:'24px 20px',fontFamily:'system-ui'}}>
-      <div style={{marginBottom:22}}>
-        <h1 style={{fontSize:22,fontWeight:700,color:'var(--color-text-primary)',marginBottom:4}}>Mini Games 🎮</h1>
-        <p style={{fontSize:13,color:'var(--color-text-secondary)'}}>7 games — learn financial skills while having fun!</p>
+    <div style={{ padding:'20px 16px 40px', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
+      <div style={{ marginBottom:18 }}>
+        <h1 style={{ fontSize:20, fontWeight:800, color:'var(--color-text-primary)', marginBottom:3, letterSpacing:'-0.3px' }}>Mini Games</h1>
+        <p style={{ fontSize:13, color:'var(--color-text-secondary)', margin:0 }}>7 games · sharpen your financial instincts</p>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14}}>
-        {GAMES.map(g=>{
-          const score=getHS(g.id)
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(152px,1fr))', gap:12 }}>
+        {GAMES.map(g => {
+          const score = getHS(g.id)
           return (
-            <div key={g.id} onClick={()=>setActive(g.id)}
-              style={{background:g.bg,border:`1.5px solid ${g.color}44`,borderRadius:18,padding:'18px 16px',cursor:'pointer',transition:'transform 0.15s, box-shadow 0.15s'}}
-              onMouseEnter={e=>{e.currentTarget.style.transform='scale(1.03)';e.currentTarget.style.boxShadow=`0 8px 28px ${g.color}44`}}
-              onMouseLeave={e=>{e.currentTarget.style.transform='scale(1)';e.currentTarget.style.boxShadow='none'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
-                <span style={{fontSize:38}}>{g.emoji}</span>
-                {score>0&&<span style={{fontSize:10,background:g.color+'33',color:g.color,border:`1px solid ${g.color}55`,borderRadius:8,padding:'2px 7px',fontWeight:700}}>Best: {score}</span>}
+            <button key={g.id}
+              onClick={() => setActive(g.id)}
+              style={{
+                all:'unset', display:'block', cursor:'pointer',
+                background: g.bg,
+                borderRadius:20, padding:'16px 14px',
+                border:`1px solid ${g.color}33`,
+                position:'relative', overflow:'hidden',
+                textAlign:'left',
+                transition:'transform 0.12s, box-shadow 0.12s',
+                WebkitTapHighlightColor:'transparent',
+                userSelect:'none', boxSizing:'border-box'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform='scale(1.03)'; e.currentTarget.style.boxShadow=`0 10px 32px ${g.color}44` }}
+              onMouseLeave={e => { e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow='none' }}
+              onTouchStart={e => { e.currentTarget.style.transform='scale(0.96)'; e.currentTarget.style.boxShadow='none' }}
+              onTouchEnd={e => { e.currentTarget.style.transform='scale(1)' }}>
+              <div style={{
+                position:'absolute', width:80, height:80, borderRadius:'50%',
+                background: g.color, filter:'blur(32px)', opacity:0.2,
+                top:-20, right:-20, pointerEvents:'none'
+              }}/>
+              <div style={{ fontSize:36, marginBottom:10, lineHeight:1, position:'relative' }}>{g.emoji}</div>
+              <div style={{ fontSize:13, fontWeight:700, color:'white', marginBottom:3, lineHeight:1.3, position:'relative' }}>{g.name}</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', lineHeight:1.5, marginBottom:12, position:'relative' }}>{g.desc}</div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', position:'relative' }}>
+                <div style={{
+                  background: g.color, color:'#000',
+                  borderRadius:8, padding:'5px 12px',
+                  fontSize:12, fontWeight:800
+                }}>Play →</div>
+                {score > 0 && <div style={{ fontSize:11, color:g.color, fontWeight:700 }}>⭐ {score}</div>}
               </div>
-              <div style={{fontSize:14,fontWeight:700,color:'white',marginBottom:4}}>{g.name}</div>
-              <div style={{fontSize:11,color:'rgba(255,255,255,0.6)',lineHeight:1.5,marginBottom:12}}>{g.desc}</div>
-              <div style={{display:'inline-flex',alignItems:'center',gap:5,background:g.color,color:'#000',borderRadius:8,padding:'5px 14px',fontSize:12,fontWeight:700}}>Play</div>
-            </div>
+            </button>
           )
         })}
       </div>
