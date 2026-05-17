@@ -314,7 +314,7 @@ function AddExpenseSheet({ onClose, onSave, currencySymbol, categories: propCats
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-5" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-5" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
           <ReceiptScanner onScanComplete={data => setForm(f => ({ ...f, amount: data.amount, description: data.description, category: data.category || f.category, date: data.date || f.date }))} />
 
           {/* Amount */}
@@ -507,7 +507,7 @@ function AddIncomeSheet({ onClose, onSave, currencySymbol }) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Amount ({currencySymbol})</label>
             <input type="number" placeholder="0.00" value={form.amount}

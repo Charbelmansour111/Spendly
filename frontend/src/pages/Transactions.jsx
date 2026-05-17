@@ -360,7 +360,7 @@ function AddExpenseModal({ onClose, onSave, sym, dynamicCats, onAddCategory }) {
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-5" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-5" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
 
           {/* Amount */}
           <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4">
@@ -542,7 +542,7 @@ function AddIncomeModal({ onClose, onSave, sym }) {
           <h3 className="text-lg font-bold text-gray-800 dark:text-white">Add Income</h3>
           <button onClick={onClose} className="text-gray-400 p-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ({sym})</label>
             <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}

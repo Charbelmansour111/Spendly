@@ -41,6 +41,12 @@ body.modal-open .sp-bottom-nav {
   display: none !important;
 }
 
+/* ── Prevent pull-to-refresh & background scroll when a modal is open ──────── */
+body.modal-open {
+  overflow: hidden;
+  overscroll-behavior: none; /* kills pull-to-refresh on Android Chrome */
+}
+
 /* ── Keyframe Animations ───────────────────────────────────────────────────── */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
