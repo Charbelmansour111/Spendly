@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 
 const getHS = k => parseInt(localStorage.getItem('mg5_' + k) || '0')
 const saveHS = (k, v) => { if (v > getHS(k)) localStorage.setItem('mg5_' + k, String(v)) }
@@ -14,8 +15,8 @@ function rr(ctx, x, y, w, h, r) {
 }
 
 function Shell({ title, emoji, onClose, score, hs, lives, extra, children }) {
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:200, display:'flex', flexDirection:'column', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif', background:'#000' }}>
+  return createPortal(
+    <div style={{ position:'fixed', inset:0, zIndex:9999, display:'flex', flexDirection:'column', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif', background:'#000' }}>
       <div style={{
         flexShrink:0,
         background:'linear-gradient(135deg,#0f0c29 0%,#1e1b4b 60%,#1a0a2e 100%)',
@@ -69,7 +70,8 @@ function Shell({ title, emoji, onClose, score, hs, lives, extra, children }) {
       </div>
       <div style={{ flex:1, position:'relative', overflow:'hidden' }}>{children}</div>
       <div style={{ height:'env(safe-area-inset-bottom, 0px)', background:'#0f0c29', flexShrink:0 }}/>
-    </div>
+    </div>,
+    document.body
   )
 }
 

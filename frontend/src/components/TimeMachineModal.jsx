@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 const fmtYear = y => y < 0 ? `${Math.abs(y)} BC` : `${y} AD`;
 
@@ -803,8 +804,8 @@ export default function TimeMachineModal({ onClose, defaultAmount = 100, currenc
   const pct=phase==="question"?100:lineIdx>=0?Math.round((lineIdx/totalLines)*100):0;
   const isSerious=script?.lines?.[lineIdx]?.serious;
 
-  return(
-    <div style={{position:"fixed",inset:0,zIndex:200,overflowY:"auto",
+  return createPortal(
+    <div style={{position:"fixed",inset:0,zIndex:9999,overflowY:"auto",
       background:"linear-gradient(160deg,#0f0c29 0%,#1e1b4b 50%,#0f172a 100%)",
       fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
       <style>{`
@@ -1048,6 +1049,7 @@ export default function TimeMachineModal({ onClose, defaultAmount = 100, currenc
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
