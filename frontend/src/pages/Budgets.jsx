@@ -148,11 +148,11 @@ export default function Budgets() {
 
   // Hide bottom nav when any entry form/modal is open
   useEffect(() => {
-    const open = showForm || !!aiModal || !!numModal || !!suggestModal || noIncomeModal
+    const open = showForm || showAISheet || !!aiModal || !!numModal || !!suggestModal || noIncomeModal
     if (open) document.body.classList.add('modal-open')
     else document.body.classList.remove('modal-open')
     return () => document.body.classList.remove('modal-open')
-  }, [showForm, aiModal, numModal, suggestModal, noIncomeModal])
+  }, [showForm, showAISheet, aiModal, numModal, suggestModal, noIncomeModal])
 
   const fetchAll = useCallback(() => {
     setLoading(true)

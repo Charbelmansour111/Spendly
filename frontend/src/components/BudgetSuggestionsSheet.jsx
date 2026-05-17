@@ -52,9 +52,12 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
         setError('Could not generate suggestions — try again.'); setLoading(false); return
       }
       setResult(budgetSuggestions)
-      // default all selected
+      // pre-select only categories that don't already have a budget
       const sel = {}
-      budgetSuggestions.suggestions.forEach(s => { sel[s.category] = true })
+      budgetSuggestions.suggestions.forEach(s => {
+        const alreadySet = existingBudgets.some(b => b.category === s.category)
+        sel[s.category] = !alreadySet
+      })
       setSelected(sel)
     } catch (e) {
       setError('Failed to fetch suggestions. Check your connection.')
@@ -63,15 +66,18 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
   }
 
   const suggestions = result?.suggestions || []
+  const newSuggestions = suggestions.filter(s => !existingBudgets.some(b => b.category === s.category))
   const selectedCount = Object.values(selected).filter(Boolean).length
-  const allSelected = selectedCount === suggestions.length
+  const allNewSelected = newSuggestions.length > 0 && newSuggestions.every(s => selected[s.category])
 
   function toggleAll() {
     haptics.light()
-    const next = !allSelected
-    const sel = {}
-    suggestions.forEach(s => { sel[s.category] = next })
-    setSelected(sel)
+    const next = !allNewSelected
+    setSelected(prev => {
+      const sel = { ...prev }
+      newSuggestions.forEach(s => { sel[s.category] = next })
+      return sel
+    })
   }
 
   async function applyBudgets(onlySelected) {
@@ -188,12 +194,14 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
                 <p className="text-xs text-violet-100 leading-relaxed">{result.summary}</p>
               </div>
 
-              {/* Select / deselect all */}
+              {/* Select / deselect all — only applies to categories without an existing budget */}
               <div className="flex items-center justify-between mb-2 px-0.5">
-                <span className="text-xs text-gray-500 dark:text-gray-400">{selectedCount} of {suggestions.length} selected</span>
-                <button onClick={toggleAll} className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline transition">
-                  {allSelected ? 'Deselect All' : 'Select All'}
-                </button>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{selectedCount} selected</span>
+                {newSuggestions.length > 0 && (
+                  <button onClick={toggleAll} className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline transition">
+                    {allNewSelected ? 'Deselect New' : 'Select New'}
+                  </button>
+                )}
               </div>
 
               {/* Suggestion rows */}
@@ -202,24 +210,29 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
                   const existing = existingBudgets.find(b => b.category === s.category)
                   return (
                     <div key={s.category}
-                      className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-2xl card-enter"
+                      className={`flex items-center gap-3 p-3 rounded-2xl card-enter ${existing ? 'bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30' : 'bg-gray-50 dark:bg-gray-700/50'}`}
                       style={{ animationDelay: `${i * 50}ms` }}>
                       <Checkbox checked={!!selected[s.category]} onChange={() => {
                         haptics.light()
                         setSelected(prev => ({ ...prev, [s.category]: !prev[s.category] }))
                       }} />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span>{CATEGORY_ICONS[s.category] || '📦'}</span>
                           <span className="text-sm font-semibold text-gray-800 dark:text-white">{s.category}</span>
                           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-600 ${PRIORITY_COLORS[s.priority]}`}>
                             {s.priority}
                           </span>
+                          {existing && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                              Already set
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{s.reasoning}</p>
                         {existing && (
                           <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                            Current: {sym}{parseFloat(existing.amount).toFixed(0)} → {sym}{s.amount}
+                            Current limit: {sym}{parseFloat(existing.amount).toFixed(0)} · AI suggests: {sym}{s.amount}
                           </p>
                         )}
                       </div>
