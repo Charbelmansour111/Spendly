@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
+import { getProfile, buildProfileContext } from '../utils/profile'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 
@@ -49,7 +50,10 @@ function AiModal({ title, prompt, onClose }) {
   useEffect(() => {
     if (fetched.current) return
     fetched.current = true
-    API.post('/insights/chat', { message: prompt })
+    const profile = getProfile()
+    const profileCtx = buildProfileContext(profile)
+    const history = profileCtx ? [{ role: 'assistant', content: profileCtx }] : []
+    API.post('/insights/chat', { message: prompt, history, userProfile: profile })
       .then(r => setReply(r.data.reply || r.data.message || 'No advice available.'))
       .catch(() => setReply('Unable to load AI advice right now. Try again later.'))
       .finally(() => setLoading(false))

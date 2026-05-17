@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import API from '../utils/api'
 import { haptics } from '../utils/haptics'
+import { getProfile, buildProfileContext, getSavingsTargetPct } from '../utils/profile'
 
 const PRIORITY_COLORS = {
   essential:    'text-emerald-600 dark:text-emerald-400',
@@ -42,10 +43,28 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
   async function fetchSuggestions() {
     setLoading(true); setError(null)
     try {
+      const profile = getProfile()
+      const profileCtx = buildProfileContext(profile)
+      const savingsTarget = getSavingsTargetPct(profile)
+
+      // Build a rich message so the AI knows the savings target and user context
+      const message = [
+        'Generate budget suggestions.',
+        `The user wants to save at least ${savingsTarget}% of their income — total budgeted spending must leave room for this savings target.`,
+        `If income is known, cap total budget limits at ${100 - savingsTarget}% of monthly income.`,
+        profile?.family_support_monthly > 0
+          ? `Important: user already spends ~$${profile.family_support_monthly}/month on family — account for this as a fixed non-negotiable cost.`
+          : '',
+        `If the user's balance is growing rapidly (significantly above their monthly income), include a note suggesting they consider professional investment advice (gold, index funds, savings account, etc.) — but always remind them to consult a licensed financial advisor before acting.`,
+      ].filter(Boolean).join(' ')
+
+      const history = profileCtx ? [{ role: 'assistant', content: profileCtx }] : []
+
       const res = await API.post('/insights/chat', {
-        message: 'generate budget suggestions',
+        message,
         mode: 'budget_suggestions',
-        history: [],
+        history,
+        userProfile: profile,
       })
       const { budgetSuggestions } = res.data
       if (!budgetSuggestions?.suggestions?.length) {
@@ -174,25 +193,50 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
           {result && !loading && applySuccess === null && (
             <>
               {/* Summary card */}
-              <div className="bg-linear-to-r from-violet-600 to-indigo-600 rounded-2xl p-4 mb-4 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-violet-200 uppercase tracking-wider">Monthly Income</span>
-                  <span className="text-sm font-bold">{sym}{(result.total_budgeted + (result.projected_savings || 0)).toFixed(0)}</span>
-                </div>
-                <div className="flex gap-4 mb-3">
-                  <div>
-                    <p className="text-xs text-violet-200">Budgeted</p>
-                    <p className="text-lg font-bold">{sym}{result.total_budgeted}</p>
-                    <p className="text-xs text-violet-200">{result.income_used_percent}% of income</p>
+              {(() => {
+                const profile = getProfile()
+                const targetPct = getSavingsTargetPct(profile)
+                const income = result.total_budgeted + (result.projected_savings || 0)
+                const targetSavings = income * targetPct / 100
+                const actualSavingsPct = income > 0 ? ((result.projected_savings || 0) / income * 100).toFixed(0) : 0
+                const belowTarget = parseFloat(actualSavingsPct) < targetPct
+                return (
+                  <div className="rounded-2xl p-4 mb-4 text-white" style={{ background: 'linear-gradient(135deg, #7C3AED, #4F46E5)' }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-violet-200 uppercase tracking-wider">Monthly Income</span>
+                      <span className="text-sm font-bold">{sym}{income.toFixed(0)}</span>
+                    </div>
+                    <div className="flex gap-4 mb-3">
+                      <div>
+                        <p className="text-xs text-violet-200">Budgeted</p>
+                        <p className="text-lg font-bold">{sym}{result.total_budgeted}</p>
+                        <p className="text-xs text-violet-200">{result.income_used_percent}% of income</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-violet-200">Projected Savings</p>
+                        <p className="text-lg font-bold">{sym}{result.projected_savings}</p>
+                        <p className="text-xs text-violet-200">{result.projected_savings_rate} rate</p>
+                      </div>
+                    </div>
+                    {/* Savings target vs actual */}
+                    <div className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2 mb-3">
+                      <div>
+                        <p className="text-[10px] text-violet-200 font-semibold uppercase tracking-wide">Your savings target</p>
+                        <p className="text-sm font-bold">{targetPct}% = {sym}{targetSavings.toFixed(0)}/mo</p>
+                      </div>
+                      <div className={`px-2.5 py-1 rounded-full text-xs font-bold ${belowTarget ? 'bg-red-400/30 text-red-200' : 'bg-emerald-400/30 text-emerald-200'}`}>
+                        {belowTarget ? `${targetPct - parseFloat(actualSavingsPct)}% below target` : 'On track ✓'}
+                      </div>
+                    </div>
+                    {belowTarget && (
+                      <p className="text-[10px] text-violet-200 leading-relaxed mb-2">
+                        💡 The AI suggests these limits based on your history — ask the AI chat if you want a plan to hit your {targetPct}% savings target.
+                      </p>
+                    )}
+                    <p className="text-xs text-violet-100 leading-relaxed">{result.summary}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-violet-200">Projected Savings</p>
-                    <p className="text-lg font-bold">{sym}{result.projected_savings}</p>
-                    <p className="text-xs text-violet-200">{result.projected_savings_rate} rate</p>
-                  </div>
-                </div>
-                <p className="text-xs text-violet-100 leading-relaxed">{result.summary}</p>
-              </div>
+                )
+              })()}
 
               {/* Select / deselect all — only applies to categories without an existing budget */}
               <div className="flex items-center justify-between mb-2 px-0.5">

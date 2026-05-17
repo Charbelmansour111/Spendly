@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 import { AIChatInput } from '../components/ui/AIChatInput'
+import { getProfile, buildProfileContext, loadChatHistory, saveChatHistory } from '../utils/profile'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 
@@ -123,12 +124,56 @@ const CURRENT_MONTH = TODAY.getMonth()
 const CURRENT_YEAR  = TODAY.getFullYear()
 const MONTH_NAME    = TODAY.toLocaleString('default', { month: 'long', year: 'numeric' })
 
-const GREETING = "Oh, you've decided to check your finances. Brave. 😏 I've seen your spending data and... we have things to discuss. Ask me anything — I'll be honest, accurate, and maybe a little savage about it.\n\n*Tip: you can speak to me in English or Lebanese Arabic (re7et, shu, w, 3m...) — I'll understand and reply in both scripts.*"
+function buildInitialGreeting(profile) {
+  if (!profile?.roles?.length) {
+    return "Oh, you've decided to check your finances. Brave. 😏 I've seen your spending data and... we have things to discuss. Ask me anything — I'll be honest, accurate, and maybe a little savage about it.\n\n*Tip: speak to me in English or Lebanese Arabic (re7et, shu, 3m...) — I'll understand both.*"
+  }
+  const roles = profile.roles
+  const priorities = profile.financial_priorities || []
+  const isStudent = roles.includes('student')
+  const isWorking = roles.includes('working')
+  const hasFamily = roles.includes('parent') || roles.includes('family')
+  const isSelfEmployed = roles.includes('self_employed')
+
+  let situation = ''
+  if (isStudent && hasFamily) situation = 'student who also supports your family — that takes real discipline'
+  else if (isStudent && isSelfEmployed) situation = 'student running your own thing — respect'
+  else if (isStudent) situation = 'student managing your own finances'
+  else if (hasFamily && isSelfEmployed) situation = 'self-employed caregiver — your income and expenses both have a lot of moving parts'
+  else if (hasFamily) situation = 'someone supporting your family — I know the stakes are higher for you'
+  else if (isSelfEmployed) situation = 'self-employed — unpredictable income is a challenge I take seriously'
+  else if (isWorking) situation = 'working professional'
+  else situation = 'someone taking their finances seriously'
+
+  const topGoal = priorities[0]
+  const goalHint = {
+    emergency_fund: "Building your safety net is priority 1 — everything else is built on that foundation.",
+    education: "Education costs are front and centre in all my recommendations.",
+    home: "I'm watching every surplus to see when we can accelerate your home savings.",
+    debt_free: "Every budget suggestion I make will lean toward debt elimination first.",
+    big_goal: "Your big goal is real — let's make the numbers work.",
+    wealth: "I'll flag every moment your money could be working harder for you.",
+  }[topGoal] || ''
+
+  const familyNote = profile.family_support_monthly > 0
+    ? ` I've noted your $${profile.family_support_monthly}/month family contribution — that's already factored in.`
+    : ''
+
+  const gradNote = profile.graduation_year
+    ? ` You're ${new Date().getFullYear() >= profile.graduation_year ? 'at or past' : 'approaching'} your ${profile.graduation_year} graduation — a major turning point I'll keep in mind.`
+    : ''
+
+  return `Hey — I know you're a ${situation}.${familyNote}${gradNote}\n\n${goalHint ? goalHint + '\n\n' : ''}I've analyzed your data and we have things to discuss. Ask me anything — honest, specific, no fluff.\n\n*Tip: speak in English or Lebanese Arabic — I understand both.*`
+}
 
 const CAT_ICONS = { Food:'🍔', Transport:'🚗', Shopping:'🛍️', Subscriptions:'📱', Entertainment:'🎬', Other:'📦' }
 
 export default function Insights() {
-  const [messages, setMessages] = useState([{ role: 'assistant', content: GREETING }])
+  const [messages, setMessages] = useState(() => {
+    const stored = loadChatHistory()
+    if (stored?.length) return stored
+    return [{ role: 'assistant', content: buildInitialGreeting(getProfile()) }]
+  })
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [expenses, setExpenses] = useState([])
@@ -174,19 +219,44 @@ export default function Insights() {
     const userMessage = text || input.trim()
     if (!userMessage || loading) return
     setInput('')
-    if (!silent) setMessages(prev => [...prev, { role: 'user', content: userMessage }])
+
+    const withUser = silent ? messages : [...messages, { role: 'user', content: userMessage }]
+    if (!silent) setMessages(withUser)
     setLoading(true)
+
     try {
-      const history = messages.filter(m => m.role === 'user' || m.role === 'assistant')
-      const res = await API.post('/insights/chat', { message: userMessage, history, mode: 'sarcastic' })
+      // Build history (text-only, no confirm/action payloads)
+      const history = withUser
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => ({ role: m.role, content: m.content }))
+
+      // Inject user profile as first context entry
+      const profile = getProfile()
+      const profileCtx = buildProfileContext(profile)
+      const historyWithCtx = profileCtx
+        ? [{ role: 'assistant', content: profileCtx }, ...history]
+        : history
+
+      const res = await API.post('/insights/chat', {
+        message: userMessage,
+        history: historyWithCtx,
+        mode: 'sarcastic',
+        userProfile: profile,
+      })
       const { reply, action, pendingTransactions } = res.data
+
       setMessages(prev => {
-        const next = [...prev, { role: 'assistant', content: reply, action: action || null, actionState: action ? 'pending' : null }]
-        if (pendingTransactions && pendingTransactions.length > 0) {
+        const next = [
+          ...prev,
+          { role: 'assistant', content: reply, action: action || null, actionState: action ? 'pending' : null },
+        ]
+        if (pendingTransactions?.length > 0) {
           next.push({ role: 'confirm', transactions: pendingTransactions, confirmed: false, skipped: false })
         }
+        saveChatHistory(next)
         return next
       })
+
       if (ttsEnabled) speak(reply)
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Even I had a technical issue. The irony. Try again.' }])
