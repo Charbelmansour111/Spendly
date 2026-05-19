@@ -8,6 +8,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, 
 import Onboarding from '../components/Onboarding'
 import OnboardingQuestions from '../components/OnboardingQuestions'
 import MonthlyWrap from '../components/MonthlyWrap'
+import DailyInsightBoard from '../components/DailyInsightBoard'
 import { useHideNav } from '../hooks/useHideNav'
 import { requestNotificationPermission, isNotificationsEnabled } from '../utils/notifications'
 import useCategories from '../hooks/useCategories'
@@ -988,12 +989,12 @@ export default function Dashboard() {
     } catch { /* noop */ }
   }
 
-  // Carousel touch swipe — disabled on panel 1 (news) so horizontal scroll works
+  // Carousel touch swipe — disabled on panel 2 (news) so horizontal scroll works
   const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX }
   const onTouchEnd   = (e) => {
     if (touchStartX.current === null) return
     const diff = touchStartX.current - e.changedTouches[0].clientX
-    if (Math.abs(diff) > 50 && carouselPanel !== 1) setCarousel(p => Math.max(0, Math.min(2, p + (diff > 0 ? 1 : -1))))
+    if (Math.abs(diff) > 50 && carouselPanel !== 2) setCarousel(p => Math.max(0, Math.min(2, p + (diff > 0 ? 1 : -1))))
     touchStartX.current = null
   }
 
@@ -1159,7 +1160,7 @@ export default function Dashboard() {
   )
 
   const inputCls = "w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-  const PANEL_LABELS = ['Overview', 'World News', 'Your Tips']
+  const PANEL_LABELS = ['Overview', 'Daily Insight', 'World News']
 
   const recurringExpensesList = expenses.filter(e => e.is_recurring)
   const recurringIncomeList   = incomeList.filter(i => i.is_recurring)
@@ -1408,7 +1409,12 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Panel 1 — World & Financial News */}
+              {/* Panel 1 — Daily AI Insight Board */}
+              <div className="w-full shrink-0">
+                <DailyInsightBoard expenses={expenses} incomeList={incomeList} budgets={budgets} />
+              </div>
+
+              {/* Panel 2 — World & Financial News */}
               <div className="w-full shrink-0">
                 <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden" style={{ minHeight: '212px' }}>
                   <div className="px-5 pt-4 pb-2 flex items-center justify-between border-b border-gray-50 dark:border-gray-700/60">
@@ -1460,27 +1466,6 @@ export default function Dashboard() {
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
-
-              {/* Panel 2 — Financial Tips */}
-              <div className="w-full shrink-0">
-                <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 overflow-hidden" style={{ minHeight: '212px' }}>
-                  <div className="px-5 pt-4 pb-2 border-b border-gray-50 dark:border-gray-700/60">
-                    <p className="font-semibold text-gray-800 dark:text-white text-sm">How You're Doing</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Based on your {monthName} data</p>
-                  </div>
-                  <div className="px-4 pb-4 pt-3 space-y-2.5 max-h-64 overflow-y-auto">
-                    {tips.map((tip, i) => (
-                      <div key={i} className={`flex items-start gap-3 p-3 rounded-2xl border ${tip.color}`}>
-                        <span className="text-xl shrink-0 mt-0.5">{tip.icon}</span>
-                        <div>
-                          <p className="text-xs font-bold text-gray-800 dark:text-white">{tip.title}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{tip.desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               </div>
 

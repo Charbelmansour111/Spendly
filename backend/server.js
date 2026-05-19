@@ -76,6 +76,7 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/splits', require('./routes/splits'));
 app.use('/api/currency', require('./routes/currency'));
 app.use('/api/onboarding', require('./routes/onboarding'));
+app.use('/api/daily-insight', require('./routes/dailyInsight'));
 
 app.get('/', (req, res) => {
   res.json({ message: 'Fina API is running' });

@@ -207,6 +207,18 @@ async function migrate() {
       )
     `);
 
+    // Daily AI Insight cache
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS daily_insights (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        date DATE NOT NULL,
+        insight_data JSONB NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, date)
+      )
+    `);
+
     // ── Wallet system ──────────────────────────────────────────────────────
     await pool.query(`
       CREATE TABLE IF NOT EXISTS wallets (
