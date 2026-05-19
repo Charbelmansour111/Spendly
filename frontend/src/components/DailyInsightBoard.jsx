@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import API from '../utils/api'
 
 const THEME_GRADIENTS = {
@@ -137,14 +137,15 @@ function buildFallback(expenses, incomeList, budgets) {
   }
 }
 
-export default function DailyInsightBoard({ expenses = [], incomeList = [], budgets = [] }) {
+export default function DailyInsightBoard({ expenses = [], incomeList = [], budgets = [], isActive = false }) {
   const [insight, setInsight] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [justRefreshed, setJustRefreshed] = useState(false)
   const [animateIn, setAnimateIn] = useState(false)
+  const hasActivated = useRef(false)
 
-  async function fetchInsight(force = false) {
+  const fetchInsight = useCallback(async (force = false) => {
     if (force) setRefreshing(true)
     else setLoading(true)
 
@@ -161,9 +162,20 @@ export default function DailyInsightBoard({ expenses = [], incomeList = [], budg
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [expenses, incomeList, budgets])
 
+  // Initial load (cached insight)
   useEffect(() => { fetchInsight() }, [])
+
+  // Refresh with a new random insight every time the user swipes into this panel
+  useEffect(() => {
+    if (!isActive) return
+    if (!hasActivated.current) {
+      hasActivated.current = true
+      return // first activation — already loaded above
+    }
+    fetchInsight(true)
+  }, [isActive])
 
   const gradient = THEME_GRADIENTS[insight?.color_theme] || THEME_GRADIENTS.indigo
   const leadingNum = extractLeadingNumber(insight?.headline)

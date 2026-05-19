@@ -16,7 +16,7 @@ import useCategories from '../hooks/useCategories'
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
 const CATEGORY_COLORS = { Food: '#F97316', Transport: '#3B82F6', Shopping: '#EC4899', Subscriptions: '#8B5CF6', Entertainment: '#10B981', Other: '#6B7280' }
-const CAT_PALETTE = ['#A78BFA','#60A5FA','#34D399','#FBBF24','#F472B6','#FB923C','#2DD4BF','#818CF8','#F87171','#C084FC','#4ADE80','#FDE68A','#94A3B8']
+const CAT_PALETTE = ['#9333EA','#2563EB','#059669','#D97706','#DC2626','#DB2777','#0891B2','#EA580C','#4F46E5','#0D9488','#65A30D','#7C3AED','#4B5563']
 
 function getWalletKey() {
   try {
@@ -1411,7 +1411,7 @@ export default function Dashboard() {
 
               {/* Panel 1 — Daily AI Insight Board */}
               <div className="w-full shrink-0">
-                <DailyInsightBoard expenses={expenses} incomeList={incomeList} budgets={budgets} />
+                <DailyInsightBoard expenses={expenses} incomeList={incomeList} budgets={budgets} isActive={carouselPanel === 1} />
               </div>
 
               {/* Panel 2 — World & Financial News */}
@@ -1735,22 +1735,17 @@ export default function Dashboard() {
                 {categoryData.slice(0, 5).map((cat, i) => {
                   const pct = total > 0 ? Math.round((cat.value / total) * 100) : 0
                   const color = CAT_PALETTE[i % CAT_PALETTE.length]
-                  const budget = budgets.find(b => b.category === cat.name)
-                  const isOver = budget && cat.value > safeNum(budget.amount)
                   return (
                     <div key={cat.name} className="flex items-center gap-2.5">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{cat.name}</span>
-                          {isOver && <span className="text-[9px] bg-red-100 text-red-600 px-1 rounded-full font-bold shrink-0">Over</span>}
-                        </div>
-                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1">
-                          <div className="h-1 rounded-full" style={{ width: pct + '%', backgroundColor: color }} />
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate block mb-0.5">{cat.name}</span>
+                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                          <div className="h-1.5 rounded-full" style={{ width: pct + '%', backgroundColor: color }} />
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-xs font-bold text-gray-800 dark:text-white tabular-nums">{pct}%</span>
+                      <div className="text-right shrink-0 min-w-[42px]">
+                        <span className="text-sm font-bold tabular-nums" style={{ color }}>{pct}%</span>
                         <p className="text-[10px] text-gray-400 tabular-nums">{currencySymbol}{cat.value.toFixed(0)}</p>
                       </div>
                     </div>

@@ -67,71 +67,156 @@ function Toast({ message, type, onClose }) {
 }
 
 function AiModal({ budget, spent, symbol, onClose }) {
-  const [reply, setReply] = useState('')
+  const [advice, setAdvice] = useState('')
   const [loading, setLoading] = useState(true)
   const fetched = useRef(false)
 
   const limit = parseFloat(budget.amount)
-  const isOver = spent >= limit
-  const isWarning = !isOver && spent >= limit * 0.85
+  const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0
+  const remaining = Math.max(0, limit - spent)
+  const isOver = pct >= 100
+  const isWarning = !isOver && pct >= 85
+  const isGood = pct < 60
+
+  const gradient = isOver
+    ? 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)'
+    : isWarning
+    ? 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)'
+    : isGood
+    ? 'linear-gradient(135deg, #10B981 0%, #047857 100%)'
+    : 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)'
+
+  const icon = CAT_ICONS[budget.category] || '📦'
+  const periodLabel = budget.period === 'daily' ? 'today' : budget.period === 'weekly' ? 'this week' : 'this month'
+  const periodEnd = budget.period === 'daily' ? 'day' : budget.period === 'weekly' ? 'week' : 'month'
 
   useEffect(() => {
     if (fetched.current) return
     fetched.current = true
-    const pct = ((spent / limit) * 100).toFixed(0)
-    const periodLabel = budget.period === 'daily' ? 'today' : budget.period === 'weekly' ? 'this week' : 'this month'
-    const periodEnd = budget.period === 'weekly' ? 'week' : 'month'
+
     let msg
     if (isOver) {
-      msg = `I've exceeded my ${budget.category} budget ${periodLabel}. My limit was ${symbol}${limit.toFixed(2)} and I've spent ${symbol}${spent.toFixed(2)} (${pct}% used). What should I do to get back on track? Give me 3 specific actionable steps.`
+      msg = `My ${budget.category} budget is ${symbol}${limit.toFixed(2)} for the ${periodEnd}. I've spent ${symbol}${spent.toFixed(2)} — ${pct}% of my limit, ${symbol}${(spent - limit).toFixed(2)} over. Give me TWO specific, practical tips to get back on track this ${periodEnd}. Be direct, brief, and specific to ${budget.category}. No bullet points.`
     } else if (isWarning) {
-      msg = `I'm at ${pct}% of my ${budget.category} budget ${periodLabel}. My limit is ${symbol}${limit.toFixed(2)} and I've spent ${symbol}${spent.toFixed(2)} — only ${symbol}${(limit - spent).toFixed(2)} left. Give me 3 practical tips to stay under my limit for the rest of the ${periodEnd}.`
+      msg = `My ${budget.category} budget is ${symbol}${limit.toFixed(2)} for the ${periodEnd}. I've spent ${symbol}${spent.toFixed(2)} (${pct}%) with only ${symbol}${remaining.toFixed(2)} left. Give me ONE clear, practical tip to stay under budget for the rest of the ${periodEnd}. Be specific to ${budget.category}.`
+    } else if (isGood) {
+      msg = `My ${budget.category} budget is ${symbol}${limit.toFixed(2)} for the ${periodEnd} and I've only spent ${symbol}${spent.toFixed(2)} (${pct}%) — I'm doing well. Give me ONE tip to get the most value from my remaining ${symbol}${remaining.toFixed(2)} ${budget.category} budget. Be brief and actionable.`
     } else {
-      msg = `I have a ${budget.period} budget of ${symbol}${limit.toFixed(2)} for ${budget.category}. I've spent ${symbol}${spent.toFixed(2)} (${pct}%) with ${symbol}${(limit - spent).toFixed(2)} remaining. Give me 3 specific, practical tips on how to spend this ${budget.category} budget wisely and get the most value from it. Keep it concise and actionable.`
+      msg = `My ${budget.category} budget is ${symbol}${limit.toFixed(2)} for the ${periodEnd}. I've spent ${symbol}${spent.toFixed(2)} (${pct}%) with ${symbol}${remaining.toFixed(2)} remaining. Give me ONE specific, practical tip for managing my ${budget.category} spending well. Under 2 sentences.`
     }
+
     API.post('/insights/chat', { message: msg })
-      .then(r => setReply(r.data.reply || r.data.message || 'No advice available.'))
-      .catch(() => setReply('Unable to load AI advice right now. Try again later.'))
+      .then(r => setAdvice(r.data.reply || r.data.message || ''))
+      .catch(() => setAdvice(''))
       .finally(() => setLoading(false))
   }, [budget, spent, symbol])
 
-  const headerGrad = isOver
-    ? 'linear-gradient(135deg,#EF4444,#DC2626)'
-    : isWarning
-    ? 'linear-gradient(135deg,#F59E0B,#D97706)'
-    : 'linear-gradient(135deg,#7C3AED,#6D28D9)'
-
-  const badge = isOver ? '🚨 Over limit' : isWarning ? '⚠️ Warning' : '💡 Spending guide'
-  const title = isOver
-    ? `Over budget: ${budget.category}`
-    : isWarning
-    ? `Heads up: ${budget.category}`
-    : `${budget.category} spending tips`
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-white dark:bg-gray-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden">
-        <div style={{ background: headerGrad }} className="px-6 pt-7 pb-5 text-white">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full">{badge}</span>
-            <button onClick={onClose} className="text-white/60 hover:text-white text-xl leading-none">✕</button>
-          </div>
-          <p className="text-lg font-bold">{title}</p>
-          <p className="text-white/70 text-sm mt-1">
-            {symbol}{spent.toFixed(2)} of {symbol}{limit.toFixed(2)} · {Math.round((spent/limit)*100)}% used · {budget.period}
-          </p>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-t-3xl shadow-2xl overflow-hidden"
+        style={{ maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle bar */}
+        <div className="flex justify-center pt-3 pb-0 shrink-0">
+          <div className="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full" />
         </div>
-        <div className="px-6 py-5">
-          {loading ? (
-            <div className="space-y-3">
-              {[85,95,75].map((w,i) => <div key={i} className="h-4 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${w}%` }} />)}
-              <p className="text-xs text-gray-400 text-center pt-1 animate-pulse">AI is thinking…</p>
+
+        <div className="overflow-y-auto flex-1">
+          {/* Gradient header */}
+          <div style={{ background: gradient }} className="px-5 pt-5 pb-6 text-white">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
+                {icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white/65 text-[11px] font-semibold uppercase tracking-wider">Budget Review</p>
+                <p className="text-white font-bold text-lg leading-tight">{budget.category}</p>
+              </div>
+              <button
+                onClick={onClose}
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl bg-white/15 hover:bg-white/25 transition"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
             </div>
-          ) : (
-            <div className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{reply}</div>
-          )}
-          <button onClick={onClose} className="mt-5 w-full py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold text-sm transition active:scale-95">
-            Got it, thanks!
+
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-white/15 rounded-2xl px-3 py-2.5 text-center">
+                <p className="text-white/60 text-[10px] font-medium mb-0.5">Spent</p>
+                <p className="text-white font-bold text-sm tabular-nums">{symbol}{spent.toFixed(0)}</p>
+              </div>
+              <div className="bg-white/15 rounded-2xl px-3 py-2.5 text-center">
+                <p className="text-white/60 text-[10px] font-medium mb-0.5">Limit</p>
+                <p className="text-white font-bold text-sm tabular-nums">{symbol}{limit.toFixed(0)}</p>
+              </div>
+              <div className="bg-white/15 rounded-2xl px-3 py-2.5 text-center">
+                <p className="text-white/60 text-[10px] font-medium mb-0.5">{isOver ? 'Over by' : 'Remaining'}</p>
+                <p className="text-white font-bold text-sm tabular-nums">{symbol}{isOver ? (spent - limit).toFixed(0) : remaining.toFixed(0)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 capitalize">{periodLabel} usage</span>
+              <span className={`text-xs font-bold ${isOver ? 'text-red-500' : isWarning ? 'text-amber-500' : 'text-emerald-500'}`}>
+                {pct}%
+              </span>
+            </div>
+            <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="h-2.5 rounded-full transition-all duration-700"
+                style={{
+                  width: `${Math.min(pct, 100)}%`,
+                  background: isOver ? '#EF4444' : isWarning ? '#F59E0B' : '#10B981',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* AI Advice — shown first, most prominent */}
+          <div className="px-5 py-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/>
+                </svg>
+              </div>
+              <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                {isOver ? 'Action plan' : isGood ? 'You're doing great' : 'AI Advice'}
+              </p>
+            </div>
+
+            {loading ? (
+              <div className="space-y-2.5">
+                {[92, 78, 65].map((w, i) => (
+                  <div key={i} className="h-3.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${w}%` }} />
+                ))}
+              </div>
+            ) : advice ? (
+              <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">{advice}</p>
+            ) : (
+              <p className="text-sm text-gray-400 italic">No advice available right now.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Sticky footer */}
+        <div className="px-5 pt-3 pb-7 shrink-0 border-t border-gray-100 dark:border-gray-800">
+          <button
+            onClick={onClose}
+            className="w-full py-3.5 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white font-bold rounded-2xl text-sm transition"
+          >
+            Got it
           </button>
         </div>
       </div>

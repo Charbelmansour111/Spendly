@@ -47,6 +47,10 @@ async function getAiCommentary(insightType, data) {
       payday_awareness: `User has $${data.remaining_budget} left to last ${data.days_to_payday} days until payday — $${data.daily_budget}/day. ONE sentence max 18 words.`,
       streak: `User has been under budget for ${data.streak_days} consecutive days. On pace to save $${data.projected_extra} extra. ONE sentence max 18 words.`,
       savings_rate: `User is saving ${data.rate}% this month ($${data.saved_amount}). Target is 20%. ONE sentence max 18 words, focus on encouragement or gentle nudge.`,
+      top_category: `User's top spending category this month is ${data.category} with $${data.total_spent} across ${data.transaction_count} transactions. Give ONE specific saving tip for ${data.category}, max 18 words. No emojis.`,
+      biggest_purchase: `User's biggest single expense this month was $${data.amount} on ${data.category} on ${data.date}. ONE short reflective sentence, max 18 words. No emojis.`,
+      monthly_pace: `User is spending $${data.daily_rate}/day and projected to spend $${data.projected_total} this month with ${data.days_left} days left. ONE sentence, max 18 words. No emojis.`,
+      financial_guide: `User's top spending category is ${data.top_category} ($${data.top_amount} this month). Give ONE highly specific, actionable money tip for ${data.top_category} spending. Max 20 words. No emojis.`,
     };
     const prompt = prompts[insightType] || 'Write ONE punchy financial tip sentence, max 18 words.';
 
@@ -485,12 +489,157 @@ async function calcSavingsRate(userId) {
   };
 }
 
+// ── Transaction-focused insight calculators ───────────────────────────────────
+
+async function calcTopCategory(userId) {
+  const { first, last } = currentMonthBounds();
+  const result = await pool.query(
+    `SELECT category, SUM(amount) as total, COUNT(*) as cnt
+     FROM expenses WHERE user_id = $1 AND date >= $2 AND date <= $3
+     GROUP BY category ORDER BY total DESC LIMIT 1`,
+    [userId, first, last]
+  );
+  if (!result.rows.length) return null;
+  const { category, total, cnt } = result.rows[0];
+  const totalSpent = parseFloat(total);
+  const txCount = parseInt(cnt);
+  if (totalSpent < 10) return null;
+
+  const data = { category, total_spent: Math.round(totalSpent), transaction_count: txCount };
+  const commentary = await getAiCommentary('top_category', data);
+
+  return {
+    type: 'top_category',
+    headline: `${category} leads this month`,
+    subtext: `You've spent $${Math.round(totalSpent)} on ${category} this month across ${txCount} transaction${txCount !== 1 ? 's' : ''}.`,
+    color_theme: 'blue',
+    icon: '🏆',
+    data,
+    ai_commentary: commentary || `${category} is your biggest spend — a great place to look for savings.`,
+  };
+}
+
+async function calcBiggestPurchase(userId) {
+  const { first, last } = currentMonthBounds();
+  const result = await pool.query(
+    `SELECT amount, category, date FROM expenses
+     WHERE user_id = $1 AND date >= $2 AND date <= $3
+     ORDER BY amount DESC LIMIT 1`,
+    [userId, first, last]
+  );
+  if (!result.rows.length) return null;
+  const { amount, category, date } = result.rows[0];
+  const amt = parseFloat(amount);
+  if (amt < 20) return null;
+
+  const dateLabel = new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const data = { amount: Math.round(amt), category, date: dateLabel };
+  const commentary = await getAiCommentary('biggest_purchase', data);
+
+  return {
+    type: 'biggest_purchase',
+    headline: `$${Math.round(amt)} biggest purchase`,
+    subtext: `Your largest expense this month was $${Math.round(amt)} on ${category} (${dateLabel}).`,
+    color_theme: 'indigo',
+    icon: '💸',
+    data,
+    ai_commentary: commentary || `Big purchases happen — just make sure this one was worth it.`,
+  };
+}
+
+async function calcMonthlyPace(userId) {
+  const { first, month, year } = currentMonthBounds();
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const totalDaysInMonth = new Date(year, month, 0).getDate();
+  const daysLeft = daysLeftInMonth();
+
+  if (dayOfMonth < 5) return null;
+
+  const result = await pool.query(
+    `SELECT SUM(amount) as total FROM expenses WHERE user_id = $1 AND date >= $2 AND date <= CURRENT_DATE`,
+    [userId, first]
+  );
+  const spentSoFar = parseFloat(result.rows[0]?.total) || 0;
+  if (spentSoFar < 10) return null;
+
+  const dailyRate = spentSoFar / dayOfMonth;
+  const projectedTotal = Math.round(dailyRate * totalDaysInMonth);
+
+  const incomeResult = await pool.query(
+    `SELECT SUM(amount) as total FROM income WHERE user_id = $1 AND month = $2 AND year = $3`,
+    [userId, month, year]
+  );
+  const income = parseFloat(incomeResult.rows[0]?.total) || 0;
+  const isHigh = income > 0 && projectedTotal > income * 0.85;
+  const theme = isHigh ? 'orange' : 'blue';
+
+  const data = {
+    daily_rate: Math.round(dailyRate),
+    projected_total: projectedTotal,
+    days_left: daysLeft,
+    income: Math.round(income),
+  };
+  const commentary = await getAiCommentary('monthly_pace', data);
+
+  return {
+    type: 'monthly_pace',
+    headline: `$${Math.round(dailyRate)}/day spending pace`,
+    subtext: `At your current rate, you'll spend $${projectedTotal} this month. ${daysLeft} days remain.`,
+    color_theme: theme,
+    icon: '📈',
+    data,
+    ai_commentary: commentary || `$${Math.round(dailyRate)}/day — ${isHigh ? 'consider trimming to stay on track' : 'a sustainable pace'}.`,
+  };
+}
+
+async function calcFinancialGuide(userId) {
+  const { first, last } = currentMonthBounds();
+  const result = await pool.query(
+    `SELECT category, SUM(amount) as total FROM expenses
+     WHERE user_id = $1 AND date >= $2 AND date <= $3
+     GROUP BY category ORDER BY total DESC LIMIT 1`,
+    [userId, first, last]
+  );
+  if (!result.rows.length) return null;
+  const { category, total } = result.rows[0];
+  const amt = parseFloat(total);
+  if (amt < 5) return null;
+
+  const data = { top_category: category, top_amount: Math.round(amt) };
+  const commentary = await getAiCommentary('financial_guide', data);
+
+  const guides = {
+    Food: 'Batch-cook on Sundays, shop with a list, avoid food delivery when possible.',
+    Transport: 'Combine errands into one trip and compare fuel vs. transit costs monthly.',
+    Shopping: 'Wait 48 hours before any non-essential purchase — impulse buys shrink dramatically.',
+    Subscriptions: 'Audit subscriptions quarterly; cancel anything you haven\'t used in 30 days.',
+    Entertainment: 'Set a fixed fun budget and track it — enjoyment doesn\'t have to be expensive.',
+    Coffee: 'Brew at home 3 days a week and you\'ll save over $50 a month.',
+    Health: 'Preventive care now costs less than reactive treatment later — invest wisely.',
+    Fitness: 'Outdoor workouts and YouTube routines rival expensive gym memberships.',
+    Education: 'Free resources (Coursera audits, YouTube, libraries) cover 80% of learning needs.',
+    Travel: 'Book 6–8 weeks ahead and use off-peak days for better rates.',
+    Gifts: 'Set a gift budget at the start of the year and stick to it.',
+  };
+  const defaultGuide = guides[category] || 'Track each transaction as it happens — awareness is the first step to saving.';
+
+  return {
+    type: 'financial_guide',
+    headline: `Smart ${category} guide`,
+    subtext: commentary || defaultGuide,
+    color_theme: 'green',
+    icon: '📖',
+    data,
+    ai_commentary: defaultGuide,
+  };
+}
+
 // ── Main calculation pipeline ─────────────────────────────────────────────────
 
-async function calculateInsight(userId) {
+async function calculateInsight(userId, forceRandom = false) {
   const today = todayStr();
 
-  // Priority order: high → low
   const runners = [
     calcCategoryMilestone,
     calcBudgetCountdown,
@@ -500,9 +649,18 @@ async function calculateInsight(userId) {
     calcPayday,
     calcStreak,
     calcSavingsRate,
+    calcTopCategory,
+    calcBiggestPurchase,
+    calcMonthlyPace,
+    calcFinancialGuide,
   ];
 
-  for (const fn of runners) {
+  // When force-refreshing, shuffle for variety; otherwise use priority order
+  const orderedRunners = forceRandom
+    ? [...runners].sort(() => Math.random() - 0.5)
+    : runners;
+
+  for (const fn of orderedRunners) {
     try {
       const result = await fn(userId);
       if (result) {
@@ -545,7 +703,7 @@ router.get('/', authenticateToken, async (req, res) => {
       }
     }
 
-    const insight = await calculateInsight(userId);
+    const insight = await calculateInsight(userId, force);
 
     await pool.query(
       `INSERT INTO daily_insights (user_id, date, insight_data)
