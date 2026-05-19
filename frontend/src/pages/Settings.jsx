@@ -94,7 +94,6 @@ export default function Settings() {
   })
   const [emailForm, setEmailForm]   = useState(() => ({ email: JSON.parse(localStorage.getItem('user') || '{}').email || '', currency: JSON.parse(localStorage.getItem('user') || '{}').currency || 'USD' }))
   const [emailSaving, setEmailSaving] = useState(false)
-  const [pwForm, setPwForm]         = useState({ current: '', newPw: '', confirm: '' })
   const [saving, setSaving]         = useState(false)
   const [toast, setToast]           = useState(null)
   const [activeTab, setActiveTab]   = useState('prefs')
@@ -112,6 +111,12 @@ export default function Settings() {
   const [nwPinInput, setNwPinInput] = useState('')
   const [nwPinConfirm, setNwPinConfirm] = useState('')
   const [nwPinMode, setNwPinMode]   = useState(null)
+  const [wPinMode, setWPinMode]     = useState(null)
+  const [wPinCurrent, setWPinCurrent] = useState('')
+  const [wPinNew, setWPinNew]       = useState('')
+  const [wPinConfirm, setWPinConfirm] = useState('')
+  const [wPinError, setWPinError]   = useState('')
+  const [wPinLoading, setWPinLoading] = useState(false)
 
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700/60 text-gray-900 dark:text-white text-sm transition"
   const showToast = (msg, type = 'success') => setToast({ message: msg, type })
@@ -131,14 +136,25 @@ export default function Settings() {
     setEmailSaving(false)
   }
 
-  const handleChangePassword = async () => {
-    if (pwForm.newPw !== pwForm.confirm) { showToast('Passwords do not match', 'error'); return }
-    if (pwForm.newPw.length < 6) { showToast('Password must be at least 6 characters', 'error'); return }
+
+  const handleChangeWalletPin = async () => {
+    if (!activeWallet) return
+    if (wPinNew.length < 4) { setWPinError('PIN must be 4–6 digits'); return }
+    if (wPinNew !== wPinConfirm) { setWPinError('PINs do not match'); return }
+    setWPinLoading(true); setWPinError('')
     try {
-      await API.put('/profile/password', { current_password: pwForm.current, new_password: pwForm.newPw })
-      setPwForm({ current: '', newPw: '', confirm: '' })
-      showToast(t('change_password') + ' ✓')
-    } catch (e) { showToast(e.response?.data?.message || t('server_error'), 'error') }
+      const token = localStorage.getItem('token')
+      const res = await fetch(`https://spendly-backend-et20.onrender.com/api/wallets/${activeWallet.id}/change-pin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ current_pin: wPinCurrent, new_pin: wPinNew }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Failed to update PIN')
+      setWPinMode(null); setWPinCurrent(''); setWPinNew(''); setWPinConfirm('')
+      showToast('Wallet PIN updated ✓')
+    } catch (e) { setWPinError(e.message) }
+    setWPinLoading(false)
   }
 
   if (!user) return null
@@ -216,29 +232,7 @@ export default function Settings() {
         {activeTab === 'prefs' && (
           <div className="space-y-4">
 
-            {/* Account details */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Account</p>
-              </div>
-              <Field label="Email Address">
-                <input type="email" value={emailForm.email} onChange={e => setEmailForm(f => ({ ...f, email: e.target.value }))} className={cls} />
-              </Field>
-              <Field label={t('currency')}>
-                <select value={emailForm.currency} onChange={e => setEmailForm(f => ({ ...f, currency: e.target.value }))} className={cls}>
-                  {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c]} {c}</option>)}
-                </select>
-              </Field>
-              <button onClick={handleSaveAccount} disabled={emailSaving}
-                className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 active:scale-95 transition disabled:opacity-60 flex items-center justify-center gap-2">
-                {emailSaving
-                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</>
-                  : 'Save Account'}
-              </button>
-            </div>
-
-            {/* App prefs */}
+            {/* App prefs — first */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-5">
               <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -305,6 +299,28 @@ export default function Settings() {
               </button>
             </div>
 
+            {/* Account details — after app prefs */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Account</p>
+              </div>
+              <Field label="Email Address">
+                <input type="email" value={emailForm.email} onChange={e => setEmailForm(f => ({ ...f, email: e.target.value }))} className={cls} />
+              </Field>
+              <Field label={t('currency')}>
+                <select value={emailForm.currency} onChange={e => setEmailForm(f => ({ ...f, currency: e.target.value }))} className={cls}>
+                  {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c]} {c}</option>)}
+                </select>
+              </Field>
+              <button onClick={handleSaveAccount} disabled={emailSaving}
+                className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 active:scale-95 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                {emailSaving
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</>
+                  : 'Save Account'}
+              </button>
+            </div>
+
             {/* Appearance */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
               <p className="text-sm font-bold text-gray-700 dark:text-white mb-4">Appearance</p>
@@ -322,46 +338,58 @@ export default function Settings() {
         {/* Security tab */}
         {activeTab === 'security' && (
           <div className="space-y-4">
-            {/* Change password */}
+
+            {/* Wallet PIN */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
               <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Change Password</p>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                  Wallet PIN{activeWallet ? ` — ${activeWallet.name}` : ''}
+                </p>
               </div>
-              <Field label={t('current_password')}>
-                <input type="password" placeholder="••••••••" value={pwForm.current}
-                  onChange={e => setPwForm({ ...pwForm, current: e.target.value })} className={cls} />
-              </Field>
-              <Field label={t('new_password')}>
-                <input type="password" placeholder="••••••••" value={pwForm.newPw}
-                  onChange={e => setPwForm({ ...pwForm, newPw: e.target.value })} className={cls} />
-                {pwForm.newPw.length > 0 && (
-                  <div className="flex items-center gap-2 mt-1.5">
-                    {[1,2,3,4].map(i => (
-                      <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${
-                        pwForm.newPw.length >= i * 3
-                          ? i <= 1 ? 'bg-red-400' : i <= 2 ? 'bg-orange-400' : i <= 3 ? 'bg-yellow-400' : 'bg-green-500'
-                          : 'bg-gray-200 dark:bg-gray-700'
-                      }`} />
-                    ))}
-                    <span className="text-xs text-gray-400 shrink-0">
-                      {pwForm.newPw.length < 4 ? 'Weak' : pwForm.newPw.length < 7 ? 'Fair' : pwForm.newPw.length < 10 ? 'Good' : 'Strong'}
-                    </span>
+              {!activeWallet ? (
+                <p className="text-sm text-gray-400">No active wallet.</p>
+              ) : wPinMode === 'change' ? (
+                <div className="space-y-3">
+                  <Field label="Current PIN">
+                    <input type="password" inputMode="numeric" maxLength={6} placeholder="••••"
+                      value={wPinCurrent} onChange={e => { setWPinCurrent(e.target.value.replace(/\D/g,'').slice(0,6)); setWPinError('') }} className={cls} />
+                  </Field>
+                  <Field label="New PIN (4–6 digits)">
+                    <input type="password" inputMode="numeric" maxLength={6} placeholder="••••"
+                      value={wPinNew} onChange={e => { setWPinNew(e.target.value.replace(/\D/g,'').slice(0,6)); setWPinError('') }} className={cls} />
+                  </Field>
+                  <Field label="Confirm New PIN">
+                    <input type="password" inputMode="numeric" maxLength={6} placeholder="••••"
+                      value={wPinConfirm} onChange={e => { setWPinConfirm(e.target.value.replace(/\D/g,'').slice(0,6)); setWPinError('') }} className={cls} />
+                    {wPinConfirm.length >= 4 && wPinNew !== wPinConfirm && <p className="text-xs text-red-500 mt-1">PINs do not match</p>}
+                  </Field>
+                  {wPinError && <p className="text-xs text-red-500">{wPinError}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => { setWPinMode(null); setWPinCurrent(''); setWPinNew(''); setWPinConfirm(''); setWPinError('') }}
+                      className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                      Cancel
+                    </button>
+                    <button
+                      disabled={wPinLoading || wPinNew.length < 4 || wPinNew !== wPinConfirm || !wPinCurrent}
+                      onClick={handleChangeWalletPin}
+                      className="flex-1 py-3 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition disabled:opacity-50">
+                      {wPinLoading ? 'Saving…' : 'Save PIN'}
+                    </button>
                   </div>
-                )}
-              </Field>
-              <Field label={t('confirm_password')}>
-                <input type="password" placeholder="••••••••" value={pwForm.confirm}
-                  onChange={e => setPwForm({ ...pwForm, confirm: e.target.value })} className={cls} />
-                {pwForm.confirm.length > 0 && pwForm.newPw !== pwForm.confirm && (
-                  <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
-                )}
-              </Field>
-              <button onClick={handleChangePassword}
-                disabled={!pwForm.current || !pwForm.newPw || !pwForm.confirm || pwForm.newPw !== pwForm.confirm}
-                className="w-full bg-violet-600 text-white py-3.5 rounded-xl font-bold hover:bg-violet-700 transition disabled:opacity-50">
-                {t('change_password')}
-              </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Wallet access code</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Change the PIN used to unlock this wallet</p>
+                  </div>
+                  <button onClick={() => { setWPinCurrent(''); setWPinNew(''); setWPinConfirm(''); setWPinError(''); setWPinMode('change') }}
+                    className="text-xs font-bold text-violet-600 border border-violet-200 dark:border-violet-800 px-3 py-1.5 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
+                    Change PIN
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Net Worth PIN */}

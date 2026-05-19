@@ -16,7 +16,7 @@ import useCategories from '../hooks/useCategories'
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
 const CATEGORY_COLORS = { Food: '#F97316', Transport: '#3B82F6', Shopping: '#EC4899', Subscriptions: '#8B5CF6', Entertainment: '#10B981', Other: '#6B7280' }
-const CAT_PALETTE = ['#7C3AED','#2563EB','#059669','#D97706','#EC4899','#F59E0B','#10B981','#3B82F6','#EF4444','#8B5CF6','#14B8A6','#F97316','#6B7280']
+const CAT_PALETTE = ['#A78BFA','#60A5FA','#34D399','#FBBF24','#F472B6','#FB923C','#2DD4BF','#818CF8','#F87171','#C084FC','#4ADE80','#FDE68A','#94A3B8']
 
 function getWalletKey() {
   try {

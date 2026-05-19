@@ -71,46 +71,66 @@ function AiModal({ budget, spent, symbol, onClose }) {
   const [loading, setLoading] = useState(true)
   const fetched = useRef(false)
 
+  const limit = parseFloat(budget.amount)
+  const isOver = spent >= limit
+  const isWarning = !isOver && spent >= limit * 0.85
+
   useEffect(() => {
     if (fetched.current) return
     fetched.current = true
-    const limit = parseFloat(budget.amount)
     const pct = ((spent / limit) * 100).toFixed(0)
     const periodLabel = budget.period === 'daily' ? 'today' : budget.period === 'weekly' ? 'this week' : 'this month'
-    const isOver = spent >= limit
-    const msg = isOver
-      ? `I've exceeded my ${budget.category} budget ${periodLabel}. My limit was ${symbol}${limit.toFixed(2)} and I've spent ${symbol}${spent.toFixed(2)} (${pct}% used). What should I do to get back on track? Give me 3 specific actionable steps.`
-      : `I'm at ${pct}% of my ${budget.category} budget ${periodLabel}. My limit is ${symbol}${limit.toFixed(2)} and I've spent ${symbol}${spent.toFixed(2)} so far. I still have ${symbol}${(limit - spent).toFixed(2)} left. Give me 3 practical tips to stay under my limit for the rest of the ${budget.period === 'weekly' ? 'week' : 'month'}.`
+    const periodEnd = budget.period === 'weekly' ? 'week' : 'month'
+    let msg
+    if (isOver) {
+      msg = `I've exceeded my ${budget.category} budget ${periodLabel}. My limit was ${symbol}${limit.toFixed(2)} and I've spent ${symbol}${spent.toFixed(2)} (${pct}% used). What should I do to get back on track? Give me 3 specific actionable steps.`
+    } else if (isWarning) {
+      msg = `I'm at ${pct}% of my ${budget.category} budget ${periodLabel}. My limit is ${symbol}${limit.toFixed(2)} and I've spent ${symbol}${spent.toFixed(2)} — only ${symbol}${(limit - spent).toFixed(2)} left. Give me 3 practical tips to stay under my limit for the rest of the ${periodEnd}.`
+    } else {
+      msg = `I have a ${budget.period} budget of ${symbol}${limit.toFixed(2)} for ${budget.category}. I've spent ${symbol}${spent.toFixed(2)} (${pct}%) with ${symbol}${(limit - spent).toFixed(2)} remaining. Give me 3 specific, practical tips on how to spend this ${budget.category} budget wisely and get the most value from it. Keep it concise and actionable.`
+    }
     API.post('/insights/chat', { message: msg })
       .then(r => setReply(r.data.reply || r.data.message || 'No advice available.'))
       .catch(() => setReply('Unable to load AI advice right now. Try again later.'))
       .finally(() => setLoading(false))
   }, [budget, spent, symbol])
 
+  const headerGrad = isOver
+    ? 'linear-gradient(135deg,#EF4444,#DC2626)'
+    : isWarning
+    ? 'linear-gradient(135deg,#F59E0B,#D97706)'
+    : 'linear-gradient(135deg,#7C3AED,#6D28D9)'
+
+  const badge = isOver ? '🚨 Over limit' : isWarning ? '⚠️ Warning' : '💡 Spending guide'
+  const title = isOver
+    ? `Over budget: ${budget.category}`
+    : isWarning
+    ? `Heads up: ${budget.category}`
+    : `${budget.category} spending tips`
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div className="bg-white dark:bg-gray-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden">
-        <div className="bg-linear-to-br from-violet-600 to-purple-700 px-6 pt-7 pb-5 text-white">
+        <div style={{ background: headerGrad }} className="px-6 pt-7 pb-5 text-white">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full">🤖 AI Advice</span>
+            <span className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full">{badge}</span>
             <button onClick={onClose} className="text-white/60 hover:text-white text-xl leading-none">✕</button>
           </div>
-          <p className="text-lg font-bold">
-            {spent >= parseFloat(budget.amount) ? `Over budget: ${budget.category}` : `Heads up: ${budget.category} budget`}
-          </p>
+          <p className="text-lg font-bold">{title}</p>
           <p className="text-white/70 text-sm mt-1">
-            {symbol}{spent.toFixed(2)} of {symbol}{parseFloat(budget.amount).toFixed(2)} · {((spent/parseFloat(budget.amount))*100).toFixed(0)}% used · {budget.period}
+            {symbol}{spent.toFixed(2)} of {symbol}{limit.toFixed(2)} · {Math.round((spent/limit)*100)}% used · {budget.period}
           </p>
         </div>
         <div className="px-6 py-5">
           {loading ? (
-            <div className="space-y-2.5">
-              {[1,2,3].map(i => <div key={i} className="h-4 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${70 + i*10}%` }} />)}
+            <div className="space-y-3">
+              {[85,95,75].map((w,i) => <div key={i} className="h-4 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${w}%` }} />)}
+              <p className="text-xs text-gray-400 text-center pt-1 animate-pulse">AI is thinking…</p>
             </div>
           ) : (
             <div className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{reply}</div>
           )}
-          <button onClick={onClose} className="mt-5 w-full py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold text-sm transition">
+          <button onClick={onClose} className="mt-5 w-full py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold text-sm transition active:scale-95">
             Got it, thanks!
           </button>
         </div>
@@ -612,9 +632,11 @@ export default function Budgets() {
 
               return (
                 <SwipeRow key={b.id} onDelete={() => handleDeleteNoConfirm(b.id)}>
-                <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border-l-4 ${
-                  isOver ? 'border-red-500' : isWarning ? 'border-orange-400' : 'border-green-500'
-                }`}>
+                <div
+                  onClick={() => setAiModal({ budget: b, spent: b.spent })}
+                  className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border-l-4 cursor-pointer active:scale-[0.985] transition-transform ${
+                    isOver ? 'border-red-500' : isWarning ? 'border-orange-400' : 'border-green-500'
+                  }`}>
                   <div className="flex items-start gap-3 mb-3 min-w-0">
                     <span className="text-2xl shrink-0">{CAT_ICONS[b.category] || '📦'}</span>
                     <div className="flex-1 min-w-0">
@@ -673,30 +695,22 @@ export default function Budgets() {
                     </p>
                   )}
 
-                  {/* AI advice button when over budget */}
-                  {isOver && (
-                    <button
-                      onClick={() => setAiModal({ budget: b, spent: b.spent })}
-                      className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 bg-linear-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-200 dark:border-violet-700 rounded-xl text-violet-700 dark:text-violet-300 text-sm font-semibold hover:from-violet-100 hover:to-purple-100 transition">
-                      <span>🤖</span>
-                      <span>Get AI advice on cutting back</span>
-                    </button>
-                  )}
-
-                  {/* Warning at 85% — with AI tips button */}
                   {isWarning && (
-                    <div className="mt-3 space-y-2">
-                      <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-xl px-3 py-2">
-                        <p className="text-xs text-orange-700 dark:text-orange-300 font-medium">
-                          ⚠️ You're at {b.pct.toFixed(0)}% of your {b.category} limit — only {currencySymbol}{remaining.toFixed(2)} left.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setAiModal({ budget: b, spent: b.spent })}
-                        className="w-full flex items-center justify-center gap-2 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-500 dark:text-gray-400 text-xs font-medium hover:border-violet-300 hover:text-violet-600 transition">
-                        🤖 Ask AI how to stay under budget
-                      </button>
+                    <div className="mt-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-xl px-3 py-2">
+                      <p className="text-xs text-orange-700 dark:text-orange-300 font-medium">
+                        ⚠️ At {b.pct.toFixed(0)}% — tap for AI tips on staying under budget.
+                      </p>
                     </div>
+                  )}
+                  {isOver && (
+                    <div className="mt-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl px-3 py-2">
+                      <p className="text-xs text-red-700 dark:text-red-300 font-medium">
+                        🚨 Over limit — tap for AI recovery tips.
+                      </p>
+                    </div>
+                  )}
+                  {!isWarning && !isOver && (
+                    <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-2 text-right">Tap for spending tips →</p>
                   )}
                 </div>
                 </SwipeRow>
