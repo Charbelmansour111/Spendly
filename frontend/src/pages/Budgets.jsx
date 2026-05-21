@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 import BudgetSuggestionsSheet from '../components/BudgetSuggestionsSheet'
@@ -66,163 +66,6 @@ function Toast({ message, type, onClose }) {
   )
 }
 
-function AiModal({ budget, spent, symbol, onClose }) {
-  const [advice, setAdvice] = useState('')
-  const [loading, setLoading] = useState(true)
-  const fetched = useRef(false)
-
-  const limit = parseFloat(budget.amount)
-  const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0
-  const remaining = Math.max(0, limit - spent)
-  const isOver = pct >= 100
-  const isWarning = !isOver && pct >= 85
-  const isGood = pct < 60
-
-  const gradient = isOver
-    ? 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)'
-    : isWarning
-    ? 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)'
-    : isGood
-    ? 'linear-gradient(135deg, #10B981 0%, #047857 100%)'
-    : 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)'
-
-  const icon = CAT_ICONS[budget.category] || '📦'
-  const periodLabel = budget.period === 'daily' ? 'today' : budget.period === 'weekly' ? 'this week' : 'this month'
-  const periodEnd = budget.period === 'daily' ? 'day' : budget.period === 'weekly' ? 'week' : 'month'
-
-  useEffect(() => {
-    if (fetched.current) return
-    fetched.current = true
-
-    let msg
-    if (isOver) {
-      msg = `My ${budget.category} budget is ${symbol}${limit.toFixed(2)} for the ${periodEnd}. I've spent ${symbol}${spent.toFixed(2)} — ${pct}% of my limit, ${symbol}${(spent - limit).toFixed(2)} over. Give me TWO specific, practical tips to get back on track this ${periodEnd}. Be direct, brief, and specific to ${budget.category}. No bullet points.`
-    } else if (isWarning) {
-      msg = `My ${budget.category} budget is ${symbol}${limit.toFixed(2)} for the ${periodEnd}. I've spent ${symbol}${spent.toFixed(2)} (${pct}%) with only ${symbol}${remaining.toFixed(2)} left. Give me ONE clear, practical tip to stay under budget for the rest of the ${periodEnd}. Be specific to ${budget.category}.`
-    } else if (isGood) {
-      msg = `My ${budget.category} budget is ${symbol}${limit.toFixed(2)} for the ${periodEnd} and I've only spent ${symbol}${spent.toFixed(2)} (${pct}%) — I'm doing well. Give me ONE tip to get the most value from my remaining ${symbol}${remaining.toFixed(2)} ${budget.category} budget. Be brief and actionable.`
-    } else {
-      msg = `My ${budget.category} budget is ${symbol}${limit.toFixed(2)} for the ${periodEnd}. I've spent ${symbol}${spent.toFixed(2)} (${pct}%) with ${symbol}${remaining.toFixed(2)} remaining. Give me ONE specific, practical tip for managing my ${budget.category} spending well. Under 2 sentences.`
-    }
-
-    API.post('/insights/chat', { message: msg })
-      .then(r => setAdvice(r.data.reply || r.data.message || ''))
-      .catch(() => setAdvice(''))
-      .finally(() => setLoading(false))
-  }, [budget, spent, symbol])
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div
-        className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-t-3xl shadow-2xl overflow-hidden"
-        style={{ maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Handle bar */}
-        <div className="flex justify-center pt-3 pb-0 shrink-0">
-          <div className="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full" />
-        </div>
-
-        <div className="overflow-y-auto flex-1">
-          {/* Gradient header */}
-          <div style={{ background: gradient }} className="px-5 pt-5 pb-6 text-white">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
-                {icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white/65 text-[11px] font-semibold uppercase tracking-wider">Budget Review</p>
-                <p className="text-white font-bold text-lg leading-tight">{budget.category}</p>
-              </div>
-              <button
-                onClick={onClose}
-                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl bg-white/15 hover:bg-white/25 transition"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-              </button>
-            </div>
-
-            {/* Stats row */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-white/15 rounded-2xl px-3 py-2.5 text-center">
-                <p className="text-white/60 text-[10px] font-medium mb-0.5">Spent</p>
-                <p className="text-white font-bold text-sm tabular-nums">{symbol}{spent.toFixed(0)}</p>
-              </div>
-              <div className="bg-white/15 rounded-2xl px-3 py-2.5 text-center">
-                <p className="text-white/60 text-[10px] font-medium mb-0.5">Limit</p>
-                <p className="text-white font-bold text-sm tabular-nums">{symbol}{limit.toFixed(0)}</p>
-              </div>
-              <div className="bg-white/15 rounded-2xl px-3 py-2.5 text-center">
-                <p className="text-white/60 text-[10px] font-medium mb-0.5">{isOver ? 'Over by' : 'Remaining'}</p>
-                <p className="text-white font-bold text-sm tabular-nums">{symbol}{isOver ? (spent - limit).toFixed(0) : remaining.toFixed(0)}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 capitalize">{periodLabel} usage</span>
-              <span className={`text-xs font-bold ${isOver ? 'text-red-500' : isWarning ? 'text-amber-500' : 'text-emerald-500'}`}>
-                {pct}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="h-2.5 rounded-full transition-all duration-700"
-                style={{
-                  width: `${Math.min(pct, 100)}%`,
-                  background: isOver ? '#EF4444' : isWarning ? '#F59E0B' : '#10B981',
-                }}
-              />
-            </div>
-          </div>
-
-          {/* AI Advice — shown first, most prominent */}
-          <div className="px-5 py-5">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/>
-                </svg>
-              </div>
-              <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                {isOver ? 'Action plan' : isGood ? 'You're doing great' : 'AI Advice'}
-              </p>
-            </div>
-
-            {loading ? (
-              <div className="space-y-2.5">
-                {[92, 78, 65].map((w, i) => (
-                  <div key={i} className="h-3.5 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse" style={{ width: `${w}%` }} />
-                ))}
-              </div>
-            ) : advice ? (
-              <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">{advice}</p>
-            ) : (
-              <p className="text-sm text-gray-400 italic">No advice available right now.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Sticky footer */}
-        <div className="px-5 pt-3 pb-7 shrink-0 border-t border-gray-100 dark:border-gray-800">
-          <button
-            onClick={onClose}
-            className="w-full py-3.5 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white font-bold rounded-2xl text-sm transition"
-          >
-            Got it
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function Budgets() {
   const [budgets, setBudgets] = useState([])
@@ -231,7 +74,9 @@ export default function Budgets() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [filterStatus, setFilterStatus] = useState('All')
-  const [aiModal, setAiModal] = useState(null)
+  const [expandedId, setExpandedId] = useState(null)
+  const [aiAdvice, setAiAdvice] = useState({}) // { [budgetId]: { loading, text } }
+  const [monthlyIncome, setMonthlyIncome] = useState(0)
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(true)
   const [formAiLoading, setFormAiLoading] = useState(false)
@@ -253,16 +98,29 @@ export default function Budgets() {
 
   // Hide bottom nav when any entry form/modal is open
   useEffect(() => {
-    const open = showForm || showAISheet || !!aiModal || !!numModal || !!suggestModal || noIncomeModal
+    const open = showForm || showAISheet || !!numModal || !!suggestModal || noIncomeModal
     if (open) document.body.classList.add('modal-open')
     else document.body.classList.remove('modal-open')
     return () => document.body.classList.remove('modal-open')
-  }, [showForm, showAISheet, aiModal, numModal, suggestModal, noIncomeModal])
+  }, [showForm, showAISheet, numModal, suggestModal, noIncomeModal])
+
+  const calcMonthlyIncome = (incData) => {
+    const now = new Date()
+    return (incData || []).filter(i => {
+      if (i.month && i.year) return Number(i.month) === now.getMonth() + 1 && Number(i.year) === now.getFullYear()
+      const d = new Date(i.date || i.created_at)
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    }).reduce((s, i) => s + parseFloat(i.amount || 0), 0)
+  }
 
   const fetchAll = useCallback(() => {
     setLoading(true)
-    Promise.all([API.get('/budgets'), API.get('/expenses')])
-      .then(([b, e]) => { setBudgets(b.data); setExpenses(e.data) })
+    Promise.all([API.get('/budgets'), API.get('/expenses'), API.get('/income')])
+      .then(([b, e, inc]) => {
+        setBudgets(b.data)
+        setExpenses(e.data)
+        setMonthlyIncome(calcMonthlyIncome(inc.data))
+      })
       .catch(() => showToast('Error loading data', 'error'))
       .finally(() => setLoading(false))
   }, [showToast])
@@ -270,9 +128,12 @@ export default function Budgets() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { window.location.href = '/login'; return }
-    // setState only in .then/.catch callbacks — not synchronously in the effect body
-    Promise.all([API.get('/budgets'), API.get('/expenses')])
-      .then(([b, e]) => { setBudgets(b.data); setExpenses(e.data) })
+    Promise.all([API.get('/budgets'), API.get('/expenses'), API.get('/income')])
+      .then(([b, e, inc]) => {
+        setBudgets(b.data)
+        setExpenses(e.data)
+        setMonthlyIncome(calcMonthlyIncome(inc.data))
+      })
       .catch(() => showToast('Error loading data', 'error'))
       .finally(() => setLoading(false))
   }, [showToast])
@@ -300,6 +161,32 @@ export default function Budgets() {
     return expenses
       .filter(e => { const d = new Date(e.date); return d.getMonth() === prevMonth && d.getFullYear() === prevYear && e.category === category })
       .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+  }
+
+  const fetchAiAdvice = async (b, spent) => {
+    const id = b.id
+    if (aiAdvice[id]) return
+    setAiAdvice(prev => ({ ...prev, [id]: { loading: true, text: '' } }))
+    const limit = parseFloat(b.amount)
+    const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0
+    const remaining = Math.max(0, limit - spent)
+    const periodEnd = b.period === 'daily' ? 'day' : b.period === 'weekly' ? 'week' : 'month'
+    let msg
+    if (pct >= 100) {
+      msg = `My ${b.category} budget is ${currencySymbol}${limit.toFixed(2)} for the ${periodEnd}. I spent ${currencySymbol}${spent.toFixed(2)} — ${pct}% used, ${currencySymbol}${(spent - limit).toFixed(2)} over. Give me ONE specific recovery tip for this ${periodEnd}. Direct, specific to ${b.category}. 1-2 sentences.`
+    } else if (pct >= 85) {
+      msg = `My ${b.category} budget is ${currencySymbol}${limit.toFixed(2)} for the ${periodEnd}. I've spent ${currencySymbol}${spent.toFixed(2)} (${pct}%) with ${currencySymbol}${remaining.toFixed(2)} left. ONE practical tip to finish the ${periodEnd} under limit. Specific to ${b.category}.`
+    } else if (pct < 60) {
+      msg = `My ${b.category} budget is ${currencySymbol}${limit.toFixed(2)} for the ${periodEnd}. Only spent ${currencySymbol}${spent.toFixed(2)} (${pct}%) — doing well. ONE tip to get maximum value from the remaining ${currencySymbol}${remaining.toFixed(2)}. Brief and actionable.`
+    } else {
+      msg = `My ${b.category} budget is ${currencySymbol}${limit.toFixed(2)} for the ${periodEnd}. Spent ${currencySymbol}${spent.toFixed(2)} (${pct}%) with ${currencySymbol}${remaining.toFixed(2)} left. ONE practical ${b.category} spending tip. Under 2 sentences.`
+    }
+    try {
+      const res = await API.post('/insights/chat', { message: msg })
+      setAiAdvice(prev => ({ ...prev, [id]: { loading: false, text: res.data.reply || '' } }))
+    } catch {
+      setAiAdvice(prev => ({ ...prev, [id]: { loading: false, text: '' } }))
+    }
   }
 
   const getFormAiAdvice = async () => {
@@ -376,7 +263,6 @@ export default function Budgets() {
   return (
     <Layout>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {aiModal && <AiModal budget={aiModal.budget} spent={aiModal.spent} symbol={currencySymbol} onClose={() => setAiModal(null)} />}
       {showAISheet && (
         <BudgetSuggestionsSheet
           existingBudgets={budgets}
@@ -715,10 +601,16 @@ export default function Budgets() {
               const lastMonthSpent = b.period === 'monthly' ? getLastMonthSpent(b.category) : null
               const lastMonthRollover = lastMonthSpent !== null ? b.limit - lastMonthSpent : null
 
+              const isOpen = expandedId === b.id
+
               return (
                 <SwipeRow key={b.id} onDelete={() => handleDeleteNoConfirm(b.id)}>
                 <div
-                  onClick={() => setAiModal({ budget: b, spent: b.spent })}
+                  onClick={() => {
+                    const opening = expandedId !== b.id
+                    setExpandedId(opening ? b.id : null)
+                    if (opening) fetchAiAdvice(b, b.spent)
+                  }}
                   className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border-l-4 cursor-pointer active:scale-[0.985] transition-transform ${
                     isOver ? 'border-red-500' : isWarning ? 'border-orange-400' : 'border-green-500'
                   }`}>
@@ -745,11 +637,17 @@ export default function Budgets() {
                         }`}>{b.period}</span>
                       </p>
                     </div>
-                    <button onClick={() => handleDelete(b.id)} className="hidden md:block shrink-0 text-gray-300 hover:text-red-400 transition p-1">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={e => { e.stopPropagation(); handleDelete(b.id) }} className="hidden md:block text-gray-300 hover:text-red-400 transition p-1">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+                        </svg>
+                      </button>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                        className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+                        <polyline points="6 9 12 15 18 9"/>
                       </svg>
-                    </button>
+                    </div>
                   </div>
 
                   {/* Progress bar */}
@@ -780,22 +678,64 @@ export default function Budgets() {
                     </p>
                   )}
 
-                  {isWarning && (
-                    <div className="mt-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-xl px-3 py-2">
-                      <p className="text-xs text-orange-700 dark:text-orange-300 font-medium">
-                        ⚠️ At {b.pct.toFixed(0)}% — tap for AI tips on staying under budget.
-                      </p>
+                  {/* Inline expanded section */}
+                  {isOpen && (
+                    <div className="border-t border-gray-100 dark:border-gray-700/50 mt-3 pt-3 space-y-3">
+
+                      {/* Stats grid */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl px-3 py-2.5 text-center">
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Spent</p>
+                          <p className={`text-sm font-bold tabular-nums ${isOver ? 'text-red-500' : 'text-gray-800 dark:text-white'}`}>{currencySymbol}{b.spent.toFixed(2)}</p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl px-3 py-2.5 text-center">
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Limit</p>
+                          <p className="text-sm font-bold tabular-nums text-gray-800 dark:text-white">{currencySymbol}{b.limit.toFixed(2)}</p>
+                        </div>
+                        <div className={`rounded-xl px-3 py-2.5 text-center ${isOver ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{isOver ? 'Over' : 'Left'}</p>
+                          <p className={`text-sm font-bold tabular-nums ${isOver ? 'text-red-500' : 'text-green-600'}`}>{currencySymbol}{Math.abs(remaining).toFixed(2)}</p>
+                        </div>
+                      </div>
+
+                      {/* 80/20 income bar — monthly budgets only */}
+                      {monthlyIncome > 0 && b.period === 'monthly' && (() => {
+                        const totalMonthly = budgets.filter(bud => bud.period === 'monthly').reduce((s, bud) => s + parseFloat(bud.amount), 0)
+                        const allocPct = Math.min(100, (totalMonthly / monthlyIncome) * 100)
+                        const thisPct = (b.limit / monthlyIncome) * 100
+                        return (
+                          <div className="bg-violet-50 dark:bg-violet-900/20 rounded-xl px-3 py-3">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">Income allocation</p>
+                              <p className="text-xs text-violet-500">{thisPct.toFixed(1)}% of your income</p>
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
+                              <div className={`h-1.5 rounded-full transition-all duration-500 ${allocPct > 80 ? 'bg-red-400' : 'bg-violet-500'}`} style={{ width: `${allocPct}%` }} />
+                            </div>
+                            <div className="flex justify-between mt-1.5">
+                              <p className="text-[10px] text-violet-600 dark:text-violet-400 font-medium">{allocPct.toFixed(0)}% budgeted total</p>
+                              <p className="text-[10px] text-gray-400">{allocPct <= 80 ? `${(80 - allocPct).toFixed(0)}% headroom ✓` : `${(allocPct - 80).toFixed(0)}% over 80% limit ⚠️`}</p>
+                            </div>
+                            {allocPct > 80 && (
+                              <p className="text-[10px] text-red-500 mt-1 font-medium">Keep total budgets ≤ 80% of income — save the rest.</p>
+                            )}
+                          </div>
+                        )
+                      })()}
+
+                      {/* AI advice */}
+                      {aiAdvice[b.id]?.loading ? (
+                        <div className="space-y-2 px-1">
+                          <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse w-full" />
+                          <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full animate-pulse w-4/5" />
+                        </div>
+                      ) : aiAdvice[b.id]?.text ? (
+                        <div className="flex gap-2.5 bg-violet-50 dark:bg-violet-900/20 rounded-xl px-3 py-3">
+                          <span className="text-base shrink-0">⭐</span>
+                          <p className="text-xs text-violet-800 dark:text-violet-200 leading-relaxed">{aiAdvice[b.id].text}</p>
+                        </div>
+                      ) : null}
                     </div>
-                  )}
-                  {isOver && (
-                    <div className="mt-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl px-3 py-2">
-                      <p className="text-xs text-red-700 dark:text-red-300 font-medium">
-                        🚨 Over limit — tap for AI recovery tips.
-                      </p>
-                    </div>
-                  )}
-                  {!isWarning && !isOver && (
-                    <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-2 text-right">Tap for spending tips →</p>
                   )}
                 </div>
                 </SwipeRow>
