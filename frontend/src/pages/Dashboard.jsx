@@ -812,107 +812,239 @@ function QuickLogSheet({ onClose, onSaved, currencySymbol }) {
 
 // ── Rotating Fact Card (Panel 1) ─────────────────────────
 const FACT_THEMES = [
-  'linear-gradient(135deg,#3B82F6,#4F46E5)',  // blue-indigo
-  'linear-gradient(135deg,#10B981,#0D9488)',  // emerald-teal
-  'linear-gradient(135deg,#EF4444,#E11D48)',  // red-rose
-  'linear-gradient(135deg,#8B5CF6,#7C3AED)',  // violet-purple
-  'linear-gradient(135deg,#F97316,#D97706)',  // orange-amber
-  'linear-gradient(135deg,#EC4899,#DB2777)',  // pink-rose
-  'linear-gradient(135deg,#0891B2,#0E7490)',  // cyan
+  'linear-gradient(135deg,#3B82F6,#4F46E5)',  // 0  blue-indigo
+  'linear-gradient(135deg,#10B981,#059669)',  // 1  emerald
+  'linear-gradient(135deg,#EF4444,#E11D48)',  // 2  red-rose
+  'linear-gradient(135deg,#8B5CF6,#7C3AED)',  // 3  violet
+  'linear-gradient(135deg,#F97316,#EA580C)',  // 4  orange
+  'linear-gradient(135deg,#EC4899,#DB2777)',  // 5  pink
+  'linear-gradient(135deg,#0891B2,#0E7490)',  // 6  cyan
+  'linear-gradient(135deg,#0D9488,#0F766E)',  // 7  teal
+  'linear-gradient(135deg,#6366F1,#4338CA)',  // 8  indigo
+  'linear-gradient(135deg,#D97706,#B45309)',  // 9  amber-brown
+  'linear-gradient(135deg,#DC2626,#991B1B)',  // 10 deep-red
+  'linear-gradient(135deg,#7C3AED,#4C1D95)',  // 11 deep-violet
+  'linear-gradient(135deg,#0369A1,#075985)',  // 12 deep-blue
 ]
 
 function RotatingFactCard({ expenses, incomeList, budgets, currencySymbol }) {
   const [idx, setIdx] = useState(0)
   const [visible, setVisible] = useState(true)
 
-  const now    = new Date()
-  const todayStr = now.toISOString().split('T')[0]
-  const todayExp = expenses.filter(e => (e.date || '').split('T')[0] === todayStr)
+  const now       = new Date()
+  const todayStr  = now.toISOString().split('T')[0]
+  const dayOfMonth   = now.getDate()
+  const daysInMonth  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const daysLeft     = daysInMonth - dayOfMonth
+
+  // Today's expenses
+  const todayExp   = expenses.filter(e => (e.date || '').split('T')[0] === todayStr)
   const todaySpent = todayExp.reduce((s, e) => s + safeNum(e.amount), 0)
 
-  const monthlyBudgets = budgets.filter(b => b.period === 'monthly')
-  const totalMonthlyBudget = monthlyBudgets.reduce((s, b) => s + safeNum(b.amount), 0)
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const dailyAllowance = totalMonthlyBudget > 0 ? totalMonthlyBudget / daysInMonth : 0
+  // This month's expenses
+  const monthExp   = expenses.filter(e => { const d = new Date(e.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() })
+  const monthSpent = monthExp.reduce((s, e) => s + safeNum(e.amount), 0)
 
+  // Last 7 days
+  const weekAgo   = new Date(now); weekAgo.setDate(now.getDate() - 7)
+  const weekExp   = expenses.filter(e => new Date(e.date) >= weekAgo)
+  const weekSpent = weekExp.reduce((s, e) => s + safeNum(e.amount), 0)
+
+  // Income this month
   const thisMonthInc = incomeList.filter(i => Number(i.month) === now.getMonth() + 1 && Number(i.year) === now.getFullYear())
   const totalIncome  = thisMonthInc.reduce((s, i) => s + safeNum(i.amount), 0)
-  const monthExp     = expenses.filter(e => { const d = new Date(e.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() })
-  const monthSpent   = monthExp.reduce((s, e) => s + safeNum(e.amount), 0)
   const savingsRate  = totalIncome > 0 ? Math.round(((totalIncome - monthSpent) / totalIncome) * 100) : null
+  const balance      = totalIncome - monthSpent
 
-  const catMap = {}
-  todayExp.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + safeNum(e.amount) })
-  const topCat   = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0]
-  const biggest  = todayExp.reduce((m, e) => safeNum(e.amount) > safeNum(m?.amount || 0) ? e : m, null)
+  // Daily allowance — income-based (80% rule) takes priority over budget-based
+  // This prevents a $10,000 earner being told to spend only $33/day
+  const monthlyBudgets      = budgets.filter(b => b.period === 'monthly')
+  const totalMonthlyBudget  = monthlyBudgets.reduce((s, b) => s + safeNum(b.amount), 0)
+  const incomeBasedDaily    = totalIncome > 0 ? (totalIncome * 0.8) / daysInMonth : 0
+  const budgetBasedDaily    = totalMonthlyBudget > 0 ? totalMonthlyBudget / daysInMonth : 0
+  const dailyAllowance      = incomeBasedDaily || budgetBasedDaily
+  const dailyBasis          = incomeBasedDaily > 0 ? 'income' : 'budget'
 
+  // Monthly pace (projected spend at current daily rate)
+  const dailyRate   = dayOfMonth > 0 ? monthSpent / dayOfMonth : 0
+  const projected   = dailyRate * daysInMonth
+  const projectedVsIncome = totalIncome > 0 ? projected - totalIncome : null
+
+  // Category breakdowns
+  const todayCatMap = {}
+  todayExp.forEach(e => { todayCatMap[e.category] = (todayCatMap[e.category] || 0) + safeNum(e.amount) })
+  const topCatToday = Object.entries(todayCatMap).sort((a, b) => b[1] - a[1])[0]
+
+  const monthCatMap = {}
+  monthExp.forEach(e => { monthCatMap[e.category] = (monthCatMap[e.category] || 0) + safeNum(e.amount) })
+  const topCatMonth = Object.entries(monthCatMap).sort((a, b) => b[1] - a[1])[0]
+
+  // Biggest expense today and this month
+  const biggestToday = todayExp.reduce((m, e) => safeNum(e.amount) > safeNum(m?.amount || 0) ? e : m, null)
+  const biggestMonth = monthExp.reduce((m, e) => safeNum(e.amount) > safeNum(m?.amount || 0) ? e : m, null)
+
+  // Budget under most pressure
+  const pressuredBudget = monthlyBudgets.map(b => {
+    const spent = monthExp.filter(e => e.category === b.category).reduce((s, e) => s + safeNum(e.amount), 0)
+    const pct   = safeNum(b.amount) > 0 ? (spent / safeNum(b.amount)) * 100 : 0
+    return { ...b, spent, pct }
+  }).sort((a, b) => b.pct - a.pct)[0]
+
+  // ── Build facts array ──────────────────────────────────
   const facts = []
 
+  // 1. Today's spending (always)
   facts.push({
     label: 'Today\'s Spending',
     value: `${currencySymbol}${todaySpent.toFixed(2)}`,
     sub: todayExp.length === 0
-      ? 'No transactions yet — add your expenses!'
+      ? 'No transactions yet today — don\'t forget to log!'
       : `${todayExp.length} transaction${todayExp.length !== 1 ? 's' : ''} logged today`,
-    theme: FACT_THEMES[0],
-    icon: '💳',
+    theme: FACT_THEMES[0], icon: '💳',
   })
 
+  // 2. Daily allowance (income-based)
   if (dailyAllowance > 0) {
-    const rem = dailyAllowance - todaySpent
+    const rem  = dailyAllowance - todaySpent
     const over = rem < 0
     facts.push({
-      label: over ? 'Daily Limit Exceeded' : 'Daily Budget',
-      value: over ? `${currencySymbol}${Math.abs(rem).toFixed(2)} over` : `${currencySymbol}${rem.toFixed(2)} left`,
+      label: over ? 'Daily Limit Exceeded' : 'Daily Allowance',
+      value: over
+        ? `${currencySymbol}${Math.abs(rem).toFixed(2)} over`
+        : `${currencySymbol}${rem.toFixed(2)} left today`,
       sub: over
-        ? `Limit is ${currencySymbol}${dailyAllowance.toFixed(2)}/day — ease up tomorrow`
-        : `Daily allowance: ${currencySymbol}${dailyAllowance.toFixed(2)} — you're on track`,
-      theme: over ? FACT_THEMES[2] : FACT_THEMES[1],
-      icon: over ? '🚨' : '✅',
+        ? `Your daily limit is ${currencySymbol}${dailyAllowance.toFixed(2)} based on your ${dailyBasis}`
+        : `${currencySymbol}${dailyAllowance.toFixed(2)}/day based on your ${dailyBasis} — you're on track`,
+      theme: over ? FACT_THEMES[2] : FACT_THEMES[1], icon: over ? '🚨' : '✅',
     })
   }
 
-  if (topCat) {
+  // 3. Monthly pace / projection
+  if (monthSpent > 0) {
+    const onTrack = projectedVsIncome !== null ? projectedVsIncome <= 0 : projected <= totalMonthlyBudget
     facts.push({
-      label: 'Top Spend Today',
-      value: topCat[0],
-      sub: `${currencySymbol}${topCat[1].toFixed(2)} spent on ${topCat[0]} today`,
-      theme: FACT_THEMES[3],
-      icon: '📊',
+      label: 'Month-End Projection',
+      value: `${currencySymbol}${projected.toFixed(0)}`,
+      sub: projectedVsIncome !== null
+        ? projectedVsIncome > 0
+          ? `At this pace you'll spend ${currencySymbol}${projectedVsIncome.toFixed(0)} more than your income`
+          : `On track — projected ${currencySymbol}${Math.abs(projectedVsIncome).toFixed(0)} surplus this month`
+        : `Projected total based on ${currencySymbol}${dailyRate.toFixed(0)}/day spending pace`,
+      theme: onTrack ? FACT_THEMES[7] : FACT_THEMES[9], icon: onTrack ? '📈' : '⚠️',
     })
   }
 
-  if (biggest && safeNum(biggest.amount) > 0) {
+  // 4. Net position this month
+  if (totalIncome > 0) {
     facts.push({
-      label: 'Biggest Purchase',
-      value: `${currencySymbol}${safeNum(biggest.amount).toFixed(2)}`,
-      sub: biggest.description || biggest.category || 'Today\'s largest transaction',
-      theme: FACT_THEMES[4],
-      icon: '🛒',
+      label: 'Net Position',
+      value: `${balance >= 0 ? '+' : '-'}${currencySymbol}${Math.abs(balance).toFixed(2)}`,
+      sub: balance >= 0
+        ? `${currencySymbol}${totalIncome.toFixed(0)} income · ${currencySymbol}${monthSpent.toFixed(0)} spent this month`
+        : `Spending ${currencySymbol}${Math.abs(balance).toFixed(0)} more than earned — review your budgets`,
+      theme: balance >= 0 ? FACT_THEMES[1] : FACT_THEMES[2], icon: balance >= 0 ? '💚' : '📉',
     })
   }
 
+  // 5. Savings rate
   if (savingsRate !== null) {
     facts.push({
-      label: 'Monthly Savings Rate',
+      label: 'Savings Rate',
       value: `${Math.max(0, savingsRate)}%`,
       sub: savingsRate >= 20
-        ? 'Excellent — you\'re saving 20%+ this month!'
+        ? 'Excellent discipline — you\'re saving 20%+ this month!'
         : savingsRate > 0
-          ? 'Aim for 20% savings to build financial security'
-          : 'Spending exceeds income this month',
-      theme: savingsRate >= 20 ? FACT_THEMES[1] : savingsRate > 0 ? FACT_THEMES[4] : FACT_THEMES[2],
-      icon: '💰',
+          ? `You're saving ${savingsRate}% — push to 20% for real financial security`
+          : 'Spending exceeds income — cut one non-essential category this week',
+      theme: savingsRate >= 20 ? FACT_THEMES[1] : savingsRate > 0 ? FACT_THEMES[9] : FACT_THEMES[2], icon: '💰',
     })
   }
 
+  // 6. Top category this month
+  if (topCatMonth) {
+    const pct = monthSpent > 0 ? Math.round((topCatMonth[1] / monthSpent) * 100) : 0
+    facts.push({
+      label: 'Top Category This Month',
+      value: topCatMonth[0],
+      sub: `${currencySymbol}${topCatMonth[1].toFixed(2)} spent — ${pct}% of your total monthly spending`,
+      theme: FACT_THEMES[3], icon: '📊',
+    })
+  }
+
+  // 7. Top category today (only if different from month top or has today data)
+  if (topCatToday && (!topCatMonth || topCatToday[0] !== topCatMonth[0])) {
+    facts.push({
+      label: 'Top Spend Today',
+      value: topCatToday[0],
+      sub: `${currencySymbol}${topCatToday[1].toFixed(2)} on ${topCatToday[0]} today`,
+      theme: FACT_THEMES[8], icon: '🎯',
+    })
+  }
+
+  // 8. Biggest expense this month
+  if (biggestMonth && safeNum(biggestMonth.amount) > 0) {
+    facts.push({
+      label: 'Biggest Expense This Month',
+      value: `${currencySymbol}${safeNum(biggestMonth.amount).toFixed(2)}`,
+      sub: (biggestMonth.description || biggestMonth.category || 'Largest single transaction') + ` · ${new Date(biggestMonth.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+      theme: FACT_THEMES[4], icon: '🛒',
+    })
+  }
+
+  // 9. Budget under most pressure
+  if (pressuredBudget && pressuredBudget.pct > 50) {
+    const over = pressuredBudget.pct >= 100
+    facts.push({
+      label: over ? 'Budget Exceeded' : 'Budget Alert',
+      value: `${pressuredBudget.category}`,
+      sub: over
+        ? `${currencySymbol}${pressuredBudget.spent.toFixed(0)} spent — ${Math.round(pressuredBudget.pct - 100)}% over your ${currencySymbol}${safeNum(pressuredBudget.amount).toFixed(0)} limit`
+        : `${Math.round(pressuredBudget.pct)}% used — ${currencySymbol}${(safeNum(pressuredBudget.amount) - pressuredBudget.spent).toFixed(0)} remaining in ${pressuredBudget.category}`,
+      theme: over ? FACT_THEMES[10] : FACT_THEMES[9], icon: over ? '🔴' : '🟠',
+    })
+  }
+
+  // 10. Days left + daily budget remaining
+  if (daysLeft > 0 && (totalIncome > 0 || totalMonthlyBudget > 0)) {
+    const remaining    = totalIncome > 0 ? (totalIncome * 0.8) - monthSpent : totalMonthlyBudget - monthSpent
+    const perDayLeft   = remaining > 0 ? remaining / daysLeft : 0
+    facts.push({
+      label: `${daysLeft} Days Left This Month`,
+      value: `${currencySymbol}${Math.max(0, perDayLeft).toFixed(0)}/day`,
+      sub: remaining > 0
+        ? `${currencySymbol}${remaining.toFixed(0)} remaining — spend ${currencySymbol}${perDayLeft.toFixed(0)} per day to finish on budget`
+        : `You've used your full ${dailyBasis === 'income' ? '80% income allocation' : 'budget'} for the month`,
+      theme: perDayLeft > 0 ? FACT_THEMES[6] : FACT_THEMES[2], icon: '📅',
+    })
+  }
+
+  // 11. Weekly spending summary
+  if (weekSpent > 0) {
+    facts.push({
+      label: 'Last 7 Days',
+      value: `${currencySymbol}${weekSpent.toFixed(2)}`,
+      sub: `${weekExp.length} transaction${weekExp.length !== 1 ? 's' : ''} over the past week — ${currencySymbol}${(weekSpent / 7).toFixed(0)}/day average`,
+      theme: FACT_THEMES[12], icon: '📆',
+    })
+  }
+
+  // 12. Transaction count this month
+  if (monthExp.length > 0) {
+    facts.push({
+      label: 'Transactions This Month',
+      value: `${monthExp.length}`,
+      sub: `${monthExp.length} expense${monthExp.length !== 1 ? 's' : ''} logged · averaging ${currencySymbol}${monthExp.length > 0 ? (monthSpent / monthExp.length).toFixed(0) : 0} per transaction`,
+      theme: FACT_THEMES[11], icon: '🧾',
+    })
+  }
+
+  // 13. Log reminder (only if nothing logged today)
   if (todayExp.length === 0) {
     facts.push({
       label: 'Quick Reminder',
       value: 'Log Today',
-      sub: 'Tracking daily keeps your budget accurate and your goals on course.',
-      theme: FACT_THEMES[5],
-      icon: '📝',
+      sub: 'You haven\'t tracked anything yet today — consistency is what makes budgeting work.',
+      theme: FACT_THEMES[5], icon: '📝',
     })
   }
 
@@ -945,14 +1077,14 @@ function RotatingFactCard({ expenses, incomeList, budgets, currencySymbol }) {
           <p className="text-white/75 text-sm leading-relaxed">{fact.sub}</p>
         </div>
         <div className="relative flex items-center justify-between mt-5" style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.28s ease' }}>
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 flex-wrap">
             {facts.map((_, i) => (
               <button key={i} onClick={() => { setVisible(false); setTimeout(() => { setIdx(i); setVisible(true) }, 280) }}
                 className="rounded-full transition-all duration-200"
                 style={{ width: i === cur ? 20 : 6, height: 6, background: i === cur ? 'white' : 'rgba(255,255,255,0.35)' }} />
             ))}
           </div>
-          <p className="text-white/40 text-[10px]">auto · 15s</p>
+          <p className="text-white/40 text-[10px] shrink-0 ml-2">auto · 15s</p>
         </div>
       </div>
     </div>
