@@ -383,6 +383,32 @@ async function migrate() {
       )
     `);
 
+    // ── Performance indexes ────────────────────────────────────────────────
+    // wallet_expenses — most queried table, always filtered by wallet + date
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_wallet_expenses_wallet_date ON wallet_expenses(wallet_id, date)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_wallet_expenses_category    ON wallet_expenses(wallet_id, category)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_wallet_expenses_user        ON wallet_expenses(user_id)`);
+
+    // wallet_income — filtered by wallet + month + year
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_wallet_income_wallet        ON wallet_income(wallet_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_wallet_income_month_year    ON wallet_income(wallet_id, month, year)`);
+
+    // wallet_budgets / debts / subscriptions / savings
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_wallet_budgets_wallet       ON wallet_budgets(wallet_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_wallet_debts_wallet         ON wallet_debts(wallet_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_wallet_subs_wallet          ON wallet_subscriptions(wallet_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_wallet_savings_wallet       ON wallet_savings(wallet_id)`);
+
+    // daily_insights — cache lookup always by user + date
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_daily_insights_user_date    ON daily_insights(user_id, date)`);
+
+    // legacy expenses / income — still used by AI insight routes
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_expenses_user_date          ON expenses(user_id, date)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_income_user                 ON income(user_id)`);
+
+    // push_subscriptions — looked up on every notification send
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_push_subs_user              ON push_subscriptions(user_id)`);
+
     console.log('DB migration complete');
   } catch (e) {
     console.error('DB migration error:', e.message);
