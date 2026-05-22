@@ -810,6 +810,155 @@ function QuickLogSheet({ onClose, onSaved, currencySymbol }) {
   )
 }
 
+// ── Rotating Fact Card (Panel 1) ─────────────────────────
+const FACT_THEMES = [
+  'linear-gradient(135deg,#3B82F6,#4F46E5)',  // blue-indigo
+  'linear-gradient(135deg,#10B981,#0D9488)',  // emerald-teal
+  'linear-gradient(135deg,#EF4444,#E11D48)',  // red-rose
+  'linear-gradient(135deg,#8B5CF6,#7C3AED)',  // violet-purple
+  'linear-gradient(135deg,#F97316,#D97706)',  // orange-amber
+  'linear-gradient(135deg,#EC4899,#DB2777)',  // pink-rose
+  'linear-gradient(135deg,#0891B2,#0E7490)',  // cyan
+]
+
+function RotatingFactCard({ expenses, incomeList, budgets, currencySymbol }) {
+  const [idx, setIdx] = useState(0)
+  const [visible, setVisible] = useState(true)
+
+  const now    = new Date()
+  const todayStr = now.toISOString().split('T')[0]
+  const todayExp = expenses.filter(e => (e.date || '').split('T')[0] === todayStr)
+  const todaySpent = todayExp.reduce((s, e) => s + safeNum(e.amount), 0)
+
+  const monthlyBudgets = budgets.filter(b => b.period === 'monthly')
+  const totalMonthlyBudget = monthlyBudgets.reduce((s, b) => s + safeNum(b.amount), 0)
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const dailyAllowance = totalMonthlyBudget > 0 ? totalMonthlyBudget / daysInMonth : 0
+
+  const thisMonthInc = incomeList.filter(i => Number(i.month) === now.getMonth() + 1 && Number(i.year) === now.getFullYear())
+  const totalIncome  = thisMonthInc.reduce((s, i) => s + safeNum(i.amount), 0)
+  const monthExp     = expenses.filter(e => { const d = new Date(e.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() })
+  const monthSpent   = monthExp.reduce((s, e) => s + safeNum(e.amount), 0)
+  const savingsRate  = totalIncome > 0 ? Math.round(((totalIncome - monthSpent) / totalIncome) * 100) : null
+
+  const catMap = {}
+  todayExp.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + safeNum(e.amount) })
+  const topCat   = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0]
+  const biggest  = todayExp.reduce((m, e) => safeNum(e.amount) > safeNum(m?.amount || 0) ? e : m, null)
+
+  const facts = []
+
+  facts.push({
+    label: 'Today\'s Spending',
+    value: `${currencySymbol}${todaySpent.toFixed(2)}`,
+    sub: todayExp.length === 0
+      ? 'No transactions yet — add your expenses!'
+      : `${todayExp.length} transaction${todayExp.length !== 1 ? 's' : ''} logged today`,
+    theme: FACT_THEMES[0],
+    icon: '💳',
+  })
+
+  if (dailyAllowance > 0) {
+    const rem = dailyAllowance - todaySpent
+    const over = rem < 0
+    facts.push({
+      label: over ? 'Daily Limit Exceeded' : 'Daily Budget',
+      value: over ? `${currencySymbol}${Math.abs(rem).toFixed(2)} over` : `${currencySymbol}${rem.toFixed(2)} left`,
+      sub: over
+        ? `Limit is ${currencySymbol}${dailyAllowance.toFixed(2)}/day — ease up tomorrow`
+        : `Daily allowance: ${currencySymbol}${dailyAllowance.toFixed(2)} — you're on track`,
+      theme: over ? FACT_THEMES[2] : FACT_THEMES[1],
+      icon: over ? '🚨' : '✅',
+    })
+  }
+
+  if (topCat) {
+    facts.push({
+      label: 'Top Spend Today',
+      value: topCat[0],
+      sub: `${currencySymbol}${topCat[1].toFixed(2)} spent on ${topCat[0]} today`,
+      theme: FACT_THEMES[3],
+      icon: '📊',
+    })
+  }
+
+  if (biggest && safeNum(biggest.amount) > 0) {
+    facts.push({
+      label: 'Biggest Purchase',
+      value: `${currencySymbol}${safeNum(biggest.amount).toFixed(2)}`,
+      sub: biggest.description || biggest.category || 'Today\'s largest transaction',
+      theme: FACT_THEMES[4],
+      icon: '🛒',
+    })
+  }
+
+  if (savingsRate !== null) {
+    facts.push({
+      label: 'Monthly Savings Rate',
+      value: `${Math.max(0, savingsRate)}%`,
+      sub: savingsRate >= 20
+        ? 'Excellent — you\'re saving 20%+ this month!'
+        : savingsRate > 0
+          ? 'Aim for 20% savings to build financial security'
+          : 'Spending exceeds income this month',
+      theme: savingsRate >= 20 ? FACT_THEMES[1] : savingsRate > 0 ? FACT_THEMES[4] : FACT_THEMES[2],
+      icon: '💰',
+    })
+  }
+
+  if (todayExp.length === 0) {
+    facts.push({
+      label: 'Quick Reminder',
+      value: 'Log Today',
+      sub: 'Tracking daily keeps your budget accurate and your goals on course.',
+      theme: FACT_THEMES[5],
+      icon: '📝',
+    })
+  }
+
+  const safe = Math.max(facts.length, 1)
+  const cur  = idx % safe
+
+  useEffect(() => {
+    if (facts.length <= 1) return
+    const t = setInterval(() => {
+      setVisible(false)
+      setTimeout(() => { setIdx(i => (i + 1) % facts.length); setVisible(true) }, 280)
+    }, 15000)
+    return () => clearInterval(t)
+  }, [facts.length])
+
+  const fact = facts[cur] || facts[0]
+  if (!fact) return null
+
+  return (
+    <div className="rounded-3xl overflow-hidden" style={{ background: fact.theme, minHeight: '212px', transition: 'background 0.4s ease' }}>
+      <div className="p-6 flex flex-col justify-between h-full relative overflow-hidden" style={{ minHeight: '212px' }}>
+        <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+        <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white/10 pointer-events-none" />
+        <div className="relative" style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.28s ease' }}>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full text-white">{fact.label}</span>
+            <span className="text-2xl">{fact.icon}</span>
+          </div>
+          <p className="text-4xl font-bold text-white tabular-nums mb-2 leading-tight break-all">{fact.value}</p>
+          <p className="text-white/75 text-sm leading-relaxed">{fact.sub}</p>
+        </div>
+        <div className="relative flex items-center justify-between mt-5" style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.28s ease' }}>
+          <div className="flex gap-1.5">
+            {facts.map((_, i) => (
+              <button key={i} onClick={() => { setVisible(false); setTimeout(() => { setIdx(i); setVisible(true) }, 280) }}
+                className="rounded-full transition-all duration-200"
+                style={{ width: i === cur ? 20 : 6, height: 6, background: i === cur ? 'white' : 'rgba(255,255,255,0.35)' }} />
+            ))}
+          </div>
+          <p className="text-white/40 text-[10px]">auto · 15s</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Dashboard ───────────────────────────────────────
 export default function Dashboard() {
   const [user]                        = useState(() => {
@@ -1160,7 +1309,7 @@ export default function Dashboard() {
   )
 
   const inputCls = "w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-  const PANEL_LABELS = ['Overview', 'Daily Insight', 'World News']
+  const PANEL_LABELS = ['Overview', 'Today', 'World News']
 
   const recurringExpensesList = expenses.filter(e => e.is_recurring)
   const recurringIncomeList   = incomeList.filter(i => i.is_recurring)
@@ -1409,9 +1558,9 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Panel 1 — Daily AI Insight Board */}
+              {/* Panel 1 — Rotating Today Stats */}
               <div className="w-full shrink-0">
-                <DailyInsightBoard expenses={expenses} incomeList={incomeList} budgets={budgets} isActive={carouselPanel === 1} />
+                <RotatingFactCard expenses={expenses} incomeList={incomeList} budgets={budgets} currencySymbol={currencySymbol} />
               </div>
 
               {/* Panel 2 — World & Financial News */}
