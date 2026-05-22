@@ -856,14 +856,19 @@ function RotatingFactCard({ expenses, incomeList, budgets, currencySymbol }) {
   const savingsRate  = totalIncome > 0 ? Math.round(((totalIncome - monthSpent) / totalIncome) * 100) : null
   const balance      = totalIncome - monthSpent
 
-  // Daily allowance — income-based (80% rule) takes priority over budget-based
-  // This prevents a $10,000 earner being told to spend only $33/day
+  // Read user's savings target from settings (default 20%)
+  const savedPrefs       = (() => { try { return JSON.parse(localStorage.getItem('fina_prefs') || '{}') } catch { return {} } })()
+  const savingsTargetPct = savedPrefs.savingsTarget ?? 20
+  const spendingPct      = (100 - savingsTargetPct) / 100  // e.g. 20% savings → 0.80 spending
+
+  // Daily allowance — income-based (user's savings target) takes priority over budget-based
+  // e.g. $10k income, 20% savings target → $8k spending / 30 days = $266/day
   const monthlyBudgets      = budgets.filter(b => b.period === 'monthly')
   const totalMonthlyBudget  = monthlyBudgets.reduce((s, b) => s + safeNum(b.amount), 0)
-  const incomeBasedDaily    = totalIncome > 0 ? (totalIncome * 0.8) / daysInMonth : 0
+  const incomeBasedDaily    = totalIncome > 0 ? (totalIncome * spendingPct) / daysInMonth : 0
   const budgetBasedDaily    = totalMonthlyBudget > 0 ? totalMonthlyBudget / daysInMonth : 0
   const dailyAllowance      = incomeBasedDaily || budgetBasedDaily
-  const dailyBasis          = incomeBasedDaily > 0 ? 'income' : 'budget'
+  const dailyBasis          = incomeBasedDaily > 0 ? `income (saving ${savingsTargetPct}%)` : 'budget'
 
   // Monthly pace (projected spend at current daily rate)
   const dailyRate   = dayOfMonth > 0 ? monthSpent / dayOfMonth : 0
@@ -1006,7 +1011,7 @@ function RotatingFactCard({ expenses, incomeList, budgets, currencySymbol }) {
 
   // 10. Days left + daily budget remaining
   if (daysLeft > 0 && (totalIncome > 0 || totalMonthlyBudget > 0)) {
-    const remaining    = totalIncome > 0 ? (totalIncome * 0.8) - monthSpent : totalMonthlyBudget - monthSpent
+    const remaining    = totalIncome > 0 ? (totalIncome * spendingPct) - monthSpent : totalMonthlyBudget - monthSpent
     const perDayLeft   = remaining > 0 ? remaining / daysLeft : 0
     facts.push({
       label: `${daysLeft} Days Left This Month`,
