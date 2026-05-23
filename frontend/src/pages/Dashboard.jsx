@@ -16,23 +16,23 @@ import useCategories from '../hooks/useCategories'
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
 const CATEGORY_COLORS = { Food: '#F97316', Transport: '#3B82F6', Shopping: '#EC4899', Subscriptions: '#8B5CF6', Entertainment: '#10B981', Other: '#6B7280' }
-// Per-category colors — consistent identity, balanced saturation (not too dark, not neon)
+// Per-category colors — vibrant, happy, matching the overview gradient palette
 const CAT_COLOR_MAP = {
-  Food:          '#F97316',
-  Coffee:        '#A16207',
-  Transport:     '#3B82F6',
-  Shopping:      '#EC4899',
-  Entertainment: '#10B981',
-  Health:        '#EF4444',
-  Fitness:       '#F59E0B',
-  Education:     '#6366F1',
-  Bills:         '#0EA5E9',
-  Travel:        '#14B8A6',
-  Gifts:         '#A855F7',
-  Subscriptions: '#8B5CF6',
-  Other:         '#6B7280',
+  Food:          '#FB923C',  // orange-400  — warm & inviting
+  Coffee:        '#FBBF24',  // amber-400   — sunny & rich
+  Transport:     '#60A5FA',  // blue-400    — bright sky
+  Shopping:      '#F472B6',  // pink-400    — cheerful rose
+  Entertainment: '#34D399',  // emerald-400 — fresh green
+  Health:        '#F87171',  // red-400     — soft coral red
+  Fitness:       '#FCD34D',  // yellow-300  — energetic yellow
+  Education:     '#818CF8',  // indigo-400  — bright indigo
+  Bills:         '#38BDF8',  // sky-400     — clear sky blue
+  Travel:        '#2DD4BF',  // teal-400    — bright teal
+  Gifts:         '#C084FC',  // purple-400  — happy purple
+  Subscriptions: '#A78BFA',  // violet-400  — bright violet
+  Other:         '#94A3B8',  // slate-400   — neutral
 }
-const CAT_PALETTE_FALLBACK = ['#3B82F6','#10B981','#8B5CF6','#EC4899','#F59E0B','#14B8A6','#EF4444','#0EA5E9','#A16207','#6366F1','#F97316','#A855F7','#6B7280']
+const CAT_PALETTE_FALLBACK = ['#60A5FA','#34D399','#A78BFA','#F472B6','#FBBF24','#2DD4BF','#F87171','#38BDF8','#FB923C','#818CF8','#C084FC','#FCD34D','#94A3B8']
 const getCatColor = (name, i) => CAT_COLOR_MAP[name] || CAT_PALETTE_FALLBACK[i % CAT_PALETTE_FALLBACK.length]
 
 function getWalletKey() {
