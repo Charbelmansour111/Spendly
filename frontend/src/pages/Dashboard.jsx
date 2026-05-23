@@ -16,23 +16,23 @@ import useCategories from '../hooks/useCategories'
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
 const CATEGORY_COLORS = { Food: '#F97316', Transport: '#3B82F6', Shopping: '#EC4899', Subscriptions: '#8B5CF6', Entertainment: '#10B981', Other: '#6B7280' }
-// Per-category colors — consistent identity, not random rotation
+// Per-category colors — consistent identity, balanced saturation (not too dark, not neon)
 const CAT_COLOR_MAP = {
-  Food:          '#E85D04',
-  Coffee:        '#92400E',
-  Transport:     '#1D4ED8',
-  Shopping:      '#BE185D',
-  Entertainment: '#047857',
-  Health:        '#DC2626',
-  Fitness:       '#D97706',
-  Education:     '#4338CA',
-  Bills:         '#0369A1',
-  Travel:        '#0F766E',
-  Gifts:         '#7C3AED',
-  Subscriptions: '#5B21B6',
-  Other:         '#374151',
+  Food:          '#F97316',
+  Coffee:        '#A16207',
+  Transport:     '#3B82F6',
+  Shopping:      '#EC4899',
+  Entertainment: '#10B981',
+  Health:        '#EF4444',
+  Fitness:       '#F59E0B',
+  Education:     '#6366F1',
+  Bills:         '#0EA5E9',
+  Travel:        '#14B8A6',
+  Gifts:         '#A855F7',
+  Subscriptions: '#8B5CF6',
+  Other:         '#6B7280',
 }
-const CAT_PALETTE_FALLBACK = ['#1D4ED8','#047857','#7C3AED','#BE185D','#B45309','#0F766E','#DC2626','#0369A1','#92400E','#4338CA','#E85D04','#5B21B6','#374151']
+const CAT_PALETTE_FALLBACK = ['#3B82F6','#10B981','#8B5CF6','#EC4899','#F59E0B','#14B8A6','#EF4444','#0EA5E9','#A16207','#6366F1','#F97316','#A855F7','#6B7280']
 const getCatColor = (name, i) => CAT_COLOR_MAP[name] || CAT_PALETTE_FALLBACK[i % CAT_PALETTE_FALLBACK.length]
 
 function getWalletKey() {
@@ -1617,8 +1617,9 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="flex justify-end mb-3">
-            <button onClick={toggleMonthSelector} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition font-medium">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <button onClick={toggleMonthSelector}
+              className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 active:scale-95 text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-all shadow-sm shadow-violet-200 dark:shadow-none">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
               Browse months
