@@ -8,6 +8,7 @@ const PAGE_TITLES = {
   '/login': 'Login — Fina',
   '/register': 'Sign Up — Fina',
   '/verify-email': 'Verify Email — Fina',
+  '/check-email': 'Check Your Email — Fina',
   '/forgot-password': 'Forgot Password — Fina',
   '/account-type': 'Account Type — Fina',
   '/terms': 'Terms of Service — Fina',
@@ -46,6 +47,7 @@ import Register from './pages/Register'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import VerifyEmail from './pages/VerifyEmail'
+import CheckEmail from './pages/CheckEmail'
 import ForgotPassword from './pages/ForgotPassword'
 import AccountType from './pages/AccountType'
 import Dashboard from './pages/Dashboard'
@@ -85,6 +87,7 @@ function App() {
           <Route path="/login"                 element={<Login />} />
           <Route path="/register"              element={<Register />} />
           <Route path="/verify-email"          element={<VerifyEmail />} />
+          <Route path="/check-email"           element={<CheckEmail />} />
           <Route path="/forgot-password"       element={<ForgotPassword />} />
           <Route path="/account-type"          element={<AccountType />} />
           <Route path="/terms"                 element={<Terms />} />

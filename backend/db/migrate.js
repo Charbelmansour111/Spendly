@@ -383,6 +383,14 @@ async function migrate() {
       )
     `);
 
+    // ── Email & phone verification ─────────────────────────────────────────
+    // DEFAULT TRUE so existing users keep access — only new registrations start as FALSE
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_token_expires TIMESTAMPTZ`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE`);
+
     // ── Performance indexes ────────────────────────────────────────────────
     // wallet_expenses — most queried table, always filtered by wallet + date
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_wallet_expenses_wallet_date ON wallet_expenses(wallet_id, date)`);

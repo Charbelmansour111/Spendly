@@ -6,6 +6,7 @@ import { useDarkMode } from '../hooks/useDarkMode'
 import { requestNotificationPermission, isNotificationsEnabled, disableNotifications, unsubscribeFromPush, playFinaChime } from '../utils/notifications'
 import { useWallet } from '../context/WalletContext'
 import { getAvatarUrl, getWalletColor } from '../data/avatars'
+import { auth } from '../utils/firebase'
 
 const CURRENCIES = ['USD','EUR','GBP','LBP','AED','SAR','CAD','AUD']
 const CURRENCY_SYMBOLS = { USD:'$', EUR:'€', GBP:'£', LBP:'L£', AED:'AED', SAR:'SAR', CAD:'C$', AUD:'A$' }
@@ -118,6 +119,16 @@ export default function Settings() {
   const [wPinError, setWPinError]   = useState('')
   const [wPinLoading, setWPinLoading] = useState(false)
 
+  // Phone verification state
+  const [phoneVerified, setPhoneVerified]     = useState(() => JSON.parse(localStorage.getItem('user') || '{}').phone_verified || false)
+  const [phoneNumber, setPhoneNumber]         = useState('')
+  const [phoneStep, setPhoneStep]             = useState('idle')   // idle | entering | sending | otp | verifying | done
+  const [otpCode, setOtpCode]                 = useState('')
+  const [phoneError, setPhoneError]           = useState('')
+  const [confirmationResult, setConfirmationResult] = useState(null)
+  const recaptchaContainerRef                 = useRef(null)
+  const recaptchaVerifierRef                  = useRef(null)
+
   const cls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-700/60 text-gray-900 dark:text-white text-sm transition"
   const showToast = (msg, type = 'success') => setToast({ message: msg, type })
   const FREQ_KEYS = { Monthly: 'monthly_freq', 'Bi-weekly': 'biweekly_freq', Weekly: 'weekly_freq', Irregular: 'irregular_freq' }
@@ -155,6 +166,64 @@ export default function Settings() {
       showToast('Wallet PIN updated ✓')
     } catch (e) { setWPinError(e.message) }
     setWPinLoading(false)
+  }
+
+  // ── Phone verification helpers ────────────────────────────────────────────
+  const handleSendOtp = async () => {
+    setPhoneError('')
+    const cleaned = phoneNumber.replace(/\s/g, '')
+    if (!cleaned || cleaned.length < 8) { setPhoneError('Enter a valid phone number with country code (e.g. +1 555 000 1234)'); return }
+    if (!auth) { setPhoneError('Firebase is not configured. Add VITE_FIREBASE_* vars to your .env file.'); return }
+
+    setPhoneStep('sending')
+    try {
+      const { RecaptchaVerifier, signInWithPhoneNumber } = await import('firebase/auth')
+
+      // Create invisible reCAPTCHA if not already created
+      if (!recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+          size: 'invisible',
+          callback: () => {},
+        })
+      }
+
+      const result = await signInWithPhoneNumber(auth, cleaned, recaptchaVerifierRef.current)
+      setConfirmationResult(result)
+      setPhoneStep('otp')
+    } catch (e) {
+      console.error('[phone] OTP error:', e)
+      setPhoneError(e.code === 'auth/invalid-phone-number'
+        ? 'Invalid phone number. Include country code (e.g. +1).'
+        : e.code === 'auth/too-many-requests'
+        ? 'Too many attempts. Please wait a few minutes.'
+        : 'Failed to send SMS. Please try again.')
+      setPhoneStep('entering')
+      recaptchaVerifierRef.current = null
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    setPhoneError('')
+    if (!confirmationResult || otpCode.length < 6) { setPhoneError('Enter the 6-digit code from SMS'); return }
+    setPhoneStep('verifying')
+    try {
+      const credential = await confirmationResult.confirm(otpCode)
+      const firebaseToken = await credential.user.getIdToken()
+      const cleaned = phoneNumber.replace(/\s/g, '')
+
+      await API.post('/auth/verify-phone', { firebaseToken, phoneNumber: cleaned })
+
+      // Update localStorage user object
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+      localStorage.setItem('user', JSON.stringify({ ...storedUser, phone_verified: true }))
+      setPhoneVerified(true)
+      setPhoneStep('done')
+      showToast('Phone number verified ✓')
+    } catch (e) {
+      console.error('[phone] verify error:', e)
+      setPhoneError(e.response?.data?.message || (e.code === 'auth/invalid-verification-code' ? 'Incorrect code. Try again.' : 'Verification failed. Try again.'))
+      setPhoneStep('otp')
+    }
   }
 
   if (!user) return null
@@ -462,6 +531,110 @@ export default function Settings() {
                 </div>
               )}
             </div>
+
+            {/* ── Phone Verification ──────────────────────────────────────── */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.42 2 2 0 0 1 3.6 1.25h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6.08 6.08l.91-.91a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21.73 16.92z"/>
+                </svg>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Phone Verification</p>
+                {phoneVerified && (
+                  <span className="ml-auto flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 rounded-full">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Verified
+                  </span>
+                )}
+              </div>
+
+              {/* Invisible reCAPTCHA anchor — Firebase injects the widget here */}
+              <div ref={recaptchaContainerRef} />
+
+              {phoneVerified || phoneStep === 'done' ? (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-800/40 flex items-center justify-center shrink-0">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Phone number verified</p>
+                    <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">Your account has an extra layer of security.</p>
+                  </div>
+                </div>
+              ) : phoneStep === 'idle' ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Add phone number</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Verify via SMS for added account security</p>
+                  </div>
+                  <button onClick={() => setPhoneStep('entering')}
+                    className="text-xs font-bold text-violet-600 border border-violet-200 dark:border-violet-800 px-3 py-1.5 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition">
+                    Verify
+                  </button>
+                </div>
+              ) : phoneStep === 'entering' || phoneStep === 'sending' ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1.5">Phone number</label>
+                    <input
+                      type="tel" placeholder="+1 555 000 1234"
+                      value={phoneNumber}
+                      onChange={e => { setPhoneNumber(e.target.value); setPhoneError('') }}
+                      className={cls} autoFocus
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Include your country code (e.g. +961 for Lebanon)</p>
+                  </div>
+                  {phoneError && <p className="text-xs text-red-500">{phoneError}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => { setPhoneStep('idle'); setPhoneNumber(''); setPhoneError('') }}
+                      className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSendOtp}
+                      disabled={phoneStep === 'sending' || !phoneNumber.trim()}
+                      className="flex-1 py-3 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                      {phoneStep === 'sending'
+                        ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Sending…</>
+                        : 'Send SMS Code'
+                      }
+                    </button>
+                  </div>
+                </div>
+              ) : phoneStep === 'otp' || phoneStep === 'verifying' ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1.5">
+                      6-digit code sent to {phoneNumber}
+                    </label>
+                    <input
+                      type="text" inputMode="numeric" maxLength={6} placeholder="000000"
+                      value={otpCode}
+                      onChange={e => { setOtpCode(e.target.value.replace(/\D/g,'').slice(0,6)); setPhoneError('') }}
+                      className={`${cls} tracking-[0.4em] text-center text-lg font-bold`}
+                      autoFocus
+                    />
+                  </div>
+                  {phoneError && <p className="text-xs text-red-500">{phoneError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setPhoneStep('entering'); setOtpCode(''); setPhoneError(''); setConfirmationResult(null) }}
+                      className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                      Resend
+                    </button>
+                    <button
+                      onClick={handleVerifyOtp}
+                      disabled={phoneStep === 'verifying' || otpCode.length < 6}
+                      className="flex-1 py-3 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                      {phoneStep === 'verifying'
+                        ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Verifying…</>
+                        : 'Verify Code'
+                      }
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
           </div>
         )}
 

@@ -47,7 +47,14 @@ function Login() {
       localStorage.setItem('user', JSON.stringify(res.data.user))
       window.location.href = '/dashboard'
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password.')
+      const data = err.response?.data
+      // If email is not verified → redirect to check-email page
+      if (data?.needsVerification) {
+        sessionStorage.setItem('pendingVerificationEmail', data.email || form.email)
+        window.location.href = '/check-email'
+        return
+      }
+      setError(data?.message || 'Invalid email or password.')
       setLoading(false)
     }
   }

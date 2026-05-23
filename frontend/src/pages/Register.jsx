@@ -77,9 +77,16 @@ function Register() {
     setLoading(true)
     try {
       const res = await API.post('/auth/register', form)
-      localStorage.setItem('token', res.data.token)
-      localStorage.setItem('user', JSON.stringify(res.data.user))
-      window.location.href = '/account-type'
+      // Registration now sends a verification email — redirect to check-email page
+      if (res.data.needsVerification) {
+        sessionStorage.setItem('pendingVerificationEmail', res.data.email || form.email)
+        window.location.href = '/check-email'
+      } else {
+        // Fallback: should not happen, but handle gracefully
+        localStorage.setItem('token', res.data.token)
+        localStorage.setItem('user', JSON.stringify(res.data.user))
+        window.location.href = '/account-type'
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong. Please try again.')
     }
