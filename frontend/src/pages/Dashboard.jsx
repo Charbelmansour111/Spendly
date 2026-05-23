@@ -16,7 +16,24 @@ import useCategories from '../hooks/useCategories'
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', LBP: 'L\u00a3', AED: 'AED', SAR: 'SAR', CAD: 'C$', AUD: 'A$' }
 const CATEGORY_ICONS  = { Food: '🍔', Transport: '🚗', Shopping: '🛍️', Subscriptions: '📱', Entertainment: '🎬', Other: '📦' }
 const CATEGORY_COLORS = { Food: '#F97316', Transport: '#3B82F6', Shopping: '#EC4899', Subscriptions: '#8B5CF6', Entertainment: '#10B981', Other: '#6B7280' }
-const CAT_PALETTE = ['#9333EA','#2563EB','#059669','#D97706','#DC2626','#DB2777','#0891B2','#EA580C','#4F46E5','#0D9488','#65A30D','#7C3AED','#4B5563']
+// Per-category colors — consistent identity, not random rotation
+const CAT_COLOR_MAP = {
+  Food:          '#E85D04',
+  Coffee:        '#92400E',
+  Transport:     '#1D4ED8',
+  Shopping:      '#BE185D',
+  Entertainment: '#047857',
+  Health:        '#DC2626',
+  Fitness:       '#D97706',
+  Education:     '#4338CA',
+  Bills:         '#0369A1',
+  Travel:        '#0F766E',
+  Gifts:         '#7C3AED',
+  Subscriptions: '#5B21B6',
+  Other:         '#374151',
+}
+const CAT_PALETTE_FALLBACK = ['#1D4ED8','#047857','#7C3AED','#BE185D','#B45309','#0F766E','#DC2626','#0369A1','#92400E','#4338CA','#E85D04','#5B21B6','#374151']
+const getCatColor = (name, i) => CAT_COLOR_MAP[name] || CAT_PALETTE_FALLBACK[i % CAT_PALETTE_FALLBACK.length]
 
 function getWalletKey() {
   try {
@@ -1987,56 +2004,74 @@ export default function Dashboard() {
 
         {/* Spending by Category */}
         {categoryData.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 mb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Spending by Category</h3>
-              <a href="/budgets" className="text-violet-600 text-xs font-semibold hover:underline">Budgets →</a>
-            </div>
-            <div className="flex items-center gap-5">
-              {/* Donut chart */}
-              <div className="shrink-0" style={{ width: 130, height: 130 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%" cy="50%"
-                      innerRadius={38} outerRadius={60}
-                      paddingAngle={2}
-                      strokeWidth={0}
-                    >
-                      {categoryData.map((_, i) => (
-                        <Cell key={i} fill={CAT_PALETTE[i % CAT_PALETTE.length]} />
-                      ))}
-                    </Pie>
-                    <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }}>Total</text>
-                    <text x="50%" y="60%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 12, fill: '#7C3AED', fontWeight: 800 }}>{currencySymbol}{total >= 1000 ? (total / 1000).toFixed(1) + 'k' : total.toFixed(0)}</text>
-                  </PieChart>
-                </ResponsiveContainer>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden mb-4">
+            {/* Header with gradient accent */}
+            <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-gray-50 dark:border-gray-700/60">
+              <div>
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm">Spending by Category</h3>
+                <p className="text-[11px] text-gray-400 mt-0.5">{monthName} · {categoryData.length} categor{categoryData.length !== 1 ? 'ies' : 'y'}</p>
               </div>
+              <a href="/budgets"
+                className="flex items-center gap-1 text-xs font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-3 py-1.5 rounded-xl hover:bg-violet-100 transition">
+                Budgets
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </a>
+            </div>
 
-              {/* Category list with percentages */}
-              <div className="flex-1 space-y-2.5 min-w-0">
-                {categoryData.slice(0, 5).map((cat, i) => {
-                  const pct = total > 0 ? Math.round((cat.value / total) * 100) : 0
-                  const color = CAT_PALETTE[i % CAT_PALETTE.length]
-                  return (
-                    <div key={cat.name} className="flex items-center gap-2.5">
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate block mb-0.5">{cat.name}</span>
-                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-                          <div className="h-1.5 rounded-full" style={{ width: pct + '%', backgroundColor: color }} />
+            <div className="p-5">
+              <div className="flex items-center gap-5">
+                {/* Donut chart */}
+                <div className="shrink-0" style={{ width: 140, height: 140 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%" cy="50%"
+                        innerRadius={42} outerRadius={65}
+                        paddingAngle={2}
+                        strokeWidth={0}
+                      >
+                        {categoryData.map((entry, i) => (
+                          <Cell key={i} fill={getCatColor(entry.name, i)} />
+                        ))}
+                      </Pie>
+                      <text x="50%" y="44%" textAnchor="middle" dominantBaseline="middle"
+                        style={{ fontSize: 9, fill: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Total</text>
+                      <text x="50%" y="58%" textAnchor="middle" dominantBaseline="middle"
+                        style={{ fontSize: 13, fill: '#7C3AED', fontWeight: 900 }}>
+                        {currencySymbol}{total >= 1000 ? (total / 1000).toFixed(1) + 'k' : total.toFixed(0)}
+                      </text>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Category list */}
+                <div className="flex-1 space-y-2 min-w-0">
+                  {categoryData.slice(0, 6).map((cat, i) => {
+                    const pct   = total > 0 ? Math.round((cat.value / total) * 100) : 0
+                    const color = getCatColor(cat.name, i)
+                    return (
+                      <div key={cat.name} className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{cat.name}</span>
+                            <span className="text-xs font-bold tabular-nums ml-2 shrink-0" style={{ color }}>{pct}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1">
+                            <div className="h-1 rounded-full transition-all duration-500" style={{ width: pct + '%', backgroundColor: color }} />
+                          </div>
                         </div>
+                        <p className="text-[10px] text-gray-400 tabular-nums shrink-0 w-10 text-right">{currencySymbol}{cat.value >= 1000 ? (cat.value / 1000).toFixed(1) + 'k' : cat.value.toFixed(0)}</p>
                       </div>
-                      <div className="text-right shrink-0 min-w-[42px]">
-                        <span className="text-sm font-bold tabular-nums" style={{ color }}>{pct}%</span>
-                        <p className="text-[10px] text-gray-400 tabular-nums">{currencySymbol}{cat.value.toFixed(0)}</p>
-                      </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                  {categoryData.length > 6 && (
+                    <p className="text-[10px] text-gray-400 pt-0.5">+{categoryData.length - 6} more categories</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
