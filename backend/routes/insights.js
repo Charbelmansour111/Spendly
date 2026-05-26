@@ -126,127 +126,90 @@ router.post('/chat', authenticateToken, asyncHandler(async (req, res) => {
     const categoryBreakdown = categoryWithPct.join(', ') || 'No expenses yet this month';
     const budgetSummary = budgets.rows.map(b => `${b.category}: $${b.amount}`).join(', ') || 'None set';
 
-    // Handle budget_suggestions mode — return structured JSON
+    // Handle budget_suggestions mode — pure math, NO AI call
     if (mode === 'budget_suggestions') {
       const ob = onboardingData || {};
 
-      // ── Step 1: Savings & spending caps ──────────────────────────────────
-      const savPct     = typeof savingsTargetPct === 'number' ? Math.min(Math.max(savingsTargetPct, 0), 80) : 20;
-      const spendPct   = 100 - savPct;
-      const spendCap   = totalIncome * spendPct / 100;   // e.g. $8,000
-      const savingsAmt = totalIncome * savPct    / 100;  // e.g. $2,000
+      console.log('[budget_suggestions] received:', {
+        walletMonthlyIncome,
+        savingsTargetPct,
+        totalIncome,
+        walletCategorySpendingKeys: walletCategorySpending ? Object.keys(walletCategorySpending) : null,
+      });
 
-      // ── Step 2: Build category list with default % weights ───────────────
+      // ── Step 1: Guard — if no income known, return an error the UI can handle
+      if (!totalIncome || totalIncome <= 0) {
+        return res.json({
+          budgetSuggestions: null,
+          monthlyIncome: 0,
+          error: 'no_income',
+        });
+      }
+
+      // ── Step 2: Savings & spending caps ──────────────────────────────────
+      const savPct   = typeof savingsTargetPct === 'number' ? Math.min(Math.max(savingsTargetPct, 0), 80) : 20;
+      const spendPct = 100 - savPct;
+      const spendCap = totalIncome * spendPct / 100;
+
+      // ── Step 3: Category weights ──────────────────────────────────────────
       const catDefs = [
-        { category: 'Food',          weight: 0.22, priority: 'essential'   },
-        { category: 'Transport',     weight: 0.12, priority: 'essential'   },
-        { category: 'Healthcare',    weight: 0.08, priority: 'essential'   },
-        { category: 'Shopping',      weight: 0.12, priority: 'recommended' },
-        { category: 'Entertainment', weight: 0.07, priority: 'recommended' },
-        { category: 'Personal Care', weight: 0.05, priority: 'recommended' },
-        { category: 'Subscriptions', weight: 0.04, priority: 'optional'   },
-        ...(ob.pays_tuition ? [{ category: 'Education', weight: 0.10, priority: 'essential' }] : []),
-        ...(ob.life_situation === 'parent' ? [{ category: 'Family', weight: 0.08, priority: 'essential' }] : []),
+        { category: 'Food',          weight: 0.22, priority: 'essential',   hint: 'Covers daily meals and groceries' },
+        { category: 'Transport',     weight: 0.12, priority: 'essential',   hint: 'Daily commute and travel costs' },
+        { category: 'Healthcare',    weight: 0.08, priority: 'essential',   hint: 'Medical and wellness expenses' },
+        { category: 'Shopping',      weight: 0.12, priority: 'recommended', hint: 'Clothing and general purchases' },
+        { category: 'Entertainment', weight: 0.07, priority: 'recommended', hint: 'Leisure and social activities' },
+        { category: 'Personal Care', weight: 0.05, priority: 'recommended', hint: 'Grooming and self-care' },
+        { category: 'Subscriptions', weight: 0.04, priority: 'optional',   hint: 'Streaming and digital services' },
+        ...(ob.pays_tuition        ? [{ category: 'Education', weight: 0.10, priority: 'essential',   hint: 'Tuition and academic costs' }] : []),
+        ...(ob.life_situation === 'parent' ? [{ category: 'Family',    weight: 0.08, priority: 'essential',   hint: 'Family and childcare expenses' }] : []),
       ];
 
-      // ── Step 3: Calculate amounts — use real wallet spending to fine-tune ─
-      // walletCategorySpending = { Food: 450, Transport: 120, ... } from frontend
-      const spending = (typeof walletCategorySpending === 'object' && walletCategorySpending) ? walletCategorySpending : {};
+      // ── Step 4: Calculate amounts from income — no AI involved ───────────
+      const spending     = (typeof walletCategorySpending === 'object' && walletCategorySpending) ? walletCategorySpending : {};
       const totalWeights = catDefs.reduce((s, c) => s + c.weight, 0);
 
       const suggestions = catDefs.map(c => {
-        const baseline  = Math.round(spendCap * (c.weight / totalWeights));  // proportional share
-        const actual    = parseFloat(spending[c.category] || 0);
-        // Blend: if user actually spends on this category, nudge toward their real usage
-        // Cap at 30% of spendCap per category, floor at 5% of spendCap
-        const nudged    = actual > 0
-          ? Math.round(Math.min(Math.max(actual * 1.05, baseline * 0.8), spendCap * 0.30))
+        const baseline = Math.round(spendCap * (c.weight / totalWeights));
+        const actual   = parseFloat(spending[c.category] || 0);
+        // If user spent in this category, cap suggestion to 105% of actual OR baseline (whichever is lower),
+        // but never above 30% of spendCap and never below baseline * 0.7
+        const nudged = actual > 0
+          ? Math.round(Math.min(Math.max(actual * 1.05, baseline * 0.7), spendCap * 0.30))
           : baseline;
-        return { category: c.category, amount: nudged, priority: c.priority };
+        return { category: c.category, amount: nudged, priority: c.priority, hint: c.hint };
       });
 
-      // ── Step 4: Normalize so total never exceeds spendCap ────────────────
-      const rawTotal   = suggestions.reduce((s, c) => s + c.amount, 0);
-      const normalized = suggestions.map(c => ({
-        ...c,
-        amount: rawTotal > spendCap ? Math.floor(c.amount * spendCap / rawTotal) : c.amount,
-      }));
-      const finalTotal  = normalized.reduce((s, c) => s + c.amount, 0);
+      // ── Step 5: Normalize total to exactly spendCap ──────────────────────
+      const rawTotal = suggestions.reduce((s, c) => s + c.amount, 0);
+      const normalized = rawTotal > spendCap
+        ? suggestions.map(c => ({ ...c, amount: Math.floor(c.amount * spendCap / rawTotal) }))
+        : suggestions;
+
+      const finalTotal   = normalized.reduce((s, c) => s + c.amount, 0);
       const finalSavings = Math.round(totalIncome - finalTotal);
 
-      // ── Step 5: Ask AI ONLY for reasoning text per category + summary ─────
-      const spendingCtx = Object.keys(spending).length > 0
-        ? Object.entries(spending).map(([k, v]) => `${k}: $${parseFloat(v).toFixed(0)}`).join(', ')
-        : 'No spending data this month';
-      const suggestionsCtx = normalized.map(c => `${c.category}=$${c.amount}`).join(', ');
+      console.log('[budget_suggestions] computed:', {
+        savPct, spendCap: spendCap.toFixed(0), finalTotal, finalSavings,
+        categories: normalized.map(c => `${c.category}=$${c.amount}`).join(', '),
+      });
 
-      const budgetPrompt = `The user earns $${totalIncome.toFixed(0)}/month and wants to save ${savPct}% ($${savingsAmt.toFixed(0)}).
-Their budget limits have been calculated: ${suggestionsCtx}. Total: $${finalTotal} of $${spendCap.toFixed(0)} cap.
-This month's actual spending: ${spendingCtx}.
-Life situation: ${ob.life_situation || 'adult'}, ${ob.employment_status || 'unknown'}.
+      // ── Step 6: Build response — pure math, no AI ────────────────────────
+      const result = {
+        suggestions: normalized.map(c => ({
+          category:             c.category,
+          amount:               c.amount,
+          percentage_of_income: Math.round(c.amount / totalIncome * 100),
+          reasoning:            c.hint,
+          priority:             c.priority,
+        })),
+        total_budgeted:        finalTotal,
+        income_used_percent:   Math.round(finalTotal / totalIncome * 100),
+        projected_savings:     finalSavings,
+        projected_savings_rate: Math.round(finalSavings / totalIncome * 100) + '%',
+        summary: `Based on your $${Math.round(totalIncome).toLocaleString()} income, this plan keeps spending at ${Math.round(finalTotal / totalIncome * 100)}% and saves $${finalSavings.toLocaleString()} (${Math.round(finalSavings / totalIncome * 100)}%) per month.`,
+      };
 
-Write a SHORT reasoning sentence (max 10 words) for each category explaining why that limit was set, and a 1-sentence summary.
-Return ONLY this JSON (use the EXACT amounts given above — do NOT change them):
-${JSON.stringify({
-  suggestions: normalized.map(c => ({
-    category: c.category,
-    amount: c.amount,
-    percentage_of_income: Math.round(c.amount / totalIncome * 100),
-    reasoning: '...',
-    priority: c.priority,
-  })),
-  total_budgeted: finalTotal,
-  income_used_percent: Math.round(finalTotal / totalIncome * 100),
-  projected_savings: finalSavings,
-  projected_savings_rate: Math.round(finalSavings / totalIncome * 100) + '%',
-  summary: '...',
-})}`;
-
-
-      const raw = await callAI([{ role: 'user', content: budgetPrompt }], 800);
-      try {
-        const jsonStart = raw.indexOf('{'); const jsonEnd = raw.lastIndexOf('}');
-        const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
-
-        // ── HARD ENFORCE our mathematically calculated amounts ────────────────
-        // AI may rewrite numbers in its reply — we always override with server values.
-        const amountMap = {};
-        normalized.forEach(c => { amountMap[c.category] = c.amount; });
-        if (Array.isArray(parsed.suggestions)) {
-          parsed.suggestions = parsed.suggestions.map(s => {
-            const forced = amountMap[s.category];
-            if (forced == null) return s;   // category not in our list — keep as-is
-            return {
-              ...s,
-              amount:               forced,
-              percentage_of_income: Math.round(forced / totalIncome * 100),
-            };
-          });
-        }
-        parsed.total_budgeted        = finalTotal;
-        parsed.projected_savings     = finalSavings;
-        parsed.projected_savings_rate = Math.round(finalSavings / totalIncome * 100) + '%';
-        parsed.income_used_percent   = Math.round(finalTotal / totalIncome * 100);
-
-        return res.json({ budgetSuggestions: parsed, monthlyIncome: totalIncome });
-      } catch {
-        // AI parse failed — build the response entirely from our own calculations
-        const fallback = {
-          suggestions: normalized.map(c => ({
-            category:             c.category,
-            amount:               c.amount,
-            percentage_of_income: Math.round(c.amount / totalIncome * 100),
-            reasoning:            `Allocated ${Math.round(c.amount / totalIncome * 100)}% of your income.`,
-            priority:             c.priority,
-          })),
-          total_budgeted:        finalTotal,
-          income_used_percent:   Math.round(finalTotal / totalIncome * 100),
-          projected_savings:     finalSavings,
-          projected_savings_rate: Math.round(finalSavings / totalIncome * 100) + '%',
-          summary:               `Budget keeps spending to ${Math.round(finalTotal / totalIncome * 100)}% of income, saving $${finalSavings}/month.`,
-        };
-        return res.json({ budgetSuggestions: fallback, monthlyIncome: totalIncome });
-      }
+      return res.json({ budgetSuggestions: result, monthlyIncome: totalIncome });
     }
 
     // Life context for system prompt

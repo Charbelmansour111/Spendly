@@ -129,7 +129,11 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
         walletMonthlyIncome,               // ← real wallet income
         walletCategorySpending,            // ← real wallet spending by category
       })
-      const { budgetSuggestions } = res.data
+      const { budgetSuggestions, error: apiError } = res.data
+      if (apiError === 'no_income') {
+        setError('No income found for your wallet. Please log your monthly income first, then come back to generate a budget plan.')
+        setLoading(false); return
+      }
       if (!budgetSuggestions?.suggestions?.length) {
         setError('Could not generate suggestions — try again.'); setLoading(false); return
       }
