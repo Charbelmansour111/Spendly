@@ -207,9 +207,45 @@ ${JSON.stringify({
       try {
         const jsonStart = raw.indexOf('{'); const jsonEnd = raw.lastIndexOf('}');
         const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
+
+        // ── HARD ENFORCE our mathematically calculated amounts ────────────────
+        // AI may rewrite numbers in its reply — we always override with server values.
+        const amountMap = {};
+        normalized.forEach(c => { amountMap[c.category] = c.amount; });
+        if (Array.isArray(parsed.suggestions)) {
+          parsed.suggestions = parsed.suggestions.map(s => {
+            const forced = amountMap[s.category];
+            if (forced == null) return s;   // category not in our list — keep as-is
+            return {
+              ...s,
+              amount:               forced,
+              percentage_of_income: Math.round(forced / totalIncome * 100),
+            };
+          });
+        }
+        parsed.total_budgeted        = finalTotal;
+        parsed.projected_savings     = finalSavings;
+        parsed.projected_savings_rate = Math.round(finalSavings / totalIncome * 100) + '%';
+        parsed.income_used_percent   = Math.round(finalTotal / totalIncome * 100);
+
         return res.json({ budgetSuggestions: parsed, monthlyIncome: totalIncome });
       } catch {
-        return res.json({ budgetSuggestions: null, error: 'Could not parse suggestions' });
+        // AI parse failed — build the response entirely from our own calculations
+        const fallback = {
+          suggestions: normalized.map(c => ({
+            category:             c.category,
+            amount:               c.amount,
+            percentage_of_income: Math.round(c.amount / totalIncome * 100),
+            reasoning:            `Allocated ${Math.round(c.amount / totalIncome * 100)}% of your income.`,
+            priority:             c.priority,
+          })),
+          total_budgeted:        finalTotal,
+          income_used_percent:   Math.round(finalTotal / totalIncome * 100),
+          projected_savings:     finalSavings,
+          projected_savings_rate: Math.round(finalSavings / totalIncome * 100) + '%',
+          summary:               `Budget keeps spending to ${Math.round(finalTotal / totalIncome * 100)}% of income, saving $${finalSavings}/month.`,
+        };
+        return res.json({ budgetSuggestions: fallback, monthlyIncome: totalIncome });
       }
     }
 
