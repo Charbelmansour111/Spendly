@@ -136,30 +136,48 @@ router.post('/chat', authenticateToken, asyncHandler(async (req, res) => {
       const spendCap = totalIncome * spendPct / 100;
       const savingsAmt = totalIncome * savPct / 100;
 
-      const budgetPrompt = `You are generating a monthly budget plan for a user.
+      // Pre-calculate category amounts from the spending cap so AI works with real numbers
+      const cap = spendCap; // e.g. $8,000 for $10k income with 20% savings
+      const cats = [
+        { category: 'Food',          pct: 0.22, priority: 'essential'   },
+        { category: 'Transport',     pct: 0.12, priority: 'essential'   },
+        { category: 'Healthcare',    pct: 0.08, priority: 'essential'   },
+        { category: 'Shopping',      pct: 0.12, priority: 'recommended' },
+        { category: 'Entertainment', pct: 0.07, priority: 'recommended' },
+        { category: 'Personal Care', pct: 0.05, priority: 'recommended' },
+        { category: 'Subscriptions', pct: 0.04, priority: 'optional'   },
+        ...(ob.pays_tuition    ? [{ category: 'Education', pct: 0.10, priority: 'essential'   }] : []),
+        ...(ob.life_situation === 'parent' ? [{ category: 'Family', pct: 0.10, priority: 'essential' }] : []),
+      ];
+      const baselineRows = cats.map(c => `${c.category}: $${Math.round(cap * c.pct)} (${Math.round(c.pct * 100)}% of spending cap) [${c.priority}]`).join('\n');
+      const totalBaseline = cats.reduce((s, c) => s + Math.round(cap * c.pct), 0);
 
-USER DATA:
-- Monthly income: $${totalIncome.toFixed(2)}
-- Savings target: ${savPct}% ($${savingsAmt.toFixed(2)}/month) — NON-NEGOTIABLE
-- Maximum total spending: ${spendPct}% of income = $${spendCap.toFixed(2)}/month — HARD CAP, do not exceed
-- Life situation: ${ob.life_situation || 'adult'}, ${ob.employment_status || 'unknown'}
-- Pays tuition: ${ob.pays_tuition ? 'YES' : 'no'}
-- Current spending this month: ${categoryBreakdown}
-- Existing budget limits: ${budgetSummary}
+      const budgetPrompt = `Generate a monthly budget plan. Return ONLY valid JSON — no markdown, no explanation.
 
-STRICT RULES:
-1. SUM of all suggested amounts MUST be <= $${spendCap.toFixed(2)}. No exceptions.
-2. projected_savings must be >= $${savingsAmt.toFixed(2)} (income minus total_budgeted).
-3. income_used_percent must be <= ${spendPct}.
-4. Scale categories proportionally to income — no fixed floors that would push total over the cap.
-5. Add Education only if student paying tuition. Add Family only if parent.
+INCOME & CAP (use these exact numbers):
+- Monthly income: $${totalIncome.toFixed(0)}
+- User saves: ${savPct}% = $${savingsAmt.toFixed(0)}/month
+- Spending cap (${spendPct}% of income): $${cap.toFixed(0)} — THE SUM OF ALL AMOUNTS MUST NOT EXCEED THIS
+- Baseline total from percentages: $${totalBaseline} (already under cap ✓)
 
-Return ONLY valid JSON (no markdown, no explanation):
-{"suggestions":[{"category":"Food","amount":250,"percentage_of_income":12,"reasoning":"...","priority":"essential"}],"total_budgeted":${Math.round(spendCap * 0.9)},"income_used_percent":${Math.round(spendPct * 0.9)},"projected_savings":${Math.round(savingsAmt + spendCap * 0.1)},"projected_savings_rate":"${Math.round(savPct + spendPct * 0.1)}%","summary":"..."}
+BASELINE AMOUNTS (scale from these, do NOT use fixed amounts like $380 or $150):
+${baselineRows}
 
-Categories: Food, Transport, Shopping, Entertainment, Subscriptions, Healthcare, Personal Care${ob.pays_tuition ? ', Education' : ''}${ob.life_situation === 'parent' ? ', Family' : ''}
-Priority values: "essential" | "recommended" | "optional"
-FINAL CHECK: confirm sum of amounts <= $${spendCap.toFixed(2)} before returning.`;
+USER CONTEXT:
+- Life: ${ob.life_situation || 'adult'}, ${ob.employment_status || 'unknown'}
+- This month's spending: ${categoryBreakdown}
+- Existing budgets: ${budgetSummary}
+
+RULES:
+1. Start from the baseline amounts above — they are already calculated from the $${cap.toFixed(0)} cap.
+2. Adjust each amount up or down based on the user's actual spending history.
+3. After adjusting, verify: sum of all amounts <= $${cap.toFixed(0)}.
+4. If you increase one category, decrease another to stay under cap.
+5. projected_savings = $${totalIncome.toFixed(0)} minus total_budgeted (must be >= $${savingsAmt.toFixed(0)}).
+
+Return this JSON structure (fill in real numbers, not placeholders):
+{"suggestions":[{"category":"Food","amount":${Math.round(cap*0.22)},"percentage_of_income":${Math.round(cap*0.22/totalIncome*100)},"reasoning":"Adjusted based on your spending history","priority":"essential"}],"total_budgeted":${totalBaseline},"income_used_percent":${Math.round(totalBaseline/totalIncome*100)},"projected_savings":${Math.round(totalIncome-totalBaseline)},"projected_savings_rate":"${Math.round((totalIncome-totalBaseline)/totalIncome*100)}%","summary":"Budget plan keeping ${savPct}% savings target"}`;
+
 
       const raw = await callAI([{ role: 'user', content: budgetPrompt }], 800);
       try {
