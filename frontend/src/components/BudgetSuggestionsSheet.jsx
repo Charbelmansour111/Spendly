@@ -35,6 +35,8 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
   const [selected, setSelected]       = useState({})
   const [applying, setApplying]       = useState(false)
   const [applySuccess, setApplySuccess] = useState(null)
+  const [detectedIncome, setDetectedIncome] = useState(0)
+  const [detectedSavingsPct, setDetectedSavingsPct] = useState(20)
 
   useEffect(() => {
     fetchSuggestions()
@@ -48,28 +50,46 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
       const savingsTarget = getSavingsTargetPct(profile)  // reads fina_prefs first
       const spendingPct   = 100 - savingsTarget
 
-      // ── Fetch real wallet income (the legacy income table is empty for most users)
+      // ── Fetch real wallet income — same source as Dashboard ──────────────
       let walletMonthlyIncome = 0
       try {
-        const now = new Date()
+        const now      = new Date()
         const curMonth = now.getMonth() + 1   // 1-12
         const curYear  = now.getFullYear()
-        const incRes   = await API.get('/income')
-        const incRows  = Array.isArray(incRes.data) ? incRes.data : []
-        walletMonthlyIncome = incRows
+
+        // API.get('/income') is auto-rewritten → /wallets/:walletId/income
+        const incRes = await API.get('/income')
+        const incRows = Array.isArray(incRes.data) ? incRes.data : []
+
+        // 1st choice: current month (same as Dashboard)
+        const thisMonth = incRows
           .filter(i => Number(i.month) === curMonth && Number(i.year) === curYear)
           .reduce((s, i) => s + parseFloat(i.amount || 0), 0)
 
-        // Also include recurring income from other months if nothing this month
-        if (walletMonthlyIncome === 0) {
-          walletMonthlyIncome = incRows
-            .filter(i => i.is_recurring)
-            .reduce((s, i) => s + parseFloat(i.amount || 0), 0)
+        if (thisMonth > 0) {
+          walletMonthlyIncome = thisMonth
+        } else {
+          // 2nd choice: most recent month that has any income logged
+          // Sort by year desc, then month desc — pick the latest month's total
+          const sorted = [...incRows].sort((a, b) =>
+            b.year !== a.year ? b.year - a.year : b.month - a.month
+          )
+          if (sorted.length > 0) {
+            const latestMonth = Number(sorted[0].month)
+            const latestYear  = Number(sorted[0].year)
+            walletMonthlyIncome = sorted
+              .filter(i => Number(i.month) === latestMonth && Number(i.year) === latestYear)
+              .reduce((s, i) => s + parseFloat(i.amount || 0), 0)
+          }
         }
       } catch {}
 
       const spendCap   = walletMonthlyIncome > 0 ? walletMonthlyIncome * spendingPct / 100 : 0
       const savingsAmt = walletMonthlyIncome > 0 ? walletMonthlyIncome * savingsTarget / 100 : 0
+
+      // Store for display in the UI
+      setDetectedIncome(walletMonthlyIncome)
+      setDetectedSavingsPct(savingsTarget)
 
       const message = [
         'Generate budget suggestions.',
@@ -172,7 +192,19 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
         <div className="flex items-start justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-700/60">
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">AI Budget Plan</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Based on your income and lifestyle</p>
+            {detectedIncome > 0 ? (
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Income {sym}{detectedIncome.toLocaleString(undefined, {maximumFractionDigits:0})}
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 px-2 py-0.5 rounded-full">
+                  Saving {detectedSavingsPct}% · Spending {100 - detectedSavingsPct}%
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-amber-500 dark:text-amber-400 mt-0.5">⚠ No income found — add income first for accurate limits</p>
+            )}
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
