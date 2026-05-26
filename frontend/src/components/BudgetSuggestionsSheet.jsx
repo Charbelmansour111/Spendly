@@ -91,6 +91,23 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
       setDetectedIncome(walletMonthlyIncome)
       setDetectedSavingsPct(savingsTarget)
 
+      // ── Fetch real wallet expenses for category breakdown ─────────────────
+      let walletCategorySpending = {}
+      try {
+        const now2     = new Date()
+        const expRes   = await API.get('/expenses')
+        const expRows  = Array.isArray(expRes.data) ? expRes.data : []
+        expRows
+          .filter(e => {
+            const d = new Date(e.date)
+            return d.getMonth() === now2.getMonth() && d.getFullYear() === now2.getFullYear()
+          })
+          .forEach(e => {
+            const cat = e.category || 'Other'
+            walletCategorySpending[cat] = (walletCategorySpending[cat] || 0) + parseFloat(e.amount || 0)
+          })
+      } catch {}
+
       const message = [
         'Generate budget suggestions.',
         walletMonthlyIncome > 0
@@ -108,8 +125,9 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
         mode:            'budget_suggestions',
         history,
         userProfile:     profile,
-        savingsTargetPct: savingsTarget,
-        walletMonthlyIncome,               // ← real income sent to backend
+        savingsTargetPct:       savingsTarget,
+        walletMonthlyIncome,               // ← real wallet income
+        walletCategorySpending,            // ← real wallet spending by category
       })
       const { budgetSuggestions } = res.data
       if (!budgetSuggestions?.suggestions?.length) {
