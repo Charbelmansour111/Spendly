@@ -45,17 +45,15 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
     try {
       const profile = getProfile()
       const profileCtx = buildProfileContext(profile)
-      const savingsTarget = getSavingsTargetPct(profile)
+      const savingsTarget = getSavingsTargetPct(profile)  // reads fina_prefs first
+      const spendingPct   = 100 - savingsTarget           // e.g. 80 if saving 20%
 
-      // Build a rich message so the AI knows the savings target and user context
       const message = [
         'Generate budget suggestions.',
-        `The user wants to save at least ${savingsTarget}% of their income — total budgeted spending must leave room for this savings target.`,
-        `If income is known, cap total budget limits at ${100 - savingsTarget}% of monthly income.`,
+        `CRITICAL: The user's savings target is ${savingsTarget}%. Total budgeted spending MUST NOT exceed ${spendingPct}% of monthly income. This is a hard cap — do not exceed it regardless of spending history.`,
         profile?.family_support_monthly > 0
-          ? `Important: user already spends ~$${profile.family_support_monthly}/month on family — account for this as a fixed non-negotiable cost.`
+          ? `Important: user already spends ~$${profile.family_support_monthly}/month on family — account for this as a fixed non-negotiable cost inside the ${spendingPct}% spending cap.`
           : '',
-        `If the user's balance is growing rapidly (significantly above their monthly income), include a note suggesting they consider professional investment advice (gold, index funds, savings account, etc.) — but always remind them to consult a licensed financial advisor before acting.`,
       ].filter(Boolean).join(' ')
 
       const history = profileCtx ? [{ role: 'assistant', content: profileCtx }] : []
@@ -65,6 +63,7 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
         mode: 'budget_suggestions',
         history,
         userProfile: profile,
+        savingsTargetPct: savingsTarget,   // ← explicit field the backend reads
       })
       const { budgetSuggestions } = res.data
       if (!budgetSuggestions?.suggestions?.length) {

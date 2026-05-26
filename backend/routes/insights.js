@@ -79,7 +79,7 @@ Response style rules:
 ${SHARED_RULES()}`;
 
 router.post('/chat', authenticateToken, asyncHandler(async (req, res) => {
-    const { message, history, mode } = req.body;
+    const { message, history, mode, savingsTargetPct } = req.body;
     const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 50', [req.userId]);
     const income   = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20', [req.userId]);
     const budgets  = await pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]);
@@ -125,25 +125,37 @@ router.post('/chat', authenticateToken, asyncHandler(async (req, res) => {
     // Handle budget_suggestions mode — return structured JSON
     if (mode === 'budget_suggestions') {
       const ob = onboardingData || {};
-      const budgetPrompt = `Based on this user's monthly income ($${totalIncome.toFixed(2)}/month) and life situation (${ob.life_situation || 'adult'}, ${ob.employment_status || 'unknown'}, pays tuition: ${ob.pays_tuition ? 'YES' : 'no'}), generate specific budget limits.
 
-RULES:
-- Food minimum $300 (never below). Food max: 20% of income.
-- If income < $800: food $300, transport $120, entertainment $50, shopping $100
-- If income $800-$1500: food $350-$400, transport $150-$200, entertainment $100
-- If income > $1500: apply 50/30/20 rule proportionally
-- Always leave at least 15% of income unbudgeted (savings)
-- If student paying tuition: reduce entertainment, add Education category
-- If parent: add Family/Childcare suggestion
+      // Use the savings target sent by the frontend (from fina_prefs), default 20%
+      const savPct   = typeof savingsTargetPct === 'number' ? Math.min(Math.max(savingsTargetPct, 0), 80) : 20;
+      const spendPct = 100 - savPct;
+      const spendCap = totalIncome * spendPct / 100;
+      const savingsAmt = totalIncome * savPct / 100;
 
-Current spend this month: ${categoryBreakdown}
-Existing budgets: ${budgetSummary}
+      const budgetPrompt = `You are generating a monthly budget plan for a user.
 
-Return ONLY valid JSON (no other text):
-{"suggestions":[{"category":"Food","amount":380,"percentage_of_income":19,"reasoning":"...","priority":"essential"}],"total_budgeted":1400,"income_used_percent":70,"projected_savings":400,"projected_savings_rate":"20%","summary":"..."}
+USER DATA:
+- Monthly income: $${totalIncome.toFixed(2)}
+- Savings target: ${savPct}% ($${savingsAmt.toFixed(2)}/month) — NON-NEGOTIABLE
+- Maximum total spending: ${spendPct}% of income = $${spendCap.toFixed(2)}/month — HARD CAP, do not exceed
+- Life situation: ${ob.life_situation || 'adult'}, ${ob.employment_status || 'unknown'}
+- Pays tuition: ${ob.pays_tuition ? 'YES' : 'no'}
+- Current spending this month: ${categoryBreakdown}
+- Existing budget limits: ${budgetSummary}
+
+STRICT RULES:
+1. SUM of all suggested amounts MUST be <= $${spendCap.toFixed(2)}. No exceptions.
+2. projected_savings must be >= $${savingsAmt.toFixed(2)} (income minus total_budgeted).
+3. income_used_percent must be <= ${spendPct}.
+4. Scale categories proportionally to income — no fixed floors that would push total over the cap.
+5. Add Education only if student paying tuition. Add Family only if parent.
+
+Return ONLY valid JSON (no markdown, no explanation):
+{"suggestions":[{"category":"Food","amount":250,"percentage_of_income":12,"reasoning":"...","priority":"essential"}],"total_budgeted":${Math.round(spendCap * 0.9)},"income_used_percent":${Math.round(spendPct * 0.9)},"projected_savings":${Math.round(savingsAmt + spendCap * 0.1)},"projected_savings_rate":"${Math.round(savPct + spendPct * 0.1)}%","summary":"..."}
 
 Categories: Food, Transport, Shopping, Entertainment, Subscriptions, Healthcare, Personal Care${ob.pays_tuition ? ', Education' : ''}${ob.life_situation === 'parent' ? ', Family' : ''}
-Priority values: "essential" | "recommended" | "optional"`;
+Priority values: "essential" | "recommended" | "optional"
+FINAL CHECK: confirm sum of amounts <= $${spendCap.toFixed(2)} before returning.`;
 
       const raw = await callAI([{ role: 'user', content: budgetPrompt }], 800);
       try {

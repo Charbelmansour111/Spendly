@@ -20,9 +20,16 @@ export function saveProfile(data) {
   localStorage.setItem(`fina_profile_${getWalletKey()}`, JSON.stringify(data))
 }
 
-/* Returns a savings-target % based on the user's top financial priority */
+/* Returns a savings-target % — reads user's actual setting from fina_prefs first */
 export function getSavingsTargetPct(profile) {
-  if (!profile?.financial_priorities?.length) return 10
+  // 1. User's explicitly chosen savings target from Settings slider (most accurate)
+  try {
+    const prefs = JSON.parse(localStorage.getItem('fina_prefs') || '{}')
+    if (typeof prefs.savingsTarget === 'number') return prefs.savingsTarget
+  } catch {}
+
+  // 2. Fall back to profile financial priority estimate
+  if (!profile?.financial_priorities?.length) return 20
   const top = profile.financial_priorities[0]
   if (top === 'home') return 25
   if (top === 'wealth' || top === 'emergency_fund') return 20
