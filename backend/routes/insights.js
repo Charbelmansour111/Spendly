@@ -79,7 +79,7 @@ Response style rules:
 ${SHARED_RULES()}`;
 
 router.post('/chat', authenticateToken, asyncHandler(async (req, res) => {
-    const { message, history, mode, savingsTargetPct } = req.body;
+    const { message, history, mode, savingsTargetPct, walletMonthlyIncome } = req.body;
     const expenses = await pool.query('SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC LIMIT 50', [req.userId]);
     const income   = await pool.query('SELECT * FROM income WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20', [req.userId]);
     const budgets  = await pool.query('SELECT * FROM budgets WHERE user_id = $1', [req.userId]);
@@ -102,7 +102,11 @@ router.post('/chat', authenticateToken, asyncHandler(async (req, res) => {
     });
 
     const total = monthExpenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
-    const totalIncome = monthIncome.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+    const legacyIncome = monthIncome.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+    // Prefer wallet-scoped income sent from frontend (more accurate than legacy income table)
+    const totalIncome = (typeof walletMonthlyIncome === 'number' && walletMonthlyIncome > 0)
+      ? walletMonthlyIncome
+      : legacyIncome;
     const savingsRate = totalIncome > 0 ? ((totalIncome - total) / totalIncome * 100).toFixed(1) : 0;
 
     const categoryTotals = monthExpenses.reduce((acc, e) => {

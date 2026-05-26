@@ -46,13 +46,38 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
       const profile = getProfile()
       const profileCtx = buildProfileContext(profile)
       const savingsTarget = getSavingsTargetPct(profile)  // reads fina_prefs first
-      const spendingPct   = 100 - savingsTarget           // e.g. 80 if saving 20%
+      const spendingPct   = 100 - savingsTarget
+
+      // ── Fetch real wallet income (the legacy income table is empty for most users)
+      let walletMonthlyIncome = 0
+      try {
+        const now = new Date()
+        const curMonth = now.getMonth() + 1   // 1-12
+        const curYear  = now.getFullYear()
+        const incRes   = await API.get('/income')
+        const incRows  = Array.isArray(incRes.data) ? incRes.data : []
+        walletMonthlyIncome = incRows
+          .filter(i => Number(i.month) === curMonth && Number(i.year) === curYear)
+          .reduce((s, i) => s + parseFloat(i.amount || 0), 0)
+
+        // Also include recurring income from other months if nothing this month
+        if (walletMonthlyIncome === 0) {
+          walletMonthlyIncome = incRows
+            .filter(i => i.is_recurring)
+            .reduce((s, i) => s + parseFloat(i.amount || 0), 0)
+        }
+      } catch {}
+
+      const spendCap   = walletMonthlyIncome > 0 ? walletMonthlyIncome * spendingPct / 100 : 0
+      const savingsAmt = walletMonthlyIncome > 0 ? walletMonthlyIncome * savingsTarget / 100 : 0
 
       const message = [
         'Generate budget suggestions.',
-        `CRITICAL: The user's savings target is ${savingsTarget}%. Total budgeted spending MUST NOT exceed ${spendingPct}% of monthly income. This is a hard cap — do not exceed it regardless of spending history.`,
+        walletMonthlyIncome > 0
+          ? `CRITICAL: Monthly income is $${walletMonthlyIncome.toFixed(2)}. Savings target is ${savingsTarget}% ($${savingsAmt.toFixed(2)}/month). Total budgeted spending MUST NOT exceed ${spendingPct}% = $${spendCap.toFixed(2)}. This is a hard dollar cap.`
+          : `CRITICAL: Savings target is ${savingsTarget}%. Total budgets must not exceed ${spendingPct}% of whatever income you detect.`,
         profile?.family_support_monthly > 0
-          ? `Important: user already spends ~$${profile.family_support_monthly}/month on family — account for this as a fixed non-negotiable cost inside the ${spendingPct}% spending cap.`
+          ? `User already spends ~$${profile.family_support_monthly}/month on family — include this inside the spending cap.`
           : '',
       ].filter(Boolean).join(' ')
 
@@ -60,10 +85,11 @@ export default function BudgetSuggestionsSheet({ existingBudgets = [], onClose, 
 
       const res = await API.post('/insights/chat', {
         message,
-        mode: 'budget_suggestions',
+        mode:            'budget_suggestions',
         history,
-        userProfile: profile,
-        savingsTargetPct: savingsTarget,   // ← explicit field the backend reads
+        userProfile:     profile,
+        savingsTargetPct: savingsTarget,
+        walletMonthlyIncome,               // ← real income sent to backend
       })
       const { budgetSuggestions } = res.data
       if (!budgetSuggestions?.suggestions?.length) {
