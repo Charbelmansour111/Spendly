@@ -11,7 +11,7 @@ if (missing.length) {
 }
 
 const migrate = require('./db/migrate');
-
+ 
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
 const insightRoutes = require('./routes/insights');
@@ -77,6 +77,8 @@ app.use('/api/splits', require('./routes/splits'));
 app.use('/api/currency', require('./routes/currency'));
 app.use('/api/onboarding', require('./routes/onboarding'));
 app.use('/api/daily-insight', require('./routes/dailyInsight'));
+app.use('/api/profile/financial', require('./routes/financialProfile'));
+app.use('/api/budget-plan', require('./routes/budgetPlan'));
 
 app.get('/', (req, res) => {
   res.json({ message: 'Fina API is running' });

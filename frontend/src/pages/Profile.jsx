@@ -5,6 +5,8 @@ import API from '../utils/api'
 import { useWallet } from '../context/WalletContext'
 import { getAvatarUrl, getWalletColor } from '../data/avatars'
 import { deleteWallet } from '../utils/walletSession'
+import BudgetOnboarding from '../components/BudgetOnboarding'
+import { useFinancialProfile } from '../hooks/useFinancialProfile'
 
 // ── Pricing data ──────────────────────────────────────────────────────────────
 const PLANS = [
@@ -282,6 +284,163 @@ function Toast({ message, type, onClose }) {
   )
 }
 
+// ── Financial Profile Section ─────────────────────────────────────────────────
+function FinancialProfileSection({ showToast }) {
+  const { profile, loading, updateProfile, updateContext, clearContext } = useFinancialProfile()
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [savings, setSavings]     = useState(null)
+  const [savingSlider, setSavingSlider] = useState(false)
+  const [contextEdit, setContextEdit] = useState('')
+  const [savingCtx, setSavingCtx] = useState(false)
+
+  useEffect(() => {
+    if (profile?.savings_target) setSavings(parseFloat(profile.savings_target))
+  }, [profile])
+
+  const LIFE_LABELS = {
+    with_family:        '🏠 With my family',
+    supporting_parents: '👴 Supporting parents',
+    independent:        '🏢 Living independently',
+  }
+
+  const handleSaveSavings = async () => {
+    if (!savings) return
+    setSavingSlider(true)
+    try {
+      await updateProfile({ savings_target: savings })
+      // Also sync to fina_prefs for BudgetSuggestionsSheet
+      try {
+        const p = JSON.parse(localStorage.getItem('fina_prefs') || '{}')
+        p.savingsTarget = savings
+        localStorage.setItem('fina_prefs', JSON.stringify(p))
+      } catch {}
+      showToast('Savings target updated ✓')
+    } catch { showToast('Failed to update', 'error') }
+    setSavingSlider(false)
+  }
+
+  const handleSaveContext = async () => {
+    if (!contextEdit.trim()) return
+    setSavingCtx(true)
+    try {
+      await updateContext(contextEdit)
+      setContextEdit('')
+      showToast('Monthly note saved ✓')
+    } catch { showToast('Failed to save', 'error') }
+    setSavingCtx(false)
+  }
+
+  return (
+    <>
+      {showOnboarding && (
+        <BudgetOnboarding
+          onClose={() => setShowOnboarding(false)}
+          onComplete={async () => { setShowOnboarding(false); showToast('Profile updated ✓') }}
+        />
+      )}
+      <Section
+        defaultOpen={false}
+        title="Financial Profile"
+        icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg>}>
+        <div className="space-y-4">
+          {loading ? (
+            <div className="space-y-2">
+              {[1,2,3].map(i => <div key={i} className="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />)}
+            </div>
+          ) : !profile ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                No financial profile set yet. Set one to get personalized budget plans.
+              </p>
+              <button
+                onClick={() => setShowOnboarding(true)}
+                className="bg-violet-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-violet-700 transition">
+                Set Up My Profile
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Current answers */}
+              <div className="space-y-2">
+                {[
+                  { label: 'Life Situation', value: LIFE_LABELS[profile.life_situation] || profile.life_situation },
+                  profile.is_student   && { label: 'Student', value: profile.pays_tuition ? 'Yes — pays own tuition' : 'Yes — family covers it' },
+                  profile.housing      && { label: 'Housing', value: profile.housing.replace(/_/g,' ') },
+                  profile.is_married !== undefined && { label: 'Married', value: profile.is_married ? 'Yes' : 'No' },
+                  profile.children_count > 0 && { label: 'Children', value: String(profile.children_count) },
+                  { label: 'Income Type', value: (profile.income_type || 'fixed').replace(/_/g,' ') },
+                ].filter(Boolean).map(item => (
+                  <div key={item.label} className="flex items-center justify-between py-2 border-b border-gray-50 dark:border-gray-700/40">
+                    <p className="text-xs text-gray-400 font-medium">{item.label}</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-white">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Savings slider */}
+              <div className="bg-violet-50 dark:bg-violet-900/20 rounded-xl px-4 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold text-violet-700 dark:text-violet-300">Savings Target</p>
+                  <p className="text-sm font-black text-violet-600 dark:text-violet-400">{savings ?? profile.savings_target ?? 20}%</p>
+                </div>
+                <input
+                  type="range" min="5" max="60" step="5"
+                  value={savings ?? profile.savings_target ?? 20}
+                  onChange={e => setSavings(parseInt(e.target.value))}
+                  className="w-full accent-violet-600 mb-2"
+                />
+                <div className="flex justify-between text-[10px] text-gray-400 mb-2">
+                  <span>5%</span><span>30%</span><span>60%</span>
+                </div>
+                <button
+                  onClick={handleSaveSavings}
+                  disabled={savingSlider}
+                  className="w-full py-2 bg-violet-600 text-white text-xs font-bold rounded-lg hover:bg-violet-700 transition disabled:opacity-50">
+                  {savingSlider ? 'Saving…' : 'Save Target'}
+                </button>
+              </div>
+
+              {/* Monthly context */}
+              <div>
+                <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-1">This month's note</p>
+                {profile.monthly_context ? (
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                    <p className="flex-1 text-xs text-gray-600 dark:text-gray-300 leading-relaxed italic">"{profile.monthly_context}"</p>
+                    <button onClick={async () => { await clearContext(); showToast('Note cleared') }}
+                      className="text-gray-300 hover:text-red-400 transition shrink-0 text-xs">✕</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. I have a trip next week..."
+                      value={contextEdit}
+                      onChange={e => setContextEdit(e.target.value)}
+                      className="flex-1 px-3 py-2 text-xs border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    />
+                    <button
+                      onClick={handleSaveContext}
+                      disabled={!contextEdit.trim() || savingCtx}
+                      className="bg-violet-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-violet-700 transition disabled:opacity-40">
+                      Save
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => setShowOnboarding(true)}
+                className="w-full flex items-center justify-center gap-2 border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 py-2.5 rounded-xl font-semibold hover:bg-violet-50 dark:hover:bg-violet-900/20 transition text-sm">
+                Edit My Profile →
+              </button>
+            </>
+          )}
+        </div>
+      </Section>
+    </>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function Profile() {
   const { wallets, refreshWallets, deactivateWallet, activeWallet } = useWallet()
@@ -534,6 +693,9 @@ export default function Profile() {
               </button>
             </div>
           </Section>
+
+          {/* Financial Profile section */}
+          <FinancialProfileSection showToast={showToast} />
 
           {/* Your Plan section */}
           <Section

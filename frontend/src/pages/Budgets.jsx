@@ -1,7 +1,10 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from '../components/Layout'
 import API from '../utils/api'
 import BudgetSuggestionsSheet from '../components/BudgetSuggestionsSheet'
+import BudgetOnboarding from '../components/BudgetOnboarding'
+import BudgetPlanSheet from '../components/BudgetPlanSheet'
+import { useFinancialProfile } from '../hooks/useFinancialProfile'
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', LBP: 'L£', AED: 'د.إ', SAR: '﷼', CAD: 'C$', AUD: 'A$' }
 const CATEGORIES = ['Food', 'Coffee', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Fitness', 'Education', 'Travel', 'Gifts', 'Subscriptions', 'Other']
@@ -75,14 +78,14 @@ export default function Budgets() {
   const [saving, setSaving] = useState(false)
   const [filterStatus, setFilterStatus] = useState('All')
   const [expandedId, setExpandedId] = useState(null)
-  const [aiAdvice, setAiAdvice] = useState({}) // { [budgetId]: { loading, text } }
+  const [aiAdvice, setAiAdvice] = useState({})
   const [monthlyIncome, setMonthlyIncome] = useState(0)
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(true)
   const [formAiLoading, setFormAiLoading] = useState(false)
   const [numModal, setNumModal] = useState(null)
   const [formAiSuggestion, setFormAiSuggestion] = useState('')
-  const [suggestModal, setSuggestModal] = useState(null) // { suggestions, monthlyIncome, fromNetWorth }
+  const [suggestModal, setSuggestModal] = useState(null)
   const [suggestLoading, setSuggestLoading] = useState(false)
   const [showAISheet, setShowAISheet] = useState(false)
   const [noIncomeModal, setNoIncomeModal] = useState(false)
@@ -92,17 +95,37 @@ export default function Budgets() {
     return CURRENCY_SYMBOLS[stored] || '$'
   })
 
+  // ── New AI Budget Plan state ───────────────────────────────────────────
+  const { profile: financialProfile, loading: profileLoading, updateProfile } = useFinancialProfile()
+  const [showOnboarding, setShowOnboarding]   = useState(false)
+  const [showPlanSheet, setShowPlanSheet]     = useState(false)
+  const [planData, setPlanData]               = useState(null)
+  const [chatContext, setChatContext]          = useState('')
+  const [chatLoading, setChatLoading]         = useState(false)
+  const chatPlaceholders = [
+    "I'm going on a trip next week...",
+    "I need to save for a big purchase...",
+    "I owe my friend $200 this month...",
+    "I just got a bonus this month...",
+    "My car needs repair this month...",
+  ]
+  const [placeholderIdx, setPlaceholderIdx] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setPlaceholderIdx(i => (i + 1) % chatPlaceholders.length), 3000)
+    return () => clearInterval(t)
+  }, [])
+
   const today = new Date()
   const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' })
   const showToast = useCallback((message, type = 'success') => setToast({ message, type }), [])
 
   // Hide bottom nav when any entry form/modal is open
   useEffect(() => {
-    const open = showForm || showAISheet || !!numModal || !!suggestModal || noIncomeModal
+    const open = showForm || showAISheet || !!numModal || !!suggestModal || noIncomeModal || showOnboarding || showPlanSheet
     if (open) document.body.classList.add('modal-open')
     else document.body.classList.remove('modal-open')
     return () => document.body.classList.remove('modal-open')
-  }, [showForm, showAISheet, numModal, suggestModal, noIncomeModal])
+  }, [showForm, showAISheet, numModal, suggestModal, noIncomeModal, showOnboarding, showPlanSheet])
 
   const calcMonthlyIncome = (incData) => {
     const now = new Date()
@@ -413,12 +436,107 @@ export default function Budgets() {
         </div>
       )}
 
+      {/* ── Onboarding & Plan Sheet ──────────────────────────────────────── */}
+      {showOnboarding && (
+        <BudgetOnboarding
+          onClose={() => setShowOnboarding(false)}
+          onComplete={async (answers) => {
+            setShowOnboarding(false)
+            setShowPlanSheet(true)
+          }}
+        />
+      )}
+      {showPlanSheet && (
+        <BudgetPlanSheet
+          initialData={planData}
+          onClose={() => { setShowPlanSheet(false); setPlanData(null) }}
+          onApplied={() => { fetchAll(); showToast('✅ Budget plan applied!') }}
+        />
+      )}
+
       <div className="max-w-4xl mx-auto px-4 py-6 page-enter">
 
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Budgets</h1>
           <p className="text-gray-400 text-sm mt-0.5">{monthName} · Spending limits & bill reminders</p>
+        </div>
+
+        {/* ── AI Budget Plan Card (new) ──────────────────────────────────── */}
+        <div className="bg-linear-to-br from-indigo-600 via-violet-600 to-purple-700 rounded-2xl p-5 mb-4 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white" />
+            <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-white" />
+          </div>
+          <div className="relative flex items-start gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <p className="text-white font-bold text-base">AI Budget Plan</p>
+                {/* Profile badges */}
+                {financialProfile?.is_student && (
+                  <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-bold">🎓 Student</span>
+                )}
+                {financialProfile?.has_debt && (
+                  <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-bold">💳 Debt</span>
+                )}
+                {financialProfile?.is_married && (
+                  <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-bold">💍 Married</span>
+                )}
+              </div>
+              <p className="text-white/70 text-xs leading-relaxed">
+                {financialProfile
+                  ? `Personalized for your ${financialProfile.life_situation?.replace(/_/g,' ')} profile · ${financialProfile.savings_target || 20}% savings target`
+                  : 'Personalized to your life situation, income & spending habits'}
+              </p>
+              {financialProfile && (
+                <button
+                  onClick={() => setShowOnboarding(true)}
+                  className="text-white/50 text-[10px] mt-1 hover:text-white/80 underline underline-offset-2 transition">
+                  Update my profile →
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                if (!financialProfile) {
+                  setShowOnboarding(true)
+                } else {
+                  setShowPlanSheet(true)
+                }
+              }}
+              className="shrink-0 bg-white text-violet-700 font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-white/90 active:scale-95 transition">
+              Generate Plan →
+            </button>
+          </div>
+        </div>
+
+        {/* ── Budget Chat Box ───────────────────────────────────────────── */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-4 border border-gray-100 dark:border-gray-700">
+          <p className="text-sm font-bold text-gray-800 dark:text-white mb-0.5">💬 Anything special this month?</p>
+          <p className="text-xs text-gray-400 mb-3">Tell me about your situation and I'll adjust your budget plan</p>
+          <div className="flex gap-2">
+            <textarea
+              value={chatContext}
+              onChange={e => setChatContext(e.target.value)}
+              placeholder={chatPlaceholders[placeholderIdx]}
+              rows={2}
+              className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 placeholder-gray-300 dark:placeholder-gray-500"
+            />
+            <button
+              disabled={!chatContext.trim() || chatLoading}
+              onClick={async () => {
+                if (!chatContext.trim()) return
+                setChatLoading(true)
+                try {
+                  await API.post('/budget-plan/save-context', { context: chatContext })
+                  setShowPlanSheet(true)
+                } catch {}
+                setChatLoading(false)
+              }}
+              className="shrink-0 self-end bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs px-3 py-2.5 rounded-xl transition disabled:opacity-40 active:scale-95">
+              {chatLoading ? '…' : '→'}
+            </button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -487,7 +605,7 @@ export default function Budgets() {
             </div>
             <div className="flex-1" />
             <button
-              onClick={() => setShowAISheet(true)}
+              onClick={() => financialProfile ? setShowPlanSheet(true) : setShowOnboarding(true)}
               className="shrink-0 flex items-center gap-1.5 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-700 px-3.5 py-2 rounded-xl text-sm font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/50 transition">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>
               AI Budget Plan

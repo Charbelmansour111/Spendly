@@ -391,6 +391,36 @@ async function migrate() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE`);
 
+    // ── User financial profile (AI budget personalisation) ────────────────
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_financial_profile (
+        id                SERIAL PRIMARY KEY,
+        user_id           INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+        life_situation    VARCHAR(30),
+        housing           VARCHAR(30),
+        is_student        BOOLEAN DEFAULT FALSE,
+        pays_tuition      BOOLEAN DEFAULT FALSE,
+        is_married        BOOLEAN DEFAULT FALSE,
+        children_count    INTEGER DEFAULT 0,
+        income_type       VARCHAR(20),
+        savings_target    DECIMAL(5,2) DEFAULT 20.00,
+        budget_food       DECIMAL(5,2),
+        budget_transport  DECIMAL(5,2),
+        budget_shopping   DECIMAL(5,2),
+        budget_subs       DECIMAL(5,2),
+        budget_entertain  DECIMAL(5,2),
+        budget_health     DECIMAL(5,2),
+        budget_other      DECIMAL(5,2),
+        monthly_context   TEXT,
+        context_month     DATE,
+        extra_data        JSONB DEFAULT '{}',
+        created_at        TIMESTAMP DEFAULT NOW(),
+        updated_at        TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_ufp_user_id ON user_financial_profile(user_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_ufp_extra ON user_financial_profile USING GIN(extra_data)`);
+
     // ── Performance indexes ────────────────────────────────────────────────
     // wallet_expenses — most queried table, always filtered by wallet + date
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_wallet_expenses_wallet_date ON wallet_expenses(wallet_id, date)`);
